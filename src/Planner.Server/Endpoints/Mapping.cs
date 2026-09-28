@@ -18,11 +18,10 @@ public static class Mapping
         (TaskStateDto)t.State,
         t.PlannedDate,
         t.StartTime,
-        t.DurationMinutes,
         t.SortOrder,
         t.TrashedAt);
 
-    public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.SortOrder, c.IsExpanded, c.IsSystem);
+    public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 
     public static RoleDto ToDto(this Role r) =>
         new(r.Id, r.Name, r.Color, r.SortOrder, (SawDimensionDto?)r.SawDimension);
@@ -40,13 +39,10 @@ public static class Mapping
 
     public static GoalResultDto ToResultDto(this WeeklyGoal g) => new(g.ToDto(), g.LinkedTask?.ToDto());
 
-    public static SettingsDto ToDto(this UserSettings s) => new(s.DayStartHour, s.DayEndHour, s.SlotMinutes);
-
     public static TaskTarget ToCore(this TaskTargetDto target) => target switch
     {
         SomedayTargetDto s => new SomedayTarget(s.CategoryId, s.Index),
-        DayPrioritiesTargetDto d => new DayPrioritiesTarget(d.Date, d.Index),
-        GridTargetDto g => new GridTarget(g.Date, g.Start, g.DurationMinutes),
+        DayTargetDto d => new DayTarget(d.Date, d.Index),
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, "Неизвестное место назначения."),
     };
 

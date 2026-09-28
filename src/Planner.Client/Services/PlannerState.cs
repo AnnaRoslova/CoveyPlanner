@@ -18,8 +18,6 @@ public class PlannerState(PlannerApi api)
 
     public string? LoadError { get; private set; }
 
-    public SettingsDto Settings { get; private set; } = new(7, 23, 30);
-
     public IReadOnlyList<string> RolePalette { get; private set; } = [];
 
     public int RecommendedGoalsPerWeek { get; private set; } = 3;
@@ -108,7 +106,6 @@ public class PlannerState(PlannerApi api)
 
     private void ApplyBoard(BoardDto board)
     {
-        Settings = board.Settings;
         RolePalette = board.RolePalette;
         RecommendedGoalsPerWeek = board.RecommendedGoalsPerWeek;
         Roles = [.. board.Roles];

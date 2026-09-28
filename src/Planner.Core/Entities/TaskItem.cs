@@ -6,7 +6,7 @@ namespace Planner.Core.Entities;
 
 /// <summary>
 /// Дело. Одна и та же сущность живёт в ленте «Когда-нибудь», в плане недели и в корзине —
-/// при переносе меняются только State и поля даты/времени, а не создаётся копия.
+/// при переносе меняются только State и дата, а не создаётся копия.
 /// CategoryId сохраняется и в плане, чтобы при возврате в ленту дело попало в свою категорию.
 /// </summary>
 public class TaskItem : ISortable
@@ -22,7 +22,7 @@ public class TaskItem : ISortable
 
     public string? Notes { get; private set; }
 
-    /// <summary>Категория ленты. null — дело создано сразу в плане (при возврате попадёт во «Входящие»).</summary>
+    /// <summary>Категория ленты. null — дело создано сразу в плане (или его категорию удалили).</summary>
     public int? CategoryId { get; private set; }
 
     public int? RoleId { get; set; }
@@ -37,12 +37,13 @@ public class TaskItem : ISortable
     /// <summary>День плана. null у запланированного дела — оно висит на цели недели без дня.</summary>
     public DateOnly? PlannedDate { get; private set; }
 
-    /// <summary>Начало в сетке часов. null — дело в «Приоритетах дня».</summary>
+    /// <summary>Необязательная метка времени («15:00 Стоматолог»). Только у дела, стоящего в дне.</summary>
     public TimeOnly? StartTime { get; private set; }
 
-    public int? DurationMinutes { get; private set; }
-
-    /// <summary>Порядок внутри категории ленты или внутри «Приоритетов дня».</summary>
+    /// <summary>
+    /// Ручной порядок внутри категории ленты или внутри дня.
+    /// В дне важен только для дел без времени: дела со временем идут первыми, по времени.
+    /// </summary>
     public int SortOrder { get; set; }
 
     public DateTime CreatedAt { get; private set; }
@@ -53,11 +54,8 @@ public class TaskItem : ISortable
 
     public bool IsInPlan => State is TaskState.Planned or TaskState.Done;
 
-    /// <summary>Дело в «Приоритетах дня» (есть день, нет времени).</summary>
-    public bool IsDayPriority => IsInPlan && PlannedDate is not null && StartTime is null;
-
-    /// <summary>Дело в сетке часов.</summary>
-    public bool IsScheduled => IsInPlan && StartTime is not null;
+    /// <summary>Дело стоит в конкретном дне.</summary>
+    public bool IsOnDay => IsInPlan && PlannedDate is not null;
 
     /// <summary>Новое дело в ленте.</summary>
     public static TaskItem CreateSomeday(string title, int categoryId, DateTime now) => new()
@@ -68,7 +66,7 @@ public class TaskItem : ISortable
         CreatedAt = now,
     };
 
-    /// <summary>Новое дело сразу в плане (без категории). Размещение — через PlanForDay/ScheduleAt/PlanForWeek.</summary>
+    /// <summary>Новое дело сразу в плане (без категории). Размещение — через PlanForDay/PlanForWeek.</summary>
     public static TaskItem CreatePlanned(string title, DateTime now) => new()
     {
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название дела"),
@@ -82,6 +80,18 @@ public class TaskItem : ISortable
     public void SetNotes(string? notes) =>
         Notes = TextRules.Optional(notes, TextRules.NotesMaxLength, "Заметки");
 
+    /// <summary>Поставить или убрать метку времени. Время бывает только у дела в дне.</summary>
+    public void SetTime(TimeOnly? time)
+    {
+        if (time is not null && !IsOnDay)
+        {
+            throw new DomainException("Время можно указать только у дела, запланированного на день.");
+        }
+
+        // Секунды не нужны: метка вида «15:00»
+        StartTime = time is { } t ? new TimeOnly(t.Hour, t.Minute) : null;
+    }
+
     /// <summary>Вернуть в ленту, в указанную категорию. Дата, время и отметка «выполнено» сбрасываются.</summary>
     public void MoveToSomeday(int categoryId)
     {
@@ -89,32 +99,16 @@ public class TaskItem : ISortable
         State = TaskState.Someday;
         CategoryId = categoryId;
         CompletedAt = null;
-        ClearSchedule();
+        PlannedDate = null;
+        StartTime = null;
     }
 
-    /// <summary>В «Приоритеты дня». Выполненное дело остаётся выполненным.</summary>
+    /// <summary>В день. Время (если было) сохраняется; выполненное дело остаётся выполненным.</summary>
     public void PlanForDay(DateOnly date)
     {
         EnsureNotTrashed();
         MarkPlannedIfSomeday();
         PlannedDate = date;
-        StartTime = null;
-        DurationMinutes = null;
-    }
-
-    /// <summary>В сетку часов. Время и длительность должны быть уже выровнены по настройкам сетки.</summary>
-    public void ScheduleAt(DateOnly date, TimeOnly start, int durationMinutes)
-    {
-        if (durationMinutes <= 0)
-        {
-            throw new DomainException("Длительность должна быть больше нуля.");
-        }
-
-        EnsureNotTrashed();
-        MarkPlannedIfSomeday();
-        PlannedDate = date;
-        StartTime = start;
-        DurationMinutes = durationMinutes;
     }
 
     /// <summary>Запланировано на неделю без конкретного дня (дело привязано к цели).</summary>
@@ -122,7 +116,8 @@ public class TaskItem : ISortable
     {
         EnsureNotTrashed();
         MarkPlannedIfSomeday();
-        ClearSchedule();
+        PlannedDate = null;
+        StartTime = null;
     }
 
     public void Complete(DateTime now)
@@ -180,13 +175,6 @@ public class TaskItem : ISortable
         {
             State = TaskState.Planned;
         }
-    }
-
-    private void ClearSchedule()
-    {
-        PlannedDate = null;
-        StartTime = null;
-        DurationMinutes = null;
     }
 
     private void EnsureNotTrashed()

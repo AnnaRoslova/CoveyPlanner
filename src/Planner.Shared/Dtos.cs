@@ -22,7 +22,7 @@ public enum SawDimensionDto
     Social = 4,
 }
 
-/// <summary>Дело. Quadrant — 1..4 или null.</summary>
+/// <summary>Дело. Quadrant — 1..4 или null; StartTime — необязательная метка времени.</summary>
 public sealed record TaskDto(
     int Id,
     string Title,
@@ -33,11 +33,10 @@ public sealed record TaskDto(
     TaskStateDto State,
     DateOnly? PlannedDate,
     TimeOnly? StartTime,
-    int? DurationMinutes,
     int SortOrder,
     DateTime? TrashedAt);
 
-public sealed record CategoryDto(int Id, string Name, int SortOrder, bool IsExpanded, bool IsSystem);
+public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
 public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, SawDimensionDto? SawDimension)
 {
@@ -57,20 +56,25 @@ public sealed record WeeklyGoalDto(
     DateOnly? PlannedDate,
     TimeOnly? StartTime);
 
-public sealed record SettingsDto(int DayStartHour, int DayEndHour, int SlotMinutes);
-
-/// <summary>Всё, что не зависит от недели: настройки, роли, лента, палитра.</summary>
+/// <summary>Всё, что не зависит от недели: роли, лента, палитра.</summary>
 public sealed record BoardDto(
-    SettingsDto Settings,
     IReadOnlyList<string> RolePalette,
     int RecommendedGoalsPerWeek,
     IReadOnlyList<RoleDto> Roles,
     IReadOnlyList<CategoryDto> Categories,
     IReadOnlyList<TaskDto> SomedayTasks,
-    int TrashCount);
+    int TrashCount,
+    int? LastUsedCategoryId);
 
 /// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели).</summary>
 public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
 
 /// <summary>Результат операции с целью: сама цель и связанное дело, если оно поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
+
+/// <summary>Коды ошибок в ProblemDetails (поле "code"), на которые клиент реагирует особо.</summary>
+public static class ProblemCodes
+{
+    /// <summary>Дело возвращается в ленту без категории — спросить категорию и повторить запрос с ?categoryId=.</summary>
+    public const string CategoryRequired = "category-required";
+}

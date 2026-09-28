@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 
@@ -13,8 +13,6 @@ public class PlannerDbContext(DbContextOptions<PlannerDbContext> options) : DbCo
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
-
-    public DbSet<UserSettings> Settings => Set<UserSettings>();
 
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken ct) => await SaveChangesAsync(ct);
 

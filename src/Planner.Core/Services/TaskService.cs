@@ -2,7 +2,6 @@ using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 using Planner.Core.Enums;
 using Planner.Core.Errors;
-using Planner.Core.Sorting;
 
 namespace Planner.Core.Services;
 
@@ -17,7 +16,7 @@ public class TaskService(
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>Новое дело: в ленту (обычно наверх категории, Index = 0), в приоритеты дня или в сетку.</summary>
+    /// <summary>Новое дело: в ленту (обычно наверх категории, Index = 0) или в день.</summary>
     public async Task<TaskItem> CreateAsync(string title, TaskTarget target, CancellationToken ct = default)
     {
         var task = target is SomedayTarget someday
@@ -29,8 +28,10 @@ public class TaskService(
         return task;
     }
 
+    /// <summary>Изменить дело из окна редактирования. startTime = null — убрать время.</summary>
     public async Task<TaskItem> UpdateAsync(
-        int id, string title, string? notes, int? roleId, Quadrant? quadrant, CancellationToken ct = default)
+        int id, string title, string? notes, int? roleId, Quadrant? quadrant, TimeOnly? startTime,
+        CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
         if (roleId is { } rid && await roles.FindAsync(rid, ct) is null)
@@ -47,6 +48,14 @@ public class TaskService(
         task.SetNotes(notes);
         task.RoleId = roleId;
         task.Quadrant = quadrant;
+
+        var hadTime = task.StartTime is not null;
+        task.SetTime(startTime);
+        if (hadTime && startTime is null)
+        {
+            // Время убрали — дело встаёт в конец ручного списка дня
+            await placer.MoveToEndOfDayAsync(task, ct);
+        }
 
         // Название у цели и связанного дела одно
         if (await goals.FindByTaskIdAsync(task.Id, ct) is { } goal)
@@ -109,22 +118,21 @@ public class TaskService(
     }
 
     /// <summary>
-    /// Вернуть из корзины на прежнее место. Если прежнее место потеряно
-    /// (категория удалена или дело висело на цели без дня) — в ленту.
+    /// Вернуть из корзины на прежнее место. Если дело возвращается в ленту (было в ленте
+    /// или висело на цели без дня), а его категории нет — нужна <paramref name="fallbackCategoryId"/>.
     /// </summary>
-    public async Task<TaskItem> RestoreAsync(int id, CancellationToken ct = default)
+    public async Task<TaskItem> RestoreAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
         task.Restore();
 
-        if (task.State == TaskState.Someday || task.PlannedDate is null)
+        if (task.IsOnDay)
         {
-            await placer.ReturnToSomedayAsync(task, ct);
+            await placer.MoveToEndOfDayAsync(task, ct);
         }
-        else if (task.IsDayPriority)
+        else
         {
-            var siblings = await tasks.GetDayPrioritiesAsync(task.PlannedDate.Value, ct);
-            SortOrdering.Place(siblings, task, int.MaxValue);
+            await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

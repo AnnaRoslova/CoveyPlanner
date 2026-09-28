@@ -13,22 +13,29 @@ public class CategoryService(
     TimeProvider clock)
 {
     /// <summary>Новая категория — в конец списка.</summary>
-    public async Task<Category> CreateAsync(string name, CancellationToken ct = default)
+    public async Task<Category> CreateAsync(string name, string? emoji, CancellationToken ct = default)
     {
         var all = await categories.GetAllAsync(ct);
-        var category = Category.Create(name);
+        var category = Category.Create(name, emoji);
         category.SortOrder = all.Count == 0 ? 0 : all.Max(c => c.SortOrder) + 1;
         categories.Add(category);
         await unitOfWork.SaveChangesAsync(ct);
         return category;
     }
 
-    public async Task<Category> UpdateAsync(int id, string? name, bool? isExpanded, CancellationToken ct = default)
+    /// <summary>null — поле не менять; emoji = "" — убрать иконку.</summary>
+    public async Task<Category> UpdateAsync(
+        int id, string? name, string? emoji, bool? isExpanded, CancellationToken ct = default)
     {
         var category = await GetAsync(id, ct);
         if (name is not null)
         {
             category.Rename(name);
+        }
+
+        if (emoji is not null)
+        {
+            category.SetEmoji(emoji);
         }
 
         if (isExpanded is { } expanded)
@@ -48,16 +55,12 @@ public class CategoryService(
     }
 
     /// <summary>
-    /// Удалить категорию. Её дела из ленты уходят в корзину;
-    /// при восстановлении попадут во «Входящие» (CategoryId обнулится на уровне БД).
+    /// Удалить категорию. Её дела из ленты уходят в корзину (CategoryId обнулится на уровне БД);
+    /// при восстановлении категорию спросят.
     /// </summary>
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var category = await GetAsync(id, ct);
-        if (category.IsSystem)
-        {
-            throw new DomainException("Категорию «Входящие» удалить нельзя.");
-        }
 
         var now = clock.GetUtcNow().UtcDateTime;
         foreach (var task in await tasks.GetSomedayInCategoryAsync(id, ct))

@@ -49,10 +49,11 @@ public class RoleService(
     }
 
     /// <summary>
-    /// Удалить роль вместе с её целями. Дела, висевшие на целях без дня, возвращаются в ленту;
+    /// Удалить роль вместе с её целями. Дела, висевшие на целях без дня, возвращаются в ленту
+    /// (без своей категории — в <paramref name="fallbackCategoryId"/>, одну на все);
     /// у остальных дел роль просто сбрасывается (на уровне БД).
     /// </summary>
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    public async Task DeleteAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
     {
         var role = await GetAsync(id, ct);
         role.EnsureEditable();
@@ -61,7 +62,7 @@ public class RoleService(
         {
             if (goal.LinkedTask is { PlannedDate: null } task)
             {
-                await placer.ReturnToSomedayAsync(task, ct);
+                await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
             }
 
             goals.Remove(goal);

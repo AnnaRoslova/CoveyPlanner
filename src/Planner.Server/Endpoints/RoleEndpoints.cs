@@ -25,9 +25,10 @@ public static class RoleEndpoints
             return Results.NoContent();
         });
 
-        roles.MapDelete("/{id:int}", async (int id, RoleService service, CancellationToken ct) =>
+        // ?categoryId= — куда вернуть дела целей без дня, у которых нет своей категории
+        roles.MapDelete("/{id:int}", async (int id, int? categoryId, RoleService service, CancellationToken ct) =>
         {
-            await service.DeleteAsync(id, ct);
+            await service.DeleteAsync(id, categoryId, ct);
             return Results.NoContent();
         });
     }

@@ -34,29 +34,50 @@ public class TaskItemTests
 
         Assert.Equal(TaskState.Planned, task.State);
         Assert.Equal(Monday, task.PlannedDate);
-        Assert.Null(task.StartTime);
-        Assert.True(task.IsDayPriority);
+        Assert.True(task.IsOnDay);
         Assert.Equal(5, task.CategoryId);
     }
 
     [Fact]
-    public void ScheduleAt_ThenPlanForDay_ClearsTime()
+    public void SetTime_OnDay_KeepsHoursAndMinutes()
     {
-        var task = TaskItem.CreateSomeday("Дело", 5, Now);
+        var task = TaskItem.CreatePlanned("Стоматолог", Now);
+        task.PlanForDay(Monday);
 
-        task.ScheduleAt(Monday, new TimeOnly(9, 0), 60);
-        Assert.True(task.IsScheduled);
+        task.SetTime(new TimeOnly(15, 0, 42));
 
-        task.PlanForDay(Monday.AddDays(1));
-        Assert.Null(task.StartTime);
-        Assert.Null(task.DurationMinutes);
+        Assert.Equal(new TimeOnly(15, 0), task.StartTime);
     }
 
     [Fact]
-    public void MoveToSomeday_ClearsScheduleAndDone()
+    public void SetTime_NotOnDay_Throws()
+    {
+        var someday = TaskItem.CreateSomeday("Мысль", 5, Now);
+        var weekOnly = TaskItem.CreatePlanned("Цель без дня", Now);
+        weekOnly.PlanForWeek();
+
+        Assert.Throws<DomainException>(() => someday.SetTime(new TimeOnly(9, 0)));
+        Assert.Throws<DomainException>(() => weekOnly.SetTime(new TimeOnly(9, 0)));
+    }
+
+    [Fact]
+    public void MovingBetweenDays_KeepsTime()
+    {
+        var task = TaskItem.CreatePlanned("Встреча", Now);
+        task.PlanForDay(Monday);
+        task.SetTime(new TimeOnly(15, 0));
+
+        task.PlanForDay(Monday.AddDays(2));
+
+        Assert.Equal(new TimeOnly(15, 0), task.StartTime);
+    }
+
+    [Fact]
+    public void MoveToSomeday_ClearsDateTimeAndDone()
     {
         var task = TaskItem.CreateSomeday("Дело", 5, Now);
-        task.ScheduleAt(Monday, new TimeOnly(9, 0), 30);
+        task.PlanForDay(Monday);
+        task.SetTime(new TimeOnly(9, 0));
         task.Complete(Now);
 
         task.MoveToSomeday(5);
@@ -68,13 +89,27 @@ public class TaskItemTests
     }
 
     [Fact]
+    public void PlanForWeek_ClearsDayAndTime()
+    {
+        var task = TaskItem.CreatePlanned("Дело", Now);
+        task.PlanForDay(Monday);
+        task.SetTime(new TimeOnly(9, 0));
+
+        task.PlanForWeek();
+
+        Assert.Null(task.PlannedDate);
+        Assert.Null(task.StartTime);
+        Assert.False(task.IsOnDay);
+    }
+
+    [Fact]
     public void Moving_DoneTask_KeepsItDone()
     {
         var task = TaskItem.CreatePlanned("Дело", Now);
         task.PlanForDay(Monday);
         task.Complete(Now);
 
-        task.ScheduleAt(Monday.AddDays(2), new TimeOnly(12, 0), 30);
+        task.PlanForDay(Monday.AddDays(2));
 
         Assert.Equal(TaskState.Done, task.State);
     }
@@ -106,7 +141,8 @@ public class TaskItemTests
     public void TrashAndRestore_ReturnsToPreviousPlace()
     {
         var task = TaskItem.CreateSomeday("Дело", 5, Now);
-        task.ScheduleAt(Monday, new TimeOnly(9, 30), 90);
+        task.PlanForDay(Monday);
+        task.SetTime(new TimeOnly(9, 30));
 
         task.Trash(Now);
         Assert.Equal(TaskState.Trashed, task.State);
@@ -115,8 +151,8 @@ public class TaskItemTests
 
         task.Restore();
         Assert.Equal(TaskState.Planned, task.State);
+        Assert.Equal(Monday, task.PlannedDate);
         Assert.Equal(new TimeOnly(9, 30), task.StartTime);
-        Assert.Equal(90, task.DurationMinutes);
         Assert.Null(task.TrashedAt);
     }
 
@@ -126,13 +162,5 @@ public class TaskItemTests
         var task = TaskItem.CreateSomeday("Дело", 5, Now);
 
         Assert.Throws<DomainException>(task.Restore);
-    }
-
-    [Fact]
-    public void ScheduleAt_ZeroDuration_Throws()
-    {
-        var task = TaskItem.CreateSomeday("Дело", 5, Now);
-
-        Assert.Throws<DomainException>(() => task.ScheduleAt(Monday, new TimeOnly(9, 0), 0));
     }
 }

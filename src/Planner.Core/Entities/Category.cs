@@ -5,7 +5,8 @@ namespace Planner.Core.Entities;
 /// <summary>Категория ленты «Когда-нибудь» (один уровень, без подкатегорий).</summary>
 public class Category : ISortable
 {
-    public const string InboxName = "Входящие";
+    /// <summary>С запасом: составные эмодзи (семья, флаги) занимают до ~11 UTF-16 символов.</summary>
+    public const int EmojiMaxLength = 16;
 
     private Category()
     {
@@ -15,27 +16,26 @@ public class Category : ISortable
 
     public string Name { get; private set; } = "";
 
+    /// <summary>Необязательная иконка-эмодзи.</summary>
+    public string? Emoji { get; private set; }
+
     public int SortOrder { get; set; }
 
     /// <summary>Раскрыта ли категория в аккордеоне.</summary>
     public bool IsExpanded { get; set; }
 
-    /// <summary>Системная категория «Входящие»: её нельзя удалить, туда попадают дела без категории.</summary>
-    public bool IsSystem { get; private set; }
-
-    public static Category Create(string name) => new()
+    public static Category Create(string name, string? emoji = null)
     {
-        Name = TextRules.Required(name, TextRules.NameMaxLength, "Название категории"),
-        IsExpanded = true,
-    };
-
-    public static Category CreateInbox() => new()
-    {
-        Name = InboxName,
-        IsExpanded = true,
-        IsSystem = true,
-    };
+        var category = new Category { IsExpanded = true };
+        category.Rename(name);
+        category.SetEmoji(emoji);
+        return category;
+    }
 
     public void Rename(string name) =>
         Name = TextRules.Required(name, TextRules.NameMaxLength, "Название категории");
+
+    /// <summary>Пустая строка или null — без иконки.</summary>
+    public void SetEmoji(string? emoji) =>
+        Emoji = TextRules.Optional(emoji, EmojiMaxLength, "Иконка категории");
 }

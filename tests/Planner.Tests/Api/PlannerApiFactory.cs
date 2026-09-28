@@ -75,14 +75,26 @@ public abstract class ApiTestBase : IAsyncLifetime
     protected Task<WeekDto> GetWeekAsync(DateOnly? weekStart = null) =>
         GetAsync<WeekDto>($"/api/week/{weekStart ?? Monday:yyyy-MM-dd}");
 
-    protected async Task<int> InboxIdAsync() => (await GetBoardAsync()).Categories.Single(c => c.IsSystem).Id;
-
     protected Task<TaskDto> CreateTaskAsync(string title, TaskTargetDto target) =>
         PostAsync<TaskDto>("/api/tasks", new CreateTaskRequest(title, target));
+
+    protected Task<TaskDto> CreateInDayAsync(string title, DateOnly? date = null, int index = 0) =>
+        CreateTaskAsync(title, new DayTargetDto(date ?? Monday, index));
 
     protected Task<TaskDto> MoveTaskAsync(int id, TaskTargetDto target) =>
         PostTargetAsync<TaskDto>($"/api/tasks/{id}/move", target);
 
-    protected Task<CategoryDto> CreateCategoryAsync(string name) =>
-        PostAsync<CategoryDto>("/api/categories", new CreateCategoryRequest(name));
+    protected Task<TaskDto> UpdateTaskAsync(TaskDto task, TimeOnly? startTime = null, int? roleId = null) =>
+        PutAsync<TaskDto>($"/api/tasks/{task.Id}",
+            new UpdateTaskRequest(task.Title, task.Notes, roleId ?? task.RoleId, task.Quadrant, startTime));
+
+    protected Task<CategoryDto> CreateCategoryAsync(string name = "Идеи", string? emoji = null) =>
+        PostAsync<CategoryDto>("/api/categories", new CreateCategoryRequest(name, emoji));
+
+    /// <summary>Ответ 409 с кодом category-required.</summary>
+    protected static async Task AssertCategoryRequiredAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(System.Net.HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(ProblemCodes.CategoryRequired, await response.Content.ReadAsStringAsync());
+    }
 }

@@ -5,7 +5,7 @@ using Planner.Shared;
 
 namespace Planner.Server.Endpoints;
 
-/// <summary>Чтение экрана целиком: общая часть (лента, роли, настройки) и конкретная неделя.</summary>
+/// <summary>Чтение экрана целиком: общая часть (лента, роли) и конкретная неделя.</summary>
 public static class BoardEndpoints
 {
     public static void MapBoardEndpoints(this RouteGroupBuilder api)
@@ -15,26 +15,25 @@ public static class BoardEndpoints
     }
 
     private static async Task<BoardDto> GetBoardAsync(
-        ISettingsRepository settings,
         IRoleRepository roles,
         ICategoryRepository categories,
         ITaskRepository tasks,
         CancellationToken ct)
     {
-        var gridSettings = await settings.GetAsync(ct);
         var allRoles = await roles.GetAllAsync(ct);
         var allCategories = await categories.GetAllAsync(ct);
         var someday = await tasks.GetSomedayAsync(ct);
         var trashed = await tasks.GetTrashedAsync(ct);
+        var lastUsedCategoryId = await tasks.GetLastUsedCategoryIdAsync(ct);
 
         return new BoardDto(
-            gridSettings.ToDto(),
             RolePalette.Colors,
             Role.RecommendedGoalsPerWeek,
             allRoles.Select(r => r.ToDto()).ToList(),
             allCategories.Select(c => c.ToDto()).ToList(),
             someday.Select(t => t.ToDto()).ToList(),
-            trashed.Count);
+            trashed.Count,
+            lastUsedCategoryId);
     }
 
     /// <summary>Неделя по любой её дате (приводится к понедельнику).</summary>

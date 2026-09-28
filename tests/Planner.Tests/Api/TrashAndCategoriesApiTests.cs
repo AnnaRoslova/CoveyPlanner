@@ -6,9 +6,9 @@ namespace Planner.Tests.Api;
 public class TrashAndCategoriesApiTests : ApiTestBase
 {
     [Fact]
-    public async Task Trash_Restore_ReturnsToPlan()
+    public async Task Trash_Restore_ReturnsToDay_WithTime()
     {
-        var task = await CreateTaskAsync("Дело", new GridTargetDto(Monday, new TimeOnly(10, 0), 30));
+        var task = await UpdateTaskAsync(await CreateInDayAsync("Дело"), new TimeOnly(10, 0));
 
         await Client.DeleteAsync($"/api/tasks/{task.Id}");
         Assert.Empty((await GetWeekAsync()).Tasks);
@@ -24,10 +24,10 @@ public class TrashAndCategoriesApiTests : ApiTestBase
     [Fact]
     public async Task Trash_DeleteForeverAndEmpty()
     {
-        var inbox = await InboxIdAsync();
-        var a = await CreateTaskAsync("A", new SomedayTargetDto(inbox, 0));
-        var b = await CreateTaskAsync("B", new SomedayTargetDto(inbox, 0));
-        var c = await CreateTaskAsync("C", new SomedayTargetDto(inbox, 0));
+        var ideas = await CreateCategoryAsync();
+        var a = await CreateTaskAsync("A", new SomedayTargetDto(ideas.Id, 0));
+        var b = await CreateTaskAsync("B", new SomedayTargetDto(ideas.Id, 0));
+        var c = await CreateTaskAsync("C", new SomedayTargetDto(ideas.Id, 0));
 
         // Навсегда можно удалить только из корзины
         Assert.Equal(HttpStatusCode.BadRequest, (await Client.DeleteAsync($"/api/trash/{a.Id}")).StatusCode);
@@ -45,58 +45,86 @@ public class TrashAndCategoriesApiTests : ApiTestBase
     }
 
     [Fact]
-    public async Task DeleteCategory_TasksGoToTrash_RestoreIntoInbox()
+    public async Task DeleteCategory_TasksGoToTrash_RestoreAsksCategory()
     {
-        var inbox = await InboxIdAsync();
         var ideas = await CreateCategoryAsync("Идеи");
+        var other = await CreateCategoryAsync("Другое");
         var task = await CreateTaskAsync("Идея", new SomedayTargetDto(ideas.Id, 0));
 
         var response = await Client.DeleteAsync($"/api/categories/{ideas.Id}");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Single(await GetAsync<List<TaskDto>>("/api/trash"), t => t.Id == task.Id);
 
-        var trash = await GetAsync<List<TaskDto>>("/api/trash");
-        Assert.Single(trash, t => t.Id == task.Id);
+        // Своей категории больше нет — сервер просит выбрать
+        await AssertCategoryRequiredAsync(await Client.PostAsync($"/api/trash/{task.Id}/restore", null));
 
-        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore", new { });
+        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore?categoryId={other.Id}", new { });
         Assert.Equal(TaskStateDto.Someday, restored.State);
-        Assert.Equal(inbox, restored.CategoryId);
+        Assert.Equal(other.Id, restored.CategoryId);
     }
 
     [Fact]
-    public async Task Inbox_CannotBeDeleted_ButCanBeRenamed()
+    public async Task Restore_OwnCategoryWins_OverFallback()
     {
-        var inbox = await InboxIdAsync();
+        var ideas = await CreateCategoryAsync("Идеи");
+        var other = await CreateCategoryAsync("Другое");
+        var task = await CreateTaskAsync("Идея", new SomedayTargetDto(ideas.Id, 0));
+        await Client.DeleteAsync($"/api/tasks/{task.Id}");
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await Client.DeleteAsync($"/api/categories/{inbox}")).StatusCode);
+        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore?categoryId={other.Id}", new { });
 
-        var renamed = await PutAsync<CategoryDto>($"/api/categories/{inbox}", new UpdateCategoryRequest("Разное", null));
-        Assert.Equal("Разное", renamed.Name);
+        Assert.Equal(ideas.Id, restored.CategoryId);
+    }
+
+    [Fact]
+    public async Task Category_EmojiCreateChangeClear()
+    {
+        var created = await CreateCategoryAsync("Книги", "📚");
+        Assert.Equal("📚", created.Emoji);
+
+        var renamedOnly = await PutAsync<CategoryDto>($"/api/categories/{created.Id}", new UpdateCategoryRequest("Книги и фильмы", null, null));
+        Assert.Equal("📚", renamedOnly.Emoji); // null — не менять
+
+        var changed = await PutAsync<CategoryDto>($"/api/categories/{created.Id}", new UpdateCategoryRequest(null, "🎬", null));
+        Assert.Equal("🎬", changed.Emoji);
+
+        var cleared = await PutAsync<CategoryDto>($"/api/categories/{created.Id}", new UpdateCategoryRequest(null, "", null));
+        Assert.Null(cleared.Emoji);
+    }
+
+    [Fact]
+    public async Task AnyCategory_CanBeDeleted()
+    {
+        var only = await CreateCategoryAsync();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync($"/api/categories/{only.Id}")).StatusCode);
+        Assert.Empty((await GetBoardAsync()).Categories);
     }
 
     [Fact]
     public async Task Category_CollapseAndReorder()
     {
-        var inbox = await InboxIdAsync();
         var a = await CreateCategoryAsync("A");
         var b = await CreateCategoryAsync("B");
+        var c = await CreateCategoryAsync("C");
 
-        var collapsed = await PutAsync<CategoryDto>($"/api/categories/{a.Id}", new UpdateCategoryRequest(null, false));
+        var collapsed = await PutAsync<CategoryDto>($"/api/categories/{a.Id}", new UpdateCategoryRequest(null, null, false));
         Assert.False(collapsed.IsExpanded);
 
-        await Client.PostAsJsonAsync("/api/categories/reorder", new ReorderRequest([b.Id, inbox, a.Id]));
+        await Client.PostAsJsonAsync("/api/categories/reorder", new ReorderRequest([b.Id, c.Id, a.Id]));
 
-        var order = (await GetBoardAsync()).Categories.Select(c => c.Id);
-        Assert.Equal([b.Id, inbox, a.Id], order);
+        var order = (await GetBoardAsync()).Categories.Select(x => x.Id);
+        Assert.Equal([b.Id, c.Id, a.Id], order);
     }
 
     [Fact]
     public async Task MoveBetweenCategories()
     {
-        var inbox = await InboxIdAsync();
+        var ideas = await CreateCategoryAsync("Идеи");
         var other = await CreateCategoryAsync("Другое");
         var x = await CreateTaskAsync("X", new SomedayTargetDto(other.Id, 0));
         var y = await CreateTaskAsync("Y", new SomedayTargetDto(other.Id, 1));
-        var task = await CreateTaskAsync("Дело", new SomedayTargetDto(inbox, 0));
+        var task = await CreateTaskAsync("Дело", new SomedayTargetDto(ideas.Id, 0));
 
         await MoveTaskAsync(task.Id, new SomedayTargetDto(other.Id, 1));
 

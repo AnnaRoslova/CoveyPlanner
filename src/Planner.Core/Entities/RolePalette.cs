@@ -2,21 +2,21 @@ using Planner.Core.Errors;
 
 namespace Planner.Core.Entities;
 
-/// <summary>Палитра цветов ролей: спокойные тона, хорошо читаются как фон карточки.</summary>
+/// <summary>Палитра цветов ролей «Лотос» (docs/design-mockup.html): розовые и бирюзовые пастели.</summary>
 public static class RolePalette
 {
     public static readonly IReadOnlyList<string> Colors =
     [
-        "#6b8fb5", // голубой
-        "#5f9e8f", // бирюзовый
-        "#7fa66a", // зелёный
-        "#c2a54f", // горчичный
-        "#d08a4e", // оранжевый
-        "#c46c6c", // красный
-        "#b56f9b", // розовый
-        "#8a76b8", // фиолетовый
-        "#8c7a6b", // коричневый
-        "#7d8791", // серый
+        "#f29ea6", // коралловый розовый
+        "#f4c3cf", // румянец
+        "#6fbfae", // бирюзово-зелёный
+        "#94b4b5", // серая бирюза
+        "#a8dcd0", // мята
+        "#f7d3db", // бледно-розовый
+        "#8ac2c4", // морская волна
+        "#e9b0b8", // пыльная роза
+        "#f5b7a5", // персиковый
+        "#b9d3b0", // шалфей
     ];
 
     public static string Validate(string color)

@@ -18,7 +18,8 @@ public static class TaskEndpoints
         });
 
         tasks.MapPut("/{id:int}", async (int id, UpdateTaskRequest request, TaskService service, CancellationToken ct) =>
-            (await service.UpdateAsync(id, request.Title, request.Notes, request.RoleId, request.Quadrant.ToQuadrant(), ct))
+            (await service.UpdateAsync(
+                id, request.Title, request.Notes, request.RoleId, request.Quadrant.ToQuadrant(), request.StartTime, ct))
             .ToDto());
 
         tasks.MapPost("/{id:int}/move", async (int id, TaskTargetDto target, TaskService service, CancellationToken ct) =>
@@ -39,8 +40,9 @@ public static class TaskEndpoints
         trash.MapGet("/", async (ITaskRepository repository, CancellationToken ct) =>
             (await repository.GetTrashedAsync(ct)).Select(t => t.ToDto()).ToList());
 
-        trash.MapPost("/{id:int}/restore", async (int id, TaskService service, CancellationToken ct) =>
-            (await service.RestoreAsync(id, ct)).ToDto());
+        // ?categoryId= — куда вернуть, если своей категории у дела нет (иначе 409 category-required)
+        trash.MapPost("/{id:int}/restore", async (int id, int? categoryId, TaskService service, CancellationToken ct) =>
+            (await service.RestoreAsync(id, categoryId, ct)).ToDto());
 
         trash.MapDelete("/{id:int}", async (int id, TaskService service, CancellationToken ct) =>
         {

@@ -4,37 +4,38 @@ using Planner.Core.Enums;
 
 namespace Planner.Server.Data;
 
-/// <summary>Начальные данные для пустой базы: «Входящие», 4 измерения пилы, стартовые роли, настройки.</summary>
+/// <summary>
+/// Начальные данные для пустой базы: 4 измерения пилы и стартовые роли.
+/// Категорий нет — пользователь создаёт их сам (лента подскажет).
+/// </summary>
 public static class SeedData
 {
     public static async Task EnsureSeededAsync(PlannerDbContext db, CancellationToken ct = default)
     {
-        if (!await db.Categories.AnyAsync(c => c.IsSystem, ct))
+        if (await db.Roles.AnyAsync(ct))
         {
-            db.Categories.Add(Category.CreateInbox());
+            return;
         }
 
-        if (!await db.Roles.AnyAsync(ct))
-        {
-            db.Roles.AddRange(
-                Role.CreateSawDimension(SawDimension.Body, "Тело", "#7fa66a"),
-                Role.CreateSawDimension(SawDimension.Mind, "Ум", "#6b8fb5"),
-                Role.CreateSawDimension(SawDimension.Spirit, "Дух", "#8a76b8"),
-                Role.CreateSawDimension(SawDimension.Social, "Общение и эмоции", "#d08a4e"));
+        // Цвета — как в docs/design-mockup.html
+        db.Roles.AddRange(
+            Role.CreateSawDimension(SawDimension.Body, "Тело", "#f4c3cf"),
+            Role.CreateSawDimension(SawDimension.Mind, "Ум", "#94b4b5"),
+            Role.CreateSawDimension(SawDimension.Spirit, "Дух", "#6fbfae"),
+            Role.CreateSawDimension(SawDimension.Social, "Общение и эмоции", "#f29ea6"));
 
-            string[] names = ["Я сама", "Семья", "Работа", "Дом"];
-            string[] colors = ["#5f9e8f", "#c46c6c", "#8c7a6b", "#c2a54f"];
-            for (var i = 0; i < names.Length; i++)
-            {
-                var role = Role.Create(names[i], colors[i]);
-                role.SortOrder = i;
-                db.Roles.Add(role);
-            }
-        }
-
-        if (!await db.Settings.AnyAsync(ct))
+        (string Name, string Color)[] roles =
+        [
+            ("Я сама", "#a8dcd0"),
+            ("Семья", "#e9b0b8"),
+            ("Работа", "#8ac2c4"),
+            ("Дом", "#f7d3db"),
+        ];
+        for (var i = 0; i < roles.Length; i++)
         {
-            db.Settings.Add(new UserSettings());
+            var role = Role.Create(roles[i].Name, roles[i].Color);
+            role.SortOrder = i;
+            db.Roles.Add(role);
         }
 
         await db.SaveChangesAsync(ct);

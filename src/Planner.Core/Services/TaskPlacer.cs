@@ -6,10 +6,10 @@ using Planner.Core.Sorting;
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Ставит дело в нужное место (лента / приоритеты дня / сетка) и пересчитывает порядок соседей.
-/// Общий помощник для TaskService и GoalService. Сам не сохраняет изменения.
+/// Ставит дело в нужное место (лента / день) и пересчитывает порядок соседей.
+/// Общий помощник для сервисов дел, целей и ролей. Сам не сохраняет изменения.
 /// </summary>
-public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories, ISettingsRepository settings)
+public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories)
 {
     public async Task PlaceAsync(TaskItem task, TaskTarget target, CancellationToken ct = default)
     {
@@ -26,17 +26,16 @@ public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories, I
                 SortOrdering.Place(categorySiblings, task, someday.Index);
                 break;
 
-            case DayPrioritiesTarget day:
-                var daySiblings = await tasks.GetDayPrioritiesAsync(day.Date, ct);
+            case DayTarget day:
                 task.PlanForDay(day.Date);
-                SortOrdering.Place(daySiblings, task, day.Index);
-                break;
 
-            case GridTarget grid:
-                var gridSettings = await settings.GetAsync(ct);
-                var start = gridSettings.SnapStart(grid.Start);
-                var duration = gridSettings.NormalizeDuration(start, grid.DurationMinutes);
-                task.ScheduleAt(grid.Date, start, duration);
+                // Ручной порядок только у дел без времени; дело со временем встанет по времени
+                if (task.StartTime is null)
+                {
+                    var daySiblings = await tasks.GetUntimedOnDayAsync(day.Date, ct);
+                    SortOrdering.Place(daySiblings, task, day.Index);
+                }
+
                 break;
 
             default:
@@ -44,11 +43,33 @@ public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories, I
         }
     }
 
-    /// <summary>Вернуть дело в ленту наверх его категории (или во «Входящие», если категории нет).</summary>
-    public async Task ReturnToSomedayAsync(TaskItem task, CancellationToken ct = default)
+    /// <summary>Поставить дело без времени в конец своего дня (после снятия времени или возврата из корзины).</summary>
+    public async Task MoveToEndOfDayAsync(TaskItem task, CancellationToken ct = default)
     {
-        var category = task.CategoryId is { } id ? await categories.FindAsync(id, ct) : null;
-        category ??= await categories.GetInboxAsync(ct);
+        if (task.PlannedDate is { } date && task.StartTime is null)
+        {
+            var siblings = await tasks.GetUntimedOnDayAsync(date, ct);
+            SortOrdering.Place(siblings, task, int.MaxValue);
+        }
+    }
+
+    /// <summary>
+    /// Вернуть дело в ленту наверх его категории. Если своей категории нет —
+    /// в <paramref name="fallbackCategoryId"/>; если и её не передали — <see cref="CategoryRequiredException"/>.
+    /// </summary>
+    public async Task ReturnToSomedayAsync(TaskItem task, int? fallbackCategoryId, CancellationToken ct = default)
+    {
+        var category = task.CategoryId is { } own ? await categories.FindAsync(own, ct) : null;
+        if (category is null && fallbackCategoryId is { } fallback)
+        {
+            category = await categories.FindAsync(fallback, ct) ?? throw new NotFoundException("Категория", fallback);
+        }
+
+        if (category is null)
+        {
+            throw new CategoryRequiredException();
+        }
+
         await PlaceAsync(task, new SomedayTarget(category.Id, 0), ct);
     }
 }

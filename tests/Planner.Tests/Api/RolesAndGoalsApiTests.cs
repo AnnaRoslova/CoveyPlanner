@@ -71,17 +71,22 @@ public class RolesAndGoalsApiTests : ApiTestBase
     }
 
     [Fact]
-    public async Task Goal_ScheduleToGrid_CreatesTask_AndDoneSyncs()
+    public async Task Goal_ScheduleToDay_CreatesTask_AndDoneSyncs()
     {
         var role = await FirstUserRoleAsync();
         var goal = await CreateGoalAsync(role.Id, "Пробежка");
 
-        var result = await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new GridTargetDto(Monday.AddDays(1), new TimeOnly(8, 0), 60));
+        var result = await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(Monday.AddDays(1), 0));
 
         Assert.NotNull(result.Task);
         Assert.Equal(result.Task.Id, result.Goal.TaskId);
         Assert.Equal(role.Id, result.Task.RoleId);
-        Assert.Equal(new TimeOnly(8, 0), result.Goal.StartTime);
+        Assert.Null(result.Task.CategoryId);
+        Assert.Equal(Monday.AddDays(1), result.Goal.PlannedDate);
+
+        // Время у дела видно и в цели
+        await UpdateTaskAsync(result.Task, new TimeOnly(8, 0));
+        Assert.Equal(new TimeOnly(8, 0), (await GetWeekAsync()).Goals.Single().StartTime);
 
         // Отметка у дела → у цели
         await PutAsync<TaskDto>($"/api/tasks/{result.Task.Id}/done", new SetDoneRequest(true));
@@ -100,8 +105,8 @@ public class RolesAndGoalsApiTests : ApiTestBase
     public async Task Goal_FromSomedayTask_LeavesFeed_AndDeleteReturnsIt()
     {
         var role = await FirstUserRoleAsync();
-        var inbox = await InboxIdAsync();
-        var task = await CreateTaskAsync("Разобрать шкаф", new SomedayTargetDto(inbox, 0));
+        var home = await CreateCategoryAsync("Дом");
+        var task = await CreateTaskAsync("Разобрать шкаф", new SomedayTargetDto(home.Id, 0));
 
         var result = await PostAsync<GoalResultDto>("/api/goals/from-task", new GoalFromTaskRequest(task.Id, role.Id, Monday, 0));
 
@@ -113,20 +118,73 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var again = await Client.PostAsJsonAsync("/api/goals/from-task", new GoalFromTaskRequest(task.Id, role.Id, Monday, 0));
         Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
 
-        // Удалили цель — дело без дня вернулось в ленту
+        // Удалили цель — дело без дня вернулось в свою категорию
         await Client.DeleteAsync($"/api/goals/{result.Goal.Id}");
         var back = Assert.Single((await GetBoardAsync()).SomedayTasks);
         Assert.Equal(task.Id, back.Id);
+        Assert.Equal(home.Id, back.CategoryId);
+    }
+
+    /// <summary>Цель из дела ленты (дело «на неделе без дня»), потом удалили категорию этого дела.</summary>
+    private async Task<(GoalResultDto Goal, CategoryDto Other)> WeekOnlyTaskWithoutCategoryAsync(int roleId)
+    {
+        var doomed = await CreateCategoryAsync("Удаляемая");
+        var other = await CreateCategoryAsync("Другая");
+        var task = await CreateTaskAsync("Дело", new SomedayTargetDto(doomed.Id, 0));
+        var goal = await PostAsync<GoalResultDto>("/api/goals/from-task", new GoalFromTaskRequest(task.Id, roleId, Monday, 0));
+        await Client.DeleteAsync($"/api/categories/{doomed.Id}");
+        return (goal, other);
+    }
+
+    [Fact]
+    public async Task DeleteGoal_ScheduledTask_StaysInDay()
+    {
+        var role = await FirstUserRoleAsync();
+        var goal = await CreateGoalAsync(role.Id, "Цель");
+        var scheduled = await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(Monday, 0));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync($"/api/goals/{goal.Id}")).StatusCode);
+
+        Assert.Contains((await GetWeekAsync()).Tasks, t => t.Id == scheduled.Task!.Id);
+    }
+
+    [Fact]
+    public async Task DeleteGoal_TaskWithoutCategory_AsksCategory()
+    {
+        var role = await FirstUserRoleAsync();
+        var (goal, other) = await WeekOnlyTaskWithoutCategoryAsync(role.Id);
+
+        await AssertCategoryRequiredAsync(await Client.DeleteAsync($"/api/goals/{goal.Goal.Id}"));
+        Assert.Single((await GetWeekAsync()).Goals); // ничего не удалилось
+
+        var ok = await Client.DeleteAsync($"/api/goals/{goal.Goal.Id}?categoryId={other.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, ok.StatusCode);
+        var back = Assert.Single((await GetBoardAsync()).SomedayTasks);
+        Assert.Equal(other.Id, back.CategoryId);
+    }
+
+    [Fact]
+    public async Task DeleteRole_TaskWithoutCategory_AsksCategory()
+    {
+        var role = await PostAsync<RoleDto>("/api/roles", new CreateRoleRequest("Временная", null));
+        var (_, other) = await WeekOnlyTaskWithoutCategoryAsync(role.Id);
+
+        await AssertCategoryRequiredAsync(await Client.DeleteAsync($"/api/roles/{role.Id}"));
+        Assert.Contains((await GetBoardAsync()).Roles, r => r.Id == role.Id);
+
+        await Client.DeleteAsync($"/api/roles/{role.Id}?categoryId={other.Id}");
+        Assert.DoesNotContain((await GetBoardAsync()).Roles, r => r.Id == role.Id);
+        Assert.Equal(other.Id, Assert.Single((await GetBoardAsync()).SomedayTasks).CategoryId);
     }
 
     [Fact]
     public async Task Goal_ToSomeday_CreatesTask_AndRemovesGoal()
     {
         var role = await FirstUserRoleAsync();
-        var inbox = await InboxIdAsync();
+        var ideas = await CreateCategoryAsync();
         var goal = await CreateGoalAsync(role.Id, "Выучить песню");
 
-        var task = await PostAsync<TaskDto>($"/api/goals/{goal.Id}/to-someday", new GoalToSomedayRequest(inbox, 0));
+        var task = await PostAsync<TaskDto>($"/api/goals/{goal.Id}/to-someday", new GoalToSomedayRequest(ideas.Id, 0));
 
         Assert.Equal(TaskStateDto.Someday, task.State);
         Assert.Equal("Выучить песню", task.Title);
@@ -148,11 +206,11 @@ public class RolesAndGoalsApiTests : ApiTestBase
     public async Task TaskMovedToFeed_UnlinksGoal()
     {
         var role = await FirstUserRoleAsync();
-        var inbox = await InboxIdAsync();
+        var ideas = await CreateCategoryAsync();
         var goal = await CreateGoalAsync(role.Id, "Цель");
-        var scheduled = await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayPrioritiesTargetDto(Monday, 0));
+        var scheduled = await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(Monday, 0));
 
-        await MoveTaskAsync(scheduled.Task!.Id, new SomedayTargetDto(inbox, 0));
+        await MoveTaskAsync(scheduled.Task!.Id, new SomedayTargetDto(ideas.Id, 0));
 
         var week = await GetWeekAsync();
         Assert.Null(week.Goals.Single().TaskId);
@@ -163,8 +221,8 @@ public class RolesAndGoalsApiTests : ApiTestBase
     public async Task DeleteRole_ReturnsWeekOnlyTasksToFeed()
     {
         var role = await PostAsync<RoleDto>("/api/roles", new CreateRoleRequest("Временная", null));
-        var inbox = await InboxIdAsync();
-        var task = await CreateTaskAsync("Дело", new SomedayTargetDto(inbox, 0));
+        var ideas = await CreateCategoryAsync();
+        var task = await CreateTaskAsync("Дело", new SomedayTargetDto(ideas.Id, 0));
         await PostAsync<GoalResultDto>("/api/goals/from-task", new GoalFromTaskRequest(task.Id, role.Id, Monday, 0));
 
         await Client.DeleteAsync($"/api/roles/{role.Id}");

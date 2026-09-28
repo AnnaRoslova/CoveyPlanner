@@ -5,31 +5,31 @@ namespace Planner.Shared;
 /// <summary>Куда положить дело. В JSON различается полем "kind".</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(SomedayTargetDto), "someday")]
-[JsonDerivedType(typeof(DayPrioritiesTargetDto), "priorities")]
-[JsonDerivedType(typeof(GridTargetDto), "grid")]
+[JsonDerivedType(typeof(DayTargetDto), "day")]
 public abstract record TaskTargetDto;
 
 /// <summary>В ленту: категория и позиция (0 — наверх).</summary>
 public sealed record SomedayTargetDto(int CategoryId, int Index) : TaskTargetDto;
 
-/// <summary>В «Приоритеты дня»: позиция считается без самого перетаскиваемого дела.</summary>
-public sealed record DayPrioritiesTargetDto(DateOnly Date, int Index) : TaskTargetDto;
-
-/// <summary>В сетку часов (сервер выровняет по шагу сетки).</summary>
-public sealed record GridTargetDto(DateOnly Date, TimeOnly Start, int DurationMinutes) : TaskTargetDto;
+/// <summary>
+/// В день. Index — позиция среди дел дня БЕЗ времени, считая без самого перетаскиваемого дела.
+/// Дела со временем всегда стоят первыми, по времени.
+/// </summary>
+public sealed record DayTargetDto(DateOnly Date, int Index) : TaskTargetDto;
 
 public sealed record CreateTaskRequest(string Title, TaskTargetDto Target);
 
-public sealed record UpdateTaskRequest(string Title, string? Notes, int? RoleId, int? Quadrant);
+/// <summary>StartTime = null — без времени.</summary>
+public sealed record UpdateTaskRequest(string Title, string? Notes, int? RoleId, int? Quadrant, TimeOnly? StartTime);
 
 public sealed record SetDoneRequest(bool IsDone);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 
-public sealed record CreateCategoryRequest(string Name);
+public sealed record CreateCategoryRequest(string Name, string? Emoji);
 
-/// <summary>null — поле не менять.</summary>
-public sealed record UpdateCategoryRequest(string? Name, bool? IsExpanded);
+/// <summary>null — поле не менять; Emoji = "" — убрать иконку.</summary>
+public sealed record UpdateCategoryRequest(string? Name, string? Emoji, bool? IsExpanded);
 
 public sealed record CreateRoleRequest(string Name, string? Color);
 

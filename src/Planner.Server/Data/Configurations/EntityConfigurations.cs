@@ -31,6 +31,7 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
     public void Configure(EntityTypeBuilder<Category> builder)
     {
         builder.Property(c => c.Name).IsRequired().HasMaxLength(TextRules.NameMaxLength);
+        builder.Property(c => c.Emoji).HasMaxLength(Category.EmojiMaxLength);
     }
 }
 
@@ -56,14 +57,5 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
 
         builder.HasIndex(g => new { g.WeekStart, g.RoleId, g.SortOrder });
         builder.HasIndex(g => g.TaskId).IsUnique();
-    }
-}
-
-public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
-{
-    public void Configure(EntityTypeBuilder<UserSettings> builder)
-    {
-        builder.ToTable("Settings");
-        builder.Property(s => s.Id).ValueGeneratedNever();
     }
 }

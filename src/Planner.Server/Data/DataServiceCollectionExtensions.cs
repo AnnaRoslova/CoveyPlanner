@@ -25,7 +25,6 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<ICategoryRepository, EfCategoryRepository>();
         services.AddScoped<IRoleRepository, EfRoleRepository>();
         services.AddScoped<IGoalRepository, EfGoalRepository>();
-        services.AddScoped<ISettingsRepository, EfSettingsRepository>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<TaskPlacer>();

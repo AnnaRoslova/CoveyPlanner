@@ -20,25 +20,31 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
 
-    public Task<List<TaskItem>> GetDayPrioritiesAsync(DateOnly date, CancellationToken ct = default) =>
+    public Task<List<TaskItem>> GetUntimedOnDayAsync(DateOnly date, CancellationToken ct = default) =>
         db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
                             && t.PlannedDate == date && t.StartTime == null)
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
 
+    /// <summary>Порядок как на экране: сначала дела со временем (по времени), затем без времени (по SortOrder).</summary>
     public Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
         db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
                             && t.PlannedDate >= from && t.PlannedDate <= to)
-            .OrderBy(t => t.PlannedDate).ThenBy(t => t.StartTime).ThenBy(t => t.SortOrder)
+            .OrderBy(t => t.PlannedDate)
+            .ThenBy(t => t.StartTime == null).ThenBy(t => t.StartTime)
+            .ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
-
-    public Task<List<TaskItem>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default) =>
-        db.Tasks.Where(t => ids.Contains(t.Id)).ToListAsync(ct);
 
     public Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default) =>
         db.Tasks.Where(t => t.State == TaskState.Trashed)
             .OrderByDescending(t => t.TrashedAt)
             .ToListAsync(ct);
+
+    public Task<int?> GetLastUsedCategoryIdAsync(CancellationToken ct = default) =>
+        db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId != null)
+            .OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+            .Select(t => t.CategoryId)
+            .FirstOrDefaultAsync(ct);
 
     public void Add(TaskItem task) => db.Tasks.Add(task);
 
@@ -52,10 +58,6 @@ public class EfCategoryRepository(PlannerDbContext db) : ICategoryRepository
 
     public Task<List<Category>> GetAllAsync(CancellationToken ct = default) =>
         db.Categories.OrderBy(c => c.SortOrder).ThenBy(c => c.Id).ToListAsync(ct);
-
-    public async Task<Category> GetInboxAsync(CancellationToken ct = default) =>
-        await db.Categories.FirstOrDefaultAsync(c => c.IsSystem, ct)
-        ?? throw new InvalidOperationException("В базе нет категории «Входящие».");
 
     public void Add(Category category) => db.Categories.Add(category);
 
@@ -104,11 +106,4 @@ public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
     public void Add(WeeklyGoal goal) => db.WeeklyGoals.Add(goal);
 
     public void Remove(WeeklyGoal goal) => db.WeeklyGoals.Remove(goal);
-}
-
-public class EfSettingsRepository(PlannerDbContext db) : ISettingsRepository
-{
-    public async Task<UserSettings> GetAsync(CancellationToken ct = default) =>
-        await db.Settings.FirstOrDefaultAsync(s => s.Id == UserSettings.SingletonId, ct)
-        ?? throw new InvalidOperationException("В базе нет строки настроек.");
 }

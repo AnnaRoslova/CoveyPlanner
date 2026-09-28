@@ -12,12 +12,12 @@ public static class CategoryEndpoints
 
         categories.MapPost("/", async (CreateCategoryRequest request, CategoryService service, CancellationToken ct) =>
         {
-            var category = await service.CreateAsync(request.Name, ct);
+            var category = await service.CreateAsync(request.Name, request.Emoji, ct);
             return Results.Created($"/api/categories/{category.Id}", category.ToDto());
         });
 
         categories.MapPut("/{id:int}", async (int id, UpdateCategoryRequest request, CategoryService service, CancellationToken ct) =>
-            (await service.UpdateAsync(id, request.Name, request.IsExpanded, ct)).ToDto());
+            (await service.UpdateAsync(id, request.Name, request.Emoji, request.IsExpanded, ct)).ToDto());
 
         categories.MapPost("/reorder", async (ReorderRequest request, CategoryService service, CancellationToken ct) =>
         {

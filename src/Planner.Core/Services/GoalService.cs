@@ -65,13 +65,16 @@ public class GoalService(
         return goal;
     }
 
-    /// <summary>Удалить цель. Дело без дня возвращается в ленту, дело в плане остаётся на месте.</summary>
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    /// <summary>
+    /// Удалить цель. Дело без дня возвращается в ленту (без своей категории —
+    /// в <paramref name="fallbackCategoryId"/>), дело в плане остаётся на месте.
+    /// </summary>
+    public async Task DeleteAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
         if (goal.LinkedTask is { PlannedDate: null } task)
         {
-            await placer.ReturnToSomedayAsync(task, ct);
+            await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
         }
 
         goals.Remove(goal);

@@ -19,9 +19,10 @@ public static class GoalEndpoints
         goals.MapPut("/{id:int}", async (int id, UpdateGoalRequest request, GoalService service, CancellationToken ct) =>
             (await service.UpdateAsync(id, request.Title, request.IsDone, ct)).ToResultDto());
 
-        goals.MapDelete("/{id:int}", async (int id, GoalService service, CancellationToken ct) =>
+        // ?categoryId= — куда вернуть дело без дня, если у него нет своей категории
+        goals.MapDelete("/{id:int}", async (int id, int? categoryId, GoalService service, CancellationToken ct) =>
         {
-            await service.DeleteAsync(id, ct);
+            await service.DeleteAsync(id, categoryId, ct);
             return Results.NoContent();
         });
 

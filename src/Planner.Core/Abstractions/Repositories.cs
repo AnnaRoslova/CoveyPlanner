@@ -14,17 +14,17 @@ public interface ITaskRepository
 
     Task<List<TaskItem>> GetSomedayInCategoryAsync(int categoryId, CancellationToken ct = default);
 
-    /// <summary>«Приоритеты дня» — дела на дату без времени (включая выполненные).</summary>
-    Task<List<TaskItem>> GetDayPrioritiesAsync(DateOnly date, CancellationToken ct = default);
+    /// <summary>Дела дня без времени (включая выполненные) — те, у которых ручной порядок.</summary>
+    Task<List<TaskItem>> GetUntimedOnDayAsync(DateOnly date, CancellationToken ct = default);
 
     /// <summary>Все дела плана (Planned/Done) с датой в диапазоне включительно.</summary>
     Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
 
-    /// <summary>Дела по списку Id (для целей недели).</summary>
-    Task<List<TaskItem>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default);
-
     /// <summary>Корзина, свежие сверху.</summary>
     Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default);
+
+    /// <summary>Категория самого свежего дела ленты — «последняя использованная» для быстрого ввода.</summary>
+    Task<int?> GetLastUsedCategoryIdAsync(CancellationToken ct = default);
 
     void Add(TaskItem task);
 
@@ -36,8 +36,6 @@ public interface ICategoryRepository
     Task<Category?> FindAsync(int id, CancellationToken ct = default);
 
     Task<List<Category>> GetAllAsync(CancellationToken ct = default);
-
-    Task<Category> GetInboxAsync(CancellationToken ct = default);
 
     void Add(Category category);
 
@@ -56,6 +54,7 @@ public interface IRoleRepository
     void Remove(Role role);
 }
 
+/// <summary>Цели подгружаются вместе со связанным делом (LinkedTask).</summary>
 public interface IGoalRepository
 {
     Task<WeeklyGoal?> FindAsync(int id, CancellationToken ct = default);
@@ -72,11 +71,6 @@ public interface IGoalRepository
     void Add(WeeklyGoal goal);
 
     void Remove(WeeklyGoal goal);
-}
-
-public interface ISettingsRepository
-{
-    Task<UserSettings> GetAsync(CancellationToken ct = default);
 }
 
 /// <summary>Сохранение всех изменений одной транзакцией.</summary>

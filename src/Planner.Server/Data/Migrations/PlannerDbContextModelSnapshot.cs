@@ -23,10 +23,11 @@ namespace Planner.Server.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsExpanded")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("Emoji")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsSystem")
+                    b.Property<bool>("IsExpanded")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -88,9 +89,6 @@ namespace Planner.Server.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("DurationMinutes")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Notes")
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
@@ -138,25 +136,6 @@ namespace Planner.Server.Data.Migrations
                     b.HasIndex("State", "CategoryId", "SortOrder");
 
                     b.ToTable("Tasks", (string)null);
-                });
-
-            modelBuilder.Entity("Planner.Core.Entities.UserSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("DayEndHour")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("DayStartHour")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SlotMinutes")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Settings", (string)null);
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>

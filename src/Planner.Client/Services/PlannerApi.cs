@@ -44,8 +44,8 @@ public class PlannerApi(HttpClient http)
 
     // Категории
 
-    public Task<CategoryDto> CreateCategoryAsync(string name) =>
-        SendAsync<CategoryDto>(HttpMethod.Post, "api/categories", new CreateCategoryRequest(name));
+    public Task<CategoryDto> CreateCategoryAsync(string name, string? emoji) =>
+        SendAsync<CategoryDto>(HttpMethod.Post, "api/categories", new CreateCategoryRequest(name, emoji));
 
     public Task<CategoryDto> UpdateCategoryAsync(int id, UpdateCategoryRequest request) =>
         SendAsync<CategoryDto>(HttpMethod.Put, $"api/categories/{id}", request);
@@ -89,11 +89,6 @@ public class PlannerApi(HttpClient http)
 
     public Task<TaskDto> MoveGoalToSomedayAsync(int id, GoalToSomedayRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/goals/{id}/to-someday", request);
-
-    // Настройки
-
-    public Task<SettingsDto> UpdateSettingsAsync(SettingsDto settings) =>
-        SendAsync<SettingsDto>(HttpMethod.Put, "api/settings", settings);
 
     private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
