@@ -17,25 +17,12 @@ public class TaskService(
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>Новое дело в ленте — наверх категории.</summary>
-    public async Task<TaskItem> CreateInCategoryAsync(string title, int categoryId, CancellationToken ct = default)
+    /// <summary>Новое дело: в ленту (обычно наверх категории, Index = 0), в приоритеты дня или в сетку.</summary>
+    public async Task<TaskItem> CreateAsync(string title, TaskTarget target, CancellationToken ct = default)
     {
-        var task = TaskItem.CreateSomeday(title, categoryId, Now);
-        await placer.PlaceAsync(task, new SomedayTarget(categoryId, 0), ct);
-        tasks.Add(task);
-        await unitOfWork.SaveChangesAsync(ct);
-        return task;
-    }
-
-    /// <summary>Новое дело сразу в плане: в приоритеты дня или в сетку.</summary>
-    public async Task<TaskItem> CreateInPlanAsync(string title, TaskTarget target, CancellationToken ct = default)
-    {
-        if (target is SomedayTarget someday)
-        {
-            return await CreateInCategoryAsync(title, someday.CategoryId, ct);
-        }
-
-        var task = TaskItem.CreatePlanned(title, Now);
+        var task = target is SomedayTarget someday
+            ? TaskItem.CreateSomeday(title, someday.CategoryId, Now)
+            : TaskItem.CreatePlanned(title, Now);
         await placer.PlaceAsync(task, target, ct);
         tasks.Add(task);
         await unitOfWork.SaveChangesAsync(ct);
