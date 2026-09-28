@@ -1,23 +1,27 @@
-@* Категория ленты: заголовок со счётчиком, при раскрытии — дела и «+ добавить» *@
+@* Категория ленты: заголовок (эмодзи, название, серый счётчик), при раскрытии — дела и «+ добавить» *@
 
-<section class="category @(Category.IsExpanded ? "expanded" : "")">
-    <button class="category-header">
-        <span class="chevron"><Icon Name="chevron-right" Size="14" /></span>
+<div class="cat @(Category.IsExpanded ? "open" : "")">
+    <button class="cat-h">
+        <span class="chev"><Icon Name="chevron-right" Size="12" /></span>
+        @if (Category.Emoji is not null)
+        {
+            <span class="emoji">@Category.Emoji</span>
+        }
         <span class="name">@Category.Name</span>
-        <span class="count">@Tasks.Count</span>
+        <span class="cnt">@Tasks.Count</span>
     </button>
 
     @if (Category.IsExpanded)
     {
-        <div class="category-body" data-drop="someday" data-category="@Category.Id">
+        <div class="cat-b" data-drop="someday" data-category="@Category.Id">
             @foreach (var task in Tasks)
             {
-                <TaskCard Task="task" />
+                <ItemRow Title="@task.Title" Marker="ItemMarker.Bullet" DragKind="task" DragId="task.Id" />
             }
-            <button class="add-link">+ добавить</button>
+            <button class="add">+ добавить</button>
         </div>
     }
-</section>
+</div>
 
 @code {
     [Parameter, EditorRequired]

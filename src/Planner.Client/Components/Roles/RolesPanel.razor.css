@@ -1,42 +1,22 @@
+/* Самая светлая и прозрачная панель: едва заметный шалфей + размытие */
 .roles-panel {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    border-right: 1px solid var(--border);
-    background: var(--panel-alt);
+    background: color-mix(in srgb, var(--b) 7%, #ffffffb0);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
-.panel-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    padding: 12px 14px 10px;
-    border-bottom: 1px solid var(--border);
+.head {
+    padding: 16px 18px 6px;
+}
+
+.h1 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 16px;
     font-weight: 600;
 }
 
-.week-hint {
-    font-weight: normal;
-    font-size: var(--font-size-small);
-}
-
-.panel-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 8px 10px 24px;
-}
-
-.section-title {
-    margin: 10px 4px 6px;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.saw {
-    padding-bottom: 8px;
-    border-bottom: 1px dashed var(--border-strong);
+.sub {
+    color: var(--soft);
+    font-size: 12px;
 }

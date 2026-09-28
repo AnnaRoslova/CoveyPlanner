@@ -1,11 +1,11 @@
-{
+﻿{
   "name": "CoveyPlanner",
   "short_name": "Planner",
   "id": "./",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3b5b7a",
+  "background_color": "#f8d5da",
+  "theme_color": "#f2a4ab",
   "prefer_related_applications": false,
   "icons": [
     {

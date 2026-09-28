@@ -1,20 +1,33 @@
-@* Центр: неделя из 7 дней-списков (временная версия до редизайна) *@
+@* Центр: неделя из 7 дней-списков («страницы в точку») *@
 @inherits StateComponent
 
-<main class="week">
-    <div class="week-toolbar">
-        <button class="icon-btn" title="Предыдущая неделя" @onclick="State.PreviousWeekAsync">
+<main class="panel week">
+    <div class="week-h">
+        <button class="nav" title="Предыдущая неделя" @onclick="State.PreviousWeekAsync">
             <Icon Name="chevron-left" />
         </button>
-        <span class="week-title">@RuDates.WeekRange(State.WeekStart)</span>
-        <button class="icon-btn" title="Следующая неделя" @onclick="State.NextWeekAsync">
+        <span class="wt">@RuDates.WeekRange(State.WeekStart)</span>
+        <button class="nav" title="Следующая неделя" @onclick="State.NextWeekAsync">
             <Icon Name="chevron-right" />
         </button>
+        @if (!IsCurrentWeek)
+        {
+            <button class="today-b" @onclick="State.TodayAsync">Сегодня</button>
+        }
+        @if (State.RocksTotal > 0)
+        {
+            <span class="rocks">камней: <b>@State.RocksDone из @State.RocksTotal</b></span>
+        }
     </div>
-    <div class="week-body">
+
+    <div class="days">
         @foreach (var day in State.WeekDays)
         {
-            <DayPriorities Date="day" Tasks="State.PrioritiesOn(day).ToList()" />
+            <DayColumn Date="day" Tasks="State.TasksOn(day).ToList()" />
         }
     </div>
 </main>
+
+@code {
+    private bool IsCurrentWeek => State.WeekStart == RuDates.WeekStartOf(RuDates.Today);
+}

@@ -1,29 +1,29 @@
 @* Роль (или измерение пилы) и её цели на неделю *@
 @inject PlannerState State
 
-<div class="role-card @(Role.IsSharpenSaw ? "saw" : "")" style="--role-color: @Role.Color"
+<div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
      data-drop="role" data-role="@Role.Id">
-    <div class="role-header">
-        <span class="role-name">@Role.Name</span>
+    <div class="role-h">
+        <span class="dot"></span>
+        <span class="name">@Role.Name</span>
         @if (Goals.Count > 0)
         {
-            <span class="role-count muted">@Goals.Count(g => g.IsDone)/@Goals.Count</span>
+            <span class="n">@Goals.Count(g => g.IsDone)/@Goals.Count</span>
         }
     </div>
 
-    <ul class="goals">
-        @foreach (var goal in Goals)
-        {
-            <li><GoalItem Goal="goal" /></li>
-        }
-    </ul>
+    @foreach (var goal in Goals)
+    {
+        <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
+                 WhenLabel="@WhenLabel(goal)" DragKind="goal" DragId="goal.Id" />
+    }
 
     @if (!Role.IsSharpenSaw && Goals.Count > State.RecommendedGoalsPerWeek)
     {
-        <div class="goals-hint">Кови советует 1–@State.RecommendedGoalsPerWeek больших камня</div>
+        <div class="hint">Кови советует 1–@State.RecommendedGoalsPerWeek больших камня</div>
     }
 
-    <button class="add-link">+ цель</button>
+    <button class="add">+ цель</button>
 </div>
 
 @code {
@@ -32,4 +32,9 @@
 
     [Parameter, EditorRequired]
     public IReadOnlyList<WeeklyGoalDto> Goals { get; set; } = [];
+
+    /// <summary>«Ср» или «Ср 10:00», если цель уже стоит в дне.</summary>
+    private static string? WhenLabel(WeeklyGoalDto goal) => goal.PlannedDate is { } date
+        ? RuDates.ShortDay(date) + (goal.StartTime is { } time ? " " + RuDates.Time(time) : "")
+        : null;
 }

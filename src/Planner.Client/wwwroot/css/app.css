@@ -1,41 +1,34 @@
-/* ===== Общие стили CoveyPlanner. Стили компонентов — в *.razor.css рядом с компонентами. ===== */
+/* ===== Общие стили CoveyPlanner. Образец — docs/design-mockup.html: «в точку», палитра «Лотос».
+   Стили компонентов — в *.razor.css рядом с компонентами. ===== */
 
 :root {
-    /* Цвета */
-    --bg: #f5f4f0;
-    --panel: #ffffff;
-    --panel-alt: #faf9f6;
-    --border: #e4e1da;
-    --border-strong: #d3cfc6;
-    --text: #2b2b2b;
-    --text-muted: #8a877f;
-    --text-faint: #b3afa6;
-    --accent: #3b5b7a;
-    --accent-soft: #e6edf4;
-    --today: #fff8e6;
-    --danger: #b04a4a;
-    --drop-highlight: #dfe9f3;
+    /* Палитра «Лотос» */
+    --sky1: #f8d5da;
+    --sky2: #d7eee7;
+    --sky3: #b9e0d6;
+    --paper: #fffcfc;
+    --text: #3e4d52;
+    --soft: #88999c;
+    --faint: #c3cfd0;
+    --line: #efe6e7;
+    --a: #f2a4ab;        /* розовый */
+    --a-soft: #fdecee;
+    --a-deep: #cf6f79;
+    --b: #9fd6c9;        /* бирюза */
+    --b-soft: #e8f6f2;
+    --b-deep: #3f9585;
+
+    /* Шрифты: основной, рукописный (дни недели), заголовки */
+    --font: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-hand: Caveat, "Segoe Print", cursive;
+    --font-title: Lora, Georgia, serif;
 
     /* Размеры */
-    --left-width: 280px;
-    --right-width: 280px;
-    --gutter-width: 52px;
-    --day-min-width: 90px;
-    --slot-height: 24px; /* синхронно с GridLayout.SlotHeight */
-    --radius: 6px;
-    --radius-small: 4px;
-
-    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --font-size: 14px;
-    --font-size-small: 12px;
-}
-
-/* Ноутбучные экраны: боковые панели уже, чтобы неделя влезла целиком */
-@media (max-width: 1440px) {
-    :root {
-        --left-width: 240px;
-        --right-width: 250px;
-    }
+    --left-width: 240px;
+    --right-width: 250px;
+    --day-min-width: 92px;
+    --panel-radius: 22px;
+    --day-radius: 18px;
 }
 
 *, *::before, *::after {
@@ -45,65 +38,76 @@
 html, body {
     margin: 0;
     height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
-    font-size: var(--font-size);
-    line-height: 1.35;
 }
 
-button, input, textarea, select {
+body {
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--text);
+    /* Фон «как небо»: розовый → мятная бирюза */
+    background: linear-gradient(165deg, var(--sky1) 0%, var(--sky2) 55%, var(--sky3) 100%) fixed;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+input, select, textarea {
     font: inherit;
     color: inherit;
 }
 
-button {
-    cursor: pointer;
+/* ===== Плавающие панели (три зоны) ===== */
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-radius: var(--panel-radius);
+    background: #ffffffb8;
+    box-shadow: 0 4px 24px rgba(90, 80, 130, 0.05);
 }
 
-/* Кнопка-иконка без рамки */
-.icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 6px;
-    border: none;
-    border-radius: var(--radius-small);
-    background: transparent;
-    color: var(--text-muted);
+/* Прокручиваемая часть панели */
+.panel-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 14px 18px;
 }
 
-.icon-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--text);
+/* Заголовок раздела внутри панели: «Затачивание пилы», «Роли» */
+.sect {
+    margin: 14px 6px 6px;
+    color: var(--b-deep);
+    opacity: 0.8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
-/* Строка «+ добавить» */
-.add-link {
+/* Тихая кнопка «+ добавить / + цель / + категория» */
+.add {
     display: block;
-    width: 100%;
-    padding: 4px 8px;
-    border: none;
-    background: transparent;
-    color: var(--text-faint);
-    font-size: var(--font-size-small);
+    padding: 4px;
+    color: var(--faint);
+    font-size: 12.5px;
     text-align: left;
 }
 
-.add-link:hover {
-    color: var(--accent);
-}
-
-.muted {
-    color: var(--text-muted);
+.add:hover {
+    color: var(--a-deep);
 }
 
 /* Тонкие полосы прокрутки */
 * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-color: var(--line) transparent;
 }
 
 /* ===== Загрузка и ошибки Blazor ===== */
@@ -111,14 +115,14 @@ button {
 .app-message {
     padding: 20vh 1rem 0;
     text-align: center;
-    color: var(--text-muted);
+    color: var(--soft);
 }
 
 #blazor-error-ui {
     color-scheme: light only;
-    background: #fff4d6;
+    background: var(--a-soft);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
     display: none;
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
@@ -135,8 +139,9 @@ button {
 }
 
 .blazor-error-boundary {
-    background: #b32121;
     padding: 1rem;
+    border-radius: 12px;
+    background: var(--a-deep);
     color: white;
 }
 
@@ -147,22 +152,22 @@ button {
 .loading-progress {
     position: absolute;
     display: block;
-    width: 6rem;
-    height: 6rem;
+    width: 5rem;
+    height: 5rem;
     inset: 20vh 0 auto 0;
     margin: 0 auto;
 }
 
 .loading-progress circle {
     fill: none;
-    stroke: var(--border);
+    stroke: #ffffff90;
     stroke-width: 0.5rem;
     transform-origin: 50% 50%;
     transform: rotate(-90deg);
 }
 
 .loading-progress circle:last-child {
-    stroke: var(--accent);
+    stroke: var(--a);
     stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
     transition: stroke-dasharray 0.05s ease-in-out;
 }
@@ -170,8 +175,8 @@ button {
 .loading-progress-text {
     position: absolute;
     text-align: center;
-    color: var(--text-muted);
-    inset: calc(20vh + 2.5rem) 0 auto 0;
+    color: var(--soft);
+    inset: calc(20vh + 2rem) 0 auto 0;
 }
 
 .loading-progress-text::after {

@@ -30,6 +30,9 @@ public class PlannerState(PlannerApi api)
 
     public int TrashCount { get; private set; }
 
+    /// <summary>Категория по умолчанию для поля «Записать мысль».</summary>
+    public int? LastUsedCategoryId { get; private set; }
+
     public DateOnly WeekStart { get; private set; } = RuDates.WeekStartOf(RuDates.Today);
 
     public IEnumerable<DateOnly> WeekDays => Enumerable.Range(0, 7).Select(WeekStart.AddDays);
@@ -50,16 +53,23 @@ public class PlannerState(PlannerApi api)
     public int SomedayCount(int categoryId) =>
         _tasks.Values.Count(t => t.State == TaskStateDto.Someday && t.CategoryId == categoryId);
 
-    public IEnumerable<TaskDto> PrioritiesOn(DateOnly date) =>
-        PlannedOn(date).Where(t => t.StartTime is null).OrderBy(t => t.SortOrder);
-
-    public IEnumerable<TaskDto> ScheduledOn(DateOnly date) => PlannedOn(date).Where(t => t.StartTime is not null);
+    /// <summary>Дела дня: сначала со временем (по времени), затем без времени (ручной порядок).</summary>
+    public IEnumerable<TaskDto> TasksOn(DateOnly date) =>
+        _tasks.Values
+            .Where(t => (t.State is TaskStateDto.Planned or TaskStateDto.Done) && t.PlannedDate == date)
+            .OrderBy(t => t.StartTime is null)
+            .ThenBy(t => t.StartTime)
+            .ThenBy(t => t.SortOrder);
 
     public IEnumerable<WeeklyGoalDto> GoalsFor(int roleId) =>
         Goals.Where(g => g.RoleId == roleId).OrderBy(g => g.SortOrder);
 
-    private IEnumerable<TaskDto> PlannedOn(DateOnly date) =>
-        _tasks.Values.Where(t => (t.State is TaskStateDto.Planned or TaskStateDto.Done) && t.PlannedDate == date);
+    /// <summary>Дело связано с целью недели — «большой камень».</summary>
+    public bool IsRock(int taskId) => Goals.Any(g => g.TaskId == taskId);
+
+    public int RocksDone => Goals.Count(g => g.IsDone);
+
+    public int RocksTotal => Goals.Count;
 
     // Загрузка и навигация
 
@@ -111,6 +121,7 @@ public class PlannerState(PlannerApi api)
         Roles = [.. board.Roles];
         Categories = [.. board.Categories];
         TrashCount = board.TrashCount;
+        LastUsedCategoryId = board.LastUsedCategoryId;
 
         foreach (var id in _tasks.Values.Where(t => t.State == TaskStateDto.Someday).Select(t => t.Id).ToList())
         {

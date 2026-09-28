@@ -1,7 +1,9 @@
-/* Три зоны: роли и цели | неделя | лента «Когда-нибудь» */
-.planner {
+/* Три плавающие панели: роли и цели | неделя | лента «Когда-нибудь» */
+.app {
     display: grid;
     grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
+    gap: 14px;
     height: 100vh;
     height: 100dvh;
+    padding: 14px;
 }

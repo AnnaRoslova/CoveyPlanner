@@ -1,0 +1,31 @@
+@* Быстрое поле «Записать мысль…» + выбор категории (по умолчанию — последняя использованная) *@
+@inject PlannerState State
+
+<div class="quick">
+    <input placeholder="Записать мысль…" @bind="_text" @bind:event="oninput" />
+    <select title="Категория" @bind="_categoryId">
+        @foreach (var category in State.OrderedCategories)
+        {
+            <option value="@category.Id">@CategoryLabel(category)</option>
+        }
+    </select>
+</div>
+
+@code {
+    private string _text = "";
+    private int _categoryId;
+
+    protected override void OnParametersSet()
+    {
+        // Выбранная категория могла исчезнуть — берём последнюю использованную или первую
+        if (State.Categories.All(c => c.Id != _categoryId))
+        {
+            _categoryId = State.LastUsedCategoryId
+                          ?? State.OrderedCategories.FirstOrDefault()?.Id
+                          ?? 0;
+        }
+    }
+
+    private static string CategoryLabel(CategoryDto category) =>
+        category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}";
+}

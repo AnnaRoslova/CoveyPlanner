@@ -1,0 +1,85 @@
+@* Запись-строка (не карточка): дело в дне, дело в ленте или цель роли.
+   Слева квадратный чекбокс цвета роли (или точка-маркер в ленте), справа пилюли. *@
+
+<div class="item @(IsDone ? "done" : "") @(Marker == ItemMarker.Bullet ? "bullet" : "")"
+     style="@(Color is null ? null : $"--c: {Color}")"
+     data-drag="@DragKind" data-id="@DragId">
+    @if (Marker == ItemMarker.Check)
+    {
+        <span class="ck"></span>
+    }
+    else
+    {
+        <span class="dot"></span>
+    }
+    <div class="tx">
+        @Title
+        @if (TimeLabel is not null || IsRock || WhenLabel is not null || Quadrant is not null)
+        {
+            <div class="pills">
+                @if (TimeLabel is not null)
+                {
+                    <span class="pill time">@TimeLabel</span>
+                }
+                @if (IsRock)
+                {
+                    <span class="pill rock">камень</span>
+                }
+                @if (Quadrant is { } quadrant)
+                {
+                    <span class="pill quadrant" title="Квадрант @Roman(quadrant)">@Roman(quadrant)</span>
+                }
+                @if (WhenLabel is not null)
+                {
+                    <span class="pill when">@WhenLabel</span>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>Цвет роли (чекбокс). null — бледный по умолчанию.</summary>
+    [Parameter]
+    public string? Color { get; set; }
+
+    [Parameter]
+    public bool IsDone { get; set; }
+
+    [Parameter]
+    public ItemMarker Marker { get; set; } = ItemMarker.Check;
+
+    /// <summary>Пилюля времени «15:00» (бирюзовая).</summary>
+    [Parameter]
+    public string? TimeLabel { get; set; }
+
+    /// <summary>Пилюля «камень» (розовая) — дело связано с целью недели.</summary>
+    [Parameter]
+    public bool IsRock { get; set; }
+
+    /// <summary>Квадрант 1..4.</summary>
+    [Parameter]
+    public int? Quadrant { get; set; }
+
+    /// <summary>Пилюля справа «Ср 10:00» — когда запланирована цель.</summary>
+    [Parameter]
+    public string? WhenLabel { get; set; }
+
+    /// <summary>Что тащим при перетаскивании: "task" или "goal".</summary>
+    [Parameter, EditorRequired]
+    public string DragKind { get; set; } = "task";
+
+    [Parameter, EditorRequired]
+    public int DragId { get; set; }
+
+    private static string Roman(int quadrant) => quadrant switch
+    {
+        1 => "I",
+        2 => "II",
+        3 => "III",
+        _ => "IV",
+    };
+}

@@ -5,7 +5,7 @@
 
 @if (State.IsLoaded)
 {
-    <div class="planner">
+    <div class="app">
         <RolesPanel />
         <WeekView />
         <SomedayPanel />
@@ -15,7 +15,7 @@ else if (State.LoadError is not null)
 {
     <div class="app-message">
         <p>Не удалось загрузить данные: @State.LoadError</p>
-        <button class="today-btn" @onclick="State.LoadAsync">Повторить</button>
+        <button class="add" @onclick="State.LoadAsync">Повторить</button>
     </div>
 }
 else

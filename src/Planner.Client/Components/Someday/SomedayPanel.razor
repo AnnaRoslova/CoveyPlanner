@@ -1,25 +1,38 @@
-@* Правая зона: лента «Когда-нибудь» — поиск, категории-аккордеон, корзина *@
+@* Правая зона: лента «Когда-нибудь» — поиск, быстрый ввод, категории-аккордеон, корзина *@
 @inherits StateComponent
 
-<aside class="someday">
+<aside class="panel someday">
     <div class="search">
         <Icon Name="search" Size="14" />
-        <input type="search" placeholder="Поиск" @bind="_search" @bind:event="oninput" />
+        <input type="search" placeholder="Поиск по ленте" @bind="_search" @bind:event="oninput" />
     </div>
 
-    <div class="someday-scroll">
+    @if (State.Categories.Count > 0)
+    {
+        <QuickCapture />
+    }
+    else
+    {
+        <button class="first-category">
+            Здесь будут мысли на «когда-нибудь».<br />
+            <span>+ создайте первую категорию</span>
+        </button>
+    }
+
+    <div class="panel-scroll">
         @foreach (var category in State.OrderedCategories)
         {
             <CategorySection Category="category" Tasks="State.SomedayIn(category.Id).ToList()" />
         }
-        <button class="add-link add-category">+ категория</button>
+        @if (State.Categories.Count > 0)
+        {
+            <button class="add">+ категория</button>
+        }
     </div>
 
-    <footer class="someday-footer">
-        <button class="icon-btn trash-btn" title="Корзина">
-            <Icon Name="trash" Size="15" />
-        </button>
-    </footer>
+    <button class="trash" title="Корзина">
+        <Icon Name="trash" Size="15" />
+    </button>
 </aside>
 
 @code {

@@ -1,0 +1,92 @@
+.item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.3;
+    cursor: grab;
+    transition: background 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.item:hover {
+    background: var(--a-soft);
+}
+
+.tx {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Квадратный чекбокс цвета роли */
+.ck {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+    border: 1.8px solid var(--c, var(--faint));
+    border-radius: 4px;
+    transition: 0.15s;
+}
+
+.done .ck {
+    background: var(--c, var(--b));
+}
+
+.done .tx {
+    color: var(--faint);
+    text-decoration: line-through;
+}
+
+/* Точка-маркер в ленте */
+.dot {
+    flex: none;
+    width: 5px;
+    height: 5px;
+    margin: 6px 3px 0 4px;
+    border-radius: 50%;
+    background: var(--c, var(--faint));
+}
+
+.pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+    text-decoration: none;
+}
+
+.pill {
+    padding: 0 7px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 17px;
+}
+
+.pill.time {
+    background: var(--b-soft);
+    color: var(--b-deep);
+}
+
+.pill.rock {
+    background: var(--a-soft);
+    color: var(--a-deep);
+}
+
+.pill.quadrant {
+    background: #ffffffc0;
+    color: var(--soft);
+}
+
+.pill.when {
+    margin-left: auto;
+    background: var(--b-soft);
+    color: var(--b-deep);
+}

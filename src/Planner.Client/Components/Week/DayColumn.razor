@@ -1,0 +1,37 @@
+@* День — страница «в точку»: сначала дела со временем, затем без времени *@
+@inject PlannerState State
+
+<section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
+         data-drop="day" data-date="@Css.Date(Date)">
+    <div class="day-h">
+        <span class="dow">@RuDates.ShortDay(Date)</span>
+        <span class="num">@Date.Day</span>
+        @if (IsToday)
+        {
+            <span class="tag">сегодня</span>
+        }
+    </div>
+
+    @foreach (var task in Tasks)
+    {
+        <ItemRow Title="@task.Title"
+                 Color="@State.FindRole(task.RoleId)?.Color"
+                 IsDone="task.State == TaskStateDto.Done"
+                 TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"
+                 IsRock="State.IsRock(task.Id)"
+                 Quadrant="task.Quadrant"
+                 DragKind="task" DragId="task.Id" />
+    }
+
+    <button class="add">+ дело</button>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public DateOnly Date { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TaskDto> Tasks { get; set; } = [];
+
+    private bool IsToday => Date == RuDates.Today;
+}

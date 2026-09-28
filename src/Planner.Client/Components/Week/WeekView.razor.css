@@ -1,11 +1,60 @@
 .week {
-    display: flex;
-    flex-direction: column;
     min-width: 0;
-    min-height: 0;
 }
 
-.week-body {
+.week-h {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px 4px;
+}
+
+.wt {
+    font-family: var(--font-title);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--soft);
+}
+
+.nav:hover {
+    background: var(--a-soft);
+}
+
+.today-b {
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--a-soft);
+    color: var(--a-deep);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.rocks {
+    margin-left: auto;
+    color: var(--soft);
+    font-size: 12px;
+}
+
+.rocks b {
+    color: var(--b-deep);
+}
+
+/* Семь дней; вся неделя прокручивается целиком */
+.days {
+    flex: 1;
+    min-height: 0;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(var(--day-min-width), 1fr));
+    gap: 6px;
+    padding: 8px 12px 14px;
+    overflow: auto;
 }
