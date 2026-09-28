@@ -113,6 +113,18 @@ public class TasksApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Target_KindNotFirst_IsAccepted()
+    {
+        var json = """{"target":{"date":"2026-09-28","index":0,"kind":"priorities"},"title":"Дело"}""";
+
+        var response = await Client.PostAsync("/api/tasks",
+            new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+
+        var task = await ReadAsync<TaskDto>(response);
+        Assert.Equal(Monday, task.PlannedDate);
+    }
+
+    [Fact]
     public async Task EmptyTitle_Returns400()
     {
         var response = await Client.PostAsJsonAsync("/api/tasks",

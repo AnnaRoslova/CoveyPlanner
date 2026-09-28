@@ -1,0 +1,28 @@
+@* Категория ленты: заголовок со счётчиком, при раскрытии — дела и «+ добавить» *@
+
+<section class="category @(Category.IsExpanded ? "expanded" : "")">
+    <button class="category-header">
+        <span class="chevron"><Icon Name="chevron-right" Size="14" /></span>
+        <span class="name">@Category.Name</span>
+        <span class="count">@Tasks.Count</span>
+    </button>
+
+    @if (Category.IsExpanded)
+    {
+        <div class="category-body" data-drop="someday" data-category="@Category.Id">
+            @foreach (var task in Tasks)
+            {
+                <TaskCard Task="task" />
+            }
+            <button class="add-link">+ добавить</button>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public CategoryDto Category { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TaskDto> Tasks { get; set; } = [];
+}

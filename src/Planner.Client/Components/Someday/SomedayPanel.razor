@@ -1,0 +1,27 @@
+@* Правая зона: лента «Когда-нибудь» — поиск, категории-аккордеон, корзина *@
+@inherits StateComponent
+
+<aside class="someday">
+    <div class="search">
+        <Icon Name="search" Size="14" />
+        <input type="search" placeholder="Поиск" @bind="_search" @bind:event="oninput" />
+    </div>
+
+    <div class="someday-scroll">
+        @foreach (var category in State.OrderedCategories)
+        {
+            <CategorySection Category="category" Tasks="State.SomedayIn(category.Id).ToList()" />
+        }
+        <button class="add-link add-category">+ категория</button>
+    </div>
+
+    <footer class="someday-footer">
+        <button class="icon-btn trash-btn" title="Корзина">
+            <Icon Name="trash" Size="15" />
+        </button>
+    </footer>
+</aside>
+
+@code {
+    private string _search = "";
+}

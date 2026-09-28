@@ -1,0 +1,125 @@
+.week {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background: var(--panel);
+}
+
+.week-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.week-title {
+    min-width: 170px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.today-btn {
+    margin-left: 8px;
+    padding: 3px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-small);
+    background: var(--panel);
+}
+
+.today-btn:disabled {
+    color: var(--text-faint);
+    border-color: var(--border);
+    cursor: default;
+}
+
+/* На узком окне неделя прокручивается по горизонтали целиком */
+.week-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-x: auto;
+}
+
+/* Одинаковые колонки у заголовков, приоритетов и сетки */
+.week-row {
+    display: grid;
+    grid-template-columns: var(--gutter-width) repeat(7, minmax(var(--day-min-width), 1fr));
+    min-width: calc(var(--gutter-width) + 7 * var(--day-min-width));
+    scrollbar-gutter: stable;
+}
+
+.week-head {
+    flex: none;
+    overflow-y: hidden;
+    border-bottom: 1px solid var(--border);
+}
+
+.day-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 0;
+    border-left: 1px solid var(--border);
+}
+
+.dow {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.date {
+    font-weight: 600;
+}
+
+.day-head.today .date {
+    display: inline-block;
+    min-width: 24px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+    text-align: center;
+}
+
+.week-priorities {
+    flex: none;
+    max-height: 32%;
+    overflow-y: auto;
+    border-bottom: 2px solid var(--border);
+}
+
+.gutter-label {
+    padding: 6px 4px;
+    color: var(--text-faint);
+    font-size: 10px;
+    text-align: right;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+}
+
+.week-grid-scroll {
+    flex: 1;
+    min-height: 0;
+    min-width: calc(var(--gutter-width) + 7 * var(--day-min-width));
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.week-grid {
+    padding: 8px 0 16px;
+}
+
+.time-labels {
+    position: relative;
+}
+
+.time-label {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 11px;
+}

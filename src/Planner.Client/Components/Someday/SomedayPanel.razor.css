@@ -1,0 +1,54 @@
+.someday {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+    background: var(--panel-alt);
+}
+
+.search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 10px 6px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text-faint);
+}
+
+.search:focus-within {
+    border-color: var(--accent);
+}
+
+.search input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 0;
+    border: none;
+    outline: none;
+    background: transparent;
+}
+
+/* Вся лента — одна прокручиваемая колонка */
+.someday-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 10px 12px;
+}
+
+.add-category {
+    margin-top: 6px;
+}
+
+.someday-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 8px 6px;
+}
+
+.trash-btn {
+    color: var(--text-faint);
+}

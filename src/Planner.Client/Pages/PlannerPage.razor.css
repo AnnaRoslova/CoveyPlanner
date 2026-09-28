@@ -1,0 +1,7 @@
+/* Три зоны: роли и цели | неделя | лента «Когда-нибудь» */
+.planner {
+    display: grid;
+    grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
+    height: 100vh;
+    height: 100dvh;
+}

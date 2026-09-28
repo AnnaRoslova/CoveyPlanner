@@ -1,0 +1,28 @@
+@* Левая зона: «Затачивание пилы» и роли с целями на неделю *@
+@inherits StateComponent
+
+<aside class="roles-panel">
+    <header class="panel-header">
+        <span>Роли и цели</span>
+        <span class="muted week-hint">на неделю</span>
+    </header>
+
+    <div class="panel-scroll">
+        <section class="saw">
+            <h3 class="section-title">Затачивание пилы</h3>
+            @foreach (var role in State.SawRoles)
+            {
+                <RoleCard Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+            }
+        </section>
+
+        <section class="roles">
+            <h3 class="section-title">Роли</h3>
+            @foreach (var role in State.UserRoles)
+            {
+                <RoleCard Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+            }
+            <button class="add-link">+ роль</button>
+        </section>
+    </div>
+</aside>

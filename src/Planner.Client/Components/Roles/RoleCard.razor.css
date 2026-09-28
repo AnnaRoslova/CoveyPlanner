@@ -1,0 +1,47 @@
+.role-card {
+    margin-bottom: 8px;
+    padding: 6px 6px 2px 8px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--role-color);
+    border-radius: var(--radius);
+    background: var(--panel);
+}
+
+/* Измерения пилы компактнее */
+.role-card.saw {
+    margin-bottom: 4px;
+    padding-top: 4px;
+}
+
+.role-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 2px;
+}
+
+.role-name {
+    flex: 1;
+    font-weight: 600;
+}
+
+.saw .role-name {
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.role-count {
+    font-size: 11px;
+}
+
+.goals {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.goals-hint {
+    margin: 2px 2px 0;
+    color: var(--text-faint);
+    font-size: 11px;
+}

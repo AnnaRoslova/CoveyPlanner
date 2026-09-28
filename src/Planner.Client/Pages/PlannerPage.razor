@@ -1,0 +1,28 @@
+@page "/"
+@inherits StateComponent
+
+<PageTitle>CoveyPlanner</PageTitle>
+
+@if (State.IsLoaded)
+{
+    <div class="planner">
+        <RolesPanel />
+        <WeekView />
+        <SomedayPanel />
+    </div>
+}
+else if (State.LoadError is not null)
+{
+    <div class="app-message">
+        <p>Не удалось загрузить данные: @State.LoadError</p>
+        <button class="today-btn" @onclick="State.LoadAsync">Повторить</button>
+    </div>
+}
+else
+{
+    <div class="app-message">Загрузка…</div>
+}
+
+@code {
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+}

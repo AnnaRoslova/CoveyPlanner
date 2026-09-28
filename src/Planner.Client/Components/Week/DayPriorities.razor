@@ -1,0 +1,18 @@
+@* «Приоритеты дня» — дела на день без времени *@
+
+<div class="day-priorities @(Date == RuDates.Today ? "today" : "")"
+     data-drop="priorities" data-date="@Css.Date(Date)">
+    @foreach (var task in Tasks)
+    {
+        <TaskCard Task="task" Variant="TaskCardVariant.Priority" />
+    }
+    <button class="add-link">+</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DateOnly Date { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TaskDto> Tasks { get; set; } = [];
+}

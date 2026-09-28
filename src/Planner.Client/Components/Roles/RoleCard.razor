@@ -1,0 +1,35 @@
+@* Роль (или измерение пилы) и её цели на неделю *@
+@inject PlannerState State
+
+<div class="role-card @(Role.IsSharpenSaw ? "saw" : "")" style="--role-color: @Role.Color"
+     data-drop="role" data-role="@Role.Id">
+    <div class="role-header">
+        <span class="role-name">@Role.Name</span>
+        @if (Goals.Count > 0)
+        {
+            <span class="role-count muted">@Goals.Count(g => g.IsDone)/@Goals.Count</span>
+        }
+    </div>
+
+    <ul class="goals">
+        @foreach (var goal in Goals)
+        {
+            <li><GoalItem Goal="goal" /></li>
+        }
+    </ul>
+
+    @if (!Role.IsSharpenSaw && Goals.Count > State.RecommendedGoalsPerWeek)
+    {
+        <div class="goals-hint">Кови советует 1–@State.RecommendedGoalsPerWeek больших камня</div>
+    }
+
+    <button class="add-link">+ цель</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public RoleDto Role { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<WeeklyGoalDto> Goals { get; set; } = [];
+}

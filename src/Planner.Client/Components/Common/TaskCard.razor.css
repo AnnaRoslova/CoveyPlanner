@@ -1,0 +1,122 @@
+.task-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 5px 8px 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--panel);
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Цвет роли — полоска слева */
+.task-card::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: -1px;
+    bottom: -1px;
+    width: 4px;
+    border-radius: var(--radius-small) 0 0 var(--radius-small);
+    background: var(--role-color);
+}
+
+.task-card:hover {
+    border-color: var(--border-strong);
+}
+
+.title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+.check {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-top: 1px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 3px;
+    color: white;
+}
+
+.check.checked {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.done .title {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.quadrant {
+    flex: none;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: var(--panel-alt);
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 16px;
+}
+
+/* В сетке карточка заполняет блок и может быть очень узкой и низкой */
+.variant-grid {
+    display: block;
+    height: 100%;
+    padding: 1px 5px 2px 8px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--role-color) 14%, var(--panel));
+    font-size: var(--font-size-small);
+    line-height: 1.25;
+}
+
+.grid-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 16px;
+}
+
+.time {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.variant-grid .check {
+    width: 13px;
+    height: 13px;
+    margin-top: 0;
+}
+
+.variant-grid .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Низкий блок: всё в одну строку */
+.compact .time {
+    flex: none;
+}
+
+.compact .title {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.variant-priority {
+    font-size: 13px;
+}

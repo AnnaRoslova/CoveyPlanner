@@ -4,6 +4,10 @@ using Planner.Server.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddPlannerData();
+
+// Поле "kind" у места назначения может идти в JSON не первым (важно для запросов не из C#)
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.AllowOutOfOrderMetadataProperties = true);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 

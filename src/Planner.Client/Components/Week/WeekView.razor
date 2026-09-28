@@ -1,0 +1,61 @@
+@* Центр: неделя из 7 дней — «Приоритеты дня» сверху, сетка часов снизу *@
+@inherits StateComponent
+
+<main class="week">
+    <div class="week-toolbar">
+        <button class="icon-btn" title="Предыдущая неделя" @onclick="State.PreviousWeekAsync">
+            <Icon Name="chevron-left" />
+        </button>
+        <span class="week-title">@RuDates.WeekRange(State.WeekStart)</span>
+        <button class="icon-btn" title="Следующая неделя" @onclick="State.NextWeekAsync">
+            <Icon Name="chevron-right" />
+        </button>
+        <button class="today-btn" disabled="@IsCurrentWeek" @onclick="State.TodayAsync">Сегодня</button>
+    </div>
+
+    <div class="week-body">
+        <div class="week-row week-head">
+            <div class="gutter"></div>
+            @foreach (var day in State.WeekDays)
+            {
+                <div class="day-head @(day == RuDates.Today ? "today" : "")">
+                    <span class="dow">@RuDates.ShortDay(day)</span>
+                    <span class="date">@day.Day</span>
+                </div>
+            }
+        </div>
+
+        <div class="week-row week-priorities">
+            <div class="gutter gutter-label">Приоритеты</div>
+            @foreach (var day in State.WeekDays)
+            {
+                <DayPriorities Date="day" Tasks="State.PrioritiesOn(day).ToList()" />
+            }
+        </div>
+
+        <div class="week-grid-scroll">
+            <div class="week-row week-grid">
+                <div class="gutter time-labels" style="height: @Css.Px(GridHeight)">
+                    @for (var hour = State.Settings.DayStartHour; hour < State.Settings.DayEndHour; hour++)
+                    {
+                        <div class="time-label" style="top: @Css.Px(HourTop(hour))">@($"{hour:00}:00")</div>
+                    }
+                </div>
+                @foreach (var day in State.WeekDays)
+                {
+                    <DayGrid Date="day" Settings="State.Settings" Tasks="State.ScheduledOn(day).ToList()" />
+                }
+            </div>
+        </div>
+    </div>
+</main>
+
+@code {
+    private bool IsCurrentWeek => State.WeekStart == RuDates.WeekStartOf(RuDates.Today);
+
+    private double GridHeight =>
+        GridLayout.MinutesToPixels((State.Settings.DayEndHour - State.Settings.DayStartHour) * 60, State.Settings.SlotMinutes);
+
+    private double HourTop(int hour) =>
+        GridLayout.MinutesToPixels((hour - State.Settings.DayStartHour) * 60, State.Settings.SlotMinutes);
+}

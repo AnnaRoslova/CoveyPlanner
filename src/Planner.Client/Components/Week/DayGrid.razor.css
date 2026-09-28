@@ -1,0 +1,20 @@
+/* Линии: сплошная — каждый час, пунктирная — каждый шаг */
+.day-grid {
+    position: relative;
+    border-left: 1px solid var(--border);
+    background-image:
+        linear-gradient(to bottom, var(--border) 1px, transparent 1px),
+        linear-gradient(to bottom, #f0eee9 1px, transparent 1px);
+    background-size:
+        100% calc(var(--slot-height) * var(--slots-per-hour)),
+        100% var(--slot-height);
+}
+
+.day-grid.today {
+    background-color: var(--today);
+}
+
+.grid-block {
+    position: absolute;
+    padding: 1px 2px 1px 1px;
+}

@@ -1,21 +1,124 @@
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+/* ===== Общие стили CoveyPlanner. Стили компонентов — в *.razor.css рядом с компонентами. ===== */
+
+:root {
+    /* Цвета */
+    --bg: #f5f4f0;
+    --panel: #ffffff;
+    --panel-alt: #faf9f6;
+    --border: #e4e1da;
+    --border-strong: #d3cfc6;
+    --text: #2b2b2b;
+    --text-muted: #8a877f;
+    --text-faint: #b3afa6;
+    --accent: #3b5b7a;
+    --accent-soft: #e6edf4;
+    --today: #fff8e6;
+    --danger: #b04a4a;
+    --drop-highlight: #dfe9f3;
+
+    /* Размеры */
+    --left-width: 280px;
+    --right-width: 280px;
+    --gutter-width: 52px;
+    --day-min-width: 90px;
+    --slot-height: 24px; /* синхронно с GridLayout.SlotHeight */
+    --radius: 6px;
+    --radius-small: 4px;
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-size: 14px;
+    --font-size-small: 12px;
 }
 
-.invalid {
-    outline: 1px solid red;
+/* Ноутбучные экраны: боковые панели уже, чтобы неделя влезла целиком */
+@media (max-width: 1440px) {
+    :root {
+        --left-width: 240px;
+        --right-width: 250px;
+    }
 }
 
-.validation-message {
-    color: red;
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: var(--font-size);
+    line-height: 1.35;
+}
+
+button, input, textarea, select {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* Кнопка-иконка без рамки */
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border: none;
+    border-radius: var(--radius-small);
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.icon-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text);
+}
+
+/* Строка «+ добавить» */
+.add-link {
+    display: block;
+    width: 100%;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    font-size: var(--font-size-small);
+    text-align: left;
+}
+
+.add-link:hover {
+    color: var(--accent);
+}
+
+.muted {
+    color: var(--text-muted);
+}
+
+/* Тонкие полосы прокрутки */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ===== Загрузка и ошибки Blazor ===== */
+
+.app-message {
+    padding: 20vh 1rem 0;
+    text-align: center;
+    color: var(--text-muted);
 }
 
 #blazor-error-ui {
     color-scheme: light only;
-    background: lightyellow;
+    background: #fff4d6;
     bottom: 0;
     box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
     display: none;
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
@@ -24,66 +127,53 @@
     z-index: 1000;
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
 
 .blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
+    background: #b32121;
+    padding: 1rem;
     color: white;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.blazor-error-boundary::after {
+    content: "Произошла ошибка.";
+}
 
 .loading-progress {
     position: absolute;
     display: block;
-    width: 8rem;
-    height: 8rem;
+    width: 6rem;
+    height: 6rem;
     inset: 20vh 0 auto 0;
-    margin: 0 auto 0 auto;
+    margin: 0 auto;
 }
 
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
+.loading-progress circle {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 0.5rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
 
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
+.loading-progress circle:last-child {
+    stroke: var(--accent);
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
 
 .loading-progress-text {
     position: absolute;
     text-align: center;
-    font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+    color: var(--text-muted);
+    inset: calc(20vh + 2.5rem) 0 auto 0;
 }
 
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
-    }
-
-code {
-    color: #c02d76;
-}
-
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
+.loading-progress-text::after {
+    content: var(--blazor-load-percentage-text, "Загрузка");
 }
