@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(dotnet new gitignore)",
+      "PowerShell(dotnet new editorconfig)",
+      "PowerShell(dotnet build 2>&1)"
+    ]
+  }
+}
