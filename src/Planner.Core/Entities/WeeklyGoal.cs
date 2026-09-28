@@ -31,6 +31,9 @@ public class WeeklyGoal : ISortable
 
     public int? TaskId { get; private set; }
 
+    /// <summary>Связанное дело. Через навигацию EF проставит TaskId и для ещё не сохранённого дела.</summary>
+    public TaskItem? LinkedTask { get; private set; }
+
     public static WeeklyGoal Create(int roleId, DateOnly weekStart, string title)
     {
         if (!Week.IsWeekStart(weekStart))
@@ -49,11 +52,22 @@ public class WeeklyGoal : ISortable
     public void Rename(string title) =>
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название цели");
 
+    public void MoveToRole(int roleId) => RoleId = roleId;
+
     public void LinkTask(TaskItem task)
     {
-        TaskId = task.Id;
+        LinkedTask = task;
+        if (task.Id != 0)
+        {
+            TaskId = task.Id;
+        }
+
         IsDone = task.State == TaskState.Done;
     }
 
-    public void UnlinkTask() => TaskId = null;
+    public void UnlinkTask()
+    {
+        LinkedTask = null;
+        TaskId = null;
+    }
 }

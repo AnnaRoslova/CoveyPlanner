@@ -8,7 +8,10 @@ public interface ISortable
     int SortOrder { get; set; }
 }
 
-/// <summary>Операции с ручным порядком. SortOrder всегда 0..n-1 без дыр.</summary>
+/// <summary>
+/// Операции с ручным порядком. В контейнере, куда что-то поставили, SortOrder = 0..n-1;
+/// в контейнере, откуда элемент ушёл, остаётся «дыра» — это не мешает, важен только относительный порядок.
+/// </summary>
 public static class SortOrdering
 {
     /// <summary>
