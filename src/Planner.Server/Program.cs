@@ -1,10 +1,16 @@
+using Planner.Server.Data;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddPlannerData();
 
 // Место под авторизацию (ASP.NET Identity), когда сервер будет смотреть в сеть:
 // builder.Services.AddAuthentication(...);
 // builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+await app.Services.InitializeDatabaseAsync();
 
 if (app.Environment.IsDevelopment())
 {
