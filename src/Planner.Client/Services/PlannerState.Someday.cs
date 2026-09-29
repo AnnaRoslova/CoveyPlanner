@@ -110,6 +110,41 @@ public partial class PlannerState
         return ok;
     }
 
+    /// <summary>
+    /// Перетаскивание внутри ленты: новое место в своей или другой категории.
+    /// index — позиция среди дел категории без самого перетаскиваемого (так же считает сервер).
+    /// </summary>
+    public async Task MoveSomedayTaskAsync(int taskId, int categoryId, int index)
+    {
+        if (taskId < 0 || FindTask(taskId) is not { State: TaskStateDto.Someday } task || FindCategory(categoryId) is null)
+        {
+            return;
+        }
+
+        var siblings = SomedayIn(categoryId).Where(t => t.Id != taskId).ToList();
+        index = Math.Clamp(index, 0, siblings.Count);
+
+        // Бросили туда же, где лежало, — ничего не делаем
+        if (task.CategoryId == categoryId && SomedayIn(categoryId).ToList().FindIndex(t => t.Id == taskId) == index)
+        {
+            return;
+        }
+
+        var oldCategoryId = task.CategoryId;
+        siblings.Insert(index, task with { CategoryId = categoryId });
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            _tasks[siblings[i].Id] = siblings[i] with { SortOrder = i };
+        }
+
+        if (oldCategoryId is { } old && old != categoryId)
+        {
+            RenumberSomeday(old);
+        }
+
+        await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index)));
+    }
+
     /// <summary>Переименовать дело (остальные поля не меняются).</summary>
     public async Task RenameTaskAsync(int taskId, string title)
     {

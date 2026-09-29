@@ -193,6 +193,54 @@ textarea:focus-visible {
     color: var(--b-deep);
 }
 
+/* ===== Перетаскивание (wwwroot/js/dnd.js) ===== */
+
+body.dragging,
+body.dragging * {
+    cursor: grabbing !important;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Исходная запись, пока её тащат */
+.drag-source {
+    opacity: 0.35;
+}
+
+/* Призрак записи под указателем (копия строки, живёт в <body>) */
+.drag-ghost {
+    position: fixed;
+    z-index: 1000;
+    margin: 0;
+    border-radius: 8px;
+    background: #fff !important;
+    box-shadow: 0 10px 28px rgba(60, 90, 90, 0.22);
+    opacity: 0.96;
+    pointer-events: none;
+    will-change: transform;
+}
+
+/* Линия «сюда встанет» */
+.drop-line {
+    position: fixed;
+    z-index: 999;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--b-deep);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--b) 35%, transparent);
+    pointer-events: none;
+}
+
+/* Подсветка зоны, куда упадёт запись */
+.drop-zone-box {
+    position: fixed;
+    z-index: 998;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--b) 12%, transparent);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--b) 70%, #fff);
+    pointer-events: none;
+}
+
 /* Подсветка совпадений поиска */
 mark.hit {
     border-radius: 3px;

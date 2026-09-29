@@ -112,10 +112,10 @@
     [Parameter]
     public bool IsPending { get; set; }
 
-    /// <summary>Что тащим при перетаскивании: "task" или "goal".</summary>
-    [Parameter, EditorRequired]
-    public string DragKind { get; set; } = "task";
+    /// <summary>Вид для перетаскивания (data-drag, см. DragDropService). null — запись не перетаскивается.</summary>
+    [Parameter]
+    public string? DragKind { get; set; }
 
-    [Parameter, EditorRequired]
+    [Parameter]
     public int DragId { get; set; }
 }

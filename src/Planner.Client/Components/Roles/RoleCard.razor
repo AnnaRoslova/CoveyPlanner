@@ -10,7 +10,7 @@
 else
 {
 <div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
-     data-drop="role" data-role="@Role.Id">
+     data-drop="role" data-key="@Role.Id">
     <div class="role-h">
         <span class="dot"></span>
         <span class="name">@Role.Name</span>
@@ -36,7 +36,7 @@ else
                      WhenLabel="@WhenLabel(goal)" IsPending="goal.Id < 0"
                      OnToggle="() => State.SetGoalDoneAsync(goal.Id, !goal.IsDone)"
                      OnClick="() => StartRenaming(goal.Id)"
-                     DragKind="goal" DragId="goal.Id">
+                     DragId="goal.Id">
                 <Actions>
                     @if (goal.Id > 0)
                     {

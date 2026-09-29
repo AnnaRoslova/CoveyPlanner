@@ -9,7 +9,9 @@
 else
 {
 <div class="cat @(IsOpen ? "open" : "")">
+    @* Заголовок — ещё и «мишень» для перетаскивания: бросить сюда = наверх категории (даже свёрнутой) *@
     <div class="cat-h" role="button" tabindex="0" title="@(IsSearching ? null : IsOpen ? "Свернуть" : "Раскрыть")"
+         data-drop="someday" data-key="@Category.Id" data-drop-index="0" data-accept="@DropAccept"
          @onclick="ToggleAsync" @onkeydown="OnHeaderKey">
         <span class="chev"><Icon Name="chevron-right" Size="12" /></span>
         @if (Category.Emoji is not null)
@@ -26,7 +28,7 @@ else
 
     @if (IsOpen)
     {
-        <div class="cat-b" data-drop="someday" data-category="@Category.Id">
+        <div class="cat-b" data-drop="someday" data-key="@Category.Id" data-accept="@DropAccept">
             @foreach (var task in VisibleTasks)
             {
                 if (task.Id == _editingTaskId)
@@ -37,7 +39,7 @@ else
                 else
                 {
                     <ItemRow Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search"
-                             IsPending="task.Id < 0" DragKind="task" DragId="task.Id"
+                             IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
                              OnClick="() => StartEditing(task.Id)">
                         <Actions>
                             @if (task.Id > 0)
@@ -85,6 +87,9 @@ else
     private bool IsSearching => !string.IsNullOrEmpty(Search);
 
     private bool IsOpen => IsSearching || Category.IsExpanded;
+
+    /// <summary>Во время поиска список отфильтрован — позиция при перетаскивании была бы неверной, поэтому отключаем.</summary>
+    private string DropAccept => IsSearching ? "" : DragDropService.SomedayItem;
 
     /// <summary>При поиске: все дела, если совпало название категории, иначе только совпавшие.</summary>
     private IReadOnlyList<TaskDto> VisibleTasks =>

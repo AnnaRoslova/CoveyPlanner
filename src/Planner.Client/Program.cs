@@ -12,5 +12,6 @@ builder.Services.AddScoped<PlannerApi>();
 builder.Services.AddScoped<Notifier>();
 builder.Services.AddScoped<LayoutState>();
 builder.Services.AddScoped<PlannerState>();
+builder.Services.AddScoped<DragDropService>();
 
 await builder.Build().RunAsync();

@@ -3,7 +3,7 @@
 @inject PlannerState State
 
 <section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
-         data-drop="day" data-date="@Css.Date(Date)">
+         data-drop="day" data-key="@Css.Date(Date)">
     <div class="day-h">
         <span class="dow">@RuDates.ShortDay(Date)</span>
         <span class="num">@Date.Day</span>
@@ -24,7 +24,7 @@
                  IsPending="task.Id < 0"
                  OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
                  OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
-                 DragKind="task" DragId="task.Id" />
+                 DragId="task.Id" />
     }
 
     @if (_adding)

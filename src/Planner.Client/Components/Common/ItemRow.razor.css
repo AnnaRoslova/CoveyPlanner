@@ -6,11 +6,15 @@
     border-radius: 8px;
     font-size: 13px;
     line-height: 1.3;
-    cursor: grab;
     transition: background 0.15s;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+}
+
+/* Перетаскиваемая запись */
+.item[data-drag] {
+    cursor: grab;
 }
 
 .item:hover {

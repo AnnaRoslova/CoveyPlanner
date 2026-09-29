@@ -118,6 +118,21 @@ public class TrashAndCategoriesApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task MoveWithinCategory_IndexCountsWithoutMovedTask()
+    {
+        var ideas = await CreateCategoryAsync();
+        var a = await CreateTaskAsync("A", new SomedayTargetDto(ideas.Id, 0));
+        var b = await CreateTaskAsync("B", new SomedayTargetDto(ideas.Id, 1));
+        var c = await CreateTaskAsync("C", new SomedayTargetDto(ideas.Id, 2));
+
+        // Перетаскивание A в самый низ: среди [B, C] (без A) это позиция 2
+        await MoveTaskAsync(a.Id, new SomedayTargetDto(ideas.Id, 2));
+
+        var order = (await GetBoardAsync()).SomedayTasks.OrderBy(t => t.SortOrder).Select(t => t.Id);
+        Assert.Equal([b.Id, c.Id, a.Id], order);
+    }
+
+    [Fact]
     public async Task MoveBetweenCategories()
     {
         var ideas = await CreateCategoryAsync("Идеи");
