@@ -1,4 +1,5 @@
-@* День — страница «в точку»: сначала дела со временем, затем без времени *@
+@* День — страница «в точку»: сначала дела со временем, затем без времени.
+   Клик по делу — окно редактирования, по чекбоксу — «выполнено», «+ дело» — новое дело в конец. *@
 @inject PlannerState State
 
 <section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
@@ -19,18 +20,53 @@
                  IsDone="task.State == TaskStateDto.Done"
                  TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"
                  IsRock="State.IsRock(task.Id)"
+                 IsPending="task.Id < 0"
+                 OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
+                 OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
                  DragKind="task" DragId="task.Id" />
     }
 
-    <button class="add">+ дело</button>
+    @if (_adding)
+    {
+        <InlineInput @bind-Value="_newTitle" Placeholder="Новое дело — Enter" MaxLength="500"
+                     OnSubmit="AddAsync" OnCancel="StopAdding" />
+    }
+    else
+    {
+        <button class="add" @onclick="() => _adding = true">+ дело</button>
+    }
 </section>
 
 @code {
+    private bool _adding;
+    private string _newTitle = "";
+
     [Parameter, EditorRequired]
     public DateOnly Date { get; set; }
 
     [Parameter, EditorRequired]
     public IReadOnlyList<TaskDto> Tasks { get; set; } = [];
 
+    /// <summary>Открыть окно редактирования дела (Id).</summary>
+    [Parameter]
+    public EventCallback<int> OnEdit { get; set; }
+
     private bool IsToday => Date == RuDates.Today;
+
+    private async Task AddAsync(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        _newTitle = "";
+        await State.CreateDayTaskAsync(title, Date);
+    }
+
+    private void StopAdding()
+    {
+        _adding = false;
+        _newTitle = "";
+    }
 }

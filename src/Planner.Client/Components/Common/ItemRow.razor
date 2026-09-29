@@ -5,7 +5,13 @@
      style="@(Color is null ? null : $"--c: {Color}")"
      data-drag="@DragKind" data-id="@DragId"
      @onclick="OnClick">
-    @if (Marker == ItemMarker.Check)
+    @if (Marker == ItemMarker.Check && OnToggle.HasDelegate)
+    {
+        <button type="button" class="ck" role="checkbox" aria-checked="@(IsDone ? "true" : "false")"
+                title="@(IsDone ? "Снять отметку" : "Выполнено")"
+                @onclick="OnToggle" @onclick:stopPropagation="true"></button>
+    }
+    else if (Marker == ItemMarker.Check)
     {
         <span class="ck"></span>
     }
@@ -78,6 +84,10 @@
     /// <summary>Текст поиска — совпадения в названии подсвечиваются.</summary>
     [Parameter]
     public string? Highlight { get; set; }
+
+    /// <summary>Клик по чекбоксу — отметить / снять «выполнено».</summary>
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
 
     /// <summary>Клик по записи (например, переименование).</summary>
     [Parameter]

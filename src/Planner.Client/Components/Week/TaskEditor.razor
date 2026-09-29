@@ -1,0 +1,154 @@
+@* Окно редактирования дела: название, заметки, роль, время, квадрант; «в корзину».
+   Enter в названии — сохранить, Esc или клик мимо — отмена. *@
+@inject PlannerState State
+
+<div class="backdrop" @onclick="OnClose"></div>
+
+<div class="editor" role="dialog" aria-label="Дело" @onkeydown="OnKeyDown">
+    <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
+           @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
+
+    @if (Goal is { } goal)
+    {
+        <div class="rock-note">
+            <span class="pill-rock">камень</span>
+            цель недели · @(State.FindRole(goal.RoleId)?.Name)
+        </div>
+    }
+
+    <div class="field">
+        <div class="label">Роль</div>
+        <div class="chips">
+            <button type="button" class="chip @(_roleId is null ? "on" : "")" @onclick="() => _roleId = null">без роли</button>
+            @foreach (var role in State.Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder))
+            {
+                <button type="button" class="chip @(_roleId == role.Id ? "on" : "")" style="--c: @role.Color"
+                        @onclick="() => _roleId = role.Id">
+                    <span class="dot"></span>@role.Name
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="field">
+            <div class="label">Время</div>
+            <div class="time">
+                <input type="time" @bind="_time" />
+                @if (_time is not null)
+                {
+                    <button type="button" class="clear" title="Без времени" @onclick="() => _time = null">
+                        <Icon Name="x" Size="11" />
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="field">
+            <div class="label">Квадрант</div>
+            <div class="quadrants">
+                <button type="button" class="@(_quadrant is null ? "on" : "")" title="Без квадранта"
+                        @onclick="() => _quadrant = null">—</button>
+                @foreach (var (value, roman, hint) in Quadrants)
+                {
+                    <button type="button" class="@(_quadrant == value ? "on" : "")" title="@hint"
+                            @onclick="() => _quadrant = value">@roman</button>
+                }
+            </div>
+        </div>
+    </div>
+    @if (_quadrant is { } q)
+    {
+        <div class="quadrant-hint">@Quadrants.First(x => x.Value == q).Hint</div>
+    }
+
+    <div class="field">
+        <div class="label">Заметки</div>
+        <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
+    </div>
+
+    <div class="buttons">
+        <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
+        <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
+        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
+    </div>
+</div>
+
+@code {
+    private static readonly (int Value, string Roman, string Hint)[] Quadrants =
+    [
+        (1, "I", "I — важно и срочно"),
+        (2, "II", "II — важно, не срочно (главное по Кови)"),
+        (3, "III", "III — срочно, не важно"),
+        (4, "IV", "IV — не срочно и не важно"),
+    ];
+
+    private ElementReference _titleInput;
+    private string _title = "";
+    private string? _notes;
+    private int? _roleId;
+    private TimeOnly? _time;
+    private int? _quadrant;
+
+    [Parameter, EditorRequired]
+    public TaskDto EditedTask { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private WeeklyGoalDto? Goal => State.GoalOfTask(EditedTask.Id);
+
+    protected override void OnInitialized()
+    {
+        _title = EditedTask.Title;
+        _notes = EditedTask.Notes;
+        _roleId = EditedTask.RoleId;
+        _time = EditedTask.StartTime;
+        _quadrant = EditedTask.Quadrant;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _titleInput.FocusAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+        else if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+        {
+            await SaveAsync(); // Ctrl+Enter — сохранить из любого поля, и из заметок тоже
+        }
+    }
+
+    private async Task OnTitleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.CtrlKey && !e.MetaKey)
+        {
+            await SaveAsync();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            return;
+        }
+
+        await OnClose.InvokeAsync();
+        await State.UpdateTaskAsync(EditedTask.Id, _title, _notes, _roleId, _quadrant, _time);
+    }
+
+    private async Task TrashAsync()
+    {
+        await OnClose.InvokeAsync();
+        await State.TrashTaskAsync(EditedTask.Id);
+    }
+}

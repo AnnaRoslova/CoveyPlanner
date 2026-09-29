@@ -23,11 +23,18 @@
     <div class="days">
         @foreach (var day in State.WeekDays)
         {
-            <DayColumn Date="day" Tasks="State.TasksOn(day).ToList()" />
+            <DayColumn @key="day" Date="day" Tasks="State.TasksOn(day).ToList()" OnEdit="id => _editingTaskId = id" />
         }
     </div>
 </main>
 
+@if (_editingTaskId is { } id && State.FindTask(id) is { } task)
+{
+    <TaskEditor @key="id" EditedTask="task" OnClose="() => _editingTaskId = null" />
+}
+
 @code {
+    private int? _editingTaskId;
+
     private bool IsCurrentWeek => State.WeekStart == RuDates.WeekStartOf(RuDates.Today);
 }

@@ -68,6 +68,11 @@
     background: var(--b-soft);
 }
 
+/* Поле «+ дело» и сама кнопка прижаты к низу страницы дня */
+.day ::deep .inline-input {
+    margin-top: auto;
+}
+
 .day .add {
     width: max-content;
     margin-top: auto;

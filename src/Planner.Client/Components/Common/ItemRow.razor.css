@@ -63,7 +63,19 @@
     transition: 0.15s;
 }
 
-.done .ck {
+/* Чекбокс-кнопка: квадратик побольше для попадания, видимая часть та же */
+button.ck {
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+button.ck:hover {
+    background: color-mix(in srgb, var(--c, var(--b)) 30%, transparent);
+}
+
+.done .ck,
+.done button.ck:hover {
     background: var(--c, var(--b));
 }
 
