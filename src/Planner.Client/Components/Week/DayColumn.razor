@@ -19,7 +19,6 @@
                  IsDone="task.State == TaskStateDto.Done"
                  TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"
                  IsRock="State.IsRock(task.Id)"
-                 Quadrant="task.Quadrant"
                  DragKind="task" DragId="task.Id" />
     }
 

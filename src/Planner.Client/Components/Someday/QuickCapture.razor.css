@@ -4,7 +4,7 @@
     gap: 6px;
     margin: 0 14px 8px;
     padding: 6px 6px 6px 12px;
-    border: 1.5px dashed color-mix(in srgb, var(--a) 70%, #fff);
+    border: 1.5px dashed color-mix(in srgb, var(--b) 80%, #fff);
     border-radius: 14px;
     background: #fff;
 }

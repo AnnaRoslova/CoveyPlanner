@@ -3,18 +3,19 @@
 
 :root {
     /* Палитра «Лотос» */
-    --sky1: #f8d5da;
-    --sky2: #d7eee7;
+    --sky0: #f3e9f0;     /* лёгкий холодно-розовый край */
+    --sky1: #e3f2ec;
+    --sky2: #d3ece4;
     --sky3: #b9e0d6;
     --paper: #fffcfc;
     --text: #3e4d52;
     --soft: #88999c;
     --faint: #c3cfd0;
     --line: #efe6e7;
-    --a: #f2a4ab;        /* розовый */
-    --a-soft: #fdecee;
-    --a-deep: #cf6f79;
-    --b: #9fd6c9;        /* бирюза */
+    --a: #f1bfd2;        /* розовый «Зефир» — только акцент */
+    --a-soft: #fcf1f6;
+    --a-deep: #cf8fab;
+    --b: #9fd6c9;        /* бирюза — основной тон */
     --b-soft: #e8f6f2;
     --b-deep: #3f9585;
 
@@ -44,8 +45,8 @@ body {
     font-family: var(--font);
     font-size: 14px;
     color: var(--text);
-    /* Фон «как небо»: розовый → мятная бирюза */
-    background: linear-gradient(165deg, var(--sky1) 0%, var(--sky2) 55%, var(--sky3) 100%) fixed;
+    /* Фон: лёгкий холодно-розовый край → мятная бирюза */
+    background: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%) fixed;
 }
 
 button {
@@ -101,7 +102,7 @@ input, select, textarea {
 }
 
 .add:hover {
-    color: var(--a-deep);
+    color: var(--b-deep);
 }
 
 /* Тонкие полосы прокрутки */

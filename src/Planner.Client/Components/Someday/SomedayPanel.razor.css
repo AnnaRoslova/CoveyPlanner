@@ -1,6 +1,6 @@
-/* Лента — чуть розоватая панель */
+/* Лента — чуть мятная панель */
 .someday {
-    background: color-mix(in srgb, var(--a) 12%, #ffffffd0);
+    background: color-mix(in srgb, var(--b) 10%, #ffffffc8);
 }
 
 .search {
@@ -30,7 +30,7 @@
 .first-category {
     margin: 0 14px 8px;
     padding: 12px;
-    border: 1.5px dashed color-mix(in srgb, var(--a) 70%, #fff);
+    border: 1.5px dashed color-mix(in srgb, var(--b) 80%, #fff);
     border-radius: 14px;
     background: #ffffff80;
     color: var(--soft);
@@ -40,7 +40,7 @@
 }
 
 .first-category span {
-    color: var(--a-deep);
+    color: var(--b-deep);
     font-weight: 700;
 }
 

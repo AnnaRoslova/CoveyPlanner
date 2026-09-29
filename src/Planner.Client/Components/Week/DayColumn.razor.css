@@ -35,10 +35,6 @@
     font-family: var(--font-hand);
     font-size: 19px;
     font-weight: 700;
-    color: var(--a-deep);
-}
-
-.weekend .dow {
     color: var(--b-deep);
 }
 
@@ -47,6 +43,8 @@
     font-weight: 800;
 }
 
+/* Розовым — только сегодняшний день */
+.today .dow,
 .today .num {
     color: var(--a-deep);
 }
@@ -67,7 +65,7 @@
 }
 
 .day ::deep .item:hover {
-    background: var(--a-soft);
+    background: var(--b-soft);
 }
 
 .day .add {

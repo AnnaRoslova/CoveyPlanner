@@ -19,17 +19,17 @@ public static class SeedData
 
         // Цвета — как в docs/design-mockup.html
         db.Roles.AddRange(
-            Role.CreateSawDimension(SawDimension.Body, "Тело", "#f4c3cf"),
+            Role.CreateSawDimension(SawDimension.Body, "Тело", "#9fd3bd"),
             Role.CreateSawDimension(SawDimension.Mind, "Ум", "#94b4b5"),
             Role.CreateSawDimension(SawDimension.Spirit, "Дух", "#6fbfae"),
-            Role.CreateSawDimension(SawDimension.Social, "Общение и эмоции", "#f29ea6"));
+            Role.CreateSawDimension(SawDimension.Social, "Общение и эмоции", "#efb8cc"));
 
         (string Name, string Color)[] roles =
         [
             ("Я сама", "#a8dcd0"),
-            ("Семья", "#e9b0b8"),
+            ("Семья", "#b9d3b0"),
             ("Работа", "#8ac2c4"),
-            ("Дом", "#f7d3db"),
+            ("Дом", "#7fc3b4"),
         ];
         for (var i = 0; i < roles.Length; i++)
         {

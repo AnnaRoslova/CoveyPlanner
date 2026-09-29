@@ -14,7 +14,7 @@
     }
     <div class="tx">
         @Title
-        @if (TimeLabel is not null || IsRock || WhenLabel is not null || Quadrant is not null)
+        @if (TimeLabel is not null || IsRock || WhenLabel is not null)
         {
             <div class="pills">
                 @if (TimeLabel is not null)
@@ -24,10 +24,6 @@
                 @if (IsRock)
                 {
                     <span class="pill rock">камень</span>
-                }
-                @if (Quadrant is { } quadrant)
-                {
-                    <span class="pill quadrant" title="Квадрант @Roman(quadrant)">@Roman(quadrant)</span>
                 }
                 @if (WhenLabel is not null)
                 {
@@ -60,10 +56,6 @@
     [Parameter]
     public bool IsRock { get; set; }
 
-    /// <summary>Квадрант 1..4.</summary>
-    [Parameter]
-    public int? Quadrant { get; set; }
-
     /// <summary>Пилюля справа «Ср 10:00» — когда запланирована цель.</summary>
     [Parameter]
     public string? WhenLabel { get; set; }
@@ -74,12 +66,4 @@
 
     [Parameter, EditorRequired]
     public int DragId { get; set; }
-
-    private static string Roman(int quadrant) => quadrant switch
-    {
-        1 => "I",
-        2 => "II",
-        3 => "III",
-        _ => "IV",
-    };
 }
