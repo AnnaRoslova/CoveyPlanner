@@ -21,6 +21,17 @@ public class TasksApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task CreateInCategory_HugeIndex_GoesToEnd()
+    {
+        var ideas = await CreateCategoryAsync();
+        var first = await CreateTaskAsync("Первое", new SomedayTargetDto(ideas.Id, 0));
+        var last = await CreateTaskAsync("В конец", new SomedayTargetDto(ideas.Id, int.MaxValue));
+
+        var board = await GetBoardAsync();
+        Assert.Equal([first.Id, last.Id], board.SomedayTasks.OrderBy(t => t.SortOrder).Select(t => t.Id));
+    }
+
+    [Fact]
     public async Task Move_SomedayToDay_AndBack_ReturnsToOwnCategory()
     {
         var books = await CreateCategoryAsync("Книги");

@@ -21,6 +21,10 @@
     color: var(--faint);
 }
 
+.search:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--b) 55%, transparent);
+}
+
 .search input {
     flex: 1;
     min-width: 0;

@@ -85,8 +85,11 @@ public partial class PlannerState
 
     // ---------- Дела ленты ----------
 
-    /// <summary>Новое дело — наверх категории (и из «Записать мысль», и из «+ добавить»). false — не сохранилось.</summary>
-    public async Task<bool> CreateSomedayTaskAsync(string title, int categoryId)
+    /// <summary>
+    /// Новое дело в ленте: «Записать мысль» кладёт наверх категории, «+ добавить» внизу категории — в конец.
+    /// false — не сохранилось.
+    /// </summary>
+    public async Task<bool> CreateSomedayTaskAsync(string title, int categoryId, bool atEnd = false)
     {
         title = title.Trim();
         if (title.Length == 0 || FindCategory(categoryId) is null)
@@ -95,14 +98,17 @@ public partial class PlannerState
         }
 
         var temp = new TaskDto(NextTempId(), title, null, categoryId, null, null, TaskStateDto.Someday, null, null,
-            SortOrder: int.MinValue, TrashedAt: null);
+            SortOrder: atEnd ? int.MaxValue : int.MinValue, TrashedAt: null);
         _tasks[temp.Id] = temp;
         RenumberSomeday(categoryId);
         LastUsedCategoryId = categoryId;
 
+        // Позиция на сервере: 0 — наверх, «очень большая» — в конец (сервер прижимает к краю)
+        var index = atEnd ? int.MaxValue : 0;
+
         var ok = await SaveAsync(async () =>
         {
-            var saved = await api.CreateTaskAsync(title, new SomedayTargetDto(categoryId, 0));
+            var saved = await api.CreateTaskAsync(title, new SomedayTargetDto(categoryId, index));
             ReplaceTempTask(temp.Id, saved);
         });
 

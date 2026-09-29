@@ -62,6 +62,25 @@ input, select, textarea {
     color: inherit;
 }
 
+/* ===== Фокус: вместо чёрной рамки браузера — мягкое мятное кольцо ===== */
+
+:focus {
+    outline: none;
+}
+
+:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--b) 55%, transparent);
+    border-radius: 8px;
+}
+
+/* У полей ввода своя подсветка (рамка контейнера), кольцо не нужно */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    box-shadow: none;
+}
+
 /* ===== Плавающие панели (три зоны) ===== */
 
 .panel {

@@ -47,8 +47,9 @@
 .tx {
     flex: 1;
     min-width: 0;
+    /* Переносим только целыми словами; слово рвётся, лишь если само не влезает в строку */
     overflow-wrap: break-word;
-    hyphens: auto;
+    hyphens: manual;
 }
 
 /* Квадратный чекбокс цвета роли */
@@ -95,6 +96,7 @@
     font-size: 10.5px;
     font-weight: 800;
     line-height: 17px;
+    white-space: nowrap; /* пилюля никогда не переносится */
 }
 
 .pill.time {

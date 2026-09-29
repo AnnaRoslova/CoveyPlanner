@@ -131,7 +131,7 @@ else
         }
 
         _newTitle = "";
-        await State.CreateSomedayTaskAsync(title, Category.Id);
+        await State.CreateSomedayTaskAsync(title, Category.Id, atEnd: true);
     }
 
     private void StopAdding()

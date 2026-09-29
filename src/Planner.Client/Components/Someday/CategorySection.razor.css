@@ -14,11 +14,6 @@
     background: #ffffff90;
 }
 
-.cat-h:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--b) 60%, #fff);
-    outline-offset: -2px;
-}
-
 .chev {
     display: inline-flex;
     flex: none;
