@@ -12,6 +12,17 @@ dotnet run --project src/Planner.Server
 Открыть http://localhost:5070. База — `%LOCALAPPDATA%\CoveyPlanner\planner.db`
 (путь меняется в `src/Planner.Server/appsettings.json`, ключ `Storage:DatabasePath`).
 
+## Проверки
+
+```powershell
+dotnet test                          # модульные тесты и тесты API
+powershell -File tools/e2e.ps1       # проверки в браузере (Edge без окна): лента, неделя, роли, перетаскивание
+powershell -File tools/e2e.ps1 -Only dnd   # только сценарии перетаскивания
+```
+
+Для проверок в браузере нужен Node.js (зависимости ставятся сами). Сценарии — в `tests/e2e/*.mjs`,
+у каждого своя чистая база и сервер на порту 5071; демо и основная база не затрагиваются.
+
 ## Демо
 
 Отдельная демо-база с примерами, основная база не затрагивается:

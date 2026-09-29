@@ -1,0 +1,9 @@
+{
+  "name": "planner-e2e",
+  "private": true,
+  "description": "Проверки CoveyPlanner в настоящем браузере (Edge без окна). Запуск: powershell -File tools/e2e.ps1",
+  "type": "module",
+  "dependencies": {
+    "puppeteer-core": "23.11.1"
+  }
+}
