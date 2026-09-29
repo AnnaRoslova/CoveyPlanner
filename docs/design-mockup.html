@@ -160,6 +160,20 @@ body.s-dot .day.weekend{background-color:color-mix(in srgb,var(--b) 5%,var(--pap
 body.s-dot .day{background-image:radial-gradient(circle,color-mix(in srgb,var(--b) 50%,#fff) 1px,transparent 1.3px)}
 .tag{background:color-mix(in srgb,var(--a) 14%,#fff);color:var(--a-deep)}
 .today-b{background:var(--a-soft);color:var(--a-deep)}
+/* больше зелёного, меньше розового: розовый остаётся только акцентом («сегодня», «камень») */
+body.p-lotus{--sky1:#e3f2ec;--sky2:#d3ece4;--sky3:#b9e0d6}
+body{background:linear-gradient(165deg,#f3e4e6 0%,var(--sky1) 28%,var(--sky2) 60%,var(--sky3) 100%) fixed}
+.app>aside:last-child{background:color-mix(in srgb,var(--b) 10%,#ffffffc8)}
+.day-h .dow{color:var(--b-deep)}
+.day.today .day-h .dow,.day.today .num{color:var(--a-deep)}
+.quick{border-color:color-mix(in srgb,var(--b) 80%,#fff)}
+.item:hover{background:var(--b-soft)}
+.add:hover{color:var(--b-deep)}
+.nav:hover{background:var(--b-soft)}
+body.p-lotus{--r2:#9fd3bd;--r6:#7fc3b4;--r8:#b9d3b0}
+/* розовый светлее и холоднее (с голубым подтоном) */
+body.p-lotus{--a:#f1bfd2;--a-soft:#fcf1f6;--a-deep:#cf8fab;--r1:#efb8cc;--sky1:#f3e9f0}
+body{background:linear-gradient(165deg,#f3e9f0 0%,#e3f2ec 30%,#d3ece4 62%,#b9e0d6 100%) fixed}
 </style>
 </head>
 <body class="s-dot p-lotus">
