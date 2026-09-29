@@ -1,0 +1,19 @@
+@* Выбор цвета роли из палитры «Лотос» *@
+@inject PlannerState State
+
+<div class="swatches" role="radiogroup" aria-label="Цвет роли">
+    @foreach (var color in State.RolePalette)
+    {
+        <button type="button" role="radio" aria-checked="@(color == Selected ? "true" : "false")"
+                class="swatch @(color == Selected ? "on" : "")" style="--c: @color" title="@color"
+                @onclick="() => SelectedChanged.InvokeAsync(color)"></button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Selected { get; set; }
+
+    [Parameter]
+    public EventCallback<string> SelectedChanged { get; set; }
+}

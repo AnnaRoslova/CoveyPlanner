@@ -1,0 +1,45 @@
+@* Маленький выбор категории, когда дело возвращается в ленту, а своей категории у него нет
+   (восстановление из корзины, удаление цели или роли). *@
+@inject PlannerState State
+
+<div class="choice">
+    @if (State.Categories.Count == 0)
+    {
+        <span>Сначала создайте категорию в ленте.</span>
+        <button type="button" class="btn quiet" @onclick="OnCancel">Отмена</button>
+    }
+    else
+    {
+        <span>@Prompt</span>
+        <select @bind="_categoryId">
+            @foreach (var category in State.OrderedCategories)
+            {
+                <option value="@category.Id">@(category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}")</option>
+            }
+        </select>
+        <div class="buttons">
+            <button type="button" class="btn quiet" @onclick="OnCancel">Отмена</button>
+            <button type="button" class="btn" @onclick="() => OnChoose.InvokeAsync(_categoryId)">@ButtonText</button>
+        </div>
+    }
+</div>
+
+@code {
+    private int _categoryId;
+
+    [Parameter]
+    public string Prompt { get; set; } = "В какую категорию вернуть?";
+
+    [Parameter]
+    public string ButtonText { get; set; } = "Вернуть";
+
+    [Parameter]
+    public EventCallback<int> OnChoose { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    protected override void OnInitialized() =>
+        _categoryId = State.FindCategory(State.LastUsedCategoryId)?.Id
+                      ?? State.OrderedCategories.FirstOrDefault()?.Id ?? 0;
+}

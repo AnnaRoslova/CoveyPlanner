@@ -1,0 +1,22 @@
+.swatches {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    padding: 2px;
+}
+
+.swatch {
+    aspect-ratio: 1;
+    min-width: 0;
+    border-radius: 50%;
+    background: var(--c);
+    transition: transform 0.12s;
+}
+
+.swatch:hover {
+    transform: scale(1.1);
+}
+
+.swatch.on {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c);
+}

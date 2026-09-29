@@ -15,15 +15,27 @@
         <div class="saw">
             @foreach (var role in State.SawRoles)
             {
-                <RoleCard Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
             }
         </div>
 
         <div class="sect">Роли</div>
         @foreach (var role in State.UserRoles)
         {
-            <RoleCard Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+            <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
         }
-        <button class="add">+ роль</button>
+
+        @if (_creatingRole)
+        {
+            <RoleEditor OnClose="() => _creatingRole = false" />
+        }
+        else
+        {
+            <button class="add" @onclick="() => _creatingRole = true">+ роль</button>
+        }
     </div>
 </aside>
+
+@code {
+    private bool _creatingRole;
+}

@@ -74,7 +74,9 @@ public class PlannerApi(HttpClient http)
     public Task ReorderRolesAsync(IReadOnlyList<int> ids) =>
         SendAsync(HttpMethod.Post, "api/roles/reorder", new ReorderRequest(ids));
 
-    public Task DeleteRoleAsync(int id) => SendAsync(HttpMethod.Delete, $"api/roles/{id}");
+    /// <summary>categoryId — куда вернуть дела целей без дня, у которых нет своей категории.</summary>
+    public Task DeleteRoleAsync(int id, int? categoryId = null) =>
+        SendAsync(HttpMethod.Delete, $"api/roles/{id}{CategoryQuery(categoryId)}");
 
     // Цели
 
@@ -84,7 +86,9 @@ public class PlannerApi(HttpClient http)
     public Task<GoalResultDto> UpdateGoalAsync(int id, UpdateGoalRequest request) =>
         SendAsync<GoalResultDto>(HttpMethod.Put, $"api/goals/{id}", request);
 
-    public Task DeleteGoalAsync(int id) => SendAsync(HttpMethod.Delete, $"api/goals/{id}");
+    /// <summary>categoryId — куда вернуть дело цели без дня, если у него нет своей категории.</summary>
+    public Task DeleteGoalAsync(int id, int? categoryId = null) =>
+        SendAsync(HttpMethod.Delete, $"api/goals/{id}{CategoryQuery(categoryId)}");
 
     public Task<WeeklyGoalDto> MoveGoalAsync(int id, MoveGoalRequest request) =>
         SendAsync<WeeklyGoalDto>(HttpMethod.Post, $"api/goals/{id}/move", request);

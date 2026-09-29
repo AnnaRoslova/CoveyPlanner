@@ -1,11 +1,22 @@
-@* Роль (или измерение пилы) и её цели на неделю *@
+@* Роль (или измерение пилы) и её цели на неделю.
+   Чекбокс — «выполнено», клик по цели — переименовать, крестик — удалить, «+ цель» — новая цель в конец.
+   «⋯» в заголовке — правка роли (название, цвет, порядок, удаление). *@
 @inject PlannerState State
 
+@if (_editingRole)
+{
+    <RoleEditor Role="Role" OnClose="() => _editingRole = false" />
+}
+else
+{
 <div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
      data-drop="role" data-role="@Role.Id">
     <div class="role-h">
         <span class="dot"></span>
         <span class="name">@Role.Name</span>
+        <button type="button" class="menu" title="Изменить роль" @onclick="() => _editingRole = true">
+            <Icon Name="more" Size="14" />
+        </button>
         @if (Goals.Count > 0)
         {
             <span class="n">@Goals.Count(g => g.IsDone)/@Goals.Count</span>
@@ -14,8 +25,35 @@
 
     @foreach (var goal in Goals)
     {
-        <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
-                 WhenLabel="@WhenLabel(goal)" DragKind="goal" DragId="goal.Id" />
+        if (goal.Id == _renamingGoalId)
+        {
+            <InlineInput Value="@goal.Title" MaxLength="500" SubmitOnBlur="true"
+                         OnSubmit="title => RenameAsync(goal.Id, title)" OnCancel="() => _renamingGoalId = null" />
+        }
+        else
+        {
+            <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
+                     WhenLabel="@WhenLabel(goal)" IsPending="goal.Id < 0"
+                     OnToggle="() => State.SetGoalDoneAsync(goal.Id, !goal.IsDone)"
+                     OnClick="() => StartRenaming(goal.Id)"
+                     DragKind="goal" DragId="goal.Id">
+                <Actions>
+                    @if (goal.Id > 0)
+                    {
+                        <button type="button" class="row-action" title="Удалить цель" @onclick="() => DeleteGoalAsync(goal.Id, null)">
+                            <Icon Name="x" Size="12" />
+                        </button>
+                    }
+                </Actions>
+            </ItemRow>
+        }
+
+        if (goal.Id == _askCategoryForGoalId)
+        {
+            <CategoryChoice Prompt="Дело цели вернуть в категорию:" ButtonText="Удалить цель"
+                            OnChoose="categoryId => DeleteGoalAsync(goal.Id, categoryId)"
+                            OnCancel="() => _askCategoryForGoalId = null" />
+        }
     }
 
     @if (!Role.IsSharpenSaw && Goals.Count > State.RecommendedGoalsPerWeek)
@@ -23,10 +61,25 @@
         <div class="hint">Кови советует 1–@State.RecommendedGoalsPerWeek больших камня</div>
     }
 
-    <button class="add">+ цель</button>
+    @if (_adding)
+    {
+        <InlineInput @bind-Value="_newTitle" Placeholder="Цель на неделю — Enter" MaxLength="500"
+                     OnSubmit="AddAsync" OnCancel="StopAdding" />
+    }
+    else
+    {
+        <button class="add" @onclick="() => _adding = true">+ цель</button>
+    }
 </div>
+}
 
 @code {
+    private bool _editingRole;
+    private bool _adding;
+    private string _newTitle = "";
+    private int? _renamingGoalId;
+    private int? _askCategoryForGoalId;
+
     [Parameter, EditorRequired]
     public RoleDto Role { get; set; } = null!;
 
@@ -37,4 +90,41 @@
     private static string? WhenLabel(WeeklyGoalDto goal) => goal.PlannedDate is { } date
         ? RuDates.ShortDay(date) + (goal.StartTime is { } time ? " " + RuDates.Time(time) : "")
         : null;
+
+    private void StartRenaming(int goalId)
+    {
+        if (goalId > 0)
+        {
+            _renamingGoalId = goalId;
+        }
+    }
+
+    private async Task RenameAsync(int goalId, string title)
+    {
+        _renamingGoalId = null;
+        await State.RenameGoalAsync(goalId, title);
+    }
+
+    private async Task DeleteGoalAsync(int goalId, int? categoryId)
+    {
+        var result = await State.DeleteGoalAsync(goalId, categoryId);
+        _askCategoryForGoalId = result == ReturnResult.NeedsCategory ? goalId : null;
+    }
+
+    private async Task AddAsync(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        _newTitle = "";
+        await State.CreateGoalAsync(Role.Id, title);
+    }
+
+    private void StopAdding()
+    {
+        _adding = false;
+        _newTitle = "";
+    }
 }

@@ -1,0 +1,43 @@
+.role-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 8px;
+    border-radius: 14px;
+    background: #ffffffc8;
+}
+
+.saw-name {
+    padding: 2px 4px;
+    font-weight: 700;
+}
+
+.buttons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.move {
+    padding: 3px 7px;
+}
+
+.delete:hover {
+    color: var(--a-deep);
+}
+
+.confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+}
+
+.confirm .buttons {
+    justify-content: flex-end;
+}

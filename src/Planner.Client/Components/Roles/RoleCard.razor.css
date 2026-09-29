@@ -12,6 +12,7 @@
 }
 
 .role-h {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 7px;
@@ -29,10 +30,54 @@
 
 .name {
     min-width: 0;
+    overflow-wrap: break-word;
+}
+
+/* «⋯» — появляется при наведении на месте счётчика и не отнимает ширину у названия */
+.menu {
+    position: absolute;
+    top: 50%;
+    right: -4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    transform: translateY(-50%);
+    background: #ffffffd8;
+    border-radius: 50%;
+    color: var(--faint);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.role:hover .menu,
+.menu:focus-visible {
+    opacity: 1;
+}
+
+.role:hover .n {
+    visibility: hidden;
+}
+
+.menu:hover {
+    background: #fff;
+    color: var(--b-deep);
+}
+
+@media (hover: none) {
+    .menu {
+        opacity: 0.6;
+    }
+
+    .n {
+        visibility: hidden;
+    }
 }
 
 .n {
     margin-left: auto;
+    padding-left: 4px;
     color: var(--faint);
     font-size: 11px;
     font-weight: 700;

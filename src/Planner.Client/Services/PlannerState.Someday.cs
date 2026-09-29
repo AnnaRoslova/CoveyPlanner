@@ -2,17 +2,6 @@ using Planner.Shared;
 
 namespace Planner.Client.Services;
 
-/// <summary>Чем закончилось восстановление из корзины.</summary>
-public enum RestoreResult
-{
-    Restored,
-
-    /// <summary>Своей категории у дела нет — нужно выбрать и повторить.</summary>
-    NeedsCategory,
-
-    Failed,
-}
-
 // Лента «Когда-нибудь»: категории, дела ленты, корзина
 public partial class PlannerState
 {
@@ -165,9 +154,9 @@ public partial class PlannerState
 
     /// <summary>
     /// Вернуть из корзины на прежнее место. Если своей категории у дела нет —
-    /// <see cref="RestoreResult.NeedsCategory"/>: спросить категорию и вызвать ещё раз с categoryId.
+    /// <see cref="ReturnResult.NeedsCategory"/>: спросить категорию и вызвать ещё раз с categoryId.
     /// </summary>
-    public async Task<RestoreResult> RestoreFromTrashAsync(int taskId, int? categoryId = null)
+    public async Task<ReturnResult> RestoreFromTrashAsync(int taskId, int? categoryId = null)
     {
         TaskDto restored;
         try
@@ -176,12 +165,12 @@ public partial class PlannerState
         }
         catch (ApiException ex) when (ex.IsCategoryRequired)
         {
-            return RestoreResult.NeedsCategory;
+            return ReturnResult.NeedsCategory;
         }
         catch (ApiException ex)
         {
             notifier.Error(ex.Message);
-            return RestoreResult.Failed;
+            return ReturnResult.Failed;
         }
 
         TrashCount = Math.Max(0, TrashCount - 1);
@@ -204,7 +193,7 @@ public partial class PlannerState
         }
 
         NotifyChanged();
-        return RestoreResult.Restored;
+        return ReturnResult.Done;
     }
 
     public async Task DeleteForeverAsync(int taskId)

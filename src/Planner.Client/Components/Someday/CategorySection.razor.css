@@ -1,4 +1,5 @@
 .cat-h {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 7px;
@@ -42,15 +43,18 @@
     line-clamp: 2;
 }
 
-/* «⋯» — видна при наведении на заголовок */
+/* «⋯» — появляется при наведении на месте счётчика и не отнимает ширину у названия */
 .menu {
+    position: absolute;
+    top: 50%;
+    right: 4px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: none;
     width: 22px;
     height: 22px;
-    margin-left: auto;
+    transform: translateY(-50%);
+    background: #ffffffd8;
     border-radius: 50%;
     color: var(--faint);
     opacity: 0;
@@ -62,6 +66,10 @@
     opacity: 1;
 }
 
+.cat-h:hover .cnt {
+    visibility: hidden;
+}
+
 .menu:hover {
     background: #fff;
     color: var(--b-deep);
@@ -71,10 +79,16 @@
     .menu {
         opacity: 0.6;
     }
+
+    .cnt {
+        visibility: hidden;
+    }
 }
 
 .cnt {
     min-width: 14px;
+    margin-left: auto;
+    padding-left: 4px;
     color: var(--faint);
     font-size: 11.5px;
     font-weight: 700;

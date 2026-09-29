@@ -38,23 +38,8 @@
 
                 @if (task.Id == _askCategoryFor)
                 {
-                    <div class="ask">
-                        @if (State.Categories.Count == 0)
-                        {
-                            <span>Сначала создайте категорию в ленте.</span>
-                        }
-                        else
-                        {
-                            <span>В какую категорию вернуть?</span>
-                            <select @bind="_chosenCategoryId">
-                                @foreach (var category in State.OrderedCategories)
-                                {
-                                    <option value="@category.Id">@(category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}")</option>
-                                }
-                            </select>
-                            <button type="button" class="btn" @onclick="() => RestoreAsync(task, _chosenCategoryId)">Вернуть</button>
-                        }
-                    </div>
+                    <CategoryChoice OnChoose="categoryId => RestoreAsync(task, categoryId)"
+                                    OnCancel="() => _askCategoryFor = null" />
                 }
             }
         </div>
@@ -77,7 +62,6 @@
 @code {
     private List<TaskDto>? _items;
     private int? _askCategoryFor;
-    private int _chosenCategoryId;
     private bool _confirmEmpty;
 
     [Parameter]
@@ -102,15 +86,13 @@
     {
         switch (await State.RestoreFromTrashAsync(task.Id, categoryId))
         {
-            case RestoreResult.Restored:
+            case ReturnResult.Done:
                 _items?.Remove(task);
                 _askCategoryFor = null;
                 break;
 
-            case RestoreResult.NeedsCategory:
+            case ReturnResult.NeedsCategory:
                 _askCategoryFor = task.Id;
-                _chosenCategoryId = State.FindCategory(State.LastUsedCategoryId)?.Id
-                                    ?? State.OrderedCategories.FirstOrDefault()?.Id ?? 0;
                 break;
         }
     }

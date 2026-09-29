@@ -1,0 +1,27 @@
+.choice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0 6px;
+    padding: 7px 9px;
+    border-radius: 10px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 12px;
+}
+
+.choice select {
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12px;
+}
+
+.buttons {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
