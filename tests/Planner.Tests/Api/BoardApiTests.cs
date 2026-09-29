@@ -14,7 +14,7 @@ public class BoardApiTests : ApiTestBase
         Assert.Null(board.LastUsedCategoryId);
         Assert.Equal(4, board.Roles.Count(r => r.IsSharpenSaw));
         Assert.Equal(["Я сама", "Семья", "Работа", "Дом"], board.Roles.Where(r => !r.IsSharpenSaw).Select(r => r.Name));
-        Assert.Equal(10, board.RolePalette.Count);
+        Assert.Equal(18, board.RolePalette.Count);
         Assert.All(board.Roles, r => Assert.Contains(r.Color, board.RolePalette));
         Assert.Empty(board.SomedayTasks);
     }

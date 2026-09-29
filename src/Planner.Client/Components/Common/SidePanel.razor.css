@@ -1,5 +1,31 @@
-/* Полоска-шторка свёрнутой панели */
+/* Ячейка сетки .app: в ней полоска и/или сама панель */
+.side {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+/* Место под панель: на своём месте — во всю ячейку */
+.host {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.host ::deep .panel {
+    flex: 1;
+}
+
+/* Свёрнута в полоску — панель скрыта, но не удалена (её состояние сохраняется) */
+.mode-strip .host {
+    display: none;
+}
+
+/* Полоска-шторка */
 .strip {
+    flex: 1;
     align-items: center;
     gap: 10px;
     width: 100%;
@@ -21,39 +47,36 @@
     letter-spacing: 0.02em;
 }
 
-.strip.left .strip-label {
+.left .strip-label {
     transform: rotate(180deg); /* читается снизу вверх, как корешок книги слева */
 }
 
-/* Панель поверх недели, когда на месте ей не хватает ширины */
+/* Поверх недели, когда на месте панели не хватает ширины (позиционируется относительно .app) */
 .overlay-backdrop {
     position: fixed;
     inset: 0;
     z-index: 30;
 }
 
-.overlay {
+.mode-overlay .host {
     position: absolute;
     top: 14px;
     bottom: 14px;
     z-index: 31;
-    display: flex;
-    flex-direction: column;
     border-radius: var(--panel-radius);
     box-shadow: 0 12px 40px rgba(60, 90, 90, 0.18);
 }
 
-.overlay.left {
+.mode-overlay.left .host {
     left: 14px;
     width: var(--left-width);
 }
 
-.overlay.right {
+.mode-overlay.right .host {
     right: 14px;
     width: var(--right-width);
 }
 
-.overlay ::deep .panel {
-    flex: 1;
+.mode-overlay .host ::deep .panel {
     background: #fffffff0;
 }

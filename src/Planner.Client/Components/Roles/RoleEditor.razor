@@ -32,14 +32,17 @@
     }
     else
     {
-        <div class="buttons">
-            @if (Role is { IsSharpenSaw: false })
-            {
+        @* Два ряда: действия с ролью и «Отмена / Сохранить» — в узкой панели в один ряд не помещаются *@
+        @if (Role is { IsSharpenSaw: false })
+        {
+            <div class="tools">
                 <button type="button" class="btn quiet move" title="Выше" @onclick="() => State.MoveRoleAsync(Role.Id, -1)">↑</button>
                 <button type="button" class="btn quiet move" title="Ниже" @onclick="() => State.MoveRoleAsync(Role.Id, +1)">↓</button>
+                <span class="spacer"></span>
                 <button type="button" class="btn quiet delete" @onclick="() => _confirmDelete = true">удалить</button>
-            }
-            <span class="spacer"></span>
+            </div>
+        }
+        <div class="buttons">
             <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
             <button type="button" class="btn" disabled="@(Role is not { IsSharpenSaw: true } && string.IsNullOrWhiteSpace(_name))"
                     @onclick="() => SaveAsync(_name)">

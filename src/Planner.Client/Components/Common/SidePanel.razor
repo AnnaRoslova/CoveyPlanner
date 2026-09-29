@@ -1,26 +1,27 @@
 @* Обёртка боковой панели: открыта на месте, свёрнута в полоску-шторку или показана поверх недели.
-   Внутри панели кнопка сворачивания — <PanelToggle />. *@
+   Содержимое панели всегда остаётся на одном месте в дереве компонентов — меняется только оформление.
+   Поэтому при сворачивании/разворачивании (и при изменении ширины окна) не теряются открытые
+   редакторы и введённый текст. Внутри панели кнопка сворачивания — <PanelToggle />. *@
 @implements IDisposable
 @inject LayoutState Layout
 
 <CascadingValue Value="this" IsFixed="true">
-    @if (Mode == PanelMode.Open)
-    {
-        @ChildContent
-    }
-    else
-    {
-        <button type="button" class="panel strip @SideClass" title="Показать: @Title" @onclick="ToggleAsync">
-            <Icon Name="@(Side == PanelSide.Left ? "chevrons-right" : "chevrons-left")" Size="15" />
-            <span class="strip-label">@Title</span>
-        </button>
+    <div class="side @SideClass @ModeClass">
+        @if (Mode != PanelMode.Open)
+        {
+            <button type="button" class="panel strip" title="Показать: @Title" @onclick="ToggleAsync">
+                <Icon Name="@(Side == PanelSide.Left ? "chevrons-right" : "chevrons-left")" Size="15" />
+                <span class="strip-label">@Title</span>
+            </button>
+        }
 
         @if (Mode == PanelMode.Overlay)
         {
             <div class="overlay-backdrop" @onclick="Layout.ClosePeek"></div>
-            <div class="overlay @SideClass">@ChildContent</div>
         }
-    }
+
+        <div class="host">@ChildContent</div>
+    </div>
 </CascadingValue>
 
 @code {
@@ -37,6 +38,13 @@
     public PanelMode Mode => Side == PanelSide.Left ? Layout.Left : Layout.Right;
 
     private string SideClass => Side == PanelSide.Left ? "left" : "right";
+
+    private string ModeClass => Mode switch
+    {
+        PanelMode.Strip => "mode-strip",
+        PanelMode.Overlay => "mode-overlay",
+        _ => "mode-open",
+    };
 
     public Task ToggleAsync() => Layout.ToggleAsync(Side);
 

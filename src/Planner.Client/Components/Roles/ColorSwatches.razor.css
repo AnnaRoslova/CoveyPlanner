@@ -1,6 +1,6 @@
 .swatches {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr); /* 18 цветов — сетка 6×3 */
     gap: 6px;
     padding: 2px;
 }
