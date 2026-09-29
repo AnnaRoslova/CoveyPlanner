@@ -16,8 +16,17 @@ public sealed record DropEvent(string Kind, int Id, string Zone, string? Key, in
 public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncDisposable
 {
     // Виды перетаскиваемого (data-drag) и зоны (data-drop) — те же строки, что в разметке
-    public const string SomedayItem = "someday";
-    public const string SomedayZone = "someday";
+    public const string SomedayItem = "someday"; // дело в ленте
+    public const string DayItem = "day";         // дело в дне недели
+
+    public const string SomedayZone = "someday"; // категория ленты (список или заголовок)
+    public const string DayZone = "day";         // день недели
+
+    /// <summary>Что принимает категория ленты: дела ленты и дела из плана (возврат в ленту).</summary>
+    public const string SomedayAccepts = SomedayItem + " " + DayItem;
+
+    /// <summary>Что принимает день: дела из ленты и из других дней.</summary>
+    public const string DayAccepts = SomedayItem + " " + DayItem;
 
     private DotNetObjectReference<DragDropService>? _selfRef;
     private IJSObjectReference? _module;
@@ -41,9 +50,15 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
     {
         switch (drop)
         {
-            // Лента → лента: порядок в категории или перенос в другую категорию
-            case { Kind: SomedayItem, Zone: SomedayZone } when int.TryParse(drop.Key, out var categoryId):
-                await state.MoveSomedayTaskAsync(drop.Id, categoryId, drop.Index);
+            // Лента или день → лента: порядок в категории, другая категория, возврат из плана
+            case { Kind: SomedayItem or DayItem, Zone: SomedayZone } when int.TryParse(drop.Key, out var categoryId):
+                await state.MoveTaskToFeedAsync(drop.Id, categoryId, drop.Index);
+                break;
+
+            // Лента или день → день: запланировать, перенести на другой день, порядок в дне
+            case { Kind: SomedayItem or DayItem, Zone: DayZone }
+                when DateOnly.TryParseExact(drop.Key, "yyyy-MM-dd", out var date):
+                await state.MoveTaskToDayAsync(drop.Id, date, drop.Index);
                 break;
         }
     }

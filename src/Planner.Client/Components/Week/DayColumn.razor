@@ -3,8 +3,9 @@
 @inject PlannerState State
 
 <section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
-         data-drop="day" data-key="@Css.Date(Date)">
-    <div class="day-h">
+         data-drop="@DragDropService.DayZone" data-key="@Css.Date(Date)"
+         data-accept="@DragDropService.DayAccepts" data-fixed-sort>
+    <div class="day-h" data-list-head>
         <span class="dow">@RuDates.ShortDay(Date)</span>
         <span class="num">@Date.Day</span>
         @if (IsToday)
@@ -24,6 +25,8 @@
                  IsPending="task.Id < 0"
                  OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
                  OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
+                 DragKind="@(task.Id > 0 ? DragDropService.DayItem : null)"
+                 DragFixed="task.StartTime is not null"
                  DragId="task.Id" />
     }
 

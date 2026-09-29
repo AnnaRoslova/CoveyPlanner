@@ -38,6 +38,58 @@ public partial class PlannerState
         return ok;
     }
 
+    /// <summary>
+    /// Перетаскивание в день: из ленты, из другого дня или внутри дня.
+    /// Дело без времени встаёт на позицию index среди дел дня без времени (так же считает сервер);
+    /// дело со временем сохраняет время и встаёт по нему — index для него не важен.
+    /// </summary>
+    public async Task MoveTaskToDayAsync(int taskId, DateOnly date, int index)
+    {
+        if (taskId < 0 || FindTask(taskId) is not { } task || task.State == TaskStateDto.Trashed)
+        {
+            return;
+        }
+
+        var fromFeed = task.State == TaskStateDto.Someday;
+        var moved = task with
+        {
+            State = fromFeed ? TaskStateDto.Planned : task.State,
+            PlannedDate = date,
+            StartTime = fromFeed ? null : task.StartTime,
+        };
+
+        if (moved.StartTime is null)
+        {
+            var untimed = TasksOn(date).Where(t => t.StartTime is null && t.Id != taskId).ToList();
+            index = Math.Clamp(index, 0, untimed.Count);
+
+            // Бросили туда же, где лежало, — ничего не делаем
+            if (task.PlannedDate == date && task.StartTime is null
+                && TasksOn(date).Where(t => t.StartTime is null).ToList().FindIndex(t => t.Id == taskId) == index)
+            {
+                return;
+            }
+
+            untimed.Insert(index, moved);
+            for (var i = 0; i < untimed.Count; i++)
+            {
+                _tasks[untimed[i].Id] = untimed[i] with { SortOrder = i };
+            }
+        }
+        else
+        {
+            if (task.PlannedDate == date)
+            {
+                return; // дело со временем стоит по времени — внутри своего дня двигать некуда
+            }
+
+            _tasks[taskId] = moved;
+        }
+
+        UpdateGoalOfTask(taskId, g => g with { PlannedDate = date });
+        await SaveAsync(() => api.MoveTaskAsync(taskId, new DayTargetDto(date, index)));
+    }
+
     /// <summary>Отметка «выполнено»; у связанной цели отметка меняется вместе с делом.</summary>
     public async Task SetDoneAsync(int taskId, bool isDone)
     {

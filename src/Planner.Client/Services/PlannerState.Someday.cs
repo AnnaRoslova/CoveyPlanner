@@ -111,27 +111,37 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Перетаскивание внутри ленты: новое место в своей или другой категории.
+    /// Перетаскивание в ленту: из другой категории, внутри категории или из плана.
+    /// Дело из плана возвращается без даты, времени и отметки «выполнено», связь с целью разрывается.
     /// index — позиция среди дел категории без самого перетаскиваемого (так же считает сервер).
     /// </summary>
-    public async Task MoveSomedayTaskAsync(int taskId, int categoryId, int index)
+    public async Task MoveTaskToFeedAsync(int taskId, int categoryId, int index)
     {
-        if (taskId < 0 || FindTask(taskId) is not { State: TaskStateDto.Someday } task || FindCategory(categoryId) is null)
+        if (taskId < 0 || FindTask(taskId) is not { } task || task.State == TaskStateDto.Trashed
+            || FindCategory(categoryId) is null)
         {
             return;
         }
 
+        var wasSomeday = task.State == TaskStateDto.Someday;
         var siblings = SomedayIn(categoryId).Where(t => t.Id != taskId).ToList();
         index = Math.Clamp(index, 0, siblings.Count);
 
         // Бросили туда же, где лежало, — ничего не делаем
-        if (task.CategoryId == categoryId && SomedayIn(categoryId).ToList().FindIndex(t => t.Id == taskId) == index)
+        if (wasSomeday && task.CategoryId == categoryId
+            && SomedayIn(categoryId).ToList().FindIndex(t => t.Id == taskId) == index)
         {
             return;
         }
 
-        var oldCategoryId = task.CategoryId;
-        siblings.Insert(index, task with { CategoryId = categoryId });
+        var oldCategoryId = wasSomeday ? task.CategoryId : null;
+        siblings.Insert(index, task with
+        {
+            State = TaskStateDto.Someday,
+            CategoryId = categoryId,
+            PlannedDate = null,
+            StartTime = null,
+        });
         for (var i = 0; i < siblings.Count; i++)
         {
             _tasks[siblings[i].Id] = siblings[i] with { SortOrder = i };
@@ -140,6 +150,11 @@ public partial class PlannerState
         if (oldCategoryId is { } old && old != categoryId)
         {
             RenumberSomeday(old);
+        }
+
+        if (!wasSomeday)
+        {
+            UnlinkGoalsFrom(taskId); // сервер тоже разрывает связь с целью при возврате в ленту
         }
 
         await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index)));

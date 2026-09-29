@@ -4,6 +4,9 @@
 //   что тащим:   data-drag="<вид>" data-id="<Id>"            — например, data-drag="someday"
 //   куда бросаем: data-drop="<зона>" data-key="<ключ>" data-accept="<виды через пробел>"
 //                 data-drop-index="0" — зона-«мишень» с фиксированной позицией (заголовок категории)
+//                 data-fixed-sort — в зоне есть записи со своим местом (data-fixed: дела со временем в дне);
+//                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
+//                 data-list-head — внутри зоны: заголовок, под которым начинается список (для пустого дня)
 //
 // Мышь: перетаскивание начинается после сдвига на 5px (иначе это обычный клик).
 // Палец/перо: после долгого нажатия ~300 мс без движения (иначе это прокрутка).
@@ -162,24 +165,37 @@ function updateTarget() {
         return;
     }
 
-    // Список: позиция среди записей этой зоны (без самой перетаскиваемой и без вложенных зон)
+    // Записи этой зоны (без самой перетаскиваемой и без записей вложенных зон)
     const items = [...zone.querySelectorAll('[data-drag]')]
         .filter(item => item !== drag.el && item.closest('[data-drop]') === zone);
-    let index = items.length;
-    for (let i = 0; i < items.length; i++) {
-        const r = items[i].getBoundingClientRect();
+    const autoSorted = zone.hasAttribute('data-fixed-sort');
+
+    // Запись со своим местом (дело со временем): встанет сама, по времени — только подсветка дня
+    if (autoSorted && drag.el.hasAttribute('data-fixed')) {
+        drag.target = { zone: zone.dataset.drop, key: zone.dataset.key ?? null, index: 0 };
+        drag.line.hidden = true;
+        return;
+    }
+
+    // Позиция — среди записей с ручным порядком (в дне: дела без времени, они всегда ниже дел со временем)
+    const slots = autoSorted ? items.filter(item => !item.hasAttribute('data-fixed')) : items;
+    let index = slots.length;
+    for (let i = 0; i < slots.length; i++) {
+        const r = slots[i].getBoundingClientRect();
         if (drag.y < r.top + r.height / 2) { index = i; break; }
     }
     drag.target = { zone: zone.dataset.drop, key: zone.dataset.key ?? null, index };
 
-    // Линия вставки: над записью с номером index или под последней
+    // Линия вставки: над записью с номером index, под последней — или под заголовком/записями со своим местом
     let lineY;
-    if (items.length === 0) lineY = zoneRect.top + 6;
-    else if (index < items.length) lineY = items[index].getBoundingClientRect().top - 2;
-    else lineY = items[items.length - 1].getBoundingClientRect().bottom + 1;
+    if (index < slots.length) lineY = slots[index].getBoundingClientRect().top - 2;
+    else if (slots.length > 0) lineY = slots[slots.length - 1].getBoundingClientRect().bottom + 1;
+    else if (items.length > 0) lineY = items[items.length - 1].getBoundingClientRect().bottom + 1;
+    else lineY = (zone.querySelector('[data-list-head]')?.getBoundingClientRect().bottom ?? zoneRect.top + 4) + 2;
 
-    const left = items[0]?.getBoundingClientRect().left ?? zoneRect.left + 8;
-    const right = items[0]?.getBoundingClientRect().right ?? zoneRect.right - 8;
+    const sample = (items[0] ?? zone).getBoundingClientRect();
+    const left = items[0] ? sample.left : zoneRect.left + 8;
+    const right = items[0] ? sample.right : zoneRect.right - 8;
     Object.assign(drag.line.style, { left: `${left}px`, top: `${lineY - 1}px`, width: `${right - left}px` });
     drag.line.hidden = false;
 }

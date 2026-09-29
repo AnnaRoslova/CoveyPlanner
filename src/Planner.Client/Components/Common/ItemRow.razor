@@ -3,7 +3,7 @@
 
 <div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
-     data-drag="@DragKind" data-id="@DragId"
+     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed"
      @onclick="OnClick">
     @if (Marker == ItemMarker.Check && OnToggle.HasDelegate)
     {
@@ -118,4 +118,8 @@
 
     [Parameter]
     public int DragId { get; set; }
+
+    /// <summary>У записи своё место в зоне (дело со временем в дне) — ручной порядок на неё не влияет.</summary>
+    [Parameter]
+    public bool DragFixed { get; set; }
 }

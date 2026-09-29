@@ -89,7 +89,7 @@ else
     private bool IsOpen => IsSearching || Category.IsExpanded;
 
     /// <summary>Во время поиска список отфильтрован — позиция при перетаскивании была бы неверной, поэтому отключаем.</summary>
-    private string DropAccept => IsSearching ? "" : DragDropService.SomedayItem;
+    private string DropAccept => IsSearching ? "" : DragDropService.SomedayAccepts;
 
     /// <summary>При поиске: все дела, если совпало название категории, иначе только совпавшие.</summary>
     private IReadOnlyList<TaskDto> VisibleTasks =>
