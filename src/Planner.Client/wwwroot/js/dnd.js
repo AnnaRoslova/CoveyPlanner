@@ -125,6 +125,7 @@ function start(x, y) {
         id: Number(el.dataset.id),
         offsetX: startX - rect.left,
         offsetY: startY - rect.top,
+        height: rect.height,
         x, y,
         target: null,
         raf: 0,
@@ -179,10 +180,11 @@ function updateTarget() {
 
     // Позиция — среди записей с ручным порядком (в дне: дела без времени, они всегда ниже дел со временем)
     const slots = autoSorted ? items.filter(item => !item.hasAttribute('data-fixed')) : items;
+    const probe = probeY(zone);
     let index = slots.length;
     for (let i = 0; i < slots.length; i++) {
         const r = slots[i].getBoundingClientRect();
-        if (drag.y < r.top + r.height / 2) { index = i; break; }
+        if (probe < r.top + r.height / 2) { index = i; break; }
     }
     drag.target = { zone: zone.dataset.drop, key: zone.dataset.key ?? null, index };
 
@@ -198,6 +200,19 @@ function updateTarget() {
     const right = items[0] ? sample.right : zoneRect.right - 8;
     Object.assign(drag.line.style, { left: `${left}px`, top: `${lineY - 1}px`, width: `${right - left}px` });
     drag.line.hidden = false;
+}
+
+// По какой высоте считать позицию. Внутри своего списка — по краю призрака, который «наезжает» на соседа:
+// тащим вверх — верхний край, вниз — нижний. Запись меняется местами с соседней, как только край
+// призрака пересёк середину соседа (глаз следит за призраком, а не за указателем; в узком дне записи
+// бывают в 2–3 строки, и по центру призрака пришлось бы тащить на целую высоту записи).
+// Из другой зоны — по указателю.
+function probeY(zone) {
+    if (drag.el.closest('[data-drop]') !== zone) return drag.y;
+    const src = drag.el.getBoundingClientRect();
+    const ghostTop = drag.y - drag.offsetY;
+    const ghostBottom = ghostTop + drag.height;
+    return ghostTop + drag.height / 2 < src.top + src.height / 2 ? ghostTop : ghostBottom;
 }
 
 function showBox(box, rect) {

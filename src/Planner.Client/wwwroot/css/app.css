@@ -215,15 +215,15 @@ body.dragging * {
     border-radius: 8px;
     background: #fff !important;
     box-shadow: 0 10px 28px rgba(60, 90, 90, 0.22);
-    opacity: 0.96;
+    opacity: 0.85;
     pointer-events: none;
     will-change: transform;
 }
 
-/* Линия «сюда встанет» */
+/* Линия «сюда встанет» — поверх призрака, иначе он её закрывает */
 .drop-line {
     position: fixed;
-    z-index: 999;
+    z-index: 1001;
     height: 3px;
     border-radius: 2px;
     background: var(--b-deep);
