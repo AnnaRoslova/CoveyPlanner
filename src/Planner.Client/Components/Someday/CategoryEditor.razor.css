@@ -1,0 +1,51 @@
+.cat-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 4px 0 8px;
+    padding: 8px;
+    border-radius: 14px;
+    background: #ffffffc0;
+}
+
+.line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.emoji-btn {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--b-soft);
+    font-size: 16px;
+    line-height: 1;
+}
+
+.emoji-btn.empty {
+    color: var(--b-deep);
+}
+
+.buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.delete {
+    margin-right: auto;
+}
+
+.delete:hover {
+    color: var(--a-deep);
+}
+
+.confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text);
+    font-size: 12.5px;
+}

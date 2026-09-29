@@ -4,16 +4,17 @@
 <aside class="panel someday">
     <div class="search">
         <Icon Name="search" Size="14" />
-        <input type="search" placeholder="Поиск по ленте" @bind="_search" @bind:event="oninput" />
+        <input type="search" placeholder="Поиск по ленте" @bind="_search" @bind:event="oninput"
+               @onkeydown="OnSearchKey" />
     </div>
 
     @if (State.Categories.Count > 0)
     {
         <QuickCapture />
     }
-    else
+    else if (!_creatingCategory)
     {
-        <button class="first-category">
+        <button class="first-category" @onclick="() => _creatingCategory = true">
             Здесь будут мысли на «когда-нибудь».<br />
             <span>+ создайте первую категорию</span>
         </button>
@@ -22,19 +23,55 @@
     <div class="panel-scroll">
         @foreach (var category in State.OrderedCategories)
         {
-            <CategorySection Category="category" Tasks="State.SomedayIn(category.Id).ToList()" />
+            var tasks = State.SomedayIn(category.Id).ToList();
+            if (!IsSearching || MatchesSearch(category, tasks))
+            {
+                <CategorySection @key="category.Id" Category="category" Tasks="tasks" Search="@Query" />
+            }
         }
-        @if (State.Categories.Count > 0)
+
+        @if (IsSearching && !State.OrderedCategories.Any(c => MatchesSearch(c, State.SomedayIn(c.Id).ToList())))
         {
-            <button class="add">+ категория</button>
+            <div class="nothing">Ничего не нашлось</div>
+        }
+
+        @if (_creatingCategory)
+        {
+            <CategoryEditor OnClose="() => _creatingCategory = false" />
+        }
+        else if (State.Categories.Count > 0 && !IsSearching)
+        {
+            <button class="add" @onclick="() => _creatingCategory = true">+ категория</button>
         }
     </div>
 
-    <button class="trash" title="Корзина">
+    <button class="trash" title="Корзина" @onclick="() => _trashOpen = !_trashOpen">
         <Icon Name="trash" Size="15" />
     </button>
+
+    @if (_trashOpen)
+    {
+        <TrashPopup OnClose="() => _trashOpen = false" />
+    }
 </aside>
 
 @code {
     private string _search = "";
+    private bool _creatingCategory;
+    private bool _trashOpen;
+
+    private string Query => _search.Trim();
+
+    private bool IsSearching => Query.Length > 0;
+
+    private bool MatchesSearch(CategoryDto category, IReadOnlyList<TaskDto> tasks) =>
+        TextSearch.Contains(category.Name, Query) || tasks.Any(t => TextSearch.Contains(t.Title, Query));
+
+    private void OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _search = "";
+        }
+    }
 }

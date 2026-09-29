@@ -17,6 +17,33 @@
     background: var(--b-soft);
 }
 
+/* Ещё сохраняется — чуть бледнее */
+.item.pending {
+    opacity: 0.6;
+}
+
+/* Действия справа (удалить и т. п.) — только при наведении */
+.actions {
+    flex: none;
+    display: flex;
+    gap: 2px;
+    margin: -2px -4px -2px 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.item:hover .actions,
+.actions:focus-within {
+    opacity: 1;
+}
+
+/* На сенсорных экранах наведения нет — действия видны всегда, но бледно */
+@media (hover: none) {
+    .actions {
+        opacity: 0.6;
+    }
+}
+
 .tx {
     flex: 1;
     min-width: 0;

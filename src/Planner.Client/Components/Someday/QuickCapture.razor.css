@@ -21,6 +21,17 @@
     color: var(--faint);
 }
 
+.quick:focus-within {
+    border-style: solid;
+}
+
+.saved {
+    margin: -4px 20px 6px;
+    color: var(--b-deep);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
 .quick select {
     max-width: 92px;
     padding: 3px 6px;

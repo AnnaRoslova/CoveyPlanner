@@ -6,15 +6,22 @@
     padding: 8px 6px;
     border-radius: 12px;
     font-weight: 700;
-    text-align: left;
+    cursor: pointer;
+    user-select: none;
 }
 
 .cat-h:hover {
     background: #ffffff90;
 }
 
+.cat-h:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--b) 60%, #fff);
+    outline-offset: -2px;
+}
+
 .chev {
     display: inline-flex;
+    flex: none;
     width: 10px;
     color: var(--faint);
     transition: transform 0.2s;
@@ -35,11 +42,43 @@
     white-space: nowrap;
 }
 
-.cnt {
+/* «⋯» — видна при наведении на заголовок */
+.menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
     margin-left: auto;
+    border-radius: 50%;
+    color: var(--faint);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.cat-h:hover .menu,
+.menu:focus-visible {
+    opacity: 1;
+}
+
+.menu:hover {
+    background: #fff;
+    color: var(--b-deep);
+}
+
+@media (hover: none) {
+    .menu {
+        opacity: 0.6;
+    }
+}
+
+.cnt {
+    min-width: 14px;
     color: var(--faint);
     font-size: 11.5px;
     font-weight: 700;
+    text-align: right;
 }
 
 .cat-b {

@@ -1,9 +1,11 @@
-@* Быстрое поле «Записать мысль…» + выбор категории (по умолчанию — последняя использованная) *@
-@inject PlannerState State
+@* Быстрое поле «Записать мысль…» + выбор категории (по умолчанию — последняя использованная).
+   Enter — мысль уходит наверх выбранной категории, поле очищается и готово к следующей. *@
+@inherits StateComponent
 
 <div class="quick">
-    <input placeholder="Записать мысль…" @bind="_text" @bind:event="oninput" />
-    <select title="Категория" @bind="_categoryId">
+    <input placeholder="Записать мысль…" maxlength="500"
+           @bind="_text" @bind:event="oninput" @onkeydown="OnKeyDown" />
+    <select title="Категория" @bind:get="SelectedCategoryId" @bind:set="value => _categoryId = value">
         @foreach (var category in State.OrderedCategories)
         {
             <option value="@category.Id">@CategoryLabel(category)</option>
@@ -11,19 +13,61 @@
     </select>
 </div>
 
-@code {
-    private string _text = "";
-    private int _categoryId;
+@if (_saved is not null)
+{
+    <div class="saved">✓ записано в @_saved</div>
+}
 
-    protected override void OnParametersSet()
+@code {
+    private static readonly TimeSpan SavedHintFor = TimeSpan.FromSeconds(2);
+
+    private string _text = "";
+    private int? _categoryId;
+    private string? _saved;
+    private int _savedVersion;
+
+    /// <summary>Выбранная вручную категория, а если её нет (или удалили) — последняя использованная или первая.</summary>
+    private int SelectedCategoryId =>
+        _categoryId is { } id && State.FindCategory(id) is not null
+            ? id
+            : State.FindCategory(State.LastUsedCategoryId)?.Id ?? State.OrderedCategories.FirstOrDefault()?.Id ?? 0;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
     {
-        // Выбранная категория могла исчезнуть — берём последнюю использованную или первую
-        if (State.Categories.All(c => c.Id != _categoryId))
+        if (e.Key == "Escape")
         {
-            _categoryId = State.LastUsedCategoryId
-                          ?? State.OrderedCategories.FirstOrDefault()?.Id
-                          ?? 0;
+            _text = "";
+            return;
         }
+
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_text) || State.FindCategory(SelectedCategoryId) is not { } category)
+        {
+            return;
+        }
+
+        var title = _text;
+        _text = "";
+        _categoryId = category.Id;
+        ShowSaved(CategoryLabel(category));
+        if (!await State.CreateSomedayTaskAsync(title, category.Id))
+        {
+            _saved = null; // не сохранилось — об этом скажет сообщение внизу
+        }
+    }
+
+    private void ShowSaved(string categoryLabel)
+    {
+        _saved = categoryLabel;
+        var version = ++_savedVersion;
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Delay(SavedHintFor);
+            if (version == _savedVersion)
+            {
+                _saved = null;
+                StateHasChanged();
+            }
+        });
     }
 
     private static string CategoryLabel(CategoryDto category) =>

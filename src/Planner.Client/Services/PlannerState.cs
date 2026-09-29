@@ -6,11 +6,15 @@ namespace Planner.Client.Services;
 /// Состояние экрана на клиенте: лента, роли, текущая неделя.
 /// Компоненты читают данные отсюда и подписываются на <see cref="Changed"/>.
 /// Изменения делаются оптимистично: сначала локально, затем на сервере;
-/// при ошибке состояние перезагружается с сервера.
+/// при ошибке показывается сообщение и состояние перезагружается с сервера.
+/// Операции разнесены по файлам: PlannerState.Someday.cs — лента и корзина.
 /// </summary>
-public class PlannerState(PlannerApi api)
+public partial class PlannerState(PlannerApi api, Notifier notifier)
 {
     private readonly Dictionary<int, TaskDto> _tasks = [];
+
+    // Отрицательные Id — у записей, которые ещё сохраняются на сервере
+    private int _nextTempId = -1;
 
     public event Action? Changed;
 
@@ -94,15 +98,22 @@ public class PlannerState(PlannerApi api)
 
     public async Task GoToWeekAsync(DateOnly anyDate)
     {
-        WeekStart = RuDates.WeekStartOf(anyDate);
+        var weekStart = RuDates.WeekStartOf(anyDate);
+        WeekStart = weekStart;
         NotifyChanged();
         try
         {
-            ApplyWeek(await api.GetWeekAsync(WeekStart));
+            var week = await api.GetWeekAsync(weekStart);
+
+            // Пока ждали ответа, могли перелистнуть дальше — старый ответ не нужен
+            if (WeekStart == weekStart)
+            {
+                ApplyWeek(week);
+            }
         }
         catch (ApiException ex)
         {
-            LoadError = ex.Message;
+            notifier.Error(ex.Message);
         }
 
         NotifyChanged();
@@ -149,6 +160,47 @@ public class PlannerState(PlannerApi api)
 
         Goals = [.. week.Goals];
     }
+
+    /// <summary>
+    /// Отправить изменение на сервер после того, как оно уже применено локально.
+    /// При ошибке — сообщение и перезагрузка всего состояния с сервера (откат).
+    /// </summary>
+    private async Task<bool> SaveAsync(Func<Task> serverCall)
+    {
+        NotifyChanged();
+        try
+        {
+            await serverCall();
+            NotifyChanged();
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            notifier.Error(ex.Message);
+            await ReloadAsync();
+            return false;
+        }
+    }
+
+    /// <summary>Перечитать всё с сервера, не показывая экран загрузки.</summary>
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            var boardTask = api.GetBoardAsync();
+            var weekTask = api.GetWeekAsync(WeekStart);
+            ApplyBoard(await boardTask);
+            ApplyWeek(await weekTask);
+        }
+        catch (ApiException ex)
+        {
+            notifier.Error(ex.Message);
+        }
+
+        NotifyChanged();
+    }
+
+    private int NextTempId() => _nextTempId--;
 
     private void NotifyChanged() => Changed?.Invoke();
 }

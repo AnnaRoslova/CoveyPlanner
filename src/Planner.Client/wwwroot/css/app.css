@@ -105,6 +105,81 @@ input, select, textarea {
     color: var(--b-deep);
 }
 
+/* Поле ввода «без форм» (InlineInput): строка записи, которую можно сразу печатать */
+.inline-input {
+    display: block;
+    width: 100%;
+    padding: 5px 8px;
+    border: 1.5px solid color-mix(in srgb, var(--b) 60%, #fff);
+    border-radius: 8px;
+    outline: none;
+    background: #fff;
+    font-size: 13px;
+}
+
+.inline-input::placeholder {
+    color: var(--faint);
+}
+
+/* Маленькие кнопки-пилюли в редакторах и подтверждениях */
+.btn {
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.btn:hover {
+    background: color-mix(in srgb, var(--b) 35%, #fff);
+}
+
+.btn.quiet {
+    background: transparent;
+    color: var(--soft);
+}
+
+.btn.quiet:hover {
+    background: #ffffff90;
+}
+
+.btn.danger {
+    background: var(--a-soft);
+    color: var(--a-deep);
+}
+
+.btn.danger:hover {
+    background: color-mix(in srgb, var(--a) 35%, #fff);
+}
+
+/* Маленькая круглая кнопка-иконка справа в записи (удалить, вернуть…) */
+.row-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: var(--faint);
+}
+
+.row-action:hover {
+    background: #fff;
+    color: var(--a-deep);
+}
+
+.row-action.positive:hover {
+    color: var(--b-deep);
+}
+
+/* Подсветка совпадений поиска */
+mark.hit {
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b) 45%, #fff);
+    color: inherit;
+}
+
 /* Тонкие полосы прокрутки */
 * {
     scrollbar-width: thin;

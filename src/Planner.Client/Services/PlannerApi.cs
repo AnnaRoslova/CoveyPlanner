@@ -4,8 +4,14 @@ using Planner.Shared;
 
 namespace Planner.Client.Services;
 
-/// <summary>Ошибка API с текстом для пользователя (из ProblemDetails.title).</summary>
-public class ApiException(string message) : Exception(message);
+/// <summary>Ошибка API с текстом для пользователя (ProblemDetails.title) и кодом (ProblemDetails.code).</summary>
+public class ApiException(string message, string? code = null) : Exception(message)
+{
+    public string? Code { get; } = code;
+
+    /// <summary>Дело возвращается в ленту без категории — нужно спросить категорию и повторить запрос.</summary>
+    public bool IsCategoryRequired => Code == ProblemCodes.CategoryRequired;
+}
 
 /// <summary>Типизированный клиент к /api сервера.</summary>
 public class PlannerApi(HttpClient http)
@@ -36,7 +42,9 @@ public class PlannerApi(HttpClient http)
 
     public Task<List<TaskDto>> GetTrashAsync() => GetAsync<List<TaskDto>>("api/trash");
 
-    public Task<TaskDto> RestoreTaskAsync(int id) => SendAsync<TaskDto>(HttpMethod.Post, $"api/trash/{id}/restore");
+    /// <summary>categoryId — куда вернуть, если своей категории у дела нет (иначе ApiException.IsCategoryRequired).</summary>
+    public Task<TaskDto> RestoreTaskAsync(int id, int? categoryId = null) =>
+        SendAsync<TaskDto>(HttpMethod.Post, $"api/trash/{id}/restore{CategoryQuery(categoryId)}");
 
     public Task DeleteForeverAsync(int id) => SendAsync(HttpMethod.Delete, $"api/trash/{id}");
 
@@ -90,6 +98,8 @@ public class PlannerApi(HttpClient http)
     public Task<TaskDto> MoveGoalToSomedayAsync(int id, GoalToSomedayRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/goals/{id}/to-someday", request);
 
+    private static string CategoryQuery(int? categoryId) => categoryId is { } id ? $"?categoryId={id}" : "";
+
     private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private async Task<T> GetAsync<T>(string url) => await SendAsync<T>(HttpMethod.Get, url);
@@ -133,15 +143,14 @@ public class PlannerApi(HttpClient http)
 
         var problem = await TryReadProblemAsync(response);
         response.Dispose();
-        throw new ApiException(problem ?? $"Ошибка сервера ({(int)response.StatusCode}).");
+        throw new ApiException(problem?.Title ?? $"Ошибка сервера ({(int)response.StatusCode}).", problem?.Code);
     }
 
-    private static async Task<string?> TryReadProblemAsync(HttpResponseMessage response)
+    private static async Task<Problem?> TryReadProblemAsync(HttpResponseMessage response)
     {
         try
         {
-            var problem = await response.Content.ReadFromJsonAsync<ProblemTitle>();
-            return problem?.Title;
+            return await response.Content.ReadFromJsonAsync<Problem>();
         }
         catch (Exception)
         {
@@ -149,5 +158,6 @@ public class PlannerApi(HttpClient http)
         }
     }
 
-    private sealed record ProblemTitle(string? Title);
+    /// <summary>Нужные поля ProblemDetails.</summary>
+    private sealed record Problem(string? Title, string? Code);
 }

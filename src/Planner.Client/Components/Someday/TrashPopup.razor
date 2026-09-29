@@ -1,0 +1,130 @@
+@* Корзина: всплывающее окно над иконкой. Вернуть / удалить навсегда / очистить всё.
+   Если у дела нет своей категории, при возврате под ним появляется выбор категории. *@
+@inject PlannerState State
+
+<div class="backdrop" @onclick="OnClose"></div>
+
+<div class="trash-popup" role="dialog" aria-label="Корзина">
+    <div class="title">
+        <span>Корзина</span>
+        <button type="button" class="row-action" title="Закрыть" @onclick="OnClose"><Icon Name="x" Size="12" /></button>
+    </div>
+
+    @if (_items is null)
+    {
+        <div class="empty">Загрузка…</div>
+    }
+    else if (_items.Count == 0)
+    {
+        <div class="empty">Пусто</div>
+    }
+    else
+    {
+        <div class="list">
+            @foreach (var task in _items)
+            {
+                <div class="row">
+                    <div class="text">
+                        <div>@task.Title</div>
+                        <div class="from">@FromLabel(task)</div>
+                    </div>
+                    <button type="button" class="row-action positive" title="Вернуть" @onclick="() => RestoreAsync(task, null)">
+                        <Icon Name="restore" Size="13" />
+                    </button>
+                    <button type="button" class="row-action" title="Удалить навсегда" @onclick="() => DeleteAsync(task)">
+                        <Icon Name="x" Size="12" />
+                    </button>
+                </div>
+
+                @if (task.Id == _askCategoryFor)
+                {
+                    <div class="ask">
+                        @if (State.Categories.Count == 0)
+                        {
+                            <span>Сначала создайте категорию в ленте.</span>
+                        }
+                        else
+                        {
+                            <span>В какую категорию вернуть?</span>
+                            <select @bind="_chosenCategoryId">
+                                @foreach (var category in State.OrderedCategories)
+                                {
+                                    <option value="@category.Id">@(category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}")</option>
+                                }
+                            </select>
+                            <button type="button" class="btn" @onclick="() => RestoreAsync(task, _chosenCategoryId)">Вернуть</button>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="footer">
+            @if (_confirmEmpty)
+            {
+                <span>Удалить всё навсегда?</span>
+                <button type="button" class="btn quiet" @onclick="() => _confirmEmpty = false">Нет</button>
+                <button type="button" class="btn danger" @onclick="EmptyAsync">Да</button>
+            }
+            else
+            {
+                <button type="button" class="btn quiet" @onclick="() => _confirmEmpty = true">очистить всё</button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<TaskDto>? _items;
+    private int? _askCategoryFor;
+    private int _chosenCategoryId;
+    private bool _confirmEmpty;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override async Task OnInitializedAsync() => _items = await State.GetTrashAsync();
+
+    /// <summary>Откуда дело попало в корзину: из дня плана или из категории ленты.</summary>
+    private string FromLabel(TaskDto task)
+    {
+        if (task.PlannedDate is { } date)
+        {
+            return $"из плана: {RuDates.ShortDay(date)}, {RuDates.DayMonth(date)}";
+        }
+
+        return State.FindCategory(task.CategoryId) is { } category
+            ? $"из ленты: {(category.Emoji is null ? "" : category.Emoji + " ")}{category.Name}"
+            : "категории больше нет";
+    }
+
+    private async Task RestoreAsync(TaskDto task, int? categoryId)
+    {
+        switch (await State.RestoreFromTrashAsync(task.Id, categoryId))
+        {
+            case RestoreResult.Restored:
+                _items?.Remove(task);
+                _askCategoryFor = null;
+                break;
+
+            case RestoreResult.NeedsCategory:
+                _askCategoryFor = task.Id;
+                _chosenCategoryId = State.FindCategory(State.LastUsedCategoryId)?.Id
+                                    ?? State.OrderedCategories.FirstOrDefault()?.Id ?? 0;
+                break;
+        }
+    }
+
+    private async Task DeleteAsync(TaskDto task)
+    {
+        _items?.Remove(task);
+        await State.DeleteForeverAsync(task.Id);
+    }
+
+    private async Task EmptyAsync()
+    {
+        _items?.Clear();
+        _confirmEmpty = false;
+        await State.EmptyTrashAsync();
+    }
+}

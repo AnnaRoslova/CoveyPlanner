@@ -1,0 +1,32 @@
+@* Всплывающее сообщение внизу по центру; исчезает само через несколько секунд *@
+@implements IDisposable
+@inject Notifier Notifier
+
+@if (Notifier.Message is { } message)
+{
+    <div class="toast @(Notifier.IsError ? "error" : "")" role="status" @onclick="() => Notifier.Dismiss(Notifier.Version)">
+        @message
+    </div>
+}
+
+@code {
+    private static readonly TimeSpan ShowFor = TimeSpan.FromSeconds(5);
+
+    protected override void OnInitialized() => Notifier.Changed += OnChanged;
+
+    public void Dispose() => Notifier.Changed -= OnChanged;
+
+    private void OnChanged()
+    {
+        var version = Notifier.Version;
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (Notifier.Message is not null)
+            {
+                await Task.Delay(ShowFor);
+                Notifier.Dismiss(version);
+            }
+        });
+    }
+}

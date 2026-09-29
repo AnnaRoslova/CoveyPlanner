@@ -1,9 +1,10 @@
 @* Запись-строка (не карточка): дело в дне, дело в ленте или цель роли.
-   Слева квадратный чекбокс цвета роли (или точка-маркер в ленте), справа пилюли. *@
+   Слева квадратный чекбокс цвета роли (или точка-маркер в ленте), справа пилюли и действия. *@
 
-<div class="item @(IsDone ? "done" : "") @(Marker == ItemMarker.Bullet ? "bullet" : "")"
+<div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
-     data-drag="@DragKind" data-id="@DragId">
+     data-drag="@DragKind" data-id="@DragId"
+     @onclick="OnClick">
     @if (Marker == ItemMarker.Check)
     {
         <span class="ck"></span>
@@ -13,7 +14,17 @@
         <span class="dot"></span>
     }
     <div class="tx">
-        @Title
+        @foreach (var segment in TextSearch.Split(Title, Highlight))
+        {
+            if (segment.IsMatch)
+            {
+                <mark class="hit">@segment.Text</mark>
+            }
+            else
+            {
+                @segment.Text
+            }
+        }
         @if (TimeLabel is not null || IsRock || WhenLabel is not null)
         {
             <div class="pills">
@@ -32,6 +43,10 @@
             </div>
         }
     </div>
+    @if (Actions is not null)
+    {
+        <div class="actions" @onclick:stopPropagation="true">@Actions</div>
+    }
 </div>
 
 @code {
@@ -59,6 +74,22 @@
     /// <summary>Пилюля справа «Ср 10:00» — когда запланирована цель.</summary>
     [Parameter]
     public string? WhenLabel { get; set; }
+
+    /// <summary>Текст поиска — совпадения в названии подсвечиваются.</summary>
+    [Parameter]
+    public string? Highlight { get; set; }
+
+    /// <summary>Клик по записи (например, переименование).</summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>Кнопки справа, видны при наведении (клик по ним не считается кликом по записи).</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>Запись ещё сохраняется на сервере.</summary>
+    [Parameter]
+    public bool IsPending { get; set; }
 
     /// <summary>Что тащим при перетаскивании: "task" или "goal".</summary>
     [Parameter, EditorRequired]

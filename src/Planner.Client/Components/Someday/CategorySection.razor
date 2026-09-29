@@ -1,32 +1,142 @@
-@* Категория ленты: заголовок (эмодзи, название, серый счётчик), при раскрытии — дела и «+ добавить» *@
+@* Категория ленты: заголовок (эмодзи, название, серый счётчик), при раскрытии — дела и «+ добавить».
+   Во время поиска показываются только совпадения, и категория раскрыта принудительно. *@
+@inject PlannerState State
 
-<div class="cat @(Category.IsExpanded ? "open" : "")">
-    <button class="cat-h">
+@if (_editingCategory)
+{
+    <CategoryEditor Category="Category" OnClose="() => _editingCategory = false" />
+}
+else
+{
+<div class="cat @(IsOpen ? "open" : "")">
+    <div class="cat-h" role="button" tabindex="0" title="@(IsSearching ? null : IsOpen ? "Свернуть" : "Раскрыть")"
+         @onclick="ToggleAsync" @onkeydown="OnHeaderKey">
         <span class="chev"><Icon Name="chevron-right" Size="12" /></span>
         @if (Category.Emoji is not null)
         {
             <span class="emoji">@Category.Emoji</span>
         }
         <span class="name">@Category.Name</span>
-        <span class="cnt">@Tasks.Count</span>
-    </button>
+        <button type="button" class="menu" title="Изменить категорию"
+                @onclick="() => _editingCategory = true" @onclick:stopPropagation="true">
+            <Icon Name="more" Size="14" />
+        </button>
+        <span class="cnt">@VisibleTasks.Count</span>
+    </div>
 
-    @if (Category.IsExpanded)
+    @if (IsOpen)
     {
         <div class="cat-b" data-drop="someday" data-category="@Category.Id">
-            @foreach (var task in Tasks)
+            @foreach (var task in VisibleTasks)
             {
-                <ItemRow Title="@task.Title" Marker="ItemMarker.Bullet" DragKind="task" DragId="task.Id" />
+                if (task.Id == _editingTaskId)
+                {
+                    <InlineInput Value="@task.Title" MaxLength="500" SubmitOnBlur="true"
+                                 OnSubmit="title => RenameAsync(task.Id, title)" OnCancel="() => _editingTaskId = null" />
+                }
+                else
+                {
+                    <ItemRow Title="@task.Title" Marker="ItemMarker.Bullet" Highlight="@Search"
+                             IsPending="task.Id < 0" DragKind="task" DragId="task.Id"
+                             OnClick="() => StartEditing(task.Id)">
+                        <Actions>
+                            @if (task.Id > 0)
+                            {
+                                <button type="button" class="row-action" title="В корзину"
+                                        @onclick="() => State.TrashTaskAsync(task.Id)">
+                                    <Icon Name="x" Size="12" />
+                                </button>
+                            }
+                        </Actions>
+                    </ItemRow>
+                }
             }
-            <button class="add">+ добавить</button>
+
+            @if (_adding)
+            {
+                <InlineInput @bind-Value="_newTitle" Placeholder="Новое дело — Enter" MaxLength="500"
+                             OnSubmit="AddAsync" OnCancel="StopAdding" />
+            }
+            else if (!IsSearching)
+            {
+                <button class="add" @onclick="() => _adding = true">+ добавить</button>
+            }
         </div>
     }
 </div>
+}
 
 @code {
+    private bool _editingCategory;
+    private bool _adding;
+    private string _newTitle = "";
+    private int? _editingTaskId;
+
     [Parameter, EditorRequired]
     public CategoryDto Category { get; set; } = null!;
 
     [Parameter, EditorRequired]
     public IReadOnlyList<TaskDto> Tasks { get; set; } = [];
+
+    /// <summary>Текст поиска; пусто — поиска нет.</summary>
+    [Parameter]
+    public string? Search { get; set; }
+
+    private bool IsSearching => !string.IsNullOrEmpty(Search);
+
+    private bool IsOpen => IsSearching || Category.IsExpanded;
+
+    /// <summary>При поиске: все дела, если совпало название категории, иначе только совпавшие.</summary>
+    private IReadOnlyList<TaskDto> VisibleTasks =>
+        !IsSearching || TextSearch.Contains(Category.Name, Search!)
+            ? Tasks
+            : Tasks.Where(t => TextSearch.Contains(t.Title, Search!)).ToList();
+
+    private async Task ToggleAsync()
+    {
+        if (!IsSearching)
+        {
+            await State.ToggleCategoryAsync(Category.Id);
+        }
+    }
+
+    private async Task OnHeaderKey(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            await ToggleAsync();
+        }
+    }
+
+    /// <summary>Клик по делу — переименование (кроме ещё не сохранённых).</summary>
+    private void StartEditing(int taskId)
+    {
+        if (taskId > 0)
+        {
+            _editingTaskId = taskId;
+        }
+    }
+
+    private async Task RenameAsync(int taskId, string title)
+    {
+        _editingTaskId = null;
+        await State.RenameTaskAsync(taskId, title);
+    }
+
+    private async Task AddAsync(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        _newTitle = "";
+        await State.CreateSomedayTaskAsync(title, Category.Id);
+    }
+
+    private void StopAdding()
+    {
+        _adding = false;
+        _newTitle = "";
+    }
 }

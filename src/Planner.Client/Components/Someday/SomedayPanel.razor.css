@@ -1,6 +1,13 @@
-/* Лента — чуть мятная панель */
+/* Лента — чуть мятная панель; относительно неё позиционируется окно корзины */
 .someday {
+    position: relative;
     background: color-mix(in srgb, var(--b) 10%, #ffffffc8);
+}
+
+.nothing {
+    padding: 10px 6px;
+    color: var(--faint);
+    font-size: 12.5px;
 }
 
 .search {

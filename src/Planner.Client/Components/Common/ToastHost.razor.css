@@ -1,0 +1,20 @@
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    z-index: 100;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 9px 16px;
+    border-radius: 14px;
+    background: #fffffff0;
+    box-shadow: 0 6px 24px rgba(60, 90, 90, 0.14);
+    color: var(--b-deep);
+    font-size: 13px;
+    font-weight: 700;
+    transform: translateX(-50%);
+    cursor: pointer;
+}
+
+.toast.error {
+    color: var(--a-deep);
+}

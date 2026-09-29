@@ -1,0 +1,85 @@
+@* Поле ввода «без форм»: Enter — готово, Esc — отмена. При появлении получает фокус. *@
+
+<input @ref="_input"
+       class="inline-input @Class"
+       placeholder="@Placeholder"
+       maxlength="@MaxLength"
+       value="@Value"
+       @oninput="OnInput"
+       @onkeydown="OnKeyDown"
+       @onblur="OnBlur" />
+
+@code {
+    private ElementReference _input;
+
+    [Parameter]
+    public string Value { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public int MaxLength { get; set; } = 500;
+
+    /// <summary>Enter. Получает текущий текст.</summary>
+    [Parameter]
+    public EventCallback<string> OnSubmit { get; set; }
+
+    /// <summary>Esc; а также потеря фокуса пустым полем, если <see cref="CancelOnEmptyBlur"/>.</summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    /// <summary>Потеря фокуса = Enter (для переименования).</summary>
+    [Parameter]
+    public bool SubmitOnBlur { get; set; }
+
+    /// <summary>Ушли из пустого поля — закрыть его. Выключить, если рядом есть другие кнопки (эмодзи и т. п.).</summary>
+    [Parameter]
+    public bool CancelOnEmptyBlur { get; set; } = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _input.FocusAsync();
+        }
+    }
+
+    public ValueTask FocusAsync() => _input.FocusAsync();
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString() ?? "";
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await OnSubmit.InvokeAsync(Value);
+        }
+        else if (e.Key == "Escape")
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task OnBlur()
+    {
+        if (SubmitOnBlur)
+        {
+            await OnSubmit.InvokeAsync(Value);
+        }
+        else if (CancelOnEmptyBlur && string.IsNullOrWhiteSpace(Value))
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+}

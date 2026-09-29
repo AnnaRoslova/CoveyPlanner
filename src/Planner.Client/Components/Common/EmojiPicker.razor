@@ -1,0 +1,48 @@
+@* Выбор эмодзи для категории: готовый набор + свой (можно вставить через Win + .) *@
+
+<div class="emoji-picker">
+    <div class="grid">
+        @foreach (var emoji in Emojis)
+        {
+            <button type="button" class="@(emoji == Selected ? "on" : "")" title="@emoji"
+                    @onclick="() => OnPick.InvokeAsync(emoji)">@emoji</button>
+        }
+    </div>
+    <div class="row">
+        <input class="custom" placeholder="свой" maxlength="16" @bind="_custom" @bind:event="oninput"
+               @onkeydown="OnCustomKey" />
+        @if (!string.IsNullOrWhiteSpace(_custom))
+        {
+            <button type="button" class="use" @onclick="PickCustom">ок</button>
+        }
+        <button type="button" class="none" @onclick="() => OnPick.InvokeAsync(string.Empty)">без иконки</button>
+    </div>
+</div>
+
+@code {
+    private static readonly string[] Emojis =
+    [
+        "💡", "📚", "🎬", "🎵", "🏡", "🛒", "✈️", "🌍", "🍳", "🌱",
+        "🧘", "💪", "🎨", "🧵", "📷", "🎁", "💼", "💻", "📝", "🧠",
+        "❤️", "👨‍👩‍👧", "🐾", "🚗", "🔧", "💰", "🎓", "🎮", "⭐", "☕",
+    ];
+
+    private string _custom = "";
+
+    [Parameter]
+    public string? Selected { get; set; }
+
+    /// <summary>Выбранный эмодзи; пустая строка — без иконки.</summary>
+    [Parameter]
+    public EventCallback<string> OnPick { get; set; }
+
+    private async Task PickCustom() => await OnPick.InvokeAsync(_custom.Trim());
+
+    private async Task OnCustomKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_custom))
+        {
+            await PickCustom();
+        }
+    }
+}

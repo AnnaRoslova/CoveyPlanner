@@ -9,6 +9,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped<PlannerApi>();
+builder.Services.AddScoped<Notifier>();
 builder.Services.AddScoped<PlannerState>();
 
 await builder.Build().RunAsync();

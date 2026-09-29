@@ -1,0 +1,111 @@
+@* Создание или правка категории: эмодзи + название; при правке — ещё и удаление *@
+@inject PlannerState State
+
+<div class="cat-editor">
+    <div class="line">
+        <button type="button" class="emoji-btn @(_emoji.Length == 0 ? "empty" : "")"
+                title="Иконка категории" @onclick="() => _showEmojis = !_showEmojis">
+            @(_emoji.Length == 0 ? "☺" : _emoji)
+        </button>
+        <InlineInput @bind-Value="_name" Placeholder="Название категории" MaxLength="100"
+                     OnSubmit="SaveAsync" OnCancel="OnClose" CancelOnEmptyBlur="false" />
+    </div>
+
+    @if (_showEmojis)
+    {
+        <EmojiPicker Selected="@_emoji" OnPick="PickEmoji" />
+    }
+
+    @if (_confirmDelete)
+    {
+        <div class="confirm">
+            @if (TaskCount > 0)
+            {
+                <span>Удалить «@Category!.Name»? @TaskCount @TasksWord(TaskCount) уйдут в корзину.</span>
+            }
+            else
+            {
+                <span>Удалить «@Category!.Name»?</span>
+            }
+            <div class="buttons">
+                <button type="button" class="btn quiet" @onclick="() => _confirmDelete = false">Нет</button>
+                <button type="button" class="btn danger" @onclick="DeleteAsync">Удалить</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="buttons">
+            @if (Category is not null)
+            {
+                <button type="button" class="btn quiet delete" @onclick="() => _confirmDelete = true">удалить</button>
+            }
+            <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
+            <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="() => SaveAsync(_name)">
+                @(Category is null ? "Создать" : "Сохранить")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private string _name = "";
+    private string _emoji = "";
+    private bool _showEmojis;
+    private bool _confirmDelete;
+
+    /// <summary>Правка существующей категории; null — создание новой.</summary>
+    [Parameter]
+    public CategoryDto? Category { get; set; }
+
+    /// <summary>Закрыть редактор (после сохранения, удаления или отмены).</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private int TaskCount => Category is null ? 0 : State.SomedayCount(Category.Id);
+
+    protected override void OnInitialized()
+    {
+        _name = Category?.Name ?? "";
+        _emoji = Category?.Emoji ?? "";
+    }
+
+    private void PickEmoji(string emoji)
+    {
+        _emoji = emoji;
+        _showEmojis = false;
+    }
+
+    private async Task SaveAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        if (Category is null)
+        {
+            await State.CreateCategoryAsync(name, _emoji.Length == 0 ? null : _emoji);
+        }
+        else
+        {
+            await State.UpdateCategoryAsync(Category.Id, name, _emoji);
+        }
+
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        await OnClose.InvokeAsync();
+        await State.DeleteCategoryAsync(Category!.Id);
+    }
+
+    private static string TasksWord(int count) => (count % 100, count % 10) switch
+    {
+        ( >= 11 and <= 14, _) => "дел",
+        (_, 1) => "дело",
+        (_, >= 2 and <= 4) => "дела",
+        _ => "дел",
+    };
+}
