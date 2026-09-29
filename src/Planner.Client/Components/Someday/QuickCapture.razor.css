@@ -32,14 +32,36 @@
     font-weight: 700;
 }
 
-.quick select {
-    max-width: 92px;
-    padding: 3px 6px;
-    border: 0;
+/* Выбор категории: видна только иконка, прозрачный select лежит поверх неё */
+.cat-pick {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 26px;
+    padding: 0 6px;
     border-radius: 10px;
     background: var(--b-soft);
     color: var(--b-deep);
-    font-size: 12px;
-    font-weight: 700;
-    text-overflow: ellipsis;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.cat-pick:hover {
+    background: color-mix(in srgb, var(--b) 35%, #fff);
+}
+
+.cat-pick:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--b) 55%, transparent);
+}
+
+.cat-pick select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    cursor: pointer;
 }

@@ -5,12 +5,16 @@
 <div class="quick">
     <input placeholder="Записать мысль…" maxlength="500"
            @bind="_text" @bind:event="oninput" @onkeydown="OnKeyDown" />
-    <select title="Категория" @bind:get="SelectedCategoryId" @bind:set="value => _categoryId = value">
-        @foreach (var category in State.OrderedCategories)
-        {
-            <option value="@category.Id">@CategoryLabel(category)</option>
-        }
-    </select>
+    @* Видна только иконка категории; сам select прозрачный поверх неё — список раскрывается с названиями *@
+    <label class="cat-pick" title="Категория: @State.FindCategory(SelectedCategoryId)?.Name">
+        <span class="cat-icon">@CategoryIcon(State.FindCategory(SelectedCategoryId))</span>
+        <select aria-label="Категория" @bind:get="SelectedCategoryId" @bind:set="value => _categoryId = value">
+            @foreach (var category in State.OrderedCategories)
+            {
+                <option value="@category.Id">@CategoryLabel(category)</option>
+            }
+        </select>
+    </label>
 </div>
 
 @if (_saved is not null)
@@ -69,6 +73,11 @@
             }
         });
     }
+
+    /// <summary>Эмодзи категории, а без него — первая буква названия.</summary>
+    private static string CategoryIcon(CategoryDto? category) =>
+        category is null ? "" : category.Emoji
+            ?? new System.Globalization.StringInfo(category.Name).SubstringByTextElements(0, 1).ToUpperInvariant();
 
     private static string CategoryLabel(CategoryDto category) =>
         category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}";

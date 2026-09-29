@@ -52,6 +52,14 @@
     hyphens: manual;
 }
 
+/* Значок «есть заметка» сразу после названия */
+.note {
+    display: inline-flex;
+    margin-left: 4px;
+    color: var(--faint);
+    vertical-align: -1px;
+}
+
 /* Квадратный чекбокс цвета роли */
 .ck {
     flex: none;

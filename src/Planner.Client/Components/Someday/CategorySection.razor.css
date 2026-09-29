@@ -30,11 +30,16 @@
     flex: none;
 }
 
+/* Длинное название — на две строки; многоточие, только если не влезает и в две */
 .name {
+    display: -webkit-box;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: break-word;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
 }
 
 /* «⋯» — видна при наведении на заголовок */

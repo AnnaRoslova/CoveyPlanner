@@ -36,7 +36,7 @@ else
                 }
                 else
                 {
-                    <ItemRow Title="@task.Title" Marker="ItemMarker.Bullet" Highlight="@Search"
+                    <ItemRow Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search"
                              IsPending="task.Id < 0" DragKind="task" DragId="task.Id"
                              OnClick="() => StartEditing(task.Id)">
                         <Actions>

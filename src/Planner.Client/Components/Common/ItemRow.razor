@@ -31,6 +31,10 @@
                 @segment.Text
             }
         }
+        @if (!string.IsNullOrWhiteSpace(Notes))
+        {
+            <span class="note" title="@NotesPreview"><Icon Name="note" Size="11" /></span>
+        }
         @if (TimeLabel is not null || IsRock || WhenLabel is not null)
         {
             <div class="pills">
@@ -80,6 +84,13 @@
     /// <summary>Пилюля справа «Ср 10:00» — когда запланирована цель.</summary>
     [Parameter]
     public string? WhenLabel { get; set; }
+
+    /// <summary>Заметки дела: если есть — маленький значок, текст во всплывающей подсказке.</summary>
+    [Parameter]
+    public string? Notes { get; set; }
+
+    private string? NotesPreview =>
+        Notes is { Length: > 300 } longNotes ? longNotes[..300] + "…" : Notes;
 
     /// <summary>Текст поиска — совпадения в названии подсвечиваются.</summary>
     [Parameter]
