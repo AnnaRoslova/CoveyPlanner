@@ -1,0 +1,59 @@
+/* Полоска-шторка свёрнутой панели */
+.strip {
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 0;
+    color: var(--soft);
+    cursor: pointer;
+}
+
+.strip:hover {
+    color: var(--b-deep);
+    background: #ffffffd0;
+}
+
+.strip-label {
+    writing-mode: vertical-rl;
+    font-family: var(--font-title);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.strip.left .strip-label {
+    transform: rotate(180deg); /* читается снизу вверх, как корешок книги слева */
+}
+
+/* Панель поверх недели, когда на месте ей не хватает ширины */
+.overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+}
+
+.overlay {
+    position: absolute;
+    top: 14px;
+    bottom: 14px;
+    z-index: 31;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--panel-radius);
+    box-shadow: 0 12px 40px rgba(60, 90, 90, 0.18);
+}
+
+.overlay.left {
+    left: 14px;
+    width: var(--left-width);
+}
+
+.overlay.right {
+    right: 14px;
+    width: var(--right-width);
+}
+
+.overlay ::deep .panel {
+    flex: 1;
+    background: #fffffff0;
+}

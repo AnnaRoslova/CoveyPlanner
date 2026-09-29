@@ -54,7 +54,7 @@
     min-height: 0;
     display: grid;
     grid-template-columns: repeat(7, minmax(var(--day-min-width), 1fr));
-    gap: 6px;
-    padding: 8px 12px 14px;
+    gap: 5px;
+    padding: 8px 10px 14px; /* зазоры и поля учтены в LayoutState.MinWeekWidth */
     overflow: auto;
 }

@@ -1,0 +1,15 @@
+.panel-toggle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--faint);
+}
+
+.panel-toggle:hover {
+    background: var(--b-soft);
+    color: var(--b-deep);
+}

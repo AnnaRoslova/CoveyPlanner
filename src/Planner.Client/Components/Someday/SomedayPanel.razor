@@ -2,10 +2,13 @@
 @inherits StateComponent
 
 <aside class="panel someday">
-    <div class="search">
-        <Icon Name="search" Size="14" />
-        <input type="search" placeholder="Поиск по ленте" @bind="_search" @bind:event="oninput"
-               @onkeydown="OnSearchKey" />
+    <div class="top">
+        <PanelToggle />
+        <div class="search">
+            <Icon Name="search" Size="14" />
+            <input type="search" placeholder="Поиск по ленте" @bind="_search" @bind:event="oninput"
+                   @onkeydown="OnSearchKey" />
+        </div>
     </div>
 
     @if (State.Categories.Count > 0)

@@ -1,0 +1,10 @@
+@* Кнопка-шторка внутри боковой панели: свернуть её в полоску *@
+
+<button type="button" class="panel-toggle" title="Свернуть панель" @onclick="() => Panel!.ToggleAsync()">
+    <Icon Name="@(Panel?.Side == PanelSide.Right ? "chevrons-right" : "chevrons-left")" Size="15" />
+</button>
+
+@code {
+    [CascadingParameter]
+    public SidePanel? Panel { get; set; }
+}

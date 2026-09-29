@@ -1,14 +1,19 @@
 @page "/"
 @inherits StateComponent
+@inject LayoutState Layout
 
 <PageTitle>CoveyPlanner</PageTitle>
 
 @if (State.IsLoaded)
 {
-    <div class="app">
-        <RolesPanel />
+    <div class="app @(Layout.Left == PanelMode.Open ? "" : "left-collapsed") @(Layout.Right == PanelMode.Open ? "" : "right-collapsed")">
+        <SidePanel Side="PanelSide.Left" Title="Роли и цели">
+            <RolesPanel />
+        </SidePanel>
         <WeekView />
-        <SomedayPanel />
+        <SidePanel Side="PanelSide.Right" Title="Когда-нибудь">
+            <SomedayPanel />
+        </SidePanel>
     </div>
 }
 else if (State.LoadError is not null)
@@ -24,5 +29,19 @@ else
 }
 
 @code {
-    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        Layout.Changed += OnLayoutChanged;
+
+        // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync());
+    }
+
+    public override void Dispose()
+    {
+        Layout.Changed -= OnLayoutChanged;
+        base.Dispose();
+    }
+
+    private void OnLayoutChanged() => InvokeAsync(StateHasChanged);
 }

@@ -27,7 +27,8 @@
     /* Размеры */
     --left-width: 240px;
     --right-width: 250px;
-    --day-min-width: 92px;
+    --day-min-width: 126px; /* синхронно с LayoutState.MinWeekWidth */
+    --strip-width: 36px;     /* свёрнутая боковая панель */
     --panel-radius: 22px;
     --day-radius: 18px;
 }

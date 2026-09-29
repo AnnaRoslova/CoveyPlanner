@@ -1,7 +1,5 @@
 ﻿# Наполняет запущенный сервер демо-данными (как в docs/design-mockup.html) — для проверки внешнего вида.
-# Запускать ТОЛЬКО против демо-базы, например:
-#   dotnet run --project src/Planner.Server -- --Storage:DatabasePath=%TEMP%\planner-demo.db
-#   powershell -File tools/seed-demo.ps1
+# Обычно вызывается из tools/demo.ps1. Запускать ТОЛЬКО против пустой демо-базы.
 param([string]$BaseUrl = 'http://localhost:5070')
 
 $ErrorActionPreference = 'Stop'

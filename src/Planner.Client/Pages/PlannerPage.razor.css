@@ -1,9 +1,19 @@
-/* Три плавающие панели: роли и цели | неделя | лента «Когда-нибудь» */
+/* Три плавающие панели: роли и цели | неделя | лента «Когда-нибудь».
+   Свёрнутая боковая панель превращается в полоску --strip-width. */
 .app {
+    position: relative; /* относительно .app показываются панели «поверх недели» */
     display: grid;
-    grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
+    grid-template-columns: var(--left-col, var(--left-width)) minmax(0, 1fr) var(--right-col, var(--right-width));
     gap: 14px;
     height: 100vh;
     height: 100dvh;
     padding: 14px;
+}
+
+.app.left-collapsed {
+    --left-col: var(--strip-width);
+}
+
+.app.right-collapsed {
+    --right-col: var(--strip-width);
 }

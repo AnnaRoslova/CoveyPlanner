@@ -1,0 +1,48 @@
+@* Обёртка боковой панели: открыта на месте, свёрнута в полоску-шторку или показана поверх недели.
+   Внутри панели кнопка сворачивания — <PanelToggle />. *@
+@implements IDisposable
+@inject LayoutState Layout
+
+<CascadingValue Value="this" IsFixed="true">
+    @if (Mode == PanelMode.Open)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <button type="button" class="panel strip @SideClass" title="Показать: @Title" @onclick="ToggleAsync">
+            <Icon Name="@(Side == PanelSide.Left ? "chevrons-right" : "chevrons-left")" Size="15" />
+            <span class="strip-label">@Title</span>
+        </button>
+
+        @if (Mode == PanelMode.Overlay)
+        {
+            <div class="overlay-backdrop" @onclick="Layout.ClosePeek"></div>
+            <div class="overlay @SideClass">@ChildContent</div>
+        }
+    }
+</CascadingValue>
+
+@code {
+    [Parameter, EditorRequired]
+    public PanelSide Side { get; set; }
+
+    /// <summary>Название на полоске: «Роли и цели», «Когда-нибудь».</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = null!;
+
+    public PanelMode Mode => Side == PanelSide.Left ? Layout.Left : Layout.Right;
+
+    private string SideClass => Side == PanelSide.Left ? "left" : "right";
+
+    public Task ToggleAsync() => Layout.ToggleAsync(Side);
+
+    protected override void OnInitialized() => Layout.Changed += OnLayoutChanged;
+
+    public void Dispose() => Layout.Changed -= OnLayoutChanged;
+
+    private void OnLayoutChanged() => InvokeAsync(StateHasChanged);
+}
