@@ -7,25 +7,39 @@ using Planner.Shared;
 
 namespace Planner.Tests.Api;
 
-/// <summary>Поднимает сервер в памяти с отдельным временным файлом БД.</summary>
-public sealed class PlannerApiFactory : WebApplicationFactory<Program>
+/// <summary>
+/// Поднимает сервер в памяти с отдельным временным файлом БД и своей папкой резервных копий.
+/// Ежедневная копия при запуске выключена (кроме тестов, которые включают её сами).
+/// </summary>
+public sealed class PlannerApiFactory(string? databasePath = null, bool dailyBackup = false, string? backupDirectory = null)
+    : WebApplicationFactory<Program>
 {
-    private readonly string _databasePath =
-        Path.Combine(Path.GetTempPath(), "planner-tests", $"{Guid.NewGuid():N}.db");
+    public string DatabasePath { get; } =
+        databasePath ?? Path.Combine(Path.GetTempPath(), "planner-tests", $"{Guid.NewGuid():N}.db");
+
+    public string BackupDirectory { get; } =
+        backupDirectory ?? Path.Combine(Path.GetTempPath(), "planner-tests", $"backups-{Guid.NewGuid():N}");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting(DataServiceCollectionExtensions.DatabasePathKey, _databasePath);
+        builder.UseSetting(DataServiceCollectionExtensions.DatabasePathKey, DatabasePath);
+        builder.UseSetting(DataServiceCollectionExtensions.BackupPathKey, BackupDirectory);
+        builder.UseSetting(DataServiceCollectionExtensions.DailyBackupKey, dailyBackup.ToString());
     }
 
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
         SqliteConnection.ClearAllPools();
-        foreach (var file in Directory.GetFiles(Path.GetDirectoryName(_databasePath)!, Path.GetFileName(_databasePath) + "*"))
+        foreach (var file in Directory.GetFiles(Path.GetDirectoryName(DatabasePath)!, Path.GetFileName(DatabasePath) + "*"))
         {
             File.Delete(file);
+        }
+
+        if (Directory.Exists(BackupDirectory))
+        {
+            Directory.Delete(BackupDirectory, recursive: true);
         }
     }
 }

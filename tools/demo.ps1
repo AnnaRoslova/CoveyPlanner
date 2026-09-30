@@ -41,7 +41,7 @@ Write-Host "Демо-база: $db"
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = $url
 $server = Start-Process (Join-Path $app 'Planner.Server.exe') `
-    -ArgumentList "--Storage:DatabasePath=`"$db`"" `
+    -ArgumentList "--Storage:DatabasePath=`"$db`" --Storage:DailyBackup=false" `
     -WorkingDirectory $app -NoNewWindow -PassThru
 
 try {

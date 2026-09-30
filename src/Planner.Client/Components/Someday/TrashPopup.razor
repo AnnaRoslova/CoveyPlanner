@@ -4,7 +4,7 @@
 
 <div class="backdrop" @onclick="OnClose"></div>
 
-<div class="trash-popup" role="dialog" aria-label="Корзина">
+<div class="trash-popup" role="dialog" aria-label="Корзина" tabindex="-1" @ref="_popup" @onkeydown="OnKeyDown">
     <div class="title">
         <span>Корзина</span>
         <button type="button" class="row-action" title="Закрыть" @onclick="OnClose"><Icon Name="x" Size="12" /></button>
@@ -60,6 +60,7 @@
 </div>
 
 @code {
+    private ElementReference _popup;
     private List<TaskDto>? _items;
     private int? _askCategoryFor;
     private bool _confirmEmpty;
@@ -68,6 +69,23 @@
     public EventCallback OnClose { get; set; }
 
     protected override async Task OnInitializedAsync() => _items = await State.GetTrashAsync();
+
+    // Фокус на окно — чтобы Esc закрывал его сразу
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _popup.FocusAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
 
     /// <summary>Откуда дело попало в корзину: из дня плана или из категории ленты.</summary>
     private string FromLabel(TaskDto task)

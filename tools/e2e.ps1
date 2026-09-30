@@ -43,7 +43,7 @@ foreach ($script in $scripts) {
     Remove-Item "$db*" -Force -ErrorAction SilentlyContinue
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
     $env:ASPNETCORE_URLS = $url
-    $server = Start-Process $exe -ArgumentList "--Storage:DatabasePath=`"$db`"" `
+    $server = Start-Process $exe -ArgumentList "--Storage:DatabasePath=`"$db`" --Storage:DailyBackup=false" `
         -WorkingDirectory (Join-Path $root 'src/Planner.Server') -WindowStyle Hidden -PassThru
     try {
         $ready = $false

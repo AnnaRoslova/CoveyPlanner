@@ -75,6 +75,13 @@ await check('значок заметки — в дне и в ленте, под�
   await page.screenshot({ path: `${SHOTS}/tweaks-notes.png` });
 });
 
+await check('корзина закрывается по Esc', async () => {
+  await page.click('.trash'); await sleep(500);
+  assert(await page.$('.trash-popup'), 'корзина не открылась');
+  await page.keyboard.press('Escape'); await sleep(300);
+  assert(!(await page.$('.trash-popup')), 'Esc не закрыл корзину');
+});
+
 await browser.close();
 console.log(results.join('\n'));
 console.log(consoleErrors.length ? `\nОшибки консоли:\n${consoleErrors.join('\n')}` : '\nОшибок в консоли нет');

@@ -37,6 +37,7 @@ api.MapTaskEndpoints();
 api.MapCategoryEndpoints();
 api.MapRoleEndpoints();
 api.MapGoalEndpoints();
+api.MapBackupEndpoints();
 
 // Неизвестные /api/... — 404, а не index.html
 api.MapFallback(() => Results.NotFound());
