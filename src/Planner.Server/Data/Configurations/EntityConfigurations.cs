@@ -53,9 +53,12 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         builder.Property(g => g.Title).IsRequired().HasMaxLength(TextRules.TitleMaxLength);
 
         builder.HasOne<Role>().WithMany().HasForeignKey(g => g.RoleId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne(g => g.LinkedTask).WithMany().HasForeignKey(g => g.TaskId).OnDelete(DeleteBehavior.SetNull);
+        // Занятия цели — обычные дела; удалили цель — у дел ссылка обнуляется
+        builder.HasMany(g => g.Sessions).WithOne().HasForeignKey(t => t.GoalId).OnDelete(DeleteBehavior.SetNull);
+        builder.Navigation(g => g.Sessions).HasField("_sessions");
+        builder.Ignore(g => g.ActiveSessions);
+        builder.Ignore(g => g.UnscheduledSession);
 
         builder.HasIndex(g => new { g.WeekStart, g.RoleId, g.SortOrder });
-        builder.HasIndex(g => g.TaskId).IsUnique();
     }
 }

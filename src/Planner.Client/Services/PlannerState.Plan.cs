@@ -7,8 +7,8 @@ public partial class PlannerState
 {
     public TaskDto? FindTask(int taskId) => _tasks.GetValueOrDefault(taskId);
 
-    /// <summary>Цель недели, с которой связано дело (оно — «камень»).</summary>
-    public WeeklyGoalDto? GoalOfTask(int taskId) => Goals.FirstOrDefault(g => g.TaskId == taskId);
+    /// <summary>Цель недели, занятием которой является дело (оно — «камень»).</summary>
+    public WeeklyGoalDto? GoalOfTask(int taskId) => FindTask(taskId)?.GoalId is { } goalId ? FindGoal(goalId) : null;
 
     /// <summary>«+ дело» внизу дня: в конец дел без времени. false — не сохранилось.</summary>
     public async Task<bool> CreateDayTaskAsync(string title, DateOnly date)
@@ -19,7 +19,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, null, null, null, TaskStateDto.Planned, date, null,
+        var temp = new TaskDto(NextTempId(), title, null, null, null, null, null, TaskStateDto.Planned, date, null,
             SortOrder: NextUntimedOrder(date), TrashedAt: null);
         _tasks[temp.Id] = temp;
 
@@ -68,7 +68,7 @@ public partial class PlannerState
         }
 
         PlaceInDayLocally(task, date, index);
-        UpdateGoalOfTask(taskId, g => g with { PlannedDate = date });
+        SyncSession(_tasks[taskId]);
         await SaveAsync(() => api.MoveTaskAsync(taskId, new DayTargetDto(date, index)));
     }
 
@@ -100,7 +100,7 @@ public partial class PlannerState
         }
     }
 
-    /// <summary>Отметка «выполнено»; у связанной цели отметка меняется вместе с делом.</summary>
+    /// <summary>Отметка «выполнено»; у цели этого занятия пересчитывается прогресс.</summary>
     public async Task SetDoneAsync(int taskId, bool isDone)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task)
@@ -109,7 +109,7 @@ public partial class PlannerState
         }
 
         _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
-        UpdateGoalOfTask(taskId, g => g with { IsDone = isDone });
+        SyncSession(_tasks[taskId]);
         await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone));
     }
 
@@ -139,7 +139,6 @@ public partial class PlannerState
             StartTime = startTime,
             SortOrder = sortOrder,
         };
-        UpdateGoalOfTask(taskId, g => g with { Title = title, StartTime = startTime });
 
         await SaveAsync(() => api.UpdateTaskAsync(taskId,
             new UpdateTaskRequest(title, notes, roleId, quadrant, startTime)));
@@ -149,14 +148,5 @@ public partial class PlannerState
     {
         var untimed = TasksOn(date).Where(t => t.StartTime is null).ToList();
         return untimed.Count == 0 ? 0 : untimed.Max(t => t.SortOrder) + 1;
-    }
-
-    private void UpdateGoalOfTask(int taskId, Func<WeeklyGoalDto, WeeklyGoalDto> change)
-    {
-        var index = Goals.FindIndex(g => g.TaskId == taskId);
-        if (index >= 0)
-        {
-            Goals[index] = change(Goals[index]);
-        }
     }
 }

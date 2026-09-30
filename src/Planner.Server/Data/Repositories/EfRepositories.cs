@@ -82,13 +82,10 @@ public class EfRoleRepository(PlannerDbContext db) : IRoleRepository
 
 public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
 {
-    private IQueryable<WeeklyGoal> Goals => db.WeeklyGoals.Include(g => g.LinkedTask);
+    private IQueryable<WeeklyGoal> Goals => db.WeeklyGoals.Include(g => g.Sessions);
 
     public Task<WeeklyGoal?> FindAsync(int id, CancellationToken ct = default) =>
         Goals.FirstOrDefaultAsync(g => g.Id == id, ct);
-
-    public Task<WeeklyGoal?> FindByTaskIdAsync(int taskId, CancellationToken ct = default) =>
-        Goals.FirstOrDefaultAsync(g => g.TaskId == taskId, ct);
 
     public Task<List<WeeklyGoal>> GetForWeekAsync(DateOnly weekStart, CancellationToken ct = default) =>
         Goals.Where(g => g.WeekStart == weekStart)

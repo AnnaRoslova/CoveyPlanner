@@ -68,8 +68,8 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     public IEnumerable<WeeklyGoalDto> GoalsFor(int roleId) =>
         Goals.Where(g => g.RoleId == roleId).OrderBy(g => g.SortOrder);
 
-    /// <summary>Дело связано с целью недели — «большой камень».</summary>
-    public bool IsRock(int taskId) => Goals.Any(g => g.TaskId == taskId);
+    /// <summary>Дело — занятие цели недели, «большой камень».</summary>
+    public bool IsRock(int taskId) => GoalOfTask(taskId) is not null;
 
     public int RocksDone => Goals.Count(g => g.IsDone);
 
@@ -124,6 +124,23 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     public Task PreviousWeekAsync() => GoToWeekAsync(WeekStart.AddDays(-7));
 
     public Task TodayAsync() => GoToWeekAsync(RuDates.Today);
+
+    /// <summary>
+    /// Наступил новый день (см. <see cref="TodayWatcher"/>). Если на экране была текущая неделя,
+    /// а новый день уже в следующей, — листаем на неё; другую неделю, которую смотрят, не трогаем.
+    /// </summary>
+    public async Task OnTodayChangedAsync(DateOnly previous, DateOnly today)
+    {
+        var wasCurrentWeek = WeekStart == RuDates.WeekStartOf(previous);
+        if (wasCurrentWeek && RuDates.WeekStartOf(today) != WeekStart)
+        {
+            await GoToWeekAsync(today);
+        }
+        else
+        {
+            NotifyChanged(); // перерисовать подсветку «сегодня» и кнопку «Сегодня»
+        }
+    }
 
     private void ApplyBoard(BoardDto board)
     {

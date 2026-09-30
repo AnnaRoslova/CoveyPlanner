@@ -89,6 +89,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("GoalId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
@@ -129,6 +132,8 @@ namespace Planner.Server.Data.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("GoalId");
+
                     b.HasIndex("RoleId");
 
                     b.HasIndex("State", "PlannedDate");
@@ -144,16 +149,13 @@ namespace Planner.Server.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsDone")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("RoleId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("TaskId")
+                    b.Property<int>("TimesPerWeek")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
@@ -168,9 +170,6 @@ namespace Planner.Server.Data.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("TaskId")
-                        .IsUnique();
-
                     b.HasIndex("WeekStart", "RoleId", "SortOrder");
 
                     b.ToTable("WeeklyGoals");
@@ -181,6 +180,11 @@ namespace Planner.Server.Data.Migrations
                     b.HasOne("Planner.Core.Entities.Category", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Planner.Core.Entities.WeeklyGoal", null)
+                        .WithMany("Sessions")
+                        .HasForeignKey("GoalId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Planner.Core.Entities.Role", null)
@@ -196,13 +200,11 @@ namespace Planner.Server.Data.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
 
-                    b.HasOne("Planner.Core.Entities.TaskItem", "LinkedTask")
-                        .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("LinkedTask");
+            modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>
+                {
+                    b.Navigation("Sessions");
                 });
 #pragma warning restore 612, 618
         }

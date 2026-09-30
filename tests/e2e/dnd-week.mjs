@@ -126,12 +126,12 @@ await check('дело со временем в другой день: время
   assert((await day(2))[0].time === '11:00', 'после перезагрузки');
 });
 
-await check('«камень» в другой день — у цели слева новый день', async () => {
-  assert(await goalWhen('Демо для команды') === 'Чт 15:00', 'исходно');
+await check('занятие цели в другой день — у цели слева новый день', async () => {
+  assert(await goalWhen('Демо для команды') === 'Чт', 'исходно');
   const from = await dayItemBox(3, 'Демо для команды');
   const fri = await dayBox(4);
   await mouseDrag(from, fri.x + 40, fri.y + 300);
-  assert(await goalWhen('Демо для команды') === 'Пт 15:00', `у цели: ${await goalWhen('Демо для команды')}`);
+  assert(await goalWhen('Демо для команды') === 'Пт', `у цели: ${await goalWhen('Демо для команды')}`);
   const f = await day(4);
   assert(f.find(t => t.title === 'Демо для команды')?.rock, 'пропала метка «камень»');
 });

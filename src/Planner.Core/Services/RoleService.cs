@@ -9,7 +9,7 @@ namespace Planner.Core.Services;
 public class RoleService(
     IRoleRepository roles,
     IGoalRepository goals,
-    TaskPlacer placer,
+    GoalRemover remover,
     IUnitOfWork unitOfWork)
 {
     /// <summary>Новая роль — в конец; цвет по умолчанию — следующий из палитры.</summary>
@@ -49,9 +49,9 @@ public class RoleService(
     }
 
     /// <summary>
-    /// Удалить роль вместе с её целями. Дела, висевшие на целях без дня, возвращаются в ленту
-    /// (без своей категории — в <paramref name="fallbackCategoryId"/>, одну на все);
-    /// у остальных дел роль просто сбрасывается (на уровне БД).
+    /// Удалить роль вместе с её целями; занятия целей — как при удалении цели (<see cref="GoalRemover"/>).
+    /// Занятия без дня возвращаются в ленту (без своей категории — в <paramref name="fallbackCategoryId"/>,
+    /// одну на все); у остальных дел роль просто сбрасывается (на уровне БД).
     /// </summary>
     public async Task DeleteAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
     {
@@ -60,12 +60,7 @@ public class RoleService(
 
         foreach (var goal in await goals.GetAllForRoleAsync(id, ct))
         {
-            if (goal.LinkedTask is { PlannedDate: null } task)
-            {
-                await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
-            }
-
-            goals.Remove(goal);
+            await remover.RemoveAsync(goal, fallbackCategoryId, ct);
         }
 
         roles.Remove(role);

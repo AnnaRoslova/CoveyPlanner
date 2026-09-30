@@ -29,6 +29,7 @@ public sealed record TaskDto(
     string? Notes,
     int? CategoryId,
     int? RoleId,
+    int? GoalId,
     int? Quadrant,
     TaskStateDto State,
     DateOnly? PlannedDate,
@@ -44,17 +45,28 @@ public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, S
     public bool IsSharpenSaw => SawDimension is not null;
 }
 
-/// <summary>Цель недели. PlannedDate/StartTime — где сейчас связанное дело (если есть).</summary>
+/// <summary>Занятие цели: дело-«камень». PlannedDate = null — занятие без дня.</summary>
+public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDone);
+
+/// <summary>
+/// Цель недели, которую нужно сделать TimesPerWeek раз. Sessions — её занятия (без корзины), по дням;
+/// прогресс и «выполнено» считаются по ним.
+/// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
     int RoleId,
     DateOnly WeekStart,
     string Title,
-    bool IsDone,
+    int TimesPerWeek,
     int SortOrder,
-    int? TaskId,
-    DateOnly? PlannedDate,
-    TimeOnly? StartTime);
+    IReadOnlyList<GoalSessionDto> Sessions)
+{
+    [JsonIgnore]
+    public int DoneCount => Sessions.Count(s => s.IsDone);
+
+    [JsonIgnore]
+    public bool IsDone => DoneCount >= TimesPerWeek;
+}
 
 /// <summary>Всё, что не зависит от недели: роли, лента, палитра.</summary>
 public sealed record BoardDto(
@@ -69,7 +81,7 @@ public sealed record BoardDto(
 /// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели).</summary>
 public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
 
-/// <summary>Результат операции с целью: сама цель и связанное дело, если оно поменялось.</summary>
+/// <summary>Результат операции с целью: сама цель и занятие, которое поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
 
 /// <summary>Коды ошибок в ProblemDetails (поле "code"), на которые клиент реагирует особо.</summary>

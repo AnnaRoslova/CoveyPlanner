@@ -39,7 +39,10 @@ public sealed record UpdateRoleRequest(string? Name, string? Color);
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title);
 
 /// <summary>null — поле не менять.</summary>
-public sealed record UpdateGoalRequest(string? Title, bool? IsDone);
+public sealed record UpdateGoalRequest(string? Title, int? TimesPerWeek);
+
+/// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
+public sealed record ToggleGoalRequest(DateOnly Today);
 
 public sealed record MoveGoalRequest(int RoleId, int Index);
 

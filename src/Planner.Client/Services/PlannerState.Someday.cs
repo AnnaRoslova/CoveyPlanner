@@ -86,7 +86,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, categoryId, null, null, TaskStateDto.Someday, null, null,
+        var temp = new TaskDto(NextTempId(), title, null, categoryId, null, null, null, TaskStateDto.Someday, null, null,
             SortOrder: atEnd ? int.MaxValue : int.MinValue, TrashedAt: null);
         _tasks[temp.Id] = temp;
         RenumberSomeday(categoryId);
@@ -134,9 +134,11 @@ public partial class PlannerState
         }
 
         PlaceInFeedLocally(task, categoryId, index);
-        if (!wasSomeday)
+        if (task.GoalId is not null)
         {
-            UnlinkGoalsFrom(taskId); // сервер тоже разрывает связь с целью при возврате в ленту
+            // Сервер тоже разрывает связь с целью при возврате в ленту
+            _tasks[taskId] = _tasks[taskId] with { GoalId = null };
+            RemoveSession(taskId);
         }
 
         await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index)));
@@ -182,7 +184,7 @@ public partial class PlannerState
             new UpdateTaskRequest(title, task.Notes, task.RoleId, task.Quadrant, task.StartTime)));
     }
 
-    /// <summary>Удалить дело — в корзину. Связанная цель остаётся без дела.</summary>
+    /// <summary>Удалить дело — в корзину. Занятие цели перестаёт считаться в её прогрессе.</summary>
     public async Task TrashTaskAsync(int taskId)
     {
         if (taskId < 0 || !_tasks.Remove(taskId))
@@ -191,7 +193,7 @@ public partial class PlannerState
         }
 
         TrashCount++;
-        UnlinkGoalsFrom(taskId);
+        RemoveSession(taskId);
         await SaveAsync(() => api.TrashTaskAsync(taskId));
     }
 
@@ -232,7 +234,11 @@ public partial class PlannerState
         }
 
         TrashCount = Math.Max(0, TrashCount - 1);
-        if (restored.State == TaskStateDto.Someday)
+        if (restored.GoalId is not null)
+        {
+            await ReloadAsync(); // занятие цели снова считается — прогресс цели берём с сервера
+        }
+        else if (restored.State == TaskStateDto.Someday)
         {
             // Сервер поставил дело наверх категории — повторяем порядок локально
             _tasks[restored.Id] = restored with { SortOrder = int.MinValue };
@@ -295,17 +301,6 @@ public partial class PlannerState
         foreach (var task in SomedayIn(categoryId).ToList())
         {
             _tasks[task.Id] = task with { SortOrder = order++ };
-        }
-    }
-
-    private void UnlinkGoalsFrom(int taskId)
-    {
-        for (var i = 0; i < Goals.Count; i++)
-        {
-            if (Goals[i].TaskId == taskId)
-            {
-                Goals[i] = Goals[i] with { TaskId = null, PlannedDate = null, StartTime = null };
-            }
         }
     }
 }

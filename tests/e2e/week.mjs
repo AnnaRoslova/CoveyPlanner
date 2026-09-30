@@ -141,8 +141,8 @@ await check('Esc — отмена без сохранения', async () => {
   assert((await titles(3)).includes('Написать отчёт за сентябрь'), `Чт: ${await titles(3)}`);
 });
 
-await check('убрать время у «камня»: дело уходит в конец, у цели слева «Чт» без времени', async () => {
-  assert((await goal('Демо для команды')).when === 'Чт 15:00', 'исходно не «Чт 15:00»');
+await check('убрать время у «камня»: дело уходит в конец, у цели слева по-прежнему «Чт»', async () => {
+  assert((await goal('Демо для команды')).when === 'Чт', 'исходно не «Чт»');
   await openEditor(3, 'Демо для команды');
   await page.click('.editor .clear');
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить'))).click();
@@ -155,13 +155,13 @@ await check('убрать время у «камня»: дело уходит в
   assert(t2[t2.length - 1] === 'Демо для команды', `после перезагрузки Чт: ${t2}`);
 });
 
-await check('переименование «камня» меняет и цель; Enter в названии сохраняет', async () => {
+await check('переименование занятия цель не меняет; Enter в названии сохраняет', async () => {
   await openEditor(1, 'Код-ревью модуля оплаты');
   await page.$eval('.editor .title-input', e => e.select());
   await page.type('.editor .title-input', 'Код-ревью оплаты');
   await page.keyboard.press('Enter'); await settle();
   assert((await titles(1)).includes('Код-ревью оплаты'), `Вт: ${await titles(1)}`);
-  assert(await goal('Код-ревью оплаты'), 'цель не переименовалась');
+  assert(await goal('Код-ревью модуля оплаты'), 'цель переименовалась вместе с занятием');
 });
 
 await check('«в корзину» из окна; в корзине видно, из какого дня', async () => {

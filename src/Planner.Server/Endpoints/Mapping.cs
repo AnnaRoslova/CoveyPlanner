@@ -14,6 +14,7 @@ public static class Mapping
         t.Notes,
         t.CategoryId,
         t.RoleId,
+        t.GoalId,
         (int?)t.Quadrant,
         (TaskStateDto)t.State,
         t.PlannedDate,
@@ -31,13 +32,15 @@ public static class Mapping
         g.RoleId,
         g.WeekStart,
         g.Title,
-        g.IsDone,
+        g.TimesPerWeek,
         g.SortOrder,
-        g.LinkedTask?.Id ?? g.TaskId,
-        g.LinkedTask?.PlannedDate,
-        g.LinkedTask?.StartTime);
+        g.ActiveSessions
+            .OrderBy(t => t.PlannedDate ?? DateOnly.MaxValue).ThenBy(t => t.Id)
+            .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done))
+            .ToList());
 
-    public static GoalResultDto ToResultDto(this WeeklyGoal g) => new(g.ToDto(), g.LinkedTask?.ToDto());
+    public static GoalResultDto ToResultDto(this (WeeklyGoal Goal, TaskItem Session) result) =>
+        new(result.Goal.ToDto(), result.Session.ToDto());
 
     public static TaskTarget ToCore(this TaskTargetDto target) => target switch
     {

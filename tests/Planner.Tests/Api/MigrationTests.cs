@@ -118,6 +118,44 @@ public sealed class MigrationTests : IDisposable
         Assert.All(colors, c => Assert.Contains(c, Planner.Core.Entities.RolePalette.Colors));
     }
 
+    [Fact]
+    public async Task GoalSessions_LinkedTaskBecomesSession_DoneGoalKeepsProgress()
+    {
+        await using var db = CreateContext();
+
+        // Старая схема: у цели одно дело (WeeklyGoals.TaskId) и своя отметка IsDone
+        await db.GetService<IMigrator>().MigrateAsync("EighteenColorPalette");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Работа', '#8fb4e3', 0, NULL);
+            INSERT INTO Tasks (Id, Title, RoleId, State, PlannedDate, SortOrder, CreatedAt, CompletedAt)
+                VALUES (1, 'Отчёт', 1, 'Done', '2026-09-29', 0, '2026-09-28 10:00:00', '2026-09-29 10:00:00'),
+                       (2, 'Звонок', 1, 'Planned', '2026-09-30', 0, '2026-09-28 10:00:00', NULL);
+            INSERT INTO WeeklyGoals (Id, RoleId, WeekStart, Title, IsDone, SortOrder, TaskId) VALUES
+                (1, 1, '2026-09-28', 'Отчёт', 1, 0, 1),
+                (2, 1, '2026-09-28', 'Прочитать книгу', 1, 1, NULL),
+                (3, 1, '2026-09-28', 'Выучить песню', 0, 2, NULL),
+                (4, 1, '2026-09-28', 'Звонок', 0, 3, 2);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var goals = await db.WeeklyGoals.Include(g => g.Sessions).OrderBy(g => g.Id).ToListAsync();
+        Assert.All(goals, g => Assert.Equal(1, g.TimesPerWeek));
+        Assert.Equal([1], goals[0].Sessions.Select(t => t.Id));
+        Assert.True(goals[0].IsDone);
+
+        // Отмеченная без дела цель — выполненное занятие без дня
+        var mark = Assert.Single(goals[1].Sessions);
+        Assert.Equal(Planner.Core.Enums.TaskState.Done, mark.State);
+        Assert.Null(mark.PlannedDate);
+        Assert.True(goals[1].IsDone);
+
+        Assert.Empty(goals[2].Sessions);
+        Assert.False(goals[2].IsDone);
+        Assert.Equal([2], goals[3].Sessions.Select(t => t.Id));
+        Assert.False(goals[3].IsDone);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

@@ -91,7 +91,7 @@ await check('дело из дня → роль: цель с меткой дня,
   const r = await roleBox('Работа');
   await mouseDrag(from, r.x + 40, r.y + r.height - 20);
   const g = (await goalsOf('Работа')).find(x => x.title === 'Созвон с заказчиком');
-  assert(g?.when === 'Вт 11:00', `цель: ${JSON.stringify(g)}`);
+  assert(g?.when === 'Вт', `цель: ${JSON.stringify(g)}`);
   assert((await day(1)).find(t => t.title === 'Созвон с заказчиком')?.rock, 'в дне нет «камня»');
 });
 
@@ -133,14 +133,17 @@ await check('цель без дела → день: появляется дел�
   assert((await dayTitles(6)).includes('Поменять фильтр для воды'), 'после перезагрузки');
 });
 
-await check('цель с делом → другой день: дело переезжает с временем, метка цели меняется', async () => {
+await check('цель с занятием → другой день: новое занятие, прежнее остаётся, у цели «Чт · Пт»', async () => {
   const from = await goalBox('Работа', 'Демо для команды');
   const fri = await dayBox(4);
   await mouseDrag(from, fri.x + 40, fri.y + 300);
-  assert(!(await dayTitles(3)).includes('Демо для команды'), 'осталось в четверге');
+  const thu = await day(3);
+  assert(thu.some(t => t.title === 'Демо для команды' && t.time === '15:00' && t.rock), `Чт: ${JSON.stringify(thu)}`);
   const f = await day(4);
-  assert(f[0].title === 'Демо для команды' && f[0].time === '15:00', `Пт: ${JSON.stringify(f)}`);
-  assert((await goalsOf('Работа')).find(g => g.title === 'Демо для команды')?.when === 'Пт 15:00', 'метка цели');
+  assert(f.some(t => t.title === 'Демо для команды' && t.time === null && t.rock), `Пт: ${JSON.stringify(f)}`);
+  assert((await goalsOf('Работа')).find(g => g.title === 'Демо для команды')?.when === 'Чт · Пт', 'метка цели');
+  await load();
+  assert((await goalsOf('Работа')).find(g => g.title === 'Демо для команды')?.when === 'Чт · Пт', 'после перезагрузки');
 });
 
 await check('цель «на неделю без дня» → понедельник между делами', async () => {
@@ -162,12 +165,13 @@ await check('цель без дела → лента: мысль в катего
   assert(await rocksTotal() === before - 1, `камней ${await rocks()}`);
 });
 
-await check('цель с делом в дне → лента: дело уходит из дня в категорию', async () => {
+await check('цель с выполненным занятием → лента: мысль в категории, занятие остаётся во вторнике без «камня»', async () => {
   const from = await goalBox('Работа', 'Код-ревью модуля оплаты');
   const target = await feedItemBox('Идеи', 'Научиться печь хлеб на закваске');
   await mouseDrag(from, target.x + 40, target.y + target.height - 3);
   assert((await feed('Идеи')).includes('Код-ревью модуля оплаты'), `Идеи: ${await feed('Идеи')}`);
-  assert(!(await dayTitles(1)).includes('Код-ревью модуля оплаты'), 'осталось во вторнике');
+  const kept = (await day(1)).find(t => t.title === 'Код-ревью модуля оплаты');
+  assert(kept && !kept.rock, `Вт: ${JSON.stringify(await day(1))}`);
   assert(!(await goalTitles('Работа')).includes('Код-ревью модуля оплаты'), 'цель осталась');
   await load();
   assert((await feed('Идеи')).includes('Код-ревью модуля оплаты'), 'после перезагрузки');

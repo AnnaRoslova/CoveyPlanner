@@ -138,3 +138,17 @@ button.ck:hover {
     background: var(--b-soft);
     color: var(--b-deep);
 }
+
+.pill.progress {
+    background: var(--b-soft);
+    color: var(--b-deep);
+}
+
+/* Дни ещё не сделанных занятий — бледнее, сделанных — насыщенные */
+.pill.when .d {
+    opacity: 0.55;
+}
+
+.pill.when .d.done {
+    opacity: 1;
+}

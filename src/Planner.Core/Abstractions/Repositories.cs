@@ -54,12 +54,10 @@ public interface IRoleRepository
     void Remove(Role role);
 }
 
-/// <summary>Цели подгружаются вместе со связанным делом (LinkedTask).</summary>
+/// <summary>Цели подгружаются вместе с занятиями (Sessions).</summary>
 public interface IGoalRepository
 {
     Task<WeeklyGoal?> FindAsync(int id, CancellationToken ct = default);
-
-    Task<WeeklyGoal?> FindByTaskIdAsync(int taskId, CancellationToken ct = default);
 
     Task<List<WeeklyGoal>> GetForWeekAsync(DateOnly weekStart, CancellationToken ct = default);
 

@@ -3,19 +3,21 @@ using Planner.Core.Entities;
 using Planner.Core.Enums;
 using Planner.Core.Errors;
 using Planner.Core.Sorting;
+using Planner.Core.Time;
 
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Цели ролей на неделю и их связь с делами:
-/// дело из ленты → цель; цель → день/час (создаёт или двигает дело); цель → обратно в ленту.
-/// Репозиторий целей подгружает LinkedTask вместе с целью.
+/// Цели ролей на неделю и их занятия:
+/// дело из ленты → цель; цель → день (новое занятие); отметка цели; цель → обратно в ленту.
+/// Репозиторий целей подгружает занятия (Sessions) вместе с целью.
 /// </summary>
 public class GoalService(
     IGoalRepository goals,
     IRoleRepository roles,
     ITaskRepository tasks,
     TaskPlacer placer,
+    GoalRemover remover,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -33,32 +35,19 @@ public class GoalService(
         return goal;
     }
 
-    /// <summary>Изменить название и/или отметку «выполнено» (синхронно со связанным делом).</summary>
-    public async Task<WeeklyGoal> UpdateAsync(int id, string? title, bool? isDone, CancellationToken ct = default)
+    /// <summary>Изменить название и/или сколько раз в неделю.</summary>
+    public async Task<WeeklyGoal> UpdateAsync(int id, string? title, int? timesPerWeek, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        var task = goal.LinkedTask;
 
         if (title is not null)
         {
             goal.Rename(title);
-            task?.Rename(goal.Title);
         }
 
-        if (isDone is { } done)
+        if (timesPerWeek is { } times)
         {
-            goal.IsDone = done;
-            if (task is not null)
-            {
-                if (done)
-                {
-                    task.Complete(Now);
-                }
-                else
-                {
-                    task.Uncomplete();
-                }
-            }
+            goal.SetTimesPerWeek(times);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -66,18 +55,53 @@ public class GoalService(
     }
 
     /// <summary>
-    /// Удалить цель. Дело без дня возвращается в ленту (без своей категории —
-    /// в <paramref name="fallbackCategoryId"/>), дело в плане остаётся на месте.
+    /// Клик по отметке цели. Цель не выполнена — отмечается ближайшее невыполненное занятие
+    /// (сегодняшнее, иначе самое раннее, иначе без дня); если таких нет — добавляется выполненное занятие
+    /// на <paramref name="today"/> (для другой недели — без дня). Цель выполнена — снимается отметка
+    /// с последнего отмеченного занятия. Возвращает цель и занятие, которое поменялось.
     /// </summary>
+    public async Task<(WeeklyGoal Goal, TaskItem Session)> ToggleDoneAsync(int id, DateOnly today, CancellationToken ct = default)
+    {
+        var goal = await GetAsync(id, ct);
+        var isCurrentWeek = Week.StartOf(today) == goal.WeekStart;
+        TaskItem session;
+
+        if (goal.IsDone)
+        {
+            session = goal.ActiveSessions
+                .Where(t => t.State == TaskState.Done)
+                .OrderByDescending(t => t.CompletedAt).ThenByDescending(t => t.Id)
+                .First();
+            session.Uncomplete();
+        }
+        else
+        {
+            var open = goal.ActiveSessions.Where(t => t.State == TaskState.Planned).ToList();
+            session = open.FirstOrDefault(t => t.PlannedDate == today)
+                ?? open.Where(t => t.PlannedDate is not null)
+                    .OrderBy(t => t.PlannedDate).ThenBy(t => t.StartTime ?? TimeOnly.MaxValue).ThenBy(t => t.SortOrder)
+                    .FirstOrDefault()
+                ?? goal.UnscheduledSession
+                ?? NewSession(goal);
+
+            // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
+            if (session.PlannedDate is null && isCurrentWeek)
+            {
+                await placer.PlaceAsync(session, new DayTarget(today, int.MaxValue), ct);
+            }
+
+            session.Complete(Now);
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return (goal, session);
+    }
+
+    /// <summary>Удалить цель; что станет с занятиями — см. <see cref="GoalRemover"/>.</summary>
     public async Task DeleteAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        if (goal.LinkedTask is { PlannedDate: null } task)
-        {
-            await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
-        }
-
-        goals.Remove(goal);
+        await remover.RemoveAsync(goal, fallbackCategoryId, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -91,43 +115,34 @@ public class GoalService(
         goal.MoveToRole(roleId);
         SortOrdering.Place(siblings, goal, index);
 
-        if (goal.LinkedTask is { } task)
-        {
-            task.RoleId = roleId;
-        }
-
-        await unitOfWork.SaveChangesAsync(ct);
-        return goal;
-    }
-
-    /// <summary>Цель → день или час. Если дела ещё нет — создаётся с ролью цели.</summary>
-    public async Task<WeeklyGoal> ScheduleAsync(int id, TaskTarget target, CancellationToken ct = default)
-    {
-        if (target is SomedayTarget)
-        {
-            throw new DomainException("Для возврата в ленту используйте перенос цели в ленту.");
-        }
-
-        var goal = await GetAsync(id, ct);
-        var task = goal.LinkedTask;
-        if (task is null)
-        {
-            task = TaskItem.CreatePlanned(goal.Title, Now);
-            task.RoleId = goal.RoleId;
-            tasks.Add(task);
-            goal.LinkTask(task);
-        }
-
-        await placer.PlaceAsync(task, target, ct);
         await unitOfWork.SaveChangesAsync(ct);
         return goal;
     }
 
     /// <summary>
-    /// Дело из ленты (или из плана) → цель роли на неделю.
-    /// Дело из ленты становится «запланированным на неделю» и уходит из ленты.
+    /// Цель → день: новое занятие с названием и ролью цели. Если есть занятие без дня
+    /// (цель сделана из дела ленты) — в день встаёт оно. Перенос занятия — перетаскиванием самого дела.
     /// </summary>
-    public async Task<WeeklyGoal> CreateFromTaskAsync(
+    public async Task<(WeeklyGoal Goal, TaskItem Session)> ScheduleAsync(int id, TaskTarget target, CancellationToken ct = default)
+    {
+        if (target is not DayTarget)
+        {
+            throw new DomainException("Для возврата в ленту используйте перенос цели в ленту.");
+        }
+
+        var goal = await GetAsync(id, ct);
+        var session = goal.UnscheduledSession ?? NewSession(goal);
+
+        await placer.PlaceAsync(session, target, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        return (goal, session);
+    }
+
+    /// <summary>
+    /// Дело из ленты (или из плана) → цель роли на неделю; дело становится её занятием.
+    /// Дело из ленты уходит из ленты и становится занятием без дня.
+    /// </summary>
+    public async Task<(WeeklyGoal Goal, TaskItem Session)> CreateFromTaskAsync(
         int taskId, int roleId, DateOnly weekStart, int index, CancellationToken ct = default)
     {
         await EnsureRoleExistsAsync(roleId, ct);
@@ -137,7 +152,7 @@ public class GoalService(
             throw new DomainException("Дело в корзине.");
         }
 
-        if (await goals.FindByTaskIdAsync(taskId, ct) is not null)
+        if (task.GoalId is not null)
         {
             throw new DomainException("Это дело уже связано с целью.");
         }
@@ -148,34 +163,48 @@ public class GoalService(
             task.PlanForWeek();
         }
 
-        task.RoleId = roleId;
-        goal.LinkTask(task);
+        goal.AddSession(task);
 
         var siblings = await goals.GetForRoleAsync(roleId, weekStart, ct);
         SortOrdering.Place(siblings, goal, index);
         goals.Add(goal);
 
         await unitOfWork.SaveChangesAsync(ct);
-        return goal;
+        return (goal, task);
     }
 
-    /// <summary>Цель → обратно в ленту: цель исчезает, дело (существующее или новое) встаёт в категорию.</summary>
+    /// <summary>
+    /// Цель → обратно в ленту: цель исчезает, в категорию встаёт её занятие без дня (или новое дело).
+    /// Остальные занятия — как при удалении цели.
+    /// </summary>
     public async Task<TaskItem> MoveToSomedayAsync(int id, int categoryId, int index, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        var task = goal.LinkedTask;
+        var task = goal.UnscheduledSession;
         if (task is null)
         {
             task = TaskItem.CreateSomeday(goal.Title, categoryId, Now);
             task.RoleId = goal.RoleId;
             tasks.Add(task);
         }
+        else
+        {
+            goal.RemoveSession(task);
+        }
 
         await placer.PlaceAsync(task, new SomedayTarget(categoryId, index), ct);
-        goals.Remove(goal);
+        await remover.RemoveAsync(goal, fallbackCategoryId: categoryId, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
         return task;
+    }
+
+    private TaskItem NewSession(WeeklyGoal goal)
+    {
+        var session = TaskItem.CreatePlanned(goal.Title, Now);
+        tasks.Add(session);
+        goal.AddSession(session);
+        return session;
     }
 
     private async Task<WeeklyGoal> GetAsync(int id, CancellationToken ct) =>

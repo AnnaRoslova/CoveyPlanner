@@ -12,7 +12,11 @@
     {
         <div class="rock-note">
             <span class="pill-rock">камень</span>
-            цель недели · @(State.FindRole(goal.RoleId)?.Name)
+            @(goal.Title == _title ? "цель недели" : $"цель «{goal.Title}»") · @(State.FindRole(goal.RoleId)?.Name)
+            @if (goal.TimesPerWeek > 1)
+            {
+                <text> · сделано @goal.DoneCount из @goal.TimesPerWeek</text>
+            }
         </div>
     }
 

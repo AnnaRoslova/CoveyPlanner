@@ -60,8 +60,8 @@ foreach ($key in $feed.Keys) {
 function Goal([string]$Role, [string]$Title) { Api POST 'goals' @{ roleId = $roles[$Role]; weekStart = $week; title = $Title } }
 function Schedule($Goal, [int]$Day) { (Api POST "goals/$($Goal.id)/schedule" @{ kind = 'day'; date = (Day $Day); index = 99 }).task }
 
-$run = Goal 'Тело' 'Бег ×3'
-Api PUT "goals/$($run.id)" @{ isDone = $true } | Out-Null
+$run = Goal 'Тело' 'Бег'
+Api PUT "goals/$($run.id)" @{ timesPerWeek = 3 } | Out-Null
 Goal 'Ум' '100 страниц' | Out-Null
 Goal 'Общение и эмоции' 'Увидеться с Олей' | Out-Null
 $dentist = Goal 'Я сама' 'Записаться к стоматологу'
@@ -77,7 +77,7 @@ DayTask 'Оплатить интернет' 0 | Out-Null
 
 $reviewTask = Schedule $review 1
 Api PUT "tasks/$($reviewTask.id)" @{ title = $reviewTask.title; notes = $null; roleId = $roles['Работа']; quadrant = $null; startTime = '10:00:00' } | Out-Null
-Api PUT "goals/$($review.id)" @{ isDone = $true } | Out-Null
+Api PUT "tasks/$($reviewTask.id)/done" @{ isDone = $true } | Out-Null
 DayTask 'Созвон с заказчиком' 1 '11:00' 'Работа' | Out-Null
 DayTask 'Почитать 30 страниц' 1 $null 'Ум' | Out-Null
 

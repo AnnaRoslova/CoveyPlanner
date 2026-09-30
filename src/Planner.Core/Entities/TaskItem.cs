@@ -27,6 +27,9 @@ public class TaskItem : ISortable
 
     public int? RoleId { get; set; }
 
+    /// <summary>Цель недели, занятием которой является дело («камень»). У цели может быть несколько занятий.</summary>
+    public int? GoalId { get; private set; }
+
     public Quadrant? Quadrant { get; set; }
 
     public TaskState State { get; private set; }
@@ -73,6 +76,9 @@ public class TaskItem : ISortable
         State = TaskState.Planned,
         CreatedAt = now,
     };
+
+    /// <summary>Отвязать от цели: дело вернули в ленту или цель удалили.</summary>
+    public void DetachFromGoal() => GoalId = null;
 
     public void Rename(string title) =>
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название дела");

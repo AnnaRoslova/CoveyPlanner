@@ -88,7 +88,7 @@ await check('отметить цель: счётчик роли и камней'
   assert(after !== before, `камней ${before} → ${after}`);
 });
 
-await check('снять отметку у цели с делом — дело в дне тоже снимается', async () => {
+await check('клик по отметке выполненной цели снимает отметку с её занятия в дне', async () => {
   assert((await dayItem(1, 'Код-ревью')).done, 'исходно не выполнено');
   await (await (await goalRow('Работа', 'Код-ревью модуля оплаты')).$('.ck')).click(); await settle();
   assert(!(await dayItem(1, 'Код-ревью')).done, 'дело осталось отмеченным');
@@ -96,7 +96,7 @@ await check('снять отметку у цели с делом — дело в
   assert(!(await dayItem(1, 'Код-ревью')).done, 'после перезагрузки');
 });
 
-await check('переименовать цель по клику — дело в дне тоже', async () => {
+await check('переименовать цель по клику — занятие с тем же названием тоже', async () => {
   await (await goalRow('Работа', 'Демо для команды')).$eval('.tx', e => e.click()); await settle();
   await page.$eval('.role .inline-input', e => e.select());
   await page.keyboard.type('Демо для всей команды'); await page.keyboard.press('Enter'); await settle();
@@ -105,15 +105,14 @@ await check('переименовать цель по клику — дело в
   assert((await goalsOf('Работа')).some(g => g.title === 'Демо для всей команды'), 'после перезагрузки');
 });
 
-await check('удалить цель без дела и цель с делом в дне (дело остаётся, без «камня»)', async () => {
+await check('удалить цель без занятий и цель с невыполненным занятием (оно уходит в корзину)', async () => {
   const f = await goalRow('Дом', 'Поменять фильтр для воды');
-  await f.hover(); await (await f.$('.row-action')).click(); await settle();
+  await f.hover(); await (await f.$('.row-action[title="Удалить цель"]')).click(); await settle();
   assert((await goalsOf('Дом')).length === 0, 'цель не удалилась');
   const s = await goalRow('Я сама', 'Записаться к стоматологу');
-  await s.hover(); await (await s.$('.row-action')).click(); await settle();
+  await s.hover(); await (await s.$('.row-action[title="Удалить цель"]')).click(); await settle();
   assert((await goalsOf('Я сама')).length === 0, 'цель не удалилась');
-  const wed = await dayItem(2, 'Записаться к стоматологу');
-  assert(wed && !wed.rock, `в среде: ${JSON.stringify(wed)}`);
+  assert(!(await dayItem(2, 'Записаться к стоматологу')), 'занятие осталось в среде');
 });
 
 await check('удалить цель, чьё дело без дня и без категории — спрашивает категорию', async () => {
@@ -126,7 +125,7 @@ await check('удалить цель, чьё дело без дня и без к
   await api('DELETE', `categories/${cat.id}`);
   await load();
   const g = await goalRow('Дом', 'Разобрать антресоль');
-  await g.hover(); await (await g.$('.row-action')).click(); await settle();
+  await g.hover(); await (await g.$('.row-action[title="Удалить цель"]')).click(); await settle();
   assert(await page.$('.role .choice select'), 'не спросили категорию');
   assert((await goalsOf('Дом')).length === 1, 'цель удалилась до выбора категории');
   const ideas = await page.$$eval('.role .choice select option', os => os.find(o => o.textContent.includes('Идеи')).value);

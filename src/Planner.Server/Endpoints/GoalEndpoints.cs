@@ -17,9 +17,14 @@ public static class GoalEndpoints
         });
 
         goals.MapPut("/{id:int}", async (int id, UpdateGoalRequest request, GoalService service, CancellationToken ct) =>
-            (await service.UpdateAsync(id, request.Title, request.IsDone, ct)).ToResultDto());
+            (await service.UpdateAsync(id, request.Title, request.TimesPerWeek, ct)).ToDto());
 
-        // ?categoryId= — куда вернуть дело без дня, если у него нет своей категории
+        // Клик по отметке цели: отметить ближайшее занятие или снять отметку с последнего
+        goals.MapPost("/{id:int}/toggle", async (int id, ToggleGoalRequest request, GoalService service, CancellationToken ct) =>
+            (await service.ToggleDoneAsync(id, request.Today, ct)).ToResultDto());
+
+        // Выполненные занятия остаются в неделе, невыполненные — в корзину, занятие без дня — в ленту.
+        // ?categoryId= — куда вернуть занятие без дня, если у него нет своей категории
         goals.MapDelete("/{id:int}", async (int id, int? categoryId, GoalService service, CancellationToken ct) =>
         {
             await service.DeleteAsync(id, categoryId, ct);
@@ -30,7 +35,7 @@ public static class GoalEndpoints
         goals.MapPost("/{id:int}/move", async (int id, MoveGoalRequest request, GoalService service, CancellationToken ct) =>
             (await service.MoveAsync(id, request.RoleId, request.Index, ct)).ToDto());
 
-        // Цель → день / час
+        // Цель → день: новое занятие
         goals.MapPost("/{id:int}/schedule", async (int id, TaskTargetDto target, GoalService service, CancellationToken ct) =>
             (await service.ScheduleAsync(id, target.ToCore(), ct)).ToResultDto());
 
@@ -39,7 +44,7 @@ public static class GoalEndpoints
             (await service.CreateFromTaskAsync(request.TaskId, request.RoleId, request.WeekStart, request.Index, ct))
             .ToResultDto());
 
-        // Цель → обратно в ленту (цель удаляется, дело встаёт в категорию)
+        // Цель → обратно в ленту (цель удаляется, в категорию встаёт её мысль)
         goals.MapPost("/{id:int}/to-someday", async (int id, GoalToSomedayRequest request, GoalService service, CancellationToken ct) =>
             (await service.MoveToSomedayAsync(id, request.CategoryId, request.Index, ct)).ToDto());
     }

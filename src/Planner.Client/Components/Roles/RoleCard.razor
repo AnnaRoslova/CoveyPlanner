@@ -1,5 +1,7 @@
 @* Роль (или измерение пилы) и её цели на неделю.
-   Чекбокс — «выполнено», клик по цели — переименовать, крестик — удалить, «+ цель» — новая цель в конец.
+   Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
+   Чекбокс — отметить ближайшее занятие, клик по цели — переименовать, ↻ — сколько раз в неделю,
+   крестик — удалить, «+ цель» — новая цель в конец.
    «⋯» в заголовке — правка роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки. *@
 @inject PlannerState State
 
@@ -34,13 +36,17 @@ else
         else
         {
             <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
-                     WhenLabel="@WhenLabel(goal)" IsPending="goal.Id < 0"
-                     OnToggle="() => State.SetGoalDoneAsync(goal.Id, !goal.IsDone)"
+                     Progress="@Progress(goal)" Days="Days(goal)" IsPending="goal.Id < 0"
+                     OnToggle="() => State.ToggleGoalAsync(goal.Id)"
                      OnClick="() => StartRenaming(goal.Id)"
                      DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id">
                 <Actions>
                     @if (goal.Id > 0)
                     {
+                        <button type="button" class="row-action" title="Сколько раз в неделю"
+                                @onclick="() => ToggleTimesChoice(goal.Id)">
+                            <Icon Name="repeat" Size="12" />
+                        </button>
                         <button type="button" class="row-action" title="Удалить цель" @onclick="() => DeleteGoalAsync(goal.Id, null)">
                             <Icon Name="x" Size="12" />
                         </button>
@@ -49,9 +55,22 @@ else
             </ItemRow>
         }
 
+        if (goal.Id == _timesGoalId)
+        {
+            <div class="times" role="group" aria-label="Сколько раз в неделю">
+                <span class="times-l">раз в неделю</span>
+                @for (var n = 1; n <= MaxTimesPerWeek; n++)
+                {
+                    var times = n;
+                    <button type="button" class="t @(times == goal.TimesPerWeek ? "on" : "")"
+                            @onclick="() => SetTimesAsync(goal.Id, times)">@times</button>
+                }
+            </div>
+        }
+
         if (goal.Id == _askCategoryForGoalId)
         {
-            <CategoryChoice Prompt="Дело цели вернуть в категорию:" ButtonText="Удалить цель"
+            <CategoryChoice Prompt="Мысль цели вернуть в категорию:" ButtonText="Удалить цель"
                             OnChoose="categoryId => DeleteGoalAsync(goal.Id, categoryId)"
                             OnCancel="() => _askCategoryForGoalId = null" />
         }
@@ -80,6 +99,9 @@ else
     private string _newTitle = "";
     private int? _renamingGoalId;
     private int? _askCategoryForGoalId;
+    private int? _timesGoalId;
+
+    private const int MaxTimesPerWeek = 7;
 
     [Parameter, EditorRequired]
     public RoleDto Role { get; set; } = null!;
@@ -87,10 +109,25 @@ else
     [Parameter, EditorRequired]
     public IReadOnlyList<WeeklyGoalDto> Goals { get; set; } = [];
 
-    /// <summary>«Ср» или «Ср 10:00», если цель уже стоит в дне.</summary>
-    private static string? WhenLabel(WeeklyGoalDto goal) => goal.PlannedDate is { } date
-        ? RuDates.ShortDay(date) + (goal.StartTime is { } time ? " " + RuDates.Time(time) : "")
-        : null;
+    /// <summary>«2/5» — только у цели на несколько раз в неделю.</summary>
+    private static string? Progress(WeeklyGoalDto goal) =>
+        goal.TimesPerWeek > 1 ? $"{goal.DoneCount}/{goal.TimesPerWeek}" : null;
+
+    /// <summary>Дни, на которые стоят занятия: «Чт · Пт».</summary>
+    private static IReadOnlyList<DayMark> Days(WeeklyGoalDto goal) =>
+        goal.Sessions
+            .Where(s => s.PlannedDate is not null)
+            .OrderBy(s => s.PlannedDate)
+            .Select(s => new DayMark(RuDates.ShortDay(s.PlannedDate!.Value), s.IsDone))
+            .ToList();
+
+    private void ToggleTimesChoice(int goalId) => _timesGoalId = _timesGoalId == goalId ? null : goalId;
+
+    private async Task SetTimesAsync(int goalId, int times)
+    {
+        _timesGoalId = null;
+        await State.SetTimesPerWeekAsync(goalId, times);
+    }
 
     private void StartRenaming(int goalId)
     {

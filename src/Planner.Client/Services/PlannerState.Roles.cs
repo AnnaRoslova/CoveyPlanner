@@ -21,9 +21,9 @@ public partial class PlannerState
         }
 
         var siblings = GoalsFor(roleId).ToList();
-        var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, title, IsDone: false,
+        var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, title, TimesPerWeek: 1,
             SortOrder: siblings.Count == 0 ? 0 : siblings.Max(g => g.SortOrder) + 1,
-            TaskId: null, PlannedDate: null, StartTime: null);
+            Sessions: []);
         Goals.Add(temp);
 
         var ok = await SaveAsync(async () =>
@@ -44,7 +44,7 @@ public partial class PlannerState
         return ok;
     }
 
-    /// <summary>Переименовать цель; связанное дело переименовывается вместе с ней.</summary>
+    /// <summary>Переименовать цель; занятия, названные как цель, переименовываются вместе с ней.</summary>
     public async Task RenameGoalAsync(int goalId, string title)
     {
         title = title.Trim();
@@ -54,34 +54,59 @@ public partial class PlannerState
         }
 
         ReplaceGoal(goal with { Title = title });
-        if (goal.TaskId is { } taskId && FindTask(taskId) is { } task)
+        foreach (var task in SessionTasks(goal).Where(t => t.Title == goal.Title))
         {
-            _tasks[taskId] = task with { Title = title };
+            _tasks[task.Id] = task with { Title = title };
         }
 
         await SaveAsync(() => api.UpdateGoalAsync(goalId, new UpdateGoalRequest(title, null)));
     }
 
-    /// <summary>Отметка «выполнено» у цели; связанное дело отмечается вместе с ней.</summary>
-    public async Task SetGoalDoneAsync(int goalId, bool isDone)
+    /// <summary>Сколько раз в неделю (1–7).</summary>
+    public async Task SetTimesPerWeekAsync(int goalId, int times)
     {
-        if (goalId < 0 || FindGoal(goalId) is not { } goal)
+        if (goalId < 0 || FindGoal(goalId) is not { } goal || times == goal.TimesPerWeek)
         {
             return;
         }
 
-        ReplaceGoal(goal with { IsDone = isDone });
-        if (goal.TaskId is { } taskId && FindTask(taskId) is { } task)
-        {
-            _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
-        }
-
-        await SaveAsync(() => api.UpdateGoalAsync(goalId, new UpdateGoalRequest(null, isDone)));
+        ReplaceGoal(goal with { TimesPerWeek = times });
+        await SaveAsync(() => api.UpdateGoalAsync(goalId, new UpdateGoalRequest(null, times)));
     }
 
     /// <summary>
-    /// Удалить цель. Если связанное дело не стоит в дне, оно возвращается в ленту;
-    /// когда у дела нет своей категории — <see cref="ReturnResult.NeedsCategory"/>.
+    /// Клик по отметке цели: сервер отмечает ближайшее занятие (или добавляет выполненное на сегодня),
+    /// а у выполненной цели снимает отметку с последнего занятия. Какое занятие он выберет, решает сервер,
+    /// поэтому здесь ждём ответа, а не угадываем.
+    /// </summary>
+    public async Task ToggleGoalAsync(int goalId)
+    {
+        if (goalId < 0 || FindGoal(goalId) is null)
+        {
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            var result = await api.ToggleGoalAsync(goalId, new ToggleGoalRequest(RuDates.Today));
+            ReplaceGoal(result.Goal);
+            if (result.Task is { } session)
+            {
+                if (session.PlannedDate is { } date && WeekDays.Contains(date))
+                {
+                    _tasks[session.Id] = session;
+                }
+                else
+                {
+                    _tasks.Remove(session.Id);
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Удалить цель. Выполненные занятия остаются в неделе, невыполненные уходят в корзину,
+    /// занятие без дня возвращается в ленту; когда у него нет своей категории — <see cref="ReturnResult.NeedsCategory"/>.
     /// Ждём ответа сервера, а не удаляем сразу: иначе при 409 пришлось бы возвращать цель на место.
     /// </summary>
     public async Task<ReturnResult> DeleteGoalAsync(int goalId, int? categoryId = null)
@@ -96,8 +121,8 @@ public partial class PlannerState
         {
             Goals.RemoveAll(g => g.Id == goalId);
 
-            // Дело без дня ушло в ленту — перечитываем ленту с сервера
-            if (goal.TaskId is not null && goal.PlannedDate is null)
+            // Занятия ушли в корзину, в ленту или стали обычными делами — берём всё с сервера
+            if (goal.Sessions.Count > 0)
             {
                 await ReloadAsync();
             }
@@ -169,7 +194,7 @@ public partial class PlannerState
 
     // ---------- Перетаскивание целей ----------
 
-    /// <summary>Цель → другое место в своей роли или в другой роли (дело цели получает эту роль).</summary>
+    /// <summary>Цель → другое место в своей роли или в другой роли (занятия цели получают эту роль).</summary>
     public async Task MoveGoalAsync(int goalId, int roleId, int index)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal || FindRole(roleId) is null)
@@ -190,18 +215,18 @@ public partial class PlannerState
             ReplaceGoal(siblings[i] with { SortOrder = i });
         }
 
-        if (goal.TaskId is { } taskId && FindTask(taskId) is { } task)
+        foreach (var task in SessionTasks(goal))
         {
-            _tasks[taskId] = task with { RoleId = roleId };
+            _tasks[task.Id] = task with { RoleId = roleId };
         }
 
         await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index)));
     }
 
     /// <summary>
-    /// Дело из ленты или из дня → роль: оно становится целью недели («камнем»).
-    /// Дело из ленты уходит из ленты (запланировано на неделю без дня); дело из дня остаётся в своём дне.
-    /// Если дело уже связано с целью — просто переносим ту цель.
+    /// Дело из ленты или из дня → роль: оно становится целью недели («камнем») и её первым занятием.
+    /// Дело из ленты уходит из ленты (занятие без дня); дело из дня остаётся в своём дне.
+    /// Если дело уже занятие цели — просто переносим ту цель.
     /// </summary>
     public async Task CreateGoalFromTaskAsync(int taskId, int roleId, int index)
     {
@@ -216,11 +241,17 @@ public partial class PlannerState
             return;
         }
 
-        // Локально: цель с временным Id на месте; дело из ленты — «на неделю без дня»
+        // Локально: цель с временным Id на месте, дело — её занятие
         var siblings = GoalsFor(roleId).ToList();
         index = Math.Clamp(index, 0, siblings.Count);
-        var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, task.Title, task.State == TaskStateDto.Done,
-            SortOrder: 0, taskId, task.PlannedDate, task.StartTime);
+        var session = task with
+        {
+            State = task.State == TaskStateDto.Someday ? TaskStateDto.Planned : task.State,
+            RoleId = roleId,
+            GoalId = NextTempId(),
+        };
+        var temp = new WeeklyGoalDto(session.GoalId!.Value, roleId, WeekStart, task.Title, TimesPerWeek: 1,
+            SortOrder: 0, Sessions: [ToSession(session)]);
         siblings.Insert(index, temp);
         Goals.Add(temp);
         for (var i = 0; i < siblings.Count; i++)
@@ -228,18 +259,23 @@ public partial class PlannerState
             ReplaceGoal(siblings[i] with { SortOrder = i });
         }
 
-        _tasks[taskId] = task.State == TaskStateDto.Someday
-            ? task with { State = TaskStateDto.Planned, RoleId = roleId }
-            : task with { RoleId = roleId };
+        _tasks[taskId] = session;
 
         await SaveAsync(async () =>
         {
             var result = await api.CreateGoalFromTaskAsync(new GoalFromTaskRequest(taskId, roleId, WeekStart, index));
             ReplaceTempGoal(temp.Id, result.Goal);
+            if (result.Task is { } saved)
+            {
+                _tasks[taskId] = saved;
+            }
         });
     }
 
-    /// <summary>Цель → день: связанное дело переносится в этот день, а если дела ещё нет — появляется новое.</summary>
+    /// <summary>
+    /// Цель → день: новое занятие (дело-«камень») в этот день. Если у цели есть занятие без дня —
+    /// в день встаёт оно. Перенос уже стоящего занятия — перетаскиванием самого дела.
+    /// </summary>
     public async Task ScheduleGoalAsync(int goalId, DateOnly date, int index)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal)
@@ -247,14 +283,13 @@ public partial class PlannerState
             return;
         }
 
-        // Дело цели: уже на экране (в одном из дней) или ещё нет — тогда временное по данным цели
-        var task = goal.TaskId is { } taskId && FindTask(taskId) is { } shown
-            ? shown
-            : new TaskDto(goal.TaskId ?? NextTempId(), goal.Title, null, null, goal.RoleId, null,
-                goal.IsDone ? TaskStateDto.Done : TaskStateDto.Planned, null, null, 0, null);
+        var unscheduled = goal.Sessions.FirstOrDefault(s => s.PlannedDate is null && !s.IsDone);
+        var task = unscheduled is null
+            ? NewSessionTask(goal, NextTempId())
+            : FindTask(unscheduled.TaskId) ?? NewSessionTask(goal, unscheduled.TaskId);
 
         PlaceInDayLocally(task, date, index);
-        ReplaceGoal(goal with { TaskId = task.Id, PlannedDate = date, StartTime = _tasks[task.Id].StartTime });
+        SyncSession(_tasks[task.Id]);
 
         await SaveAsync(async () =>
         {
@@ -268,7 +303,10 @@ public partial class PlannerState
         });
     }
 
-    /// <summary>Цель → лента: цель исчезает, её дело (или новое с её названием) встаёт в категорию.</summary>
+    /// <summary>
+    /// Цель → лента: цель исчезает, её занятие без дня (или новое дело с её названием) встаёт в категорию.
+    /// Остальные занятия — как при удалении цели.
+    /// </summary>
     public async Task MoveGoalToFeedAsync(int goalId, int categoryId, int index)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal || FindCategory(categoryId) is null)
@@ -276,25 +314,31 @@ public partial class PlannerState
             return;
         }
 
-        var task = goal.TaskId is { } taskId && FindTask(taskId) is { } shown
-            ? shown
-            : new TaskDto(goal.TaskId ?? NextTempId(), goal.Title, null, categoryId, goal.RoleId, null,
+        var unscheduled = goal.Sessions.FirstOrDefault(s => s.PlannedDate is null && !s.IsDone);
+        var task = unscheduled is not null && FindTask(unscheduled.TaskId) is { } shown
+            ? shown with { GoalId = null }
+            : new TaskDto(unscheduled?.TaskId ?? NextTempId(), goal.Title, null, categoryId, goal.RoleId, null, null,
                 TaskStateDto.Someday, null, null, 0, null);
 
         PlaceInFeedLocally(task, categoryId, index);
         Goals.RemoveAll(g => g.Id == goalId);
+        var hasOtherSessions = goal.Sessions.Any(s => s != unscheduled);
 
         await SaveAsync(async () =>
         {
             var saved = await api.MoveGoalToSomedayAsync(goalId, new GoalToSomedayRequest(categoryId, index));
             ReplaceTempTask(task.Id, saved);
+            if (hasOtherSessions)
+            {
+                await ReloadAsync(); // занятия в днях ушли в корзину или стали обычными делами
+            }
         });
     }
 
     /// <summary>
-    /// Удалить роль вместе с её целями (на всех неделях). Дела, висевшие на целях без дня,
-    /// возвращаются в ленту — без своей категории нужна одна категория на все
-    /// (<see cref="ReturnResult.NeedsCategory"/>). У остальных дел роль просто снимается.
+    /// Удалить роль вместе с её целями (на всех неделях); занятия — как при удалении цели.
+    /// Занятия без дня возвращаются в ленту — без своей категории нужна одна категория на все
+    /// (<see cref="ReturnResult.NeedsCategory"/>).
     /// </summary>
     public async Task<ReturnResult> DeleteRoleAsync(int roleId, int? categoryId = null)
     {
@@ -310,6 +354,51 @@ public partial class PlannerState
     // ---------- Помощники ----------
 
     public WeeklyGoalDto? FindGoal(int goalId) => Goals.FirstOrDefault(g => g.Id == goalId);
+
+    /// <summary>Занятия цели, которые есть на экране (в днях показанной недели).</summary>
+    private IEnumerable<TaskDto> SessionTasks(WeeklyGoalDto goal) =>
+        goal.Sessions.Select(s => FindTask(s.TaskId)).OfType<TaskDto>().ToList();
+
+    private static TaskDto NewSessionTask(WeeklyGoalDto goal, int id) =>
+        new(id, goal.Title, null, null, goal.RoleId, goal.Id, null, TaskStateDto.Planned, null, null, 0, null);
+
+    private static GoalSessionDto ToSession(TaskDto task) =>
+        new(task.Id, task.PlannedDate, task.State == TaskStateDto.Done);
+
+    /// <summary>
+    /// Занятие поменялось локально (день, отметка) — обновить его в цели, чтобы прогресс
+    /// и метки дней сразу показали новое. Так же сервер строит список занятий.
+    /// </summary>
+    private void SyncSession(TaskDto task)
+    {
+        if (task.GoalId is not { } goalId || FindGoal(goalId) is not { } goal)
+        {
+            return;
+        }
+
+        var sessions = goal.Sessions.Where(s => s.TaskId != task.Id).ToList();
+        if (task.State is TaskStateDto.Planned or TaskStateDto.Done)
+        {
+            sessions.Add(ToSession(task));
+        }
+
+        ReplaceGoal(goal with
+        {
+            Sessions = [.. sessions.OrderBy(s => s.PlannedDate ?? DateOnly.MaxValue).ThenBy(s => s.TaskId)],
+        });
+    }
+
+    /// <summary>Дело больше не занятие (ушло в корзину или в ленту) — убрать его из прогресса цели.</summary>
+    private void RemoveSession(int taskId)
+    {
+        for (var i = 0; i < Goals.Count; i++)
+        {
+            if (Goals[i].Sessions.Any(s => s.TaskId == taskId))
+            {
+                Goals[i] = Goals[i] with { Sessions = [.. Goals[i].Sessions.Where(s => s.TaskId != taskId)] };
+            }
+        }
+    }
 
     /// <summary>Вызов, который может ответить «нужна категория» (409).</summary>
     private async Task<ReturnResult> RunReturningToFeedAsync(Func<Task> serverCall)

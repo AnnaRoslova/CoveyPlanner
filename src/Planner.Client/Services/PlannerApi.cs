@@ -83,8 +83,11 @@ public class PlannerApi(HttpClient http)
     public Task<WeeklyGoalDto> CreateGoalAsync(CreateGoalRequest request) =>
         SendAsync<WeeklyGoalDto>(HttpMethod.Post, "api/goals", request);
 
-    public Task<GoalResultDto> UpdateGoalAsync(int id, UpdateGoalRequest request) =>
-        SendAsync<GoalResultDto>(HttpMethod.Put, $"api/goals/{id}", request);
+    public Task<WeeklyGoalDto> UpdateGoalAsync(int id, UpdateGoalRequest request) =>
+        SendAsync<WeeklyGoalDto>(HttpMethod.Put, $"api/goals/{id}", request);
+
+    public Task<GoalResultDto> ToggleGoalAsync(int id, ToggleGoalRequest request) =>
+        SendAsync<GoalResultDto>(HttpMethod.Post, $"api/goals/{id}/toggle", request);
 
     /// <summary>categoryId — куда вернуть дело цели без дня, если у него нет своей категории.</summary>
     public Task DeleteGoalAsync(int id, int? categoryId = null) =>

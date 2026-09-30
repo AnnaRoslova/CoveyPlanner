@@ -9,7 +9,6 @@ namespace Planner.Core.Services;
 public class TaskService(
     ITaskRepository tasks,
     IRoleRepository roles,
-    IGoalRepository goals,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
@@ -57,12 +56,6 @@ public class TaskService(
             await placer.MoveToEndOfDayAsync(task, ct);
         }
 
-        // Название у цели и связанного дела одно
-        if (await goals.FindByTaskIdAsync(task.Id, ct) is { } goal)
-        {
-            goal.Rename(task.Title);
-        }
-
         await unitOfWork.SaveChangesAsync(ct);
         return task;
     }
@@ -73,9 +66,9 @@ public class TaskService(
         var task = await GetAsync(id, ct);
         await placer.PlaceAsync(task, target, ct);
 
-        if (target is SomedayTarget && await goals.FindByTaskIdAsync(task.Id, ct) is { } goal)
+        if (target is SomedayTarget)
         {
-            goal.UnlinkTask();
+            task.DetachFromGoal();
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -94,32 +87,26 @@ public class TaskService(
             task.Uncomplete();
         }
 
-        if (await goals.FindByTaskIdAsync(task.Id, ct) is { } goal)
-        {
-            goal.IsDone = isDone;
-        }
-
         await unitOfWork.SaveChangesAsync(ct);
         return task;
     }
 
-    /// <summary>В корзину. Цель, если была связана, остаётся — просто без дела.</summary>
+    /// <summary>
+    /// В корзину. Занятие цели остаётся связанным с ней, но в прогресс не входит;
+    /// вернули из корзины — снова засчитывается.
+    /// </summary>
     public async Task TrashAsync(int id, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
         task.Trash(Now);
 
-        if (await goals.FindByTaskIdAsync(task.Id, ct) is { } goal)
-        {
-            goal.UnlinkTask();
-        }
-
         await unitOfWork.SaveChangesAsync(ct);
     }
 
     /// <summary>
-    /// Вернуть из корзины на прежнее место. Если дело возвращается в ленту (было в ленте
-    /// или висело на цели без дня), а его категории нет — нужна <paramref name="fallbackCategoryId"/>.
+    /// Вернуть из корзины на прежнее место. Занятие цели без дня снова висит на цели.
+    /// Если дело возвращается в ленту (было в ленте или его цель удалили), а его категории нет —
+    /// нужна <paramref name="fallbackCategoryId"/>.
     /// </summary>
     public async Task<TaskItem> RestoreAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
     {
@@ -130,7 +117,7 @@ public class TaskService(
         {
             await placer.MoveToEndOfDayAsync(task, ct);
         }
-        else
+        else if (task.GoalId is null)
         {
             await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
         }
