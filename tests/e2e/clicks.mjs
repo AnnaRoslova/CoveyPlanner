@@ -28,7 +28,7 @@ const api = (method, path, body) => page.evaluate(async (method, path, body) => 
   return r.status === 204 ? null : r.json();
 }, method, path, body);
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('goal-days')).map(n => n.textContent).join('').trim();
 const T = `const titleOf = ${titleOf};`;
 async function boxOf(src) {
   const el = (await page.evaluateHandle(src)).asElement();

@@ -7,7 +7,7 @@
     padding: 10px 6px 6px;
     border-radius: var(--day-radius);
     background-color: var(--paper);
-    background-image: radial-gradient(circle, color-mix(in srgb, var(--b) 50%, #fff) 1px, transparent 1.3px);
+    background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.3px);
     background-size: 16px 16px;
     background-position: 6px 50px;
 }
@@ -20,7 +20,7 @@
 /* Сегодня — очень нежная розовая подсветка и тонкая бледная обводка (важнее выходного) */
 .day.today {
     background-color: color-mix(in srgb, var(--a) 4%, var(--paper));
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--a) 22%, #fff);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--a) 22%, var(--surface));
 }
 
 .day-h {
@@ -60,7 +60,7 @@
     margin-left: auto;
     padding: 1px 7px;
     border-radius: 20px;
-    background: color-mix(in srgb, var(--a) 14%, #fff);
+    background: color-mix(in srgb, var(--a) 14%, var(--surface));
     color: var(--a-deep);
     font-size: 10px;
     font-weight: 800;
@@ -68,7 +68,7 @@
 
 /* Записи на «бумаге» чуть подсвечены, чтобы точки не мешали читать */
 .day ::deep .item {
-    background: #ffffffd0;
+    background: var(--glass-hi);
 }
 
 .day ::deep .item:hover {

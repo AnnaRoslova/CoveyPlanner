@@ -23,10 +23,10 @@ async function check(name, fn) {
 }
 async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.role'); await settle(); }
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('goal-days')).map(n => n.textContent).join('').trim();
 const T = `const titleOf = ${titleOf};`;
 const roleSel = name => `[...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === ${JSON.stringify(name)})`;
-const goalsOf = name => page.evaluate(`(() => { ${T} const r = ${roleSel(name)}; return r ? [...r.querySelectorAll('.item')].map(i => ({ title: titleOf(i), when: ([...i.querySelectorAll('.days .d')].map(d => d.textContent).join(' · ') || null), done: i.classList.contains('done') })) : null; })()`);
+const goalsOf = name => page.evaluate(`(() => { ${T} const r = ${roleSel(name)}; return r ? [...r.querySelectorAll('.item')].map(i => ({ title: titleOf(i), when: ([...i.querySelectorAll('.goal-days .d')].map(d => d.textContent).join(' · ') || null), done: i.classList.contains('done') })) : null; })()`);
 const goalTitles = async name => (await goalsOf(name)).map(g => g.title);
 const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), time: it.querySelector('.pill.time')?.textContent ?? null, rock: !!it.querySelector('.pill.rock') })); })()`);
 const dayTitles = async i => (await day(i)).map(t => t.title);

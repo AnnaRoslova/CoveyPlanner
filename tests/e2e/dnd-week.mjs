@@ -22,7 +22,7 @@ async function check(name, fn) {
 }
 async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.day .item'); await settle(); }
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('goal-days')).map(n => n.textContent).join('').trim();
 const day = i => page.evaluate((i, titleOfSrc) => {
   const titleOf = new Function('return ' + titleOfSrc)();
   return [...document.querySelectorAll('.day')[i].querySelectorAll('.item')].map(it => ({
@@ -38,7 +38,7 @@ const feed = name => page.evaluate(n => {
 const countOf = name => page.evaluate(n => [...document.querySelectorAll('.cat')].find(c => c.querySelector('.cat-h .name')?.textContent.trim() === n)?.querySelector('.cnt')?.textContent, name);
 const goalWhen = t => page.evaluate(t => {
   const row = [...document.querySelectorAll('.role .item')].find(r => r.querySelector('.tx').textContent.includes(t));
-  return row ? ([...row.querySelectorAll('.days .d')].map(d => d.textContent).join(' · ') || null) : null;
+  return row ? ([...row.querySelectorAll('.goal-days .d')].map(d => d.textContent).join(' · ') || null) : null;
 }, t);
 
 async function boxOf(fnSrc) {

@@ -36,7 +36,7 @@
 
 .strip:hover {
     color: var(--b-deep);
-    background: #ffffffd0;
+    background: var(--glass-hi);
 }
 
 .strip-label {
@@ -78,5 +78,5 @@
 }
 
 .mode-overlay .host ::deep .panel {
-    background: #fffffff0;
+    background: var(--glass-top);
 }

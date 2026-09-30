@@ -155,7 +155,7 @@ button.ck:hover {
 }
 
 /* Дни занятий цели — мелко под названием; дни с отмеченным занятием насыщеннее */
-.days {
+.goal-days {
     display: flex;
     flex-wrap: wrap;
     gap: 3px;
@@ -166,10 +166,10 @@ button.ck:hover {
     text-decoration: none;
 }
 
-.days .d {
+.goal-days .d {
     opacity: 0.5;
 }
 
-.days .d.done {
+.goal-days .d.done {
     opacity: 1;
 }

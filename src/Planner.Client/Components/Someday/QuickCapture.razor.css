@@ -4,9 +4,9 @@
     gap: 6px;
     margin: 0 14px 8px;
     padding: 6px 6px 6px 12px;
-    border: 1.5px dashed color-mix(in srgb, var(--b) 80%, #fff);
+    border: 1.5px dashed color-mix(in srgb, var(--b) 80%, var(--surface));
     border-radius: 14px;
-    background: #fff;
+    background: var(--surface);
 }
 
 .quick input {
@@ -51,7 +51,7 @@
 }
 
 .cat-pick:hover {
-    background: color-mix(in srgb, var(--b) 35%, #fff);
+    background: color-mix(in srgb, var(--b) 35%, var(--surface));
 }
 
 .cat-pick:focus-within {

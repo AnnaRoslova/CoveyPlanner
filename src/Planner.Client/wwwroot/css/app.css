@@ -19,6 +19,10 @@
     --b-soft: #e8f6f2;
     --b-deep: #3f9585;
 
+    /* Поверхности. Темы (css/themes.css) меняют эти значения и палитру выше */
+    --page-bg: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%);
+    --surface: #fff;     /* поля ввода, всплывающие окна, чипы */
+
     /* Шрифты: основной, рукописный (дни недели), заголовки */
     --font: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
     --font-hand: Caveat, "Segoe Print", cursive;
@@ -31,6 +35,25 @@
     --strip-width: 36px;     /* свёрнутая боковая панель */
     --panel-radius: 22px;
     --day-radius: 18px;
+}
+
+/* Производные от поверхности: объявлены и на элементах с data-theme, чтобы мини-превью темы
+   в переключателе пересчитали их со своими цветами */
+:root,
+[data-theme] {
+    /* Панели: неделя, роли (самая прозрачная, едва шалфей), лента (чуть мятная) */
+    --t-panel: color-mix(in srgb, var(--surface) 72%, transparent);
+    --t-left: color-mix(in srgb, var(--b) 7%, color-mix(in srgb, var(--surface) 69%, transparent));
+    --t-right: color-mix(in srgb, var(--b) 10%, color-mix(in srgb, var(--surface) 78%, transparent));
+
+    /* «Стекло» — поверхность с прозрачностью: записи на бумаге, кнопки на панелях */
+    --glass-lo: color-mix(in srgb, var(--surface) 56%, transparent);
+    --glass-mid: color-mix(in srgb, var(--surface) 75%, transparent);
+    --glass-hi: color-mix(in srgb, var(--surface) 83%, transparent);
+    --glass-top: color-mix(in srgb, var(--surface) 95%, transparent);
+
+    /* Точечная сетка на страницах-днях */
+    --dot: color-mix(in srgb, var(--b) 50%, var(--paper));
 }
 
 *, *::before, *::after {
@@ -46,8 +69,8 @@ body {
     font-family: var(--font);
     font-size: 14px;
     color: var(--text);
-    /* Фон: лёгкий холодно-розовый край → мятная бирюза */
-    background: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%) fixed;
+    /* Фон: у «Лотоса» лёгкий холодно-розовый край → мятная бирюза */
+    background: var(--page-bg) fixed;
 }
 
 /* Это приложение, а не страница с текстом: при протягивании мышью ничего не выделяется.
@@ -103,7 +126,7 @@ textarea:focus-visible {
     flex-direction: column;
     min-height: 0;
     border-radius: var(--panel-radius);
-    background: #ffffffb8;
+    background: var(--t-panel);
     box-shadow: 0 4px 24px rgba(90, 80, 130, 0.05);
 }
 
@@ -144,10 +167,10 @@ textarea:focus-visible {
     display: block;
     width: 100%;
     padding: 5px 8px;
-    border: 1.5px solid color-mix(in srgb, var(--b) 60%, #fff);
+    border: 1.5px solid color-mix(in srgb, var(--b) 60%, var(--surface));
     border-radius: 8px;
     outline: none;
-    background: #fff;
+    background: var(--surface);
     font-size: 13px;
 }
 
@@ -166,7 +189,7 @@ textarea:focus-visible {
 }
 
 .btn:hover {
-    background: color-mix(in srgb, var(--b) 35%, #fff);
+    background: color-mix(in srgb, var(--b) 35%, var(--surface));
 }
 
 .btn.quiet {
@@ -175,7 +198,7 @@ textarea:focus-visible {
 }
 
 .btn.quiet:hover {
-    background: #ffffff90;
+    background: var(--glass-lo);
 }
 
 .btn.danger {
@@ -184,7 +207,7 @@ textarea:focus-visible {
 }
 
 .btn.danger:hover {
-    background: color-mix(in srgb, var(--a) 35%, #fff);
+    background: color-mix(in srgb, var(--a) 35%, var(--surface));
 }
 
 /* Маленькая круглая кнопка-иконка справа в записи (удалить, вернуть…) */
@@ -199,7 +222,7 @@ textarea:focus-visible {
 }
 
 .row-action:hover {
-    background: #fff;
+    background: var(--surface);
     color: var(--a-deep);
 }
 
@@ -227,7 +250,7 @@ body.dragging * {
     z-index: 1000;
     margin: 0;
     border-radius: 8px;
-    background: #fff !important;
+    background: var(--surface) !important;
     box-shadow: 0 10px 28px rgba(60, 90, 90, 0.22);
     opacity: 0.85;
     pointer-events: none;
@@ -251,14 +274,14 @@ body.dragging * {
     z-index: 998;
     border-radius: 12px;
     background: color-mix(in srgb, var(--b) 12%, transparent);
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--b) 70%, #fff);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--b) 70%, var(--surface));
     pointer-events: none;
 }
 
 /* Подсветка совпадений поиска */
 mark.hit {
     border-radius: 3px;
-    background: color-mix(in srgb, var(--b) 45%, #fff);
+    background: color-mix(in srgb, var(--b) 45%, var(--surface));
     color: inherit;
 }
 
@@ -318,7 +341,7 @@ mark.hit {
 
 .loading-progress circle {
     fill: none;
-    stroke: #ffffff90;
+    stroke: var(--glass-lo);
     stroke-width: 0.5rem;
     transform-origin: 50% 50%;
     transform: rotate(-90deg);

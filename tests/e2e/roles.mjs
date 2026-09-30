@@ -35,7 +35,7 @@ const roleHandle = async name => {
 const goalsOf = name => page.evaluate(n => {
   const r = [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n);
   return r ? [...r.querySelectorAll('.item')].map(i => ({
-    title: [...i.querySelector('.tx').childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('days')).map(c => c.textContent).join('').trim(),
+    title: [...i.querySelector('.tx').childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('goal-days')).map(c => c.textContent).join('').trim(),
     done: i.classList.contains('done'),
   })) : null;
 }, name);
@@ -45,13 +45,13 @@ async function goalRow(roleName, title) {
   const role = await roleHandle(roleName);
   const rows = await role.$$('.item');
   for (const r of rows) {
-    const t = await r.evaluate(i => [...i.querySelector('.tx').childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('days')).map(c => c.textContent).join('').trim());
+    const t = await r.evaluate(i => [...i.querySelector('.tx').childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('goal-days')).map(c => c.textContent).join('').trim());
     if (t === title) return r;
   }
   throw new Error(`нет цели «${title}» у «${roleName}»`);
 }
 const dayTitles = i => page.evaluate(i => [...document.querySelectorAll('.day')[i].querySelectorAll('.item .tx')]
-  .map(tx => [...tx.childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('days')).map(c => c.textContent).join('').trim()), i);
+  .map(tx => [...tx.childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('goal-days')).map(c => c.textContent).join('').trim()), i);
 const dayItem = (i, title) => page.evaluate((i, t) => {
   const it = [...document.querySelectorAll('.day')[i].querySelectorAll('.item')].find(x => x.querySelector('.tx').textContent.includes(t));
   return it ? { done: it.classList.contains('done'), rock: !!it.querySelector('.pill.rock') } : null;

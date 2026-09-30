@@ -18,5 +18,5 @@
 }
 
 .swatch.on {
-    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c);
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c);
 }

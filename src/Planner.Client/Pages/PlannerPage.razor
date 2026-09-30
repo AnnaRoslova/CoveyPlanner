@@ -4,6 +4,7 @@
 @inject DragDropService DragDrop
 @inject TodayWatcher Today
 @inject GoalEditorHost EditorHost
+@inject ThemeState Theme
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -43,7 +44,7 @@ else
         EditorHost.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync());
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync());
     }
 
     public override void Dispose()

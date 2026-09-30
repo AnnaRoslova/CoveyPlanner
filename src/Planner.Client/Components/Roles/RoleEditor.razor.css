@@ -5,7 +5,7 @@
     margin-bottom: 6px;
     padding: 8px;
     border-radius: 14px;
-    background: #ffffffc8;
+    background: var(--glass-mid);
 }
 
 .saw-name {

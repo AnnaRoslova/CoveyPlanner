@@ -45,7 +45,7 @@ async function setupCategory(name, titles) {
   for (const title of titles) await api('POST', 'tasks', { title, target: { kind: 'someday', categoryId: c.id, index: 99 } });
 }
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('goal-days')).map(n => n.textContent).join('').trim();
 const zoneEl = z => z.day !== undefined
   ? `document.querySelectorAll('.day')[${z.day}]`
   : z.role !== undefined

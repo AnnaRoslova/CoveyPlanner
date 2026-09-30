@@ -1,0 +1,461 @@
+/* ===== Темы оформления. Образец — docs/themes.html, ТЗ — CLAUDE.md, раздел 8.1.
+   Тема — набор CSS-переменных (палитра, поверхности, шрифты) плюс немного своих правил; разметка одна.
+   Тема включается атрибутом data-theme на <html> (ThemeState, js/theme.js). Тот же атрибут у мини-превью
+   в переключателе: блоки [data-theme="…"] работают и на них, поэтому палитры написаны без :root.
+   Свои правила тем — только для страницы целиком: :root[data-theme="…"] … (превью они не трогают).
+   Цвета ролей общие для всех тем. ===== */
+
+/* ---------- Лотос (по умолчанию; те же значения, что в app.css — нужны для превью внутри другой темы) ---------- */
+[data-theme="lotus"] {
+    --sky0: #fff5f9;
+    --sky1: #e3f2ec;
+    --sky2: #d3ece4;
+    --sky3: #b9e0d6;
+    --page-bg: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%);
+    --paper: #fffcfc;
+    --surface: #fff;
+    --text: #3e4d52;
+    --soft: #88999c;
+    --faint: #c3cfd0;
+    --line: #efe6e7;
+    --a: #f9d0e0;
+    --a-soft: #fff5f9;
+    --a-deep: #e495b8;
+    --b: #9fd6c9;
+    --b-soft: #e8f6f2;
+    --b-deep: #3f9585;
+    --font: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-hand: Caveat, "Segoe Print", cursive;
+    --font-title: Lora, Georgia, serif;
+}
+
+/* ---------- Пион: кремовая бумага, эвкалиптовый зелёный, беж ---------- */
+[data-theme="peony"] {
+    --page-bg: radial-gradient(ellipse at 12% 8%, #f6efe6 0%, transparent 55%), linear-gradient(165deg, #efe7dc 0%, #e7ddd0 100%);
+    --t-panel: #fbf7f1d6;
+    --t-left: #f8f3ecd0;
+    --t-right: #faf5efd6;
+    --paper: #fdfaf5;
+    --surface: #fffdf9;
+    --text: #33403a;
+    --soft: #8a8f86;
+    --faint: #c9c6bc;
+    --line: #ebe3d7;
+    --a: #e8d2c2;
+    --a-soft: #f6ece4;
+    --a-deep: #a97c63;
+    --b: #9fbfae;
+    --b-soft: #e6efe8;
+    --b-deep: #3f6b5a;
+    --font-title: "Cormorant Garamond", Georgia, serif;
+    --font-hand: "Cormorant Garamond", Georgia, serif;
+}
+
+/* ---------- Дюна: тауп, какао, песок ---------- */
+[data-theme="dune"] {
+    --page-bg: radial-gradient(ellipse 70% 55% at 85% 90%, #8c7b70 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 10% 100%, #a79587 0%, transparent 70%), linear-gradient(170deg, #e3dad1 0%, #c9bbaf 55%, #a39284 100%);
+    --t-panel: #f6f1ecd9;
+    --t-left: #f3ede7cc;
+    --t-right: #f5f0eadb;
+    --paper: #faf7f3;
+    --surface: #fdfbf8;
+    --text: #3a302b;
+    --soft: #8f8279;
+    --faint: #c8bdb4;
+    --line: #e8e0d8;
+    --a: #dcc5b6;
+    --a-soft: #f3eae4;
+    --a-deep: #8c6d5c;
+    --b: #c2b5a8;
+    --b-soft: #efe9e3;
+    --b-deep: #6f6158;
+    --font-title: "Cormorant Garamond", Georgia, serif;
+    --font-hand: "Cormorant Garamond", Georgia, serif;
+    --panel-radius: 10px;
+    --day-radius: 10px;
+}
+
+/* ---------- Графит: строгая сине-серая ---------- */
+[data-theme="graphite"] {
+    --page-bg: linear-gradient(165deg, #eceff2 0%, #d6dce2 100%);
+    --t-panel: #f8f9fbd0;
+    --t-left: #f4f6f8cc;
+    --t-right: #f6f8fad6;
+    --paper: #fbfcfd;
+    --surface: #fff;
+    --text: #27303b;
+    --soft: #7b8594;
+    --faint: #c3c9d1;
+    --line: #e4e8ec;
+    --a: #bccbdc;
+    --a-soft: #edf2f7;
+    --a-deep: #4a6788;
+    --b: #a7b6c3;
+    --b-soft: #edf1f4;
+    --b-deep: #3d5466;
+    --font-title: Manrope, "Segoe UI", sans-serif;
+    --font-hand: Manrope, "Segoe UI", sans-serif;
+    --panel-radius: 14px;
+    --day-radius: 10px;
+}
+
+/* ---------- Пудра: строгая светлая, беж + серо-розовый ---------- */
+[data-theme="powder"] {
+    --page-bg: linear-gradient(165deg, #f6f0ec 0%, #ebe1dc 100%);
+    --t-panel: #fdfaf8cc;
+    --t-left: #faf6f3c8;
+    --t-right: #fcf8f6d0;
+    --paper: #fffcfb;
+    --surface: #fff;
+    --text: #3d3436;
+    --soft: #968a8c;
+    --faint: #d1c6c7;
+    --line: #efe6e4;
+    --a: #e5caca;
+    --a-soft: #f8eeee;
+    --a-deep: #a1717a;
+    --b: #d3c8c3;
+    --b-soft: #f3efed;
+    --b-deep: #7a6a66;
+    --font-title: "Cormorant Garamond", Georgia, serif;
+    --font-hand: "Cormorant Garamond", Georgia, serif;
+}
+
+/* ---------- Море: бирюза, голубой, песок ---------- */
+[data-theme="sea"] {
+    --page-bg: linear-gradient(170deg, #f5eee2 0%, #e2f0f3 35%, #bcdce5 100%);
+    --t-panel: #ffffffc0;
+    --t-left: #fbfdfdc0;
+    --t-right: #ffffffc8;
+    --paper: #fbfdfd;
+    --surface: #fff;
+    --text: #2d4550;
+    --soft: #7f98a2;
+    --faint: #c1d2d8;
+    --line: #e2ecef;
+    --a: #ead9bd;
+    --a-soft: #f8f1e6;
+    --a-deep: #a1834e;
+    --b: #8cc4d2;
+    --b-soft: #e5f2f5;
+    --b-deep: #2f7f93;
+}
+
+/* ---------- Лаванда: сирень + шалфей ---------- */
+[data-theme="lavender"] {
+    --page-bg: linear-gradient(165deg, #f3effa 0%, #e7e4f1 45%, #dde8df 100%);
+    --t-panel: #ffffffc0;
+    --t-left: #fbfaffc0;
+    --t-right: #fdfcffc8;
+    --paper: #fdfcff;
+    --surface: #fff;
+    --text: #3e3a52;
+    --soft: #8f8aa3;
+    --faint: #cbc6d9;
+    --line: #ebe7f3;
+    --a: #d8cdf0;
+    --a-soft: #f3f0fb;
+    --a-deep: #7e6bb0;
+    --b: #bcd3bf;
+    --b-soft: #eef5ef;
+    --b-deep: #5f8a66;
+}
+
+/* ---------- Ночь: тёмная ---------- */
+[data-theme="night"] {
+    --page-bg: radial-gradient(ellipse at 80% 0%, #2d3a3c 0%, transparent 60%), linear-gradient(170deg, #1f2629 0%, #161d20 100%);
+    --t-panel: #262f33d9;
+    --t-left: #232b2ecc;
+    --t-right: #252e32d9;
+    --paper: #2b3539;
+    --surface: #323d42;
+    --text: #e4ece9;
+    --soft: #9aaba7;
+    --faint: #5d6c6a;
+    --line: #38443f;
+    --a: #e9a9c0;
+    --a-soft: #3b2f36;
+    --a-deep: #f0b9cd;
+    --b: #7fc7b3;
+    --b-soft: #2a3c38;
+    --b-deep: #94dbc6;
+    color-scheme: dark;
+}
+
+/* ---------- Неон: киберпанк — чёрный, жёлтый + неоново-голубой ---------- */
+[data-theme="neon"] {
+    --page-bg: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+        linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+        linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+        radial-gradient(ellipse at 90% 0%, #3a0a2a 0%, transparent 55%), #07080c;
+    --t-panel: #0f1117ee;
+    --t-left: #0f1117ee;
+    --t-right: #0f1117ee;
+    --paper: #12141b;
+    --surface: #181b24;
+    --text: #e9e6d6;
+    --soft: #8c93a3;
+    --faint: #4a5160;
+    --line: #232838;
+    --a: #f3e600;
+    --a-soft: #2b2a0a;
+    --a-deep: #f3e600;
+    --b: #00e5ff;
+    --b-soft: #07262c;
+    --b-deep: #00e5ff;
+    --dot: #00e5ff30;
+    --font: "Chakra Petch", "Segoe UI", sans-serif;
+    --font-title: "Chakra Petch", "Segoe UI", sans-serif;
+    --font-hand: "Chakra Petch", "Segoe UI", sans-serif;
+    --panel-radius: 0;
+    --day-radius: 0;
+    color-scheme: dark;
+}
+
+/* ---------- Андроид: «клиническая» светлая — белый/серый, голубой светодиод, шестигранники ---------- */
+[data-theme="android"] {
+    --page-bg: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2256%22%20height%3D%2297%22%20viewBox%3D%220%200%2056%2097%22%3E%3Cpath%20d%3D%22M28%200%20L56%2016%20L56%2048%20L28%2064%20L0%2048%20L0%2016Z%20M28%2064%20L28%2097%22%20fill%3D%22none%22%20stroke%3D%22%23d6dfe8%22%20stroke-width%3D%221%22/%3E%3C/svg%3E"), linear-gradient(170deg, #f4f7fa 0%, #e4eaf0 100%);
+    --t-panel: #ffffffe0;
+    --t-left: #fbfcfde0;
+    --t-right: #fbfcfde6;
+    --paper: #fff;
+    --surface: #f6f9fb;
+    --text: #1c2733;
+    --soft: #6e7f90;
+    --faint: #b8c4cf;
+    --line: #e3e9ef;
+    --a: #2aa8ff;
+    --a-soft: #e6f4ff;
+    --a-deep: #1583d6;
+    --b: #8fcaf0;
+    --b-soft: #eef7fd;
+    --b-deep: #1583d6;
+    --dot: #c9d6e2;
+    --font: "Exo 2", "Segoe UI", sans-serif;
+    --font-title: "Exo 2", "Segoe UI", sans-serif;
+    --font-hand: "Exo 2", "Segoe UI", sans-serif;
+    --panel-radius: 4px;
+    --day-radius: 3px;
+}
+
+/* ===== Свои правила тем (только страница целиком) ===== */
+
+/* Пион, Дюна, Пудра — книжная антиква: крупнее заголовки, дни курсивом */
+:root[data-theme="peony"] :is(.h1, .wt),
+:root[data-theme="dune"] :is(.h1, .wt),
+:root[data-theme="powder"] :is(.h1, .wt) {
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+:root[data-theme="peony"] .dow,
+:root[data-theme="dune"] .dow,
+:root[data-theme="powder"] .dow {
+    font-size: 17px;
+    font-style: italic;
+    font-weight: 600;
+}
+
+/* Пион: эвкалиптовые дни и разделы, «сегодня» — беж; веточка эвкалипта внизу ленты */
+:root[data-theme="peony"] :is(.dow, .sect) {
+    color: #3f6b5a;
+}
+
+:root[data-theme="peony"] :is(.today-b, .tag) {
+    background: #e6efe8;
+    color: #3f6b5a;
+}
+
+:root[data-theme="peony"] .day.today :is(.dow, .num) {
+    color: #a97c63;
+}
+
+:root[data-theme="peony"] .someday {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20260%20300%22%3E%3Cpath%20d%3D%22M40%20295%20C80%20230%20120%20170%20200%2040%22%20stroke%3D%22%236f7f73%22%20stroke-width%3D%222.2%22%20fill%3D%22none%22/%3E%3Cg%20fill%3D%22%234f7a66%22%3E%3Cellipse%20cx%3D%2270%22%20cy%3D%22240%22%20rx%3D%2234%22%20ry%3D%2211%22%20transform%3D%22rotate%28-35%2070%20240%29%22/%3E%3Cellipse%20cx%3D%22102%22%20cy%3D%22205%22%20rx%3D%2236%22%20ry%3D%2212%22%20transform%3D%22rotate%28-150%20102%20205%29%22/%3E%3Cellipse%20cx%3D%22120%22%20cy%3D%22165%22%20rx%3D%2232%22%20ry%3D%2210%22%20transform%3D%22rotate%28-40%20120%20165%29%22/%3E%3Cellipse%20cx%3D%22150%22%20cy%3D%22130%22%20rx%3D%2234%22%20ry%3D%2211%22%20transform%3D%22rotate%28-145%20150%20130%29%22/%3E%3Cellipse%20cx%3D%22165%22%20cy%3D%2292%22%20rx%3D%2228%22%20ry%3D%229%22%20transform%3D%22rotate%28-50%20165%2092%29%22/%3E%3Cellipse%20cx%3D%22190%22%20cy%3D%2262%22%20rx%3D%2226%22%20ry%3D%228%22%20transform%3D%22rotate%28-140%20190%2062%29%22/%3E%3C/g%3E%3Cg%20fill%3D%22%2386a595%22%3E%3Cellipse%20cx%3D%2288%22%20cy%3D%22226%22%20rx%3D%2220%22%20ry%3D%226%22%20transform%3D%22rotate%28-70%2088%20226%29%22/%3E%3Cellipse%20cx%3D%22138%22%20cy%3D%22150%22%20rx%3D%2220%22%20ry%3D%226%22%20transform%3D%22rotate%28-75%20138%20150%29%22/%3E%3C/g%3E%3Cg%20fill%3D%22%23efe3d6%22%20stroke%3D%22%23d9c6b3%22%20stroke-width%3D%221.5%22%3E%3Ccircle%20cx%3D%22205%22%20cy%3D%2245%22%20r%3D%2222%22/%3E%3Cpath%20d%3D%22M190%2040%20q15%20-18%2030%200%20M192%2052%20q13%2010%2026%200%22%20fill%3D%22none%22/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right -30px bottom -20px;
+    background-size: 210px auto;
+}
+
+/* Дюна: дюны внизу ленты */
+:root[data-theme="dune"] .someday {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20260%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%20170%20C70%20120%20150%20200%20260%20140%20L260%20300%20L0%20300Z%22%20fill%3D%22%23cbbcae%22/%3E%3Cpath%20d%3D%22M0%20220%20C90%20170%20170%20250%20260%20205%20L260%20300%20L0%20300Z%22%20fill%3D%22%23a8988a%22/%3E%3Cpath%20d%3D%22M0%20265%20C80%20235%20180%20290%20260%20255%20L260%20300%20L0%20300Z%22%20fill%3D%22%238c7b70%22/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: bottom;
+    background-size: 100% 170px;
+}
+
+/* Графит: дни капсом, заголовки плотнее */
+:root[data-theme="graphite"] .dow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+:root[data-theme="graphite"] :is(.h1, .wt) {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* Ночь */
+:root[data-theme="night"] :is(input, textarea)::placeholder {
+    color: var(--faint);
+}
+
+:root[data-theme="night"] .quick {
+    border-color: #4a5a57;
+}
+
+/* Неон: срезанные углы, свечение, капс */
+:root[data-theme="neon"] .panel {
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    box-shadow: none;
+    outline: 1px solid #00e5ff33;
+}
+
+:root[data-theme="neon"] .day {
+    border-top: 2px solid #232838;
+}
+
+:root[data-theme="neon"] .dow {
+    color: #00e5ff;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 8px #00e5ff88;
+    text-transform: uppercase;
+}
+
+:root[data-theme="neon"] .day.today {
+    border-top-color: #f3e600;
+    box-shadow: inset 0 0 0 1px #f3e60066, 0 0 18px #f3e60022;
+}
+
+:root[data-theme="neon"] .day.today :is(.dow, .num) {
+    color: #f3e600;
+    text-shadow: 0 0 10px #f3e600aa;
+}
+
+:root[data-theme="neon"] :is(.tag, .today-b) {
+    border-radius: 0;
+    background: #f3e600;
+    color: #07080c;
+    clip-path: polygon(0 0, 100% 0, 100% 60%, 85% 100%, 0 100%);
+}
+
+:root[data-theme="neon"] :is(.h1, .wt) {
+    color: #f3e600;
+    letter-spacing: 0.08em;
+    text-shadow: 2px 0 0 #ff2a6d88, -2px 0 0 #00e5ff66;
+    text-transform: uppercase;
+}
+
+:root[data-theme="neon"] .sect {
+    color: #ff2a6d;
+    letter-spacing: 0.18em;
+}
+
+:root[data-theme="neon"] .item {
+    border-left: 2px solid transparent;
+    border-radius: 0;
+}
+
+:root[data-theme="neon"] .item:hover {
+    border-left-color: #00e5ff;
+    background: #0b2a31;
+}
+
+:root[data-theme="neon"] :is(.ck, .pill, .search, .quick, .chip, .segments button, .btn) {
+    border-radius: 0;
+}
+
+:root[data-theme="neon"] .pill.rock {
+    background: #3a0a1f;
+    color: #ff2a6d;
+}
+
+:root[data-theme="neon"] :is(.search, .quick) {
+    border: 1px solid #00e5ff44;
+    background: #0b0d13;
+}
+
+:root[data-theme="neon"] :is(.cat-h, .role-h) {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Андроид: тонкие линии, голубой светодиод */
+:root[data-theme="android"] .panel {
+    box-shadow: 0 0 0 1px #d8e1ea, 0 8px 30px rgba(30, 60, 90, 0.06);
+}
+
+:root[data-theme="android"] .day {
+    box-shadow: inset 0 0 0 1px #edf1f5;
+}
+
+:root[data-theme="android"] .dow {
+    color: #6e7f90;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+:root[data-theme="android"] .num {
+    font-size: 22px;
+    font-weight: 300;
+}
+
+:root[data-theme="android"] :is(.h1, .wt) {
+    font-size: 17px;
+    font-weight: 300;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+:root[data-theme="android"] .day.today {
+    box-shadow: inset 0 0 0 1px #2aa8ff, 0 0 16px #2aa8ff33;
+}
+
+:root[data-theme="android"] .day.today :is(.dow, .num) {
+    color: #1583d6;
+}
+
+:root[data-theme="android"] .tag {
+    border: 1px solid #2aa8ff;
+    border-radius: 2px;
+    background: none;
+    color: #2aa8ff;
+}
+
+:root[data-theme="android"] .today-b {
+    border-radius: 2px;
+    background: #2aa8ff;
+    color: #fff;
+}
+
+:root[data-theme="android"] .ck {
+    border-radius: 50%;
+}
+
+:root[data-theme="android"] .item.done .ck {
+    box-shadow: 0 0 6px #2aa8ff88;
+}
+
+:root[data-theme="android"] .pill {
+    border-radius: 2px;
+    font-weight: 600;
+}
+
+:root[data-theme="android"] .sect {
+    color: #1583d6;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+}
+
+:root[data-theme="android"] :is(.search, .quick) {
+    border: 1px solid #d8e1ea;
+    border-radius: 3px;
+}

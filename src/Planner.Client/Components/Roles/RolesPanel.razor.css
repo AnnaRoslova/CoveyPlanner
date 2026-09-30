@@ -1,6 +1,6 @@
 /* Самая светлая и прозрачная панель: едва заметный шалфей + размытие */
 .roles-panel {
-    background: color-mix(in srgb, var(--b) 7%, #ffffffb0);
+    background: var(--t-left);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }

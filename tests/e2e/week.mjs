@@ -63,7 +63,7 @@ async function openEditor(dayIndex, title) {
 }
 const goal = title => page.evaluate(t => {
   const row = [...document.querySelectorAll('.role .item')].find(r => r.querySelector('.tx').textContent.includes(t));
-  return row ? { text: row.querySelector('.tx').childNodes[0].textContent.trim(), when: ([...row.querySelectorAll('.days .d')].map(d => d.textContent).join(' · ') || null), done: row.classList.contains('done') } : null;
+  return row ? { text: row.querySelector('.tx').childNodes[0].textContent.trim(), when: ([...row.querySelectorAll('.goal-days .d')].map(d => d.textContent).join(' · ') || null), done: row.classList.contains('done') } : null;
 }, title);
 const rocks = () => page.$eval('.rocks b', b => b.textContent);
 

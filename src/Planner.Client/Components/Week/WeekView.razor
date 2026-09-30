@@ -14,10 +14,13 @@
         {
             <button class="today-b" @onclick="State.TodayAsync">Сегодня</button>
         }
-        @if (State.RocksTotal > 0)
-        {
-            <span class="rocks">камней: <b>@State.RocksDone из @State.RocksTotal</b></span>
-        }
+        <div class="tools">
+            @if (State.RocksTotal > 0)
+            {
+                <span class="rocks">камней: <b>@State.RocksDone из @State.RocksTotal</b></span>
+            }
+            <ThemePicker />
+        </div>
     </div>
 
     <div class="days">

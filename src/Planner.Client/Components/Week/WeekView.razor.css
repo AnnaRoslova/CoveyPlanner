@@ -38,8 +38,15 @@
     font-weight: 700;
 }
 
-.rocks {
+/* Справа в шапке: камни недели и тема оформления */
+.tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-left: auto;
+}
+
+.rocks {
     color: var(--soft);
     font-size: 12px;
 }

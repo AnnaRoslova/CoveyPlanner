@@ -1,0 +1,62 @@
+@* Переключатель темы оформления в шапке недели: кнопка-палитра и всплывающий список тем
+   с мини-превью. Превью рисуется цветами своей темы (атрибут data-theme на картинке),
+   шрифты тем в превью не используются — они грузятся только для выбранной темы. *@
+@implements IDisposable
+@inject ThemeState Theme
+
+<div class="picker">
+    <button type="button" class="palette-b" title="Тема оформления" aria-expanded="@(_open ? "true" : "false")"
+            @onclick="() => _open = !_open">
+        <Icon Name="palette" Size="16" />
+    </button>
+
+    @if (_open)
+    {
+        <div class="picker-backdrop" @onclick="() => _open = false"></div>
+        <div class="themes" role="listbox" aria-label="Тема оформления" @onkeydown="OnKeyDown">
+            @foreach (var theme in ThemeState.Themes)
+            {
+                var key = theme.Key;
+                <button type="button" class="theme @(key == Theme.Current ? "on" : "")" role="option"
+                        aria-selected="@(key == Theme.Current ? "true" : "false")" data-key="@key"
+                        @onclick="() => ChooseAsync(key)">
+                    <span class="mini" data-theme="@key" aria-hidden="true">
+                        <span class="m-left"></span>
+                        <span class="m-week">
+                            <span class="m-day"><i class="m-row"></i><i class="m-row short"></i></span>
+                            <span class="m-day today"><i class="m-row"></i><i class="m-rock"></i></span>
+                            <span class="m-day"><i class="m-row short"></i></span>
+                        </span>
+                        <span class="m-right"></span>
+                    </span>
+                    <span class="t-name">@theme.Name</span>
+                    <span class="t-mood">@theme.Mood</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool _open;
+
+    protected override void OnInitialized() => Theme.Changed += OnThemeChanged;
+
+    public void Dispose() => Theme.Changed -= OnThemeChanged;
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task ChooseAsync(string key)
+    {
+        _open = false;
+        await Theme.SetAsync(key);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _open = false;
+        }
+    }
+}
