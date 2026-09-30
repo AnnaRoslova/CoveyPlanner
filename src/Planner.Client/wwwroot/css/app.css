@@ -50,6 +50,20 @@ body {
     background: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%) fixed;
 }
 
+/* Это приложение, а не страница с текстом: при протягивании мышью ничего не выделяется.
+   В полях ввода и заметках текст выделяется как обычно. */
+body {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
 button {
     font: inherit;
     color: inherit;

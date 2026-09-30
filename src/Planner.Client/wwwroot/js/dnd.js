@@ -7,23 +7,32 @@
 //                 data-fixed-sort — в зоне есть записи со своим местом (data-fixed: дела со временем в дне);
 //                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
 //                 data-list-head — внутри зоны: заголовок, под которым начинается список (для пустого дня)
+//   запись без перетаскивания: data-press — к ней применяются те же правила клика (например, во время поиска)
 //
-// Мышь: перетаскивание начинается после сдвига на 5px (иначе это обычный клик).
+// Мышь: перетаскивание начинается после сдвига на 8px.
 // Палец/перо: после долгого нажатия ~300 мс без движения (иначе это прокрутка).
-// Призрак записи, линия вставки, подсветка зоны и автопрокрутка у краёв — отдельные элементы в <body>,
+// Клик по записи — только короткое нажатие (< 250 мс) почти без движения (< 4px): долгое нажатие или
+// «дёрнувшаяся» запись — не клик. После любого сброса/отмены клики полсекунды не принимаются
+// (иначе отпускание кнопки над новым местом открывало бы окно редактирования).
+// Автопрокрутка у края прокручиваемой области — после короткой задержки (не при пролёте мимо края).
+// Призрак записи, линия вставки и подсветка зоны — отдельные элементы в <body>,
 // DOM, которым управляет Blazor, не трогаем (кроме класса drag-source у исходной записи).
 // Результат: .NET-метод OnDrop({ kind, id, zone, key, index }).
 
-const MOUSE_THRESHOLD = 5;   // px — сдвиг мыши, после которого это уже перетаскивание
-const TOUCH_DELAY = 300;     // мс — долгое нажатие пальцем
-const TOUCH_TOLERANCE = 8;   // px — палец «дрогнул» за это время, но это ещё не прокрутка
-const EDGE = 48;             // px — зона у края прокручиваемой области для автопрокрутки
-const MAX_SPEED = 16;        // px за кадр
+const DRAG_THRESHOLD = 8;      // px — сдвиг мыши, после которого это уже перетаскивание
+const TOUCH_DELAY = 300;       // мс — долгое нажатие пальцем
+const TOUCH_TOLERANCE = 8;     // px — палец «дрогнул» за это время, но это ещё не прокрутка
+const CLICK_MAX_MS = 250;      // мс — нажатие дольше — не клик
+const CLICK_MAX_MOVE = 4;      // px — сдвиг больше — не клик
+const AFTER_DROP_MS = 500;     // мс — после сброса клики не принимаются
+const EDGE = 48;               // px — зона у края прокручиваемой области для автопрокрутки
+const AUTOSCROLL_DELAY = 400;  // мс — сколько держать у края, прежде чем начнётся прокрутка
+const MAX_SPEED = 16;          // px за кадр
 
 let dotnet = null;
-let pending = null;  // нажали, но перетаскивание ещё не началось
+let pending = null;  // нажали на запись, но перетаскивание ещё не началось
 let drag = null;     // идёт перетаскивание
-let suppressClick = false;
+let ignoreClicksUntil = 0;
 
 export function init(dotnetRef) {
     dotnet = dotnetRef;
@@ -37,21 +46,35 @@ export function init(dotnetRef) {
     document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
     // Долгое нажатие не должно открывать контекстное меню
     document.addEventListener('contextmenu', e => { if (pending || drag) e.preventDefault(); });
-    // Клик сразу после перетаскивания — не клик (не открывать редактирование)
+    // Клики, которые не должны сработать (после сброса, долгое/дёрнувшееся нажатие), гасим до Blazor.
+    // Клик с клавиатуры (Enter/пробел, detail = 0) не трогаем.
     window.addEventListener('click', e => {
-        if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+        if (e.detail !== 0 && performance.now() < ignoreClicksUntil) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
     }, true);
+}
+
+function ignoreClicks(ms) {
+    ignoreClicksUntil = Math.max(ignoreClicksUntil, performance.now() + ms);
 }
 
 function onPointerDown(e) {
     if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const el = e.target.closest('[data-drag]');
-    if (!el || !el.dataset.drag || !el.dataset.id) return;
+    const el = e.target.closest('[data-drag], [data-press]');
+    if (!el) return;
     // Кнопки и поля внутри записи (чекбокс, «удалить») работают как обычно
     if (e.target.closest('button, input, textarea, select, a, [data-no-drag]')) return;
 
-    pending = { el, pointerId: e.pointerId, pointerType: e.pointerType, startX: e.clientX, startY: e.clientY, timer: 0 };
-    if (e.pointerType !== 'mouse') {
+    pending = {
+        el,
+        canDrag: !!el.dataset.drag && !!el.dataset.id,
+        pointerId: e.pointerId, pointerType: e.pointerType,
+        startX: e.clientX, startY: e.clientY, startTime: performance.now(),
+        maxDist: 0, timer: 0,
+    };
+    if (e.pointerType !== 'mouse' && pending.canDrag) {
         pending.timer = setTimeout(() => {
             if (pending) {
                 navigator.vibrate?.(15);
@@ -64,8 +87,9 @@ function onPointerDown(e) {
 function onPointerMove(e) {
     if (pending && e.pointerId === pending.pointerId) {
         const dist = Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY);
+        pending.maxDist = Math.max(pending.maxDist, dist);
         if (pending.pointerType === 'mouse') {
-            if (dist >= MOUSE_THRESHOLD) start(e.clientX, e.clientY);
+            if (pending.canDrag && dist >= DRAG_THRESHOLD) start(e.clientX, e.clientY);
         } else if (dist > TOUCH_TOLERANCE) {
             clearPending(); // палец поехал до долгого нажатия — это прокрутка
         }
@@ -83,6 +107,9 @@ function onPointerMove(e) {
 
 function onPointerUp(e) {
     if (pending && e.pointerId === pending.pointerId) {
+        // Не перетаскивание. Клик — только если нажатие короткое и почти без движения
+        const isClick = performance.now() - pending.startTime < CLICK_MAX_MS && pending.maxDist < CLICK_MAX_MOVE;
+        if (!isClick) ignoreClicks(100); // клик придёт сразу за отпусканием — погасим его
         clearPending();
         return;
     }
@@ -90,8 +117,6 @@ function onPointerUp(e) {
 
     const { kind, id, target } = drag;
     finish();
-    suppressClick = true;
-    setTimeout(() => { suppressClick = false; }, 0);
 
     if (target) {
         dotnet?.invokeMethodAsync('OnDrop', { kind, id, zone: target.zone, key: target.key, index: target.index });
@@ -235,16 +260,29 @@ function showBox(box, rect) {
 }
 
 // Автопрокрутка: у края прокручиваемой области под указателем (лента, неделя) листаем в ту сторону
-function autoScroll() {
+function autoScroll(now) {
     if (!drag) return;
     const scroller = scrollableAt(drag.x, drag.y);
+    let dx = 0, dy = 0;
     if (scroller) {
         const r = scroller.getBoundingClientRect();
-        const dy = edgeSpeed(drag.y, r.top, r.bottom);
-        const dx = edgeSpeed(drag.x, r.left, r.right);
-        if (dy && scroller.scrollHeight > scroller.clientHeight) scroller.scrollTop += dy;
-        if (dx && scroller.scrollWidth > scroller.clientWidth) scroller.scrollLeft += dx;
-        if (dx || dy) updateTarget();
+        dy = scroller.scrollHeight > scroller.clientHeight ? edgeSpeed(drag.y, r.top, r.bottom) : 0;
+        dx = scroller.scrollWidth > scroller.clientWidth ? edgeSpeed(drag.x, r.left, r.right) : 0;
+    }
+
+    if (dx || dy) {
+        // Прокручиваем, только если указатель задержался у края (а не пролетел мимо или бросает у края)
+        if (drag.edgeScroller !== scroller) {
+            drag.edgeScroller = scroller;
+            drag.edgeSince = now;
+        }
+        if (now - drag.edgeSince >= AUTOSCROLL_DELAY) {
+            scroller.scrollTop += dy;
+            scroller.scrollLeft += dx;
+            updateTarget();
+        }
+    } else {
+        drag.edgeScroller = null;
     }
     drag.raf = requestAnimationFrame(autoScroll);
 }
@@ -283,4 +321,6 @@ function finish() {
     drag.el.classList.remove('drag-source');
     document.body.classList.remove('dragging');
     drag = null;
+    // Сброс или отмена: отпускание кнопки над новым местом — не клик
+    ignoreClicks(AFTER_DROP_MS);
 }

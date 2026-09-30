@@ -3,7 +3,7 @@
 
 <div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
-     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed"
+     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press
      @onclick="OnClick">
     @if (Marker == ItemMarker.Check && OnToggle.HasDelegate)
     {
