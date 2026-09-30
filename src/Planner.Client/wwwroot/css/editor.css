@@ -1,4 +1,6 @@
-.backdrop {
+/* Окна редактирования (дело, цель): общие стили. Разметка — TaskEditor.razor, GoalEditor.razor. */
+
+.editor-backdrop {
     position: fixed;
     inset: 0;
     z-index: 40;
@@ -23,7 +25,7 @@
     transform: translate(-50%, -50%);
 }
 
-.title-input {
+.editor .title-input {
     width: 100%;
     padding: 4px 2px;
     border: 0;
@@ -35,11 +37,11 @@
     font-weight: 600;
 }
 
-.title-input:focus {
+.editor .title-input:focus {
     border-bottom-color: var(--b);
 }
 
-.rock-note {
+.editor .rock-note {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -48,7 +50,7 @@
     font-size: 12px;
 }
 
-.pill-rock {
+.editor .pill-rock {
     padding: 0 7px;
     border-radius: 20px;
     background: var(--a-soft);
@@ -58,14 +60,14 @@
     line-height: 17px;
 }
 
-.field {
+.editor .field {
     display: flex;
     flex-direction: column;
     gap: 5px;
     min-width: 0;
 }
 
-.label {
+.editor .label {
     color: var(--b-deep);
     opacity: 0.8;
     font-size: 10.5px;
@@ -74,20 +76,20 @@
     text-transform: uppercase;
 }
 
-.row {
+.editor .row {
     display: flex;
     flex-wrap: wrap;
     gap: 12px 18px;
 }
 
 /* Роли — чипы с цветной точкой */
-.chips {
+.editor .chips {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
 }
 
-.chip {
+.editor .chip {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -100,30 +102,30 @@
     white-space: nowrap;
 }
 
-.chip:hover {
+.editor .chip:hover {
     background: var(--b-soft);
 }
 
-.chip.on {
+.editor .chip.on {
     background: color-mix(in srgb, var(--c, var(--b)) 28%, #fff);
     box-shadow: inset 0 0 0 1.5px var(--c, var(--b));
     font-weight: 700;
 }
 
-.chip .dot {
+.editor .chip .dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: var(--c);
 }
 
-.time {
+.editor .time {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.time input {
+.editor .time input {
     padding: 4px 8px;
     border: 1px solid var(--line);
     border-radius: 10px;
@@ -131,11 +133,11 @@
     font-size: 13px;
 }
 
-.time input:focus {
+.editor .time input:focus {
     border-color: var(--b);
 }
 
-.clear {
+.editor .clear {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -145,18 +147,18 @@
     color: var(--faint);
 }
 
-.clear:hover {
+.editor .clear:hover {
     background: var(--b-soft);
     color: var(--b-deep);
 }
 
-/* Квадранты — сегменты */
-.quadrants {
+/* Сегменты: квадрант, длительность, «раз в неделю» */
+.editor .segments {
     display: flex;
     gap: 3px;
 }
 
-.quadrants button {
+.editor .segments button {
     min-width: 32px;
     padding: 4px 6px;
     border-radius: 10px;
@@ -167,23 +169,23 @@
     font-weight: 700;
 }
 
-.quadrants button:hover {
+.editor .segments button:hover {
     background: var(--b-soft);
 }
 
-.quadrants button.on {
+.editor .segments button.on {
     background: var(--b-soft);
     box-shadow: inset 0 0 0 1.5px var(--b);
     color: var(--b-deep);
 }
 
-.quadrant-hint {
+.editor .quadrant-hint {
     margin-top: -6px;
     color: var(--soft);
     font-size: 11.5px;
 }
 
-textarea {
+.editor textarea {
     width: 100%;
     padding: 7px 9px;
     border: 1px solid var(--line);
@@ -195,17 +197,70 @@ textarea {
     resize: vertical;
 }
 
-textarea:focus {
+.editor textarea:focus {
     border-color: var(--b);
 }
 
-.buttons {
+.editor .buttons {
     display: flex;
     align-items: center;
     gap: 4px;
     padding-top: 2px;
 }
 
-.trash {
+.editor .trash {
     margin-right: auto;
+}
+
+.editor .segments {
+    flex-wrap: wrap;
+}
+
+/* Поле занятия, которое отличается от цели: метка «своё» и кнопка «как у цели» */
+.editor .label-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.editor .own {
+    padding: 0 6px;
+    border-radius: 20px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 16px;
+}
+
+.editor .as-goal {
+    color: var(--soft);
+    font-size: 11px;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+
+.editor .as-goal:hover {
+    color: var(--b-deep);
+}
+
+/* Роль и квадрант занятия задаются у цели — показываем без выбора */
+.editor .from-goal {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    font-size: 12.5px;
+}
+
+.editor .from-goal .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--c);
+}
+
+.editor .from-goal .hint {
+    color: var(--soft);
+    font-size: 11.5px;
 }

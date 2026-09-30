@@ -1,0 +1,31 @@
+@* Квадрант Кови: «—» и I–IV, под выбранным — подсказка. Стили — css/editor.css. *@
+
+<div class="segments">
+    <button type="button" class="@(Value is null ? "on" : "")" title="Без квадранта" @onclick="() => SetAsync(null)">—</button>
+    @foreach (var (value, roman, hint) in Quadrants)
+    {
+        <button type="button" class="@(Value == value ? "on" : "")" title="@hint" @onclick="() => SetAsync(value)">@roman</button>
+    }
+</div>
+
+@code {
+    public static readonly (int Value, string Roman, string Hint)[] Quadrants =
+    [
+        (1, "I", "I — важно и срочно"),
+        (2, "II", "II — важно, не срочно (главное по Кови)"),
+        (3, "III", "III — срочно, не важно"),
+        (4, "IV", "IV — не срочно и не важно"),
+    ];
+
+    [Parameter]
+    public int? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> ValueChanged { get; set; }
+
+    public static string Roman(int quadrant) => Quadrants.First(q => q.Value == quadrant).Roman;
+
+    public static string Hint(int quadrant) => Quadrants.First(q => q.Value == quadrant).Hint;
+
+    private Task SetAsync(int? value) => ValueChanged.InvokeAsync(value);
+}

@@ -93,38 +93,3 @@
 .role[data-drag] .role-h {
     cursor: grab;
 }
-
-/* Выбор «сколько раз в неделю» под целью: подпись, под ней 1–7 маленькими кружками */
-.times {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2px;
-    padding: 0 4px 6px 30px;
-}
-
-.times-l {
-    flex-basis: 100%;
-    color: var(--soft);
-    font-size: 11px;
-}
-
-.t {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    color: var(--soft);
-    font-size: 11px;
-    font-weight: 800;
-}
-
-.t:hover {
-    background: var(--b-soft);
-    color: var(--b-deep);
-}
-
-.t.on {
-    background: var(--b-soft);
-    color: var(--b-deep);
-    box-shadow: inset 0 0 0 1.5px var(--b);
-}

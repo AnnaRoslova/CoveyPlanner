@@ -30,6 +30,15 @@ public static class RuDates
 
     public static string Time(TimeOnly time) => time.ToString("HH:mm");
 
+    /// <summary>«15 мин», «1 ч», «1,5 ч», «1 ч 20 мин».</summary>
+    public static string Duration(int minutes) => (minutes / 60, minutes % 60) switch
+    {
+        (0, var m) => $"{m} мин",
+        (var h, 0) => $"{h} ч",
+        (var h, 30) => $"{h},5 ч",
+        var (h, m) => $"{h} ч {m} мин",
+    };
+
     /// <summary>Понедельник недели, в которую входит дата.</summary>
     public static DateOnly WeekStartOf(DateOnly date) => date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
 

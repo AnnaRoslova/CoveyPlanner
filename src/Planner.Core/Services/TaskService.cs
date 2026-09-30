@@ -9,6 +9,7 @@ namespace Planner.Core.Services;
 public class TaskService(
     ITaskRepository tasks,
     IRoleRepository roles,
+    IGoalRepository goals,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
@@ -27,12 +28,21 @@ public class TaskService(
         return task;
     }
 
-    /// <summary>Изменить дело из окна редактирования. startTime = null — убрать время.</summary>
+    /// <summary>
+    /// Изменить дело из окна редактирования. startTime / durationMinutes = null — убрать.
+    /// У занятия цели роль и квадрант всегда от цели — присланные значения не применяются.
+    /// </summary>
     public async Task<TaskItem> UpdateAsync(
         int id, string title, string? notes, int? roleId, Quadrant? quadrant, TimeOnly? startTime,
-        CancellationToken ct = default)
+        int? durationMinutes, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
+        if (task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } goal)
+        {
+            roleId = goal.RoleId;
+            quadrant = goal.Quadrant;
+        }
+
         if (roleId is { } rid && await roles.FindAsync(rid, ct) is null)
         {
             throw new NotFoundException("Роль", rid);
@@ -45,6 +55,7 @@ public class TaskService(
 
         task.Rename(title);
         task.SetNotes(notes);
+        task.SetDuration(durationMinutes);
         task.RoleId = roleId;
         task.Quadrant = quadrant;
 

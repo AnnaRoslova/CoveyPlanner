@@ -133,22 +133,43 @@ button.ck:hover {
     color: var(--a-deep);
 }
 
-.pill.when {
-    margin-left: auto;
-    background: var(--b-soft);
+/* Длительность — тише времени: бирюзовый контур без заливки */
+.pill.dur {
+    box-shadow: inset 0 0 0 1px var(--b);
     color: var(--b-deep);
 }
 
-.pill.progress {
-    background: var(--b-soft);
+/* Прогресс цели «1/6» — справа в строке названия */
+.progress {
+    flex: none;
+    align-self: flex-start;
+    padding-top: 1px;
     color: var(--b-deep);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 17px;
 }
 
-/* Дни ещё не сделанных занятий — бледнее, сделанных — насыщенные */
-.pill.when .d {
-    opacity: 0.55;
+.item.done .progress {
+    opacity: 0.6;
 }
 
-.pill.when .d.done {
+/* Дни занятий цели — мелко под названием; дни с отмеченным занятием насыщеннее */
+.days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 1px;
+    color: var(--b-deep);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.days .d {
+    opacity: 0.5;
+}
+
+.days .d.done {
     opacity: 1;
 }

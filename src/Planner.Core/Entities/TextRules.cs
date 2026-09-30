@@ -39,4 +39,14 @@ public static class TextRules
             ? trimmed
             : throw new DomainException($"{fieldName}: не длиннее {maxLength} символов.");
     }
+
+    public const int MaxDurationMinutes = 24 * 60;
+
+    /// <summary>Длительность в минутах: null — не указана, иначе от 1 минуты до суток.</summary>
+    public static int? Duration(int? minutes) => minutes switch
+    {
+        null => null,
+        >= 1 and <= MaxDurationMinutes => minutes,
+        _ => throw new DomainException($"Длительность — от 1 до {MaxDurationMinutes} минут."),
+    };
 }

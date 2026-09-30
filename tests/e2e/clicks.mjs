@@ -28,7 +28,7 @@ const api = (method, path, body) => page.evaluate(async (method, path, body) => 
   return r.status === 204 ? null : r.json();
 }, method, path, body);
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
 const T = `const titleOf = ${titleOf};`;
 async function boxOf(src) {
   const el = (await page.evaluateHandle(src)).asElement();
@@ -42,7 +42,7 @@ const itemIn = (scope, title) => boxOf(`(() => { ${T} return [...document.queryS
 const kinds = [
   { name: 'лента', item: () => itemIn('.cat-b .item', 'Сад с травами на балконе'), opened: '.cat-b .inline-input' },
   { name: 'день', item: () => itemIn('.day .item', 'Оплатить интернет'), opened: '.editor' },
-  { name: 'цель', item: () => itemIn('.role .item', '100 страниц'), opened: '.role .inline-input' },
+  { name: 'цель', item: () => itemIn('.role .item', '100 страниц'), opened: '.editor[aria-label="Цель недели"]' },
 ];
 const isOpen = sel => page.$(sel).then(Boolean);
 async function closeAll() {

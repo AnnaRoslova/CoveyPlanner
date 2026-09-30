@@ -3,6 +3,7 @@
 @inject LayoutState Layout
 @inject DragDropService DragDrop
 @inject TodayWatcher Today
+@inject GoalEditorHost EditorHost
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -17,6 +18,11 @@
             <SomedayPanel />
         </SidePanel>
     </div>
+
+    @if (EditorHost.GoalId is { } goalId && State.FindGoal(goalId) is { } goal)
+    {
+        <GoalEditor @key="goalId" EditedGoal="goal" OnClose="EditorHost.Close" />
+    }
 }
 else if (State.LoadError is not null)
 {
@@ -34,6 +40,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         Layout.Changed += OnLayoutChanged;
+        EditorHost.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
         await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync());
@@ -42,6 +49,7 @@ else
     public override void Dispose()
     {
         Layout.Changed -= OnLayoutChanged;
+        EditorHost.Changed -= OnLayoutChanged;
         base.Dispose();
     }
 

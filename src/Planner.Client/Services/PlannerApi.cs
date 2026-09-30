@@ -83,8 +83,8 @@ public class PlannerApi(HttpClient http)
     public Task<WeeklyGoalDto> CreateGoalAsync(CreateGoalRequest request) =>
         SendAsync<WeeklyGoalDto>(HttpMethod.Post, "api/goals", request);
 
-    public Task<WeeklyGoalDto> UpdateGoalAsync(int id, UpdateGoalRequest request) =>
-        SendAsync<WeeklyGoalDto>(HttpMethod.Put, $"api/goals/{id}", request);
+    public Task<GoalUpdateResultDto> UpdateGoalAsync(int id, UpdateGoalRequest request) =>
+        SendAsync<GoalUpdateResultDto>(HttpMethod.Put, $"api/goals/{id}", request);
 
     public Task<GoalResultDto> ToggleGoalAsync(int id, ToggleGoalRequest request) =>
         SendAsync<GoalResultDto>(HttpMethod.Post, $"api/goals/{id}/toggle", request);

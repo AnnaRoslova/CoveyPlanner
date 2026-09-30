@@ -43,6 +43,9 @@ public class TaskItem : ISortable
     /// <summary>Необязательная метка времени («15:00 Стоматолог»). Только у дела, стоящего в дне.</summary>
     public TimeOnly? StartTime { get; private set; }
 
+    /// <summary>Необязательная примерная длительность («~30 мин»), в минутах. Расписания по ней нет.</summary>
+    public int? DurationMinutes { get; private set; }
+
     /// <summary>
     /// Ручной порядок внутри категории ленты или внутри дня.
     /// В дне важен только для дел без времени: дела со временем идут первыми, по времени.
@@ -85,6 +88,8 @@ public class TaskItem : ISortable
 
     public void SetNotes(string? notes) =>
         Notes = TextRules.Optional(notes, TextRules.NotesMaxLength, "Заметки");
+
+    public void SetDuration(int? minutes) => DurationMinutes = TextRules.Duration(minutes);
 
     /// <summary>Поставить или убрать метку времени. Время бывает только у дела в дне.</summary>
     public void SetTime(TimeOnly? time)

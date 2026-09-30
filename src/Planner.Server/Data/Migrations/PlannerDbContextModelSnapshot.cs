@@ -89,6 +89,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("GoalId")
                         .HasColumnType("INTEGER");
 
@@ -149,11 +152,24 @@ namespace Planner.Server.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(10000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Quadrant")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("RoleId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("TimesPerWeek")
                         .HasColumnType("INTEGER");

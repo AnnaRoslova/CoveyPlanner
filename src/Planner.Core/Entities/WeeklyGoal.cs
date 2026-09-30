@@ -34,6 +34,17 @@ public class WeeklyGoal : ISortable
     /// <summary>Сколько раз за неделю (1–7).</summary>
     public int TimesPerWeek { get; private set; } = MinTimesPerWeek;
 
+    // Шаблон занятий: новые занятия берут эти значения (см. UpdateTemplate)
+
+    /// <summary>Время занятий («07:30 Бег»), необязательно.</summary>
+    public TimeOnly? StartTime { get; private set; }
+
+    public Quadrant? Quadrant { get; private set; }
+
+    public string? Notes { get; private set; }
+
+    public int? DurationMinutes { get; private set; }
+
     public int SortOrder { get; set; }
 
     /// <summary>Все занятия цели, включая те, что в корзине. Репозиторий подгружает их вместе с целью.</summary>
@@ -66,17 +77,71 @@ public class WeeklyGoal : ISortable
     }
 
     /// <summary>
-    /// Переименовать цель. Занятия, названные как цель, переименовываются вместе с ней;
-    /// занятия со своим названием («Бег 5 км») не трогаются.
+    /// Изменить шаблон занятий. Квадрант у занятий всегда от цели — меняется у всех.
+    /// Название, время, заметки и длительность меняются у невыполненных занятий, если у занятия
+    /// это поле не своё: «своё» — значит отличается от прежнего значения цели.
     /// </summary>
-    public void Rename(string title)
+    /// <returns>Занятия, у которых убрали время: их нужно поставить в конец ручного списка дня.</returns>
+    public IReadOnlyList<TaskItem> UpdateTemplate(
+        string title, TimeOnly? startTime, Quadrant? quadrant, string? notes, int? durationMinutes)
     {
-        var oldTitle = Title;
+        var old = (Title, StartTime, Notes, DurationMinutes);
+
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название цели");
-        foreach (var session in _sessions.Where(t => t.Title == oldTitle))
+        StartTime = startTime is { } t ? new TimeOnly(t.Hour, t.Minute) : null;
+        Quadrant = quadrant;
+        Notes = TextRules.Optional(notes, TextRules.NotesMaxLength, "Заметки");
+        DurationMinutes = TextRules.Duration(durationMinutes);
+
+        var lostTime = new List<TaskItem>();
+        foreach (var session in _sessions)
         {
-            session.Rename(Title);
+            session.Quadrant = Quadrant;
+            if (session.State != TaskState.Planned)
+            {
+                continue; // выполненные — история, в корзине — не трогаем
+            }
+
+            if (session.Title == old.Title)
+            {
+                session.Rename(Title);
+            }
+
+            // Время бывает только у занятия в дне; занятие без дня получит время, когда встанет в день
+            if (session.IsOnDay && session.StartTime == old.StartTime && session.StartTime != StartTime)
+            {
+                session.SetTime(StartTime);
+                if (StartTime is null)
+                {
+                    lostTime.Add(session);
+                }
+            }
+
+            if (session.Notes == old.Notes)
+            {
+                session.SetNotes(Notes);
+            }
+
+            if (session.DurationMinutes == old.DurationMinutes)
+            {
+                session.SetDuration(DurationMinutes);
+            }
         }
+
+        return lostTime;
+    }
+
+    /// <summary>Шаблон берётся из дела, из которого сделана цель (всё, кроме роли — она у цели своя).</summary>
+    public void CopyTemplateFrom(TaskItem task) =>
+        UpdateTemplate(task.Title, task.StartTime, task.Quadrant, task.Notes, task.DurationMinutes);
+
+    /// <summary>Новое занятие получает значения цели. Время — когда занятие встанет в день.</summary>
+    public void FillFromTemplate(TaskItem session)
+    {
+        session.Rename(Title);
+        session.Quadrant = Quadrant;
+        session.SetNotes(Notes);
+        session.SetDuration(DurationMinutes);
     }
 
     public void SetTimesPerWeek(int times)
@@ -108,6 +173,7 @@ public class WeeklyGoal : ISortable
         }
 
         task.RoleId = RoleId;
+        task.Quadrant = Quadrant;
         if (!_sessions.Contains(task))
         {
             _sessions.Add(task);

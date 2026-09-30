@@ -22,6 +22,7 @@ public partial class PlannerState
 
         var siblings = GoalsFor(roleId).ToList();
         var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, title, TimesPerWeek: 1,
+            StartTime: null, Quadrant: null, Notes: null, DurationMinutes: null,
             SortOrder: siblings.Count == 0 ? 0 : siblings.Max(g => g.SortOrder) + 1,
             Sessions: []);
         Goals.Add(temp);
@@ -44,34 +45,42 @@ public partial class PlannerState
         return ok;
     }
 
-    /// <summary>Переименовать цель; занятия, названные как цель, переименовываются вместе с ней.</summary>
-    public async Task RenameGoalAsync(int goalId, string title)
+    /// <summary>
+    /// Сохранить окно цели. Цель меняется сразу; занятия в днях (по шаблону у них могли поменяться
+    /// название, время, квадрант, заметки, длительность, роль) — по ответу сервера, он решает, какие поля «свои».
+    /// </summary>
+    public async Task UpdateGoalAsync(int goalId, UpdateGoalRequest form)
     {
-        title = title.Trim();
-        if (goalId < 0 || FindGoal(goalId) is not { } goal || title.Length == 0 || title == goal.Title)
+        if (goalId < 0 || FindGoal(goalId) is not { } goal || string.IsNullOrWhiteSpace(form.Title))
         {
             return;
         }
 
-        ReplaceGoal(goal with { Title = title });
-        foreach (var task in SessionTasks(goal).Where(t => t.Title == goal.Title))
+        // Другая роль — цель встаёт в конец её списка (так же делает сервер)
+        var sortOrder = form.RoleId == goal.RoleId
+            ? goal.SortOrder
+            : GoalsFor(form.RoleId).Select(g => g.SortOrder).DefaultIfEmpty(-1).Max() + 1;
+        ReplaceGoal(goal with
         {
-            _tasks[task.Id] = task with { Title = title };
-        }
+            Title = form.Title.Trim(),
+            RoleId = form.RoleId,
+            TimesPerWeek = form.TimesPerWeek,
+            StartTime = form.StartTime,
+            Quadrant = form.Quadrant,
+            Notes = string.IsNullOrWhiteSpace(form.Notes) ? null : form.Notes.Trim(),
+            DurationMinutes = form.DurationMinutes,
+            SortOrder = sortOrder,
+        });
 
-        await SaveAsync(() => api.UpdateGoalAsync(goalId, new UpdateGoalRequest(title, null)));
-    }
-
-    /// <summary>Сколько раз в неделю (1–7).</summary>
-    public async Task SetTimesPerWeekAsync(int goalId, int times)
-    {
-        if (goalId < 0 || FindGoal(goalId) is not { } goal || times == goal.TimesPerWeek)
+        await SaveAsync(async () =>
         {
-            return;
-        }
-
-        ReplaceGoal(goal with { TimesPerWeek = times });
-        await SaveAsync(() => api.UpdateGoalAsync(goalId, new UpdateGoalRequest(null, times)));
+            var result = await api.UpdateGoalAsync(goalId, form);
+            ReplaceGoal(result.Goal);
+            foreach (var session in result.Sessions.Where(s => s.PlannedDate is { } d && WeekDays.Contains(d)))
+            {
+                _tasks[session.Id] = session;
+            }
+        });
     }
 
     /// <summary>
@@ -250,7 +259,9 @@ public partial class PlannerState
             RoleId = roleId,
             GoalId = NextTempId(),
         };
+        // Шаблон цели — из дела (так же делает сервер)
         var temp = new WeeklyGoalDto(session.GoalId!.Value, roleId, WeekStart, task.Title, TimesPerWeek: 1,
+            task.StartTime, task.Quadrant, task.Notes, task.DurationMinutes,
             SortOrder: 0, Sessions: [ToSession(session)]);
         siblings.Insert(index, temp);
         Goals.Add(temp);
@@ -286,7 +297,9 @@ public partial class PlannerState
         var unscheduled = goal.Sessions.FirstOrDefault(s => s.PlannedDate is null && !s.IsDone);
         var task = unscheduled is null
             ? NewSessionTask(goal, NextTempId())
-            : FindTask(unscheduled.TaskId) ?? NewSessionTask(goal, unscheduled.TaskId);
+            : FindTask(unscheduled.TaskId) is { } shown
+                ? shown with { StartTime = shown.StartTime ?? goal.StartTime }
+                : NewSessionTask(goal, unscheduled.TaskId);
 
         PlaceInDayLocally(task, date, index);
         SyncSession(_tasks[task.Id]);
@@ -318,7 +331,7 @@ public partial class PlannerState
         var task = unscheduled is not null && FindTask(unscheduled.TaskId) is { } shown
             ? shown with { GoalId = null }
             : new TaskDto(unscheduled?.TaskId ?? NextTempId(), goal.Title, null, categoryId, goal.RoleId, null, null,
-                TaskStateDto.Someday, null, null, 0, null);
+                TaskStateDto.Someday, null, null, null, 0, null);
 
         PlaceInFeedLocally(task, categoryId, index);
         Goals.RemoveAll(g => g.Id == goalId);
@@ -359,8 +372,10 @@ public partial class PlannerState
     private IEnumerable<TaskDto> SessionTasks(WeeklyGoalDto goal) =>
         goal.Sessions.Select(s => FindTask(s.TaskId)).OfType<TaskDto>().ToList();
 
+    /// <summary>Новое занятие по шаблону цели (время — когда встанет в день, так же делает сервер).</summary>
     private static TaskDto NewSessionTask(WeeklyGoalDto goal, int id) =>
-        new(id, goal.Title, null, null, goal.RoleId, goal.Id, null, TaskStateDto.Planned, null, null, 0, null);
+        new(id, goal.Title, goal.Notes, null, goal.RoleId, goal.Id, goal.Quadrant, TaskStateDto.Planned,
+            null, goal.StartTime, goal.DurationMinutes, 0, null);
 
     private static GoalSessionDto ToSession(TaskDto task) =>
         new(task.Id, task.PlannedDate, task.State == TaskStateDto.Done);

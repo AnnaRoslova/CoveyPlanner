@@ -19,7 +19,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, null, null, null, null, TaskStateDto.Planned, date, null,
+        var temp = new TaskDto(NextTempId(), title, null, null, null, null, null, TaskStateDto.Planned, date, null, null,
             SortOrder: NextUntimedOrder(date), TrashedAt: null);
         _tasks[temp.Id] = temp;
 
@@ -115,11 +115,18 @@ public partial class PlannerState
 
     /// <summary>Сохранить окно редактирования. startTime = null — без времени.</summary>
     public async Task UpdateTaskAsync(
-        int taskId, string title, string? notes, int? roleId, int? quadrant, TimeOnly? startTime)
+        int taskId, string title, string? notes, int? roleId, int? quadrant, TimeOnly? startTime, int? durationMinutes)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task || string.IsNullOrWhiteSpace(title))
         {
             return;
+        }
+
+        // У занятия цели роль и квадрант всегда от цели (так же решает сервер)
+        if (GoalOfTask(taskId) is { } goal)
+        {
+            roleId = goal.RoleId;
+            quadrant = goal.Quadrant;
         }
 
         title = title.Trim();
@@ -137,11 +144,12 @@ public partial class PlannerState
             RoleId = roleId,
             Quadrant = quadrant,
             StartTime = startTime,
+            DurationMinutes = durationMinutes,
             SortOrder = sortOrder,
         };
 
         await SaveAsync(() => api.UpdateTaskAsync(taskId,
-            new UpdateTaskRequest(title, notes, roleId, quadrant, startTime)));
+            new UpdateTaskRequest(title, notes, roleId, quadrant, startTime, durationMinutes)));
     }
 
     private int NextUntimedOrder(DateOnly date)

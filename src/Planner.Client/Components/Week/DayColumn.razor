@@ -8,6 +8,10 @@
     <div class="day-h" data-list-head>
         <span class="dow">@RuDates.ShortDay(Date)</span>
         <span class="num">@Date.Day</span>
+        @if (TotalMinutes > 0)
+        {
+            <span class="load" title="Сумма длительностей дел дня">~@RuDates.Duration(TotalMinutes)</span>
+        }
         @if (IsToday)
         {
             <span class="tag">сегодня</span>
@@ -20,6 +24,7 @@
                  Color="@State.FindRole(task.RoleId)?.Color"
                  IsDone="task.State == TaskStateDto.Done"
                  TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"
+                 DurationLabel="@(task.DurationMinutes is { } minutes ? "~" + RuDates.Duration(minutes) : null)"
                  IsRock="State.IsRock(task.Id)"
                  Notes="@task.Notes"
                  IsPending="task.Id < 0"
@@ -56,6 +61,9 @@
     public EventCallback<int> OnEdit { get; set; }
 
     private bool IsToday => Date == RuDates.Today;
+
+    /// <summary>Сумма длительностей дел дня (у кого указана) — «~3 ч» в заголовке.</summary>
+    private int TotalMinutes => Tasks.Sum(t => t.DurationMinutes ?? 0);
 
     private async Task AddAsync(string title)
     {

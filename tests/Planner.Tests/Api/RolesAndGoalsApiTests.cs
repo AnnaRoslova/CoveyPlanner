@@ -76,8 +76,15 @@ public class RolesAndGoalsApiTests : ApiTestBase
     private Task<GoalResultDto> ToggleAsync(int goalId, DateOnly today) =>
         PostAsync<GoalResultDto>($"/api/goals/{goalId}/toggle", new ToggleGoalRequest(today));
 
-    private Task<WeeklyGoalDto> SetTimesAsync(int goalId, int times) =>
-        PutAsync<WeeklyGoalDto>($"/api/goals/{goalId}", new UpdateGoalRequest(null, times));
+    private static UpdateGoalRequest FormOf(WeeklyGoalDto g) =>
+        new(g.Title, g.RoleId, g.TimesPerWeek, g.StartTime, g.Quadrant, g.Notes, g.DurationMinutes);
+
+    /// <summary>Сохранить окно цели: текущие значения цели с изменениями.</summary>
+    private async Task<GoalUpdateResultDto> UpdateGoalAsync(int goalId, Func<UpdateGoalRequest, UpdateGoalRequest> change) =>
+        await PutAsync<GoalUpdateResultDto>($"/api/goals/{goalId}", change(FormOf(await GoalAsync(goalId))));
+
+    private async Task<WeeklyGoalDto> SetTimesAsync(int goalId, int times) =>
+        (await UpdateGoalAsync(goalId, f => f with { TimesPerWeek = times })).Goal;
 
     private Task<TaskDto> SetDoneAsync(int taskId) =>
         PutAsync<TaskDto>($"/api/tasks/{taskId}/done", new SetDoneRequest(true));
@@ -130,7 +137,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
     {
         var goal = await CreateGoalAsync((await FirstUserRoleAsync()).Id, "Цель");
 
-        var response = await Client.PutAsJsonAsync($"/api/goals/{goal.Id}", new UpdateGoalRequest(null, times));
+        var response = await Client.PutAsJsonAsync($"/api/goals/{goal.Id}", FormOf(goal) with { TimesPerWeek = times });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -192,10 +199,10 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var goal = await CreateGoalAsync((await FirstUserRoleAsync()).Id, "Пробежка");
         var same = (await ScheduleAsync(goal.Id, Monday)).Task!;
         var own = (await ScheduleAsync(goal.Id, Monday.AddDays(1))).Task!;
-        await PutAsync<TaskDto>($"/api/tasks/{own.Id}", new UpdateTaskRequest("Пробежка 10 км", null, own.RoleId, null, null));
+        await PutAsync<TaskDto>($"/api/tasks/{own.Id}", new UpdateTaskRequest("Пробежка 10 км", null, own.RoleId, null, null, null));
         Assert.Equal("Пробежка", (await GoalAsync(goal.Id)).Title); // переименование занятия цель не меняет
 
-        await PutAsync<WeeklyGoalDto>($"/api/goals/{goal.Id}", new UpdateGoalRequest("Бег", null));
+        await UpdateGoalAsync(goal.Id, f => f with { Title = "Бег" });
 
         var tasks = (await GetWeekAsync()).Tasks.ToDictionary(t => t.Id);
         Assert.Equal("Бег", tasks[same.Id].Title);
@@ -385,5 +392,140 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var back = Assert.Single((await GetBoardAsync()).SomedayTasks);
         Assert.Null(back.RoleId);
         Assert.Empty((await GetWeekAsync()).Goals);
+    }
+
+    // ---------- Цель — шаблон занятий ----------
+
+    private static readonly TimeOnly Morning = new(7, 30);
+
+    [Fact]
+    public async Task Goal_Template_NewSessionTakesAllValues()
+    {
+        var role = await FirstUserRoleAsync();
+        var goal = await CreateGoalAsync(role.Id, "Бег");
+        await UpdateGoalAsync(goal.Id, f => f with { StartTime = Morning, Quadrant = 2, Notes = "Парк, 5 км", DurationMinutes = 45 });
+
+        var session = (await ScheduleAsync(goal.Id, Monday)).Task!;
+
+        Assert.Equal(("Бег", role.Id, Morning, 2, "Парк, 5 км", 45),
+            (session.Title, session.RoleId!.Value, session.StartTime!.Value, session.Quadrant!.Value, session.Notes, session.DurationMinutes!.Value));
+    }
+
+    [Fact]
+    public async Task Goal_TemplateChange_UpdatesOpenSessions_ExceptOwnFields()
+    {
+        var goal = await CreateGoalAsync((await FirstUserRoleAsync()).Id, "Бег");
+        await UpdateGoalAsync(goal.Id, f => f with { TimesPerWeek = 3, StartTime = Morning, Notes = "Парк", DurationMinutes = 45 });
+        var plain = (await ScheduleAsync(goal.Id, Monday)).Task!;
+        var own = (await ScheduleAsync(goal.Id, Monday.AddDays(1))).Task!;
+        var done = (await ScheduleAsync(goal.Id, Monday.AddDays(2))).Task!;
+        await PutAsync<TaskDto>($"/api/tasks/{own.Id}",
+            new UpdateTaskRequest(own.Title, "Стадион", own.RoleId, own.Quadrant, new TimeOnly(9, 0), own.DurationMinutes));
+        await SetDoneAsync(done.Id);
+
+        var result = await UpdateGoalAsync(goal.Id, f => f with
+        {
+            Title = "Пробежка", StartTime = new TimeOnly(8, 0), Quadrant = 1, Notes = "Набережная", DurationMinutes = 30,
+        });
+
+        var tasks = (await GetWeekAsync()).Tasks.ToDictionary(t => t.Id);
+        Assert.Equal(("Пробежка", new TimeOnly(8, 0), "Набережная", 30, 1),
+            (tasks[plain.Id].Title, tasks[plain.Id].StartTime!.Value, tasks[plain.Id].Notes, tasks[plain.Id].DurationMinutes!.Value, tasks[plain.Id].Quadrant!.Value));
+
+        // Своё время и заметки остались, остальное — от цели
+        Assert.Equal(("Пробежка", new TimeOnly(9, 0), "Стадион", 30, 1),
+            (tasks[own.Id].Title, tasks[own.Id].StartTime!.Value, tasks[own.Id].Notes, tasks[own.Id].DurationMinutes!.Value, tasks[own.Id].Quadrant!.Value));
+
+        // Выполненное — история: меняется только квадрант (он всегда от цели)
+        Assert.Equal(("Бег", Morning, "Парк", 45, 1),
+            (tasks[done.Id].Title, tasks[done.Id].StartTime!.Value, tasks[done.Id].Notes, tasks[done.Id].DurationMinutes!.Value, tasks[done.Id].Quadrant!.Value));
+
+        // Ответ сервера содержит обновлённые занятия
+        Assert.Equal(new TimeOnly(8, 0), result.Sessions.Single(s => s.Id == plain.Id).StartTime);
+    }
+
+    [Fact]
+    public async Task Goal_TemplateTimeRemoved_SessionsLoseTime()
+    {
+        var goal = await CreateGoalAsync((await FirstUserRoleAsync()).Id, "Бег");
+        await UpdateGoalAsync(goal.Id, f => f with { StartTime = Morning });
+        var session = (await ScheduleAsync(goal.Id, Monday)).Task!;
+        await CreateInDayAsync("Другое дело");
+
+        await UpdateGoalAsync(goal.Id, f => f with { StartTime = null });
+
+        var monday = (await GetWeekAsync()).Tasks.Where(t => t.PlannedDate == Monday).ToList();
+        Assert.Null(monday.Single(t => t.Id == session.Id).StartTime);
+        Assert.Equal(session.Id, monday[^1].Id); // встало в конец ручного списка дня
+    }
+
+    [Fact]
+    public async Task Session_RoleAndQuadrant_AlwaysFromGoal()
+    {
+        var roles = (await GetBoardAsync()).Roles.Where(r => !r.IsSharpenSaw).ToList();
+        var goal = await CreateGoalAsync(roles[0].Id, "Бег");
+        await UpdateGoalAsync(goal.Id, f => f with { Quadrant = 2 });
+        var session = (await ScheduleAsync(goal.Id, Monday)).Task!;
+
+        var updated = await PutAsync<TaskDto>($"/api/tasks/{session.Id}",
+            new UpdateTaskRequest("Бег", null, roles[1].Id, 4, null, null));
+
+        Assert.Equal(roles[0].Id, updated.RoleId);
+        Assert.Equal(2, updated.Quadrant);
+    }
+
+    [Fact]
+    public async Task Goal_ChangeRoleInWindow_GoalGoesToEnd_SessionsFollow()
+    {
+        var roles = (await GetBoardAsync()).Roles.Where(r => !r.IsSharpenSaw).ToList();
+        await CreateGoalAsync(roles[1].Id, "Уже есть");
+        var goal = await CreateGoalAsync(roles[0].Id, "Цель");
+        var session = (await ScheduleAsync(goal.Id, Monday)).Task!;
+
+        var result = await UpdateGoalAsync(goal.Id, f => f with { RoleId = roles[1].Id });
+
+        Assert.Equal(roles[1].Id, result.Goal.RoleId);
+        var inRole = (await GetWeekAsync()).Goals.Where(g => g.RoleId == roles[1].Id).OrderBy(g => g.SortOrder);
+        Assert.Equal(["Уже есть", "Цель"], inRole.Select(g => g.Title));
+        Assert.Equal(roles[1].Id, (await GetWeekAsync()).Tasks.Single(t => t.Id == session.Id).RoleId);
+    }
+
+    [Fact]
+    public async Task Goal_FromDayTask_TakesItsTemplate()
+    {
+        var task = await CreateInDayAsync("Созвон");
+        await PutAsync<TaskDto>($"/api/tasks/{task.Id}",
+            new UpdateTaskRequest("Созвон", "Ссылка в почте", null, 1, new TimeOnly(11, 0), 30));
+
+        var goal = (await PostAsync<GoalResultDto>("/api/goals/from-task",
+            new GoalFromTaskRequest(task.Id, (await FirstUserRoleAsync()).Id, Monday, 0))).Goal;
+
+        Assert.Equal((new TimeOnly(11, 0), 1, "Ссылка в почте", 30),
+            (goal.StartTime!.Value, goal.Quadrant!.Value, goal.Notes, goal.DurationMinutes!.Value));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(24 * 60 + 1)]
+    public async Task Duration_OutOfRange_Returns400(int minutes)
+    {
+        var task = await CreateInDayAsync("Дело");
+
+        var response = await Client.PutAsJsonAsync($"/api/tasks/{task.Id}",
+            new UpdateTaskRequest("Дело", null, null, null, null, minutes));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Duration_SavedAndCleared()
+    {
+        var task = await CreateInDayAsync("Дело");
+
+        var withDuration = await PutAsync<TaskDto>($"/api/tasks/{task.Id}", new UpdateTaskRequest("Дело", null, null, null, null, 90));
+        Assert.Equal(90, withDuration.DurationMinutes);
+
+        var cleared = await PutAsync<TaskDto>($"/api/tasks/{task.Id}", new UpdateTaskRequest("Дело", null, null, null, null, null));
+        Assert.Null(cleared.DurationMinutes);
     }
 }

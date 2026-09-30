@@ -63,7 +63,7 @@ async function openEditor(dayIndex, title) {
 }
 const goal = title => page.evaluate(t => {
   const row = [...document.querySelectorAll('.role .item')].find(r => r.querySelector('.tx').textContent.includes(t));
-  return row ? { text: row.querySelector('.tx').textContent.trim(), when: row.querySelector('.pill.when')?.textContent ?? null, done: row.classList.contains('done') } : null;
+  return row ? { text: row.querySelector('.tx').childNodes[0].textContent.trim(), when: ([...row.querySelectorAll('.days .d')].map(d => d.textContent).join(' · ') || null), done: row.classList.contains('done') } : null;
 }, title);
 const rocks = () => page.$eval('.rocks b', b => b.textContent);
 
@@ -110,7 +110,7 @@ await check('окно: название, роль, время, квадрант,
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .chip')].find(c => c.textContent.trim() === 'Работа'))).click();
   await page.$eval('.editor input[type=time]', e => e.focus());
   await page.keyboard.type('0915');
-  await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .quadrants button')].find(b => b.textContent.trim() === 'II'))).click();
+  await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .segments button')].find(b => b.textContent.trim() === 'II'))).click();
   await page.type('.editor textarea', 'черновик у Маши');
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить'))).click();
   await settle();
@@ -126,7 +126,7 @@ await check('после перезагрузки окно показывает �
   const v = await page.evaluate(() => ({
     notes: document.querySelector('.editor textarea').value,
     time: document.querySelector('.editor input[type=time]').value,
-    q: document.querySelector('.editor .quadrants .on')?.textContent.trim(),
+    q: document.querySelector('.editor .segments .on')?.textContent.trim(),
     role: document.querySelector('.editor .chip.on')?.textContent.trim(),
   }));
   assert(v.notes === 'черновик у Маши' && v.time === '09:15' && v.q === 'II' && v.role === 'Работа', JSON.stringify(v));
@@ -178,8 +178,9 @@ await check('«в корзину» из окна; в корзине видно, 
 });
 
 await page.screenshot({ path: `${SHOTS}/week-final.png` });
-await openEditor(3, 'Написать отчёт за сентябрь');
-await page.screenshot({ path: `${SHOTS}/week-editor.png` });
+await openEditor(3, 'Написать отчёт за сентябрь')
+  .then(() => page.screenshot({ path: `${SHOTS}/week-editor.png` }))
+  .catch(() => {}); // снимок для глаз; если дела нет, об этом уже сказала проверка выше
 
 await browser.close();
 console.log(results.join('\n'));

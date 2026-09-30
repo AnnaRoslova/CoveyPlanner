@@ -86,7 +86,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, categoryId, null, null, null, TaskStateDto.Someday, null, null,
+        var temp = new TaskDto(NextTempId(), title, null, categoryId, null, null, null, TaskStateDto.Someday, null, null, null,
             SortOrder: atEnd ? int.MaxValue : int.MinValue, TrashedAt: null);
         _tasks[temp.Id] = temp;
         RenumberSomeday(categoryId);
@@ -181,7 +181,7 @@ public partial class PlannerState
 
         _tasks[taskId] = task with { Title = title };
         await SaveAsync(() => api.UpdateTaskAsync(taskId,
-            new UpdateTaskRequest(title, task.Notes, task.RoleId, task.Quadrant, task.StartTime)));
+            new UpdateTaskRequest(title, task.Notes, task.RoleId, task.Quadrant, task.StartTime, task.DurationMinutes)));
     }
 
     /// <summary>Удалить дело — в корзину. Занятие цели перестаёт считаться в её прогрессе.</summary>

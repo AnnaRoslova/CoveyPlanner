@@ -23,10 +23,10 @@ async function check(name, fn) {
 }
 async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.role'); await settle(); }
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
 const T = `const titleOf = ${titleOf};`;
 const roleSel = name => `[...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === ${JSON.stringify(name)})`;
-const goalsOf = name => page.evaluate(`(() => { ${T} const r = ${roleSel(name)}; return r ? [...r.querySelectorAll('.item')].map(i => ({ title: titleOf(i), when: i.querySelector('.pill.when')?.textContent ?? null, done: i.classList.contains('done') })) : null; })()`);
+const goalsOf = name => page.evaluate(`(() => { ${T} const r = ${roleSel(name)}; return r ? [...r.querySelectorAll('.item')].map(i => ({ title: titleOf(i), when: ([...i.querySelectorAll('.days .d')].map(d => d.textContent).join(' · ') || null), done: i.classList.contains('done') })) : null; })()`);
 const goalTitles = async name => (await goalsOf(name)).map(g => g.title);
 const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), time: it.querySelector('.pill.time')?.textContent ?? null, rock: !!it.querySelector('.pill.rock') })); })()`);
 const dayTitles = async i => (await day(i)).map(t => t.title);
@@ -196,10 +196,10 @@ await check('измерения пилы не перетаскиваются, р
   assert(JSON.stringify(await userRoles()) === JSON.stringify(before), `роли: ${await userRoles()}`);
 });
 
-await check('клик по цели — переименование, а не перетаскивание', async () => {
+await check('клик по цели — окно цели, а не перетаскивание', async () => {
   const b = await goalBox('Семья', 'Поход в парк с детьми');
   await page.mouse.click(b.x + 60, b.y + 8); await settle();
-  assert(await page.$('.role .inline-input'), 'клик не открыл переименование');
+  assert(await page.$('.editor[aria-label="Цель недели"]'), 'клик не открыл окно цели');
   await page.keyboard.press('Escape'); await settle();
 });
 

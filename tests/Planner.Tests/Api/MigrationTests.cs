@@ -156,6 +156,33 @@ public sealed class MigrationTests : IDisposable
         Assert.False(goals[3].IsDone);
     }
 
+    [Fact]
+    public async Task GoalTemplate_GoalTakesSessionQuadrant_AndSessionsFollowIt()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("GoalSessions");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Работа', '#8fb4e3', 0, NULL);
+            INSERT INTO WeeklyGoals (Id, RoleId, WeekStart, Title, TimesPerWeek, SortOrder) VALUES
+                (1, 1, '2026-09-28', 'Отчёт', 2, 0),
+                (2, 1, '2026-09-28', 'Без квадранта', 1, 1);
+            INSERT INTO Tasks (Id, Title, RoleId, State, PlannedDate, SortOrder, CreatedAt, Quadrant, GoalId) VALUES
+                (1, 'Отчёт', 1, 'Planned', '2026-09-29', 0, '2026-09-28 10:00:00', NULL, 1),
+                (2, 'Отчёт', 1, 'Planned', '2026-09-30', 0, '2026-09-28 10:00:00', 2, 1),
+                (3, 'Отчёт', 1, 'Planned', '2026-10-01', 0, '2026-09-28 10:00:00', 3, 1),
+                (4, 'Дело', 1, 'Planned', '2026-10-01', 1, '2026-09-28 10:00:00', 4, NULL);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var goals = await db.WeeklyGoals.OrderBy(g => g.Id).ToListAsync();
+        Assert.Equal(Planner.Core.Enums.Quadrant.NotUrgentImportant, goals[0].Quadrant);
+        Assert.Null(goals[1].Quadrant);
+        var quadrants = await db.Tasks.OrderBy(t => t.Id).Select(t => (int?)t.Quadrant).ToListAsync();
+        Assert.Equal([2, 2, 2, 4], quadrants); // дело не цели не трогаем
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

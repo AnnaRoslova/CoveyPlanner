@@ -1,0 +1,176 @@
+@* Окно цели — шаблон занятий: название, роль, «раз в неделю», время, квадрант, длительность, заметки.
+   Изменения расходятся по невыполненным занятиям недели (кроме полей, которые у занятия свои);
+   роль и квадрант — по всем занятиям. Enter в названии — сохранить, Esc или клик мимо — отмена.
+   Стили — css/editor.css. *@
+@inject PlannerState State
+
+<div class="editor-backdrop" @onclick="OnClose"></div>
+
+<div class="editor" role="dialog" aria-label="Цель недели" @onkeydown="OnKeyDown">
+    <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Цель на неделю"
+           @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
+
+    <div class="rock-note">
+        <span class="pill-rock">цель</span>
+        шаблон занятий: новые занятия берут эти значения
+        @if (EditedGoal.TimesPerWeek > 1 || EditedGoal.Sessions.Count > 0)
+        {
+            <text> · сделано @EditedGoal.DoneCount из @EditedGoal.TimesPerWeek</text>
+        }
+    </div>
+
+    <div class="field">
+        <div class="label">Роль</div>
+        <div class="chips">
+            @foreach (var role in State.Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder))
+            {
+                <button type="button" class="chip @(_roleId == role.Id ? "on" : "")" style="--c: @role.Color"
+                        @onclick="() => _roleId = role.Id">
+                    <span class="dot"></span>@role.Name
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="field">
+        <div class="label">Раз в неделю</div>
+        <div class="segments times-per-week">
+            @for (var n = 1; n <= MaxTimesPerWeek; n++)
+            {
+                var times = n;
+                <button type="button" class="@(_times == times ? "on" : "")" @onclick="() => _times = times">@times</button>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="field">
+            <div class="label">Время</div>
+            <div class="time">
+                <input type="time" @bind="_time" />
+                @if (_time is not null)
+                {
+                    <button type="button" class="clear" title="Без времени" @onclick="() => _time = null">
+                        <Icon Name="x" Size="11" />
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="field">
+            <div class="label">Квадрант</div>
+            <QuadrantPicker @bind-Value="_quadrant" />
+        </div>
+    </div>
+    @if (_quadrant is { } q)
+    {
+        <div class="quadrant-hint">@QuadrantPicker.Hint(q)</div>
+    }
+
+    <div class="field">
+        <div class="label">Длительность</div>
+        <DurationPicker @bind-Value="_duration" />
+    </div>
+
+    <div class="field">
+        <div class="label">Заметки</div>
+        <textarea rows="3" maxlength="10000" placeholder="Что делать на занятии, ссылки…" @bind="_notes" @bind:event="oninput"></textarea>
+    </div>
+
+    @if (_askCategory)
+    {
+        <CategoryChoice Prompt="Мысль цели вернуть в категорию:" ButtonText="Удалить цель"
+                        OnChoose="categoryId => DeleteAsync(categoryId)" OnCancel="() => _askCategory = false" />
+    }
+
+    <div class="buttons">
+        <button type="button" class="btn danger trash" @onclick="() => DeleteAsync(null)">удалить цель</button>
+        <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
+        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
+    </div>
+</div>
+
+@code {
+    private const int MaxTimesPerWeek = 7;
+
+    private ElementReference _titleInput;
+    private string _title = "";
+    private int _roleId;
+    private int _times;
+    private TimeOnly? _time;
+    private int? _quadrant;
+    private int? _duration;
+    private string? _notes;
+    private bool _askCategory;
+
+    [Parameter, EditorRequired]
+    public WeeklyGoalDto EditedGoal { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _title = EditedGoal.Title;
+        _roleId = EditedGoal.RoleId;
+        _times = EditedGoal.TimesPerWeek;
+        _time = EditedGoal.StartTime;
+        _quadrant = EditedGoal.Quadrant;
+        _duration = EditedGoal.DurationMinutes;
+        _notes = EditedGoal.Notes;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _titleInput.FocusAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+        else if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+        {
+            await SaveAsync();
+        }
+    }
+
+    private async Task OnTitleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.CtrlKey && !e.MetaKey)
+        {
+            await SaveAsync();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            return;
+        }
+
+        await OnClose.InvokeAsync();
+        await State.UpdateGoalAsync(EditedGoal.Id,
+            new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration));
+    }
+
+    /// <summary>Удалить; если мысли цели некуда вернуться в ленту — спросить категорию.</summary>
+    private async Task DeleteAsync(int? categoryId)
+    {
+        var result = await State.DeleteGoalAsync(EditedGoal.Id, categoryId);
+        if (result == ReturnResult.NeedsCategory)
+        {
+            _askCategory = true;
+        }
+        else if (result == ReturnResult.Done)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

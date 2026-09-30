@@ -19,8 +19,9 @@ public sealed record DayTargetDto(DateOnly Date, int Index) : TaskTargetDto;
 
 public sealed record CreateTaskRequest(string Title, TaskTargetDto Target);
 
-/// <summary>StartTime = null — без времени.</summary>
-public sealed record UpdateTaskRequest(string Title, string? Notes, int? RoleId, int? Quadrant, TimeOnly? StartTime);
+/// <summary>StartTime / DurationMinutes = null — без времени / длительности. У занятия цели RoleId и Quadrant берутся от цели.</summary>
+public sealed record UpdateTaskRequest(
+    string Title, string? Notes, int? RoleId, int? Quadrant, TimeOnly? StartTime, int? DurationMinutes);
 
 public sealed record SetDoneRequest(bool IsDone);
 
@@ -38,8 +39,15 @@ public sealed record UpdateRoleRequest(string? Name, string? Color);
 
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title);
 
-/// <summary>null — поле не менять.</summary>
-public sealed record UpdateGoalRequest(string? Title, int? TimesPerWeek);
+/// <summary>Окно цели целиком. null у необязательных полей — «не задано».</summary>
+public sealed record UpdateGoalRequest(
+    string Title,
+    int RoleId,
+    int TimesPerWeek,
+    TimeOnly? StartTime,
+    int? Quadrant,
+    string? Notes,
+    int? DurationMinutes);
 
 /// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
 public sealed record ToggleGoalRequest(DateOnly Today);

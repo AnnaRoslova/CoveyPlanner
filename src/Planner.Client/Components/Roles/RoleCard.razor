@@ -1,9 +1,10 @@
 @* Роль (или измерение пилы) и её цели на неделю.
    Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
-   Чекбокс — отметить ближайшее занятие, клик по цели — переименовать, ↻ — сколько раз в неделю,
+   Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»),
    крестик — удалить, «+ цель» — новая цель в конец.
    «⋯» в заголовке — правка роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки. *@
 @inject PlannerState State
+@inject GoalEditorHost EditorHost
 
 @if (_editingRole)
 {
@@ -28,45 +29,20 @@ else
 
     @foreach (var goal in Goals)
     {
-        if (goal.Id == _renamingGoalId)
-        {
-            <InlineInput Value="@goal.Title" MaxLength="500" SubmitOnBlur="true"
-                         OnSubmit="title => RenameAsync(goal.Id, title)" OnCancel="() => _renamingGoalId = null" />
-        }
-        else
-        {
-            <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
-                     Progress="@Progress(goal)" Days="Days(goal)" IsPending="goal.Id < 0"
-                     OnToggle="() => State.ToggleGoalAsync(goal.Id)"
-                     OnClick="() => StartRenaming(goal.Id)"
-                     DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id">
-                <Actions>
-                    @if (goal.Id > 0)
-                    {
-                        <button type="button" class="row-action" title="Сколько раз в неделю"
-                                @onclick="() => ToggleTimesChoice(goal.Id)">
-                            <Icon Name="repeat" Size="12" />
-                        </button>
-                        <button type="button" class="row-action" title="Удалить цель" @onclick="() => DeleteGoalAsync(goal.Id, null)">
-                            <Icon Name="x" Size="12" />
-                        </button>
-                    }
-                </Actions>
-            </ItemRow>
-        }
-
-        if (goal.Id == _timesGoalId)
-        {
-            <div class="times" role="group" aria-label="Сколько раз в неделю">
-                <span class="times-l">раз в неделю</span>
-                @for (var n = 1; n <= MaxTimesPerWeek; n++)
+        <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
+                 Progress="@Progress(goal)" Days="Days(goal)" IsPending="goal.Id < 0"
+                 OnToggle="() => State.ToggleGoalAsync(goal.Id)"
+                 OnClick="() => OpenGoal(goal.Id)"
+                 DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id">
+            <Actions>
+                @if (goal.Id > 0)
                 {
-                    var times = n;
-                    <button type="button" class="t @(times == goal.TimesPerWeek ? "on" : "")"
-                            @onclick="() => SetTimesAsync(goal.Id, times)">@times</button>
+                    <button type="button" class="row-action" title="Удалить цель" @onclick="() => DeleteGoalAsync(goal.Id, null)">
+                        <Icon Name="x" Size="12" />
+                    </button>
                 }
-            </div>
-        }
+            </Actions>
+        </ItemRow>
 
         if (goal.Id == _askCategoryForGoalId)
         {
@@ -97,11 +73,7 @@ else
     private bool _editingRole;
     private bool _adding;
     private string _newTitle = "";
-    private int? _renamingGoalId;
     private int? _askCategoryForGoalId;
-    private int? _timesGoalId;
-
-    private const int MaxTimesPerWeek = 7;
 
     [Parameter, EditorRequired]
     public RoleDto Role { get; set; } = null!;
@@ -121,26 +93,12 @@ else
             .Select(s => new DayMark(RuDates.ShortDay(s.PlannedDate!.Value), s.IsDone))
             .ToList();
 
-    private void ToggleTimesChoice(int goalId) => _timesGoalId = _timesGoalId == goalId ? null : goalId;
-
-    private async Task SetTimesAsync(int goalId, int times)
-    {
-        _timesGoalId = null;
-        await State.SetTimesPerWeekAsync(goalId, times);
-    }
-
-    private void StartRenaming(int goalId)
+    private void OpenGoal(int goalId)
     {
         if (goalId > 0)
         {
-            _renamingGoalId = goalId;
+            EditorHost.Open(goalId);
         }
-    }
-
-    private async Task RenameAsync(int goalId, string title)
-    {
-        _renamingGoalId = null;
-        await State.RenameGoalAsync(goalId, title);
     }
 
     private async Task DeleteGoalAsync(int goalId, int? categoryId)

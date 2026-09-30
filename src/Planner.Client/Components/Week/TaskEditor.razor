@@ -1,8 +1,10 @@
-@* Окно редактирования дела: название, заметки, роль, время, квадрант; «в корзину».
-   Enter в названии — сохранить, Esc или клик мимо — отмена. *@
+@* Окно редактирования дела: название, роль, время, квадрант, длительность, заметки; «в корзину».
+   У занятия цели роль и квадрант задаются у цели (здесь только видны), а время, длительность
+   и заметки могут быть «своими» — тогда метка «своё» и кнопка «как у цели».
+   Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
 @inject PlannerState State
 
-<div class="backdrop" @onclick="OnClose"></div>
+<div class="editor-backdrop" @onclick="OnClose"></div>
 
 <div class="editor" role="dialog" aria-label="Дело" @onkeydown="OnKeyDown">
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
@@ -22,21 +24,38 @@
 
     <div class="field">
         <div class="label">Роль</div>
-        <div class="chips">
-            <button type="button" class="chip @(_roleId is null ? "on" : "")" @onclick="() => _roleId = null">без роли</button>
-            @foreach (var role in State.Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder))
-            {
-                <button type="button" class="chip @(_roleId == role.Id ? "on" : "")" style="--c: @role.Color"
-                        @onclick="() => _roleId = role.Id">
-                    <span class="dot"></span>@role.Name
-                </button>
-            }
-        </div>
+        @if (Goal is { } roleGoal)
+        {
+            <div class="from-goal" style="--c: @State.FindRole(roleGoal.RoleId)?.Color">
+                <span class="dot"></span>@State.FindRole(roleGoal.RoleId)?.Name
+                <span class="hint">· задаётся у цели</span>
+            </div>
+        }
+        else
+        {
+            <div class="chips">
+                <button type="button" class="chip @(_roleId is null ? "on" : "")" @onclick="() => _roleId = null">без роли</button>
+                @foreach (var role in State.Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder))
+                {
+                    <button type="button" class="chip @(_roleId == role.Id ? "on" : "")" style="--c: @role.Color"
+                            @onclick="() => _roleId = role.Id">
+                        <span class="dot"></span>@role.Name
+                    </button>
+                }
+            </div>
+        }
     </div>
 
     <div class="row">
         <div class="field">
-            <div class="label">Время</div>
+            <div class="label-row">
+                <span class="label">Время</span>
+                @if (Goal is { } timeGoal && OwnTime(timeGoal))
+                {
+                    <span class="own">своё</span>
+                    <button type="button" class="as-goal" @onclick="() => _time = timeGoal.StartTime">как у цели</button>
+                }
+            </div>
             <div class="time">
                 <input type="time" @bind="_time" />
                 @if (_time is not null)
@@ -50,24 +69,45 @@
 
         <div class="field">
             <div class="label">Квадрант</div>
-            <div class="quadrants">
-                <button type="button" class="@(_quadrant is null ? "on" : "")" title="Без квадранта"
-                        @onclick="() => _quadrant = null">—</button>
-                @foreach (var (value, roman, hint) in Quadrants)
-                {
-                    <button type="button" class="@(_quadrant == value ? "on" : "")" title="@hint"
-                            @onclick="() => _quadrant = value">@roman</button>
-                }
-            </div>
+            @if (Goal is { } quadGoal)
+            {
+                <div class="from-goal">
+                    @(quadGoal.Quadrant is { } gq ? QuadrantPicker.Roman(gq) : "—")
+                    <span class="hint">· задаётся у цели</span>
+                </div>
+            }
+            else
+            {
+                <QuadrantPicker @bind-Value="_quadrant" />
+            }
         </div>
     </div>
-    @if (_quadrant is { } q)
+    @if (Quadrant is { } q)
     {
-        <div class="quadrant-hint">@Quadrants.First(x => x.Value == q).Hint</div>
+        <div class="quadrant-hint">@QuadrantPicker.Hint(q)</div>
     }
 
     <div class="field">
-        <div class="label">Заметки</div>
+        <div class="label-row">
+            <span class="label">Длительность</span>
+            @if (Goal is { } durGoal && OwnDuration(durGoal))
+            {
+                <span class="own">своё</span>
+                <button type="button" class="as-goal" @onclick="() => _duration = durGoal.DurationMinutes">как у цели</button>
+            }
+        </div>
+        <DurationPicker @bind-Value="_duration" />
+    </div>
+
+    <div class="field">
+        <div class="label-row">
+            <span class="label">Заметки</span>
+            @if (Goal is { } notesGoal && OwnNotes(notesGoal))
+            {
+                <span class="own">своё</span>
+                <button type="button" class="as-goal" @onclick="() => _notes = notesGoal.Notes">как у цели</button>
+            }
+        </div>
         <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
     </div>
 
@@ -79,20 +119,13 @@
 </div>
 
 @code {
-    private static readonly (int Value, string Roman, string Hint)[] Quadrants =
-    [
-        (1, "I", "I — важно и срочно"),
-        (2, "II", "II — важно, не срочно (главное по Кови)"),
-        (3, "III", "III — срочно, не важно"),
-        (4, "IV", "IV — не срочно и не важно"),
-    ];
-
     private ElementReference _titleInput;
     private string _title = "";
     private string? _notes;
     private int? _roleId;
     private TimeOnly? _time;
     private int? _quadrant;
+    private int? _duration;
 
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;
@@ -102,6 +135,18 @@
 
     private WeeklyGoalDto? Goal => State.GoalOfTask(EditedTask.Id);
 
+    /// <summary>Квадрант, который будет у дела: у занятия — всегда цели.</summary>
+    private int? Quadrant => Goal is { } goal ? goal.Quadrant : _quadrant;
+
+    // «Своё» — значение занятия отличается от цели (так же считает сервер)
+    private bool OwnTime(WeeklyGoalDto goal) => EditedTask.PlannedDate is not null && _time != goal.StartTime;
+
+    private bool OwnDuration(WeeklyGoalDto goal) => _duration != goal.DurationMinutes;
+
+    private bool OwnNotes(WeeklyGoalDto goal) => Normalize(_notes) != goal.Notes;
+
+    private static string? Normalize(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
     protected override void OnInitialized()
     {
         _title = EditedTask.Title;
@@ -109,6 +154,7 @@
         _roleId = EditedTask.RoleId;
         _time = EditedTask.StartTime;
         _quadrant = EditedTask.Quadrant;
+        _duration = EditedTask.DurationMinutes;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -147,7 +193,7 @@
         }
 
         await OnClose.InvokeAsync();
-        await State.UpdateTaskAsync(EditedTask.Id, _title, _notes, _roleId, _quadrant, _time);
+        await State.UpdateTaskAsync(EditedTask.Id, _title, _notes, _roleId, _quadrant, _time, _duration);
     }
 
     private async Task TrashAsync()

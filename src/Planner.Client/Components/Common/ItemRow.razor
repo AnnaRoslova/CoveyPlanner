@@ -35,37 +35,41 @@
         {
             <span class="note" title="@NotesPreview"><Icon Name="note" Size="11" /></span>
         }
-        @if (TimeLabel is not null || IsRock || Progress is not null || Days is { Count: > 0 })
+        @if (TimeLabel is not null || DurationLabel is not null || IsRock)
         {
             <div class="pills">
                 @if (TimeLabel is not null)
                 {
                     <span class="pill time">@TimeLabel</span>
                 }
+                @if (DurationLabel is not null)
+                {
+                    <span class="pill dur">@DurationLabel</span>
+                }
                 @if (IsRock)
                 {
                     <span class="pill rock">камень</span>
                 }
-                @if (Progress is not null)
+            </div>
+        }
+        @if (Days is { Count: > 0 })
+        {
+            <div class="days">
+                @for (var i = 0; i < Days.Count; i++)
                 {
-                    <span class="pill progress">@Progress</span>
-                }
-                @if (Days is { Count: > 0 })
-                {
-                    <span class="pill when">
-                        @for (var i = 0; i < Days.Count; i++)
-                        {
-                            if (i > 0)
-                            {
-                                <text> · </text>
-                            }
-                            <span class="d @(Days[i].IsDone ? "done" : "")">@Days[i].Label</span>
-                        }
-                    </span>
+                    if (i > 0)
+                    {
+                        <span class="sep">·</span>
+                    }
+                    <span class="d @(Days[i].IsDone ? "done" : "")">@Days[i].Label</span>
                 }
             </div>
         }
     </div>
+    @if (Progress is not null)
+    {
+        <span class="progress">@Progress</span>
+    }
     @if (Actions is not null)
     {
         <div class="actions" @onclick:stopPropagation="true">@Actions</div>
@@ -94,11 +98,15 @@
     [Parameter]
     public bool IsRock { get; set; }
 
-    /// <summary>Пилюля прогресса цели «2/5».</summary>
+    /// <summary>Пилюля длительности «~30 мин».</summary>
+    [Parameter]
+    public string? DurationLabel { get; set; }
+
+    /// <summary>Прогресс цели «2/5» — справа в строке названия.</summary>
     [Parameter]
     public string? Progress { get; set; }
 
-    /// <summary>Пилюля справа «Чт · Пт» — дни, на которые стоят занятия цели.</summary>
+    /// <summary>Дни, на которые стоят занятия цели («Чт · Пт»), — мелко под названием.</summary>
     [Parameter]
     public IReadOnlyList<DayMark>? Days { get; set; }
 

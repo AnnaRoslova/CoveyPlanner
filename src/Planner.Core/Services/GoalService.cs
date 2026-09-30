@@ -35,19 +35,33 @@ public class GoalService(
         return goal;
     }
 
-    /// <summary>Изменить название и/или сколько раз в неделю.</summary>
-    public async Task<WeeklyGoal> UpdateAsync(int id, string? title, int? timesPerWeek, CancellationToken ct = default)
+    /// <summary>
+    /// Сохранить окно цели: название, роль, «раз в неделю» и шаблон занятий (время, квадрант, заметки,
+    /// длительность). Изменения шаблона расходятся по занятиям — см. <see cref="WeeklyGoal.UpdateTemplate"/>.
+    /// Новая роль — цель встаёт в конец её списка, занятия получают эту роль.
+    /// </summary>
+    public async Task<WeeklyGoal> UpdateAsync(int id, GoalChanges changes, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-
-        if (title is not null)
+        if (changes.Quadrant is { } q && !Enum.IsDefined(q))
         {
-            goal.Rename(title);
+            throw new DomainException("Квадрант должен быть от 1 до 4.");
         }
 
-        if (timesPerWeek is { } times)
+        goal.SetTimesPerWeek(changes.TimesPerWeek);
+        var lostTime = goal.UpdateTemplate(
+            changes.Title, changes.StartTime, changes.Quadrant, changes.Notes, changes.DurationMinutes);
+        foreach (var session in lostTime)
         {
-            goal.SetTimesPerWeek(times);
+            await placer.MoveToEndOfDayAsync(session, ct);
+        }
+
+        if (changes.RoleId != goal.RoleId)
+        {
+            await EnsureRoleExistsAsync(changes.RoleId, ct);
+            var siblings = await goals.GetForRoleAsync(changes.RoleId, goal.WeekStart, ct);
+            goal.MoveToRole(changes.RoleId);
+            SortOrdering.Place(siblings, goal, int.MaxValue);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -87,7 +101,7 @@ public class GoalService(
             // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
             if (session.PlannedDate is null && isCurrentWeek)
             {
-                await placer.PlaceAsync(session, new DayTarget(today, int.MaxValue), ct);
+                await PlaceInDayAsync(goal, session, new DayTarget(today, int.MaxValue), ct);
             }
 
             session.Complete(Now);
@@ -120,12 +134,12 @@ public class GoalService(
     }
 
     /// <summary>
-    /// Цель → день: новое занятие с названием и ролью цели. Если есть занятие без дня
+    /// Цель → день: новое занятие по шаблону цели (название, роль, время, квадрант, заметки, длительность). Если есть занятие без дня
     /// (цель сделана из дела ленты) — в день встаёт оно. Перенос занятия — перетаскиванием самого дела.
     /// </summary>
     public async Task<(WeeklyGoal Goal, TaskItem Session)> ScheduleAsync(int id, TaskTarget target, CancellationToken ct = default)
     {
-        if (target is not DayTarget)
+        if (target is not DayTarget day)
         {
             throw new DomainException("Для возврата в ленту используйте перенос цели в ленту.");
         }
@@ -133,7 +147,7 @@ public class GoalService(
         var goal = await GetAsync(id, ct);
         var session = goal.UnscheduledSession ?? NewSession(goal);
 
-        await placer.PlaceAsync(session, target, ct);
+        await PlaceInDayAsync(goal, session, day, ct);
         await unitOfWork.SaveChangesAsync(ct);
         return (goal, session);
     }
@@ -158,6 +172,7 @@ public class GoalService(
         }
 
         var goal = WeeklyGoal.Create(roleId, weekStart, task.Title);
+        goal.CopyTemplateFrom(task);
         if (task.State == TaskState.Someday)
         {
             task.PlanForWeek();
@@ -202,9 +217,20 @@ public class GoalService(
     private TaskItem NewSession(WeeklyGoal goal)
     {
         var session = TaskItem.CreatePlanned(goal.Title, Now);
+        goal.FillFromTemplate(session);
         tasks.Add(session);
         goal.AddSession(session);
         return session;
+    }
+
+    /// <summary>Занятие → день; без своего времени оно берёт время цели.</summary>
+    private async Task PlaceInDayAsync(WeeklyGoal goal, TaskItem session, DayTarget day, CancellationToken ct)
+    {
+        await placer.PlaceAsync(session, day, ct);
+        if (session.StartTime is null && goal.StartTime is not null)
+        {
+            session.SetTime(goal.StartTime);
+        }
     }
 
     private async Task<WeeklyGoal> GetAsync(int id, CancellationToken ct) =>

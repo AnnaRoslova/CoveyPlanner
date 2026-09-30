@@ -101,7 +101,7 @@ public class TasksApiTests : ApiTestBase
         var task = await CreateTaskAsync("Мысль", new SomedayTargetDto(ideas.Id, 0));
 
         var response = await Client.PutAsJsonAsync($"/api/tasks/{task.Id}",
-            new UpdateTaskRequest("Мысль", null, null, null, new TimeOnly(9, 0)));
+            new UpdateTaskRequest("Мысль", null, null, null, new TimeOnly(9, 0), null));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -126,7 +126,7 @@ public class TasksApiTests : ApiTestBase
         var task = await CreateInDayAsync("Дело");
 
         var updated = await PutAsync<TaskDto>($"/api/tasks/{task.Id}",
-            new UpdateTaskRequest("Новое название", "заметка", role.Id, 2, null));
+            new UpdateTaskRequest("Новое название", "заметка", role.Id, 2, null, null));
 
         Assert.Equal("Новое название", updated.Title);
         Assert.Equal("заметка", updated.Notes);
@@ -140,7 +140,7 @@ public class TasksApiTests : ApiTestBase
         var task = await CreateInDayAsync("Дело");
 
         var response = await Client.PutAsJsonAsync($"/api/tasks/{task.Id}",
-            new UpdateTaskRequest("Дело", null, null, 7, null));
+            new UpdateTaskRequest("Дело", null, null, 7, null, null));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

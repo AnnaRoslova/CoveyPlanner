@@ -17,7 +17,10 @@ public static class GoalEndpoints
         });
 
         goals.MapPut("/{id:int}", async (int id, UpdateGoalRequest request, GoalService service, CancellationToken ct) =>
-            (await service.UpdateAsync(id, request.Title, request.TimesPerWeek, ct)).ToDto());
+            (await service.UpdateAsync(id, new GoalChanges(
+                request.Title, request.RoleId, request.TimesPerWeek, request.StartTime,
+                request.Quadrant.ToQuadrant(), request.Notes, request.DurationMinutes), ct))
+            .ToUpdateResultDto());
 
         // Клик по отметке цели: отметить ближайшее занятие или снять отметку с последнего
         goals.MapPost("/{id:int}/toggle", async (int id, ToggleGoalRequest request, GoalService service, CancellationToken ct) =>

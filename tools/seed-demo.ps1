@@ -25,13 +25,14 @@ $week = Day 0
 $roles = @{}
 foreach ($role in $board.roles) { $roles[$role.name] = $role.id }
 
-# Дело в дне; время и роль — через редактирование
-function DayTask([string]$Title, [int]$Day, [string]$Time = $null, [string]$Role = $null, [bool]$Done = $false) {
+# Дело в дне; время, роль и длительность — через редактирование
+function DayTask([string]$Title, [int]$Day, [string]$Time = $null, [string]$Role = $null, [bool]$Done = $false, [int]$Minutes = 0) {
     $task = Api POST 'tasks' @{ title = $Title; target = @{ kind = 'day'; date = (Day $Day); index = 99 } }
-    if ($Time -or $Role) {
+    if ($Time -or $Role -or $Minutes) {
         $roleId = if ($Role) { $roles[$Role] } else { $null }
         $startTime = if ($Time) { "$($Time):00" } else { $null }
-        Api PUT "tasks/$($task.id)" @{ title = $Title; notes = $null; roleId = $roleId; quadrant = $null; startTime = $startTime } | Out-Null
+        $duration = if ($Minutes) { $Minutes } else { $null }
+        Api PUT "tasks/$($task.id)" @{ title = $Title; notes = $null; roleId = $roleId; quadrant = $null; startTime = $startTime; durationMinutes = $duration } | Out-Null
     }
     if ($Done) { Api PUT "tasks/$($task.id)/done" @{ isDone = $true } | Out-Null }
     $task
@@ -61,7 +62,7 @@ function Goal([string]$Role, [string]$Title) { Api POST 'goals' @{ roleId = $rol
 function Schedule($Goal, [int]$Day) { (Api POST "goals/$($Goal.id)/schedule" @{ kind = 'day'; date = (Day $Day); index = 99 }).task }
 
 $run = Goal 'Тело' 'Бег'
-Api PUT "goals/$($run.id)" @{ timesPerWeek = 3 } | Out-Null
+Api PUT "goals/$($run.id)" @{ title = 'Бег'; roleId = $roles['Тело']; timesPerWeek = 3; durationMinutes = 30; notes = 'Парк, лёгкий темп' } | Out-Null
 Goal 'Ум' '100 страниц' | Out-Null
 Goal 'Общение и эмоции' 'Увидеться с Олей' | Out-Null
 $dentist = Goal 'Я сама' 'Записаться к стоматологу'
@@ -79,13 +80,13 @@ $reviewTask = Schedule $review 1
 Api PUT "tasks/$($reviewTask.id)" @{ title = $reviewTask.title; notes = $null; roleId = $roles['Работа']; quadrant = $null; startTime = '10:00:00' } | Out-Null
 Api PUT "tasks/$($reviewTask.id)/done" @{ isDone = $true } | Out-Null
 DayTask 'Созвон с заказчиком' 1 '11:00' 'Работа' | Out-Null
-DayTask 'Почитать 30 страниц' 1 $null 'Ум' | Out-Null
+DayTask 'Почитать 30 страниц' 1 $null 'Ум' -Minutes 45 | Out-Null
 
 Schedule $dentist 2 | Out-Null
 
 $demoTask = Schedule $demo 3
 Api PUT "tasks/$($demoTask.id)" @{ title = $demoTask.title; notes = $null; roleId = $roles['Работа']; quadrant = 2; startTime = '15:00:00' } | Out-Null
-DayTask 'Написать отчёт' 3 | Out-Null
+DayTask 'Написать отчёт' 3 -Minutes 90 | Out-Null
 
 DayTask 'Ужин с семьёй' 4 '19:00' 'Семья' | Out-Null
 

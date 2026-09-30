@@ -23,14 +23,14 @@ async function check(name, fn) {
 }
 async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.role'); await settle(); }
 
-const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note')).map(n => n.textContent).join('').trim();
+const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note') && !n.classList?.contains('days')).map(n => n.textContent).join('').trim();
 const T = `const titleOf = ${titleOf};`;
 const roleSel = name => `[...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === ${JSON.stringify(name)})`;
 const goalSel = (role, title) => `(() => { ${T} return [...${roleSel(role)}.querySelectorAll('.item')].find(i => titleOf(i) === ${JSON.stringify(title)}); })()`;
 const goal = (role, title) => page.evaluate(`(() => { const g = ${goalSel(role, title)}; return g ? {
-  progress: g.querySelector('.pill.progress')?.textContent ?? null,
-  when: g.querySelector('.pill.when')?.textContent.trim() ?? null,
-  doneDays: [...g.querySelectorAll('.pill.when .d.done')].map(d => d.textContent),
+  progress: g.querySelector('.progress')?.textContent ?? null,
+  when: [...g.querySelectorAll('.days .d')].map(d => d.textContent).join(' · ') || null,
+  doneDays: [...g.querySelectorAll('.days .d.done')].map(d => d.textContent),
   done: g.classList.contains('done') } : null; })()`);
 const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), rock: !!it.querySelector('.pill.rock'), done: it.classList.contains('done') })); })()`);
 
@@ -57,6 +57,16 @@ async function goalToDay(i) {
   const target = await dayBox(i);
   await mouseDrag(from, target.x + 40, target.y + target.height - 40);
 }
+async function openGoal(title, role = 'Тело') {
+  const el = (await page.evaluateHandle(goalSel(role, title))).asElement();
+  await el.$eval('.tx', e => e.click());
+  await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
+  await sleep(200);
+}
+const save = async () => {
+  await page.evaluate(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить').click());
+  await settle();
+};
 const runsOn = async i => (await day(i)).filter(t => t.title === 'Бег');
 
 await load();
@@ -91,13 +101,11 @@ await check('отметка занятия в дне → прогресс «1/3�
   assert(g.progress === '1/3' && JSON.stringify(g.doneDays) === '["Вт"]' && !g.done, JSON.stringify(g));
 });
 
-await check('«раз в неделю» → 2; отметка второго занятия — цель выполнена «2/2»', async () => {
-  const row = (await page.evaluateHandle(goalSel('Тело', 'Бег'))).asElement();
-  await row.hover();
-  await (await row.$('.row-action[title="Сколько раз в неделю"]')).click(); await settle();
-  await page.evaluate(() => [...document.querySelectorAll('.times .t')].find(b => b.textContent.trim() === '2').click());
-  await settle();
-  assert(!(await page.$('.times')), 'выбор не закрылся');
+await check('«раз в неделю» → 2 в окне цели; отметка второго занятия — цель выполнена «2/2»', async () => {
+  await openGoal('Бег');
+  await page.evaluate(() => [...document.querySelectorAll('.times-per-week button')].find(b => b.textContent.trim() === '2').click());
+  await save();
+  assert(!(await page.$('.editor')), 'окно не закрылось');
   assert((await goal('Тело', 'Бег')).progress === '1/2', JSON.stringify(await goal('Тело', 'Бег')));
   const thu = (await page.evaluateHandle(dayItem(3, 'Бег'))).asElement();
   await (await thu.$('.ck')).click(); await settle();

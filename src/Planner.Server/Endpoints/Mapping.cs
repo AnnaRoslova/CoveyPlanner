@@ -19,6 +19,7 @@ public static class Mapping
         (TaskStateDto)t.State,
         t.PlannedDate,
         t.StartTime,
+        t.DurationMinutes,
         t.SortOrder,
         t.TrashedAt);
 
@@ -33,11 +34,19 @@ public static class Mapping
         g.WeekStart,
         g.Title,
         g.TimesPerWeek,
+        g.StartTime,
+        (int?)g.Quadrant,
+        g.Notes,
+        g.DurationMinutes,
         g.SortOrder,
         g.ActiveSessions
             .OrderBy(t => t.PlannedDate ?? DateOnly.MaxValue).ThenBy(t => t.Id)
             .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done))
             .ToList());
+
+    /// <summary>Цель и её занятия, стоящие в днях (их поля могли поменяться по шаблону).</summary>
+    public static GoalUpdateResultDto ToUpdateResultDto(this WeeklyGoal g) =>
+        new(g.ToDto(), g.ActiveSessions.Where(t => t.PlannedDate is not null).Select(t => t.ToDto()).ToList());
 
     public static GoalResultDto ToResultDto(this (WeeklyGoal Goal, TaskItem Session) result) =>
         new(result.Goal.ToDto(), result.Session.ToDto());

@@ -51,6 +51,8 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
     public void Configure(EntityTypeBuilder<WeeklyGoal> builder)
     {
         builder.Property(g => g.Title).IsRequired().HasMaxLength(TextRules.TitleMaxLength);
+        builder.Property(g => g.Notes).HasMaxLength(TextRules.NotesMaxLength);
+        builder.Property(g => g.Quadrant).HasConversion<int?>();
 
         builder.HasOne<Role>().WithMany().HasForeignKey(g => g.RoleId).OnDelete(DeleteBehavior.Cascade);
         // Занятия цели — обычные дела; удалили цель — у дел ссылка обнуляется

@@ -22,7 +22,10 @@ public enum SawDimensionDto
     Social = 4,
 }
 
-/// <summary>Дело. Quadrant — 1..4 или null; StartTime — необязательная метка времени.</summary>
+/// <summary>
+/// Дело. Quadrant — 1..4 или null; StartTime — необязательная метка времени;
+/// DurationMinutes — необязательная примерная длительность. GoalId — дело — занятие этой цели.
+/// </summary>
 public sealed record TaskDto(
     int Id,
     string Title,
@@ -34,6 +37,7 @@ public sealed record TaskDto(
     TaskStateDto State,
     DateOnly? PlannedDate,
     TimeOnly? StartTime,
+    int? DurationMinutes,
     int SortOrder,
     DateTime? TrashedAt);
 
@@ -49,7 +53,8 @@ public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, S
 public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDone);
 
 /// <summary>
-/// Цель недели, которую нужно сделать TimesPerWeek раз. Sessions — её занятия (без корзины), по дням;
+/// Цель недели, которую нужно сделать TimesPerWeek раз, — шаблон занятий: новые занятия берут
+/// StartTime, Quadrant, Notes, DurationMinutes. Sessions — её занятия (без корзины), по дням;
 /// прогресс и «выполнено» считаются по ним.
 /// </summary>
 public sealed record WeeklyGoalDto(
@@ -58,6 +63,10 @@ public sealed record WeeklyGoalDto(
     DateOnly WeekStart,
     string Title,
     int TimesPerWeek,
+    TimeOnly? StartTime,
+    int? Quadrant,
+    string? Notes,
+    int? DurationMinutes,
     int SortOrder,
     IReadOnlyList<GoalSessionDto> Sessions)
 {
@@ -80,6 +89,9 @@ public sealed record BoardDto(
 
 /// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели).</summary>
 public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
+
+/// <summary>Цель после сохранения окна и её занятия в днях (у них могли поменяться поля по шаблону).</summary>
+public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskDto> Sessions);
 
 /// <summary>Результат операции с целью: сама цель и занятие, которое поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);

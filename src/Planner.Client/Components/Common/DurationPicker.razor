@@ -1,0 +1,27 @@
+@* Примерная длительность: «без» и готовые значения. Стили — css/editor.css. *@
+
+<div class="segments">
+    <button type="button" class="@(Value is null ? "on" : "")" @onclick="() => SetAsync(null)">без</button>
+    @foreach (var minutes in ShownOptions)
+    {
+        <button type="button" class="@(Value == minutes ? "on" : "")" @onclick="() => SetAsync(minutes)">
+            @RuDates.Duration(minutes)
+        </button>
+    }
+</div>
+
+@code {
+    private static readonly int[] Options = [15, 30, 45, 60, 90, 120, 180];
+
+    [Parameter]
+    public int? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> ValueChanged { get; set; }
+
+    // Значение не из списка (например, пришло из API) тоже видно и выбрано
+    private IEnumerable<int> ShownOptions =>
+        Value is { } v && !Options.Contains(v) ? Options.Append(v).Order() : Options;
+
+    private Task SetAsync(int? value) => ValueChanged.InvokeAsync(value);
+}
