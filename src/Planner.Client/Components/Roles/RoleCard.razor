@@ -1,6 +1,6 @@
 @* Роль (или измерение пилы) и её цели на неделю.
    Чекбокс — «выполнено», клик по цели — переименовать, крестик — удалить, «+ цель» — новая цель в конец.
-   «⋯» в заголовке — правка роли (название, цвет, порядок, удаление). *@
+   «⋯» в заголовке — правка роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки. *@
 @inject PlannerState State
 
 @if (_editingRole)
@@ -10,8 +10,9 @@
 else
 {
 <div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
-     data-drop="role" data-key="@Role.Id">
-    <div class="role-h">
+     data-drop="@DragDropService.RoleZone" data-key="@Role.Id" data-accept="@DragDropService.RoleAccepts"
+     data-drag="@(Role.IsSharpenSaw ? null : DragDropService.RoleItem)" data-id="@Role.Id">
+    <div class="role-h" data-list-head>
         <span class="dot"></span>
         <span class="name">@Role.Name</span>
         <button type="button" class="menu" title="Изменить роль" @onclick="() => _editingRole = true">
@@ -36,7 +37,7 @@ else
                      WhenLabel="@WhenLabel(goal)" IsPending="goal.Id < 0"
                      OnToggle="() => State.SetGoalDoneAsync(goal.Id, !goal.IsDone)"
                      OnClick="() => StartRenaming(goal.Id)"
-                     DragId="goal.Id">
+                     DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id">
                 <Actions>
                     @if (goal.Id > 0)
                     {

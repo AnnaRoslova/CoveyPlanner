@@ -1,5 +1,6 @@
-@* Создание или правка роли: название и цвет; для пользовательских ролей — ещё порядок и удаление.
-   Измерения «Затачивания пилы» нельзя переименовать и удалить — только сменить цвет. *@
+@* Создание или правка роли: название и цвет; для пользовательских ролей — ещё удаление.
+   Измерения «Затачивания пилы» нельзя переименовать и удалить — только сменить цвет.
+   Порядок ролей меняется перетаскиванием карточки роли. *@
 @inject PlannerState State
 
 <div class="role-editor">
@@ -32,13 +33,11 @@
     }
     else
     {
-        @* Два ряда: действия с ролью и «Отмена / Сохранить» — в узкой панели в один ряд не помещаются *@
+        @* Два ряда: «удалить» и «Отмена / Сохранить» — в узкой панели в один ряд не помещаются.
+           Порядок ролей меняется перетаскиванием карточки. *@
         @if (Role is { IsSharpenSaw: false })
         {
             <div class="tools">
-                <button type="button" class="btn quiet move" title="Выше" @onclick="() => State.MoveRoleAsync(Role.Id, -1)">↑</button>
-                <button type="button" class="btn quiet move" title="Ниже" @onclick="() => State.MoveRoleAsync(Role.Id, +1)">↓</button>
-                <span class="spacer"></span>
                 <button type="button" class="btn quiet delete" @onclick="() => _confirmDelete = true">удалить</button>
             </div>
         }

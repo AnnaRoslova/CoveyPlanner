@@ -50,6 +50,34 @@ public partial class PlannerState
             return;
         }
 
+        // Бросили туда же, где лежало, — ничего не делаем
+        if (task.PlannedDate == date && task.State != TaskStateDto.Someday)
+        {
+            // Дело со временем стоит по времени — внутри своего дня двигать некуда
+            if (task.StartTime is not null)
+            {
+                return;
+            }
+
+            var current = TasksOn(date).Where(t => t.StartTime is null).ToList().FindIndex(t => t.Id == taskId);
+            var count = TasksOn(date).Count(t => t.StartTime is null && t.Id != taskId);
+            if (current == Math.Clamp(index, 0, count))
+            {
+                return;
+            }
+        }
+
+        PlaceInDayLocally(task, date, index);
+        UpdateGoalOfTask(taskId, g => g with { PlannedDate = date });
+        await SaveAsync(() => api.MoveTaskAsync(taskId, new DayTargetDto(date, index)));
+    }
+
+    /// <summary>
+    /// Поставить дело в день локально (без сервера): из ленты — «запланировано» и без времени;
+    /// без времени — на позицию index среди дел дня без времени; со временем — по времени.
+    /// </summary>
+    private void PlaceInDayLocally(TaskDto task, DateOnly date, int index)
+    {
         var fromFeed = task.State == TaskStateDto.Someday;
         var moved = task with
         {
@@ -58,36 +86,18 @@ public partial class PlannerState
             StartTime = fromFeed ? null : task.StartTime,
         };
 
-        if (moved.StartTime is null)
+        if (moved.StartTime is not null)
         {
-            var untimed = TasksOn(date).Where(t => t.StartTime is null && t.Id != taskId).ToList();
-            index = Math.Clamp(index, 0, untimed.Count);
-
-            // Бросили туда же, где лежало, — ничего не делаем
-            if (task.PlannedDate == date && task.StartTime is null
-                && TasksOn(date).Where(t => t.StartTime is null).ToList().FindIndex(t => t.Id == taskId) == index)
-            {
-                return;
-            }
-
-            untimed.Insert(index, moved);
-            for (var i = 0; i < untimed.Count; i++)
-            {
-                _tasks[untimed[i].Id] = untimed[i] with { SortOrder = i };
-            }
-        }
-        else
-        {
-            if (task.PlannedDate == date)
-            {
-                return; // дело со временем стоит по времени — внутри своего дня двигать некуда
-            }
-
-            _tasks[taskId] = moved;
+            _tasks[task.Id] = moved;
+            return;
         }
 
-        UpdateGoalOfTask(taskId, g => g with { PlannedDate = date });
-        await SaveAsync(() => api.MoveTaskAsync(taskId, new DayTargetDto(date, index)));
+        var untimed = TasksOn(date).Where(t => t.StartTime is null && t.Id != task.Id).ToList();
+        untimed.Insert(Math.Clamp(index, 0, untimed.Count), moved);
+        for (var i = 0; i < untimed.Count; i++)
+        {
+            _tasks[untimed[i].Id] = untimed[i] with { SortOrder = i };
+        }
     }
 
     /// <summary>Отметка «выполнено»; у связанной цели отметка меняется вместе с делом.</summary>

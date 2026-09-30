@@ -20,10 +20,13 @@
         </div>
 
         <div class="sect">Роли</div>
-        @foreach (var role in State.UserRoles)
-        {
-            <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
-        }
+        @* Список ролей — зона для перетаскивания ролей (порядок) *@
+        <div class="user-roles" data-drop="@DragDropService.RolesZone" data-accept="@DragDropService.RolesAccepts">
+            @foreach (var role in State.UserRoles)
+            {
+                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+            }
+        </div>
 
         @if (_creatingRole)
         {

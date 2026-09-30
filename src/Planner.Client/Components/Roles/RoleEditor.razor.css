@@ -29,14 +29,6 @@
     gap: 4px;
 }
 
-.spacer {
-    flex: 1;
-}
-
-.move {
-    padding: 3px 7px;
-}
-
 .delete:hover {
     color: var(--a-deep);
 }

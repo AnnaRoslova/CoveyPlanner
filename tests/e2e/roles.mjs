@@ -40,12 +40,7 @@ const goalsOf = name => page.evaluate(n => {
   })) : null;
 }, name);
 const countOf = name => page.evaluate(n => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n)?.querySelector('.n')?.textContent ?? null, name);
-const userRoles = () => page.evaluate(() => {
-  const sect = [...document.querySelectorAll('.sect')].find(s => s.textContent.includes('Роли'));
-  const out = []; let el = sect.nextElementSibling;
-  while (el) { if (el.classList.contains('role')) out.push(el.querySelector('.name').textContent.trim()); el = el.nextElementSibling; }
-  return out;
-});
+const userRoles = () => page.$$eval('.user-roles > .role .role-h .name', ns => ns.map(n => n.textContent.trim()));
 async function goalRow(roleName, title) {
   const role = await roleHandle(roleName);
   const rows = await role.$$('.item');
@@ -157,21 +152,22 @@ await check('«+ роль» с цветом из палитры', async () => {
   assert(color === '#b7c4f0', `цвет ${color}`);
 });
 
-await check('правка роли: название, цвет, порядок ↑; сохраняется', async () => {
+await check('правка роли: название и цвет; кнопок ↑↓ больше нет; сохраняется', async () => {
   await openRoleMenu('Друзья');
   const fits = await page.evaluate(() => {
     const ed = document.querySelector('.role-editor').getBoundingClientRect();
     return [...document.querySelectorAll('.role-editor button')].every(b => { const r = b.getBoundingClientRect(); return r.right <= ed.right + 0.5 && r.left >= ed.left - 0.5; });
   });
   assert(fits, 'кнопки редактора выходят за край');
+  const labels = await page.$$eval('.role-editor button', bs => bs.map(b => b.textContent.trim()));
+  assert(!labels.includes('↑') && !labels.includes('↓'), `кнопки ${labels}`);
   await page.$eval('.role-editor .inline-input', e => e.select());
   await page.keyboard.type('Друзья и соседи');
   await (await page.$$('.role-editor .swatch'))[0].click();
-  await clickButton('.role-editor', '↑');
   await clickButton('.role-editor', 'Сохранить');
   await load();
   const roles = await userRoles();
-  assert(JSON.stringify(roles) === '["Я сама","Семья","Работа","Друзья и соседи","Дом"]', `порядок ${roles}`);
+  assert(JSON.stringify(roles) === '["Я сама","Семья","Работа","Дом","Друзья и соседи"]', `порядок ${roles}`);
   const color = await (await roleHandle('Друзья и соседи')).evaluate(r => r.style.getPropertyValue('--c').trim());
   assert(color === '#9fd3bd', `цвет ${color}`);
 });

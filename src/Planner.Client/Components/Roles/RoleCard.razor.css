@@ -88,3 +88,8 @@
     color: var(--faint);
     font-size: 11px;
 }
+
+/* Пользовательскую роль можно тащить за заголовок (и за пустое место карточки) */
+.role[data-drag] .role-h {
+    cursor: grab;
+}

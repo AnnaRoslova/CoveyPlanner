@@ -48,7 +48,11 @@ async function setupCategory(name, titles) {
 const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.classList?.contains('pills') && !n.classList?.contains('note')).map(n => n.textContent).join('').trim();
 const zoneEl = z => z.day !== undefined
   ? `document.querySelectorAll('.day')[${z.day}]`
-  : `[...document.querySelectorAll('.cat')].find(c => c.querySelector('.cat-h .name')?.textContent.trim() === ${JSON.stringify(z.cat)}).querySelector('.cat-b')`;
+  : z.role !== undefined
+    ? `[...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === ${JSON.stringify(z.role)})`
+    : `[...document.querySelectorAll('.cat')].find(c => c.querySelector('.cat-h .name')?.textContent.trim() === ${JSON.stringify(z.cat)}).querySelector('.cat-b')`;
+// Зону — в середину видимой части панели (иначе у края сработает автопрокрутка)
+const reveal = z => page.evaluate(`${zoneEl(z)}.scrollIntoView({ block: 'center' })`).then(() => sleep(150));
 const titlesIn = z => page.evaluate(`(() => { const titleOf = ${titleOf}; return [...${zoneEl(z)}.querySelectorAll('.item')].map(titleOf); })()`);
 const rectOf = (z, title) => page.evaluate(`(() => { const titleOf = ${titleOf};
   const it = [...${zoneEl(z)}.querySelectorAll('.item')].find(i => titleOf(i) === ${JSON.stringify(title)});
@@ -137,6 +141,39 @@ await check('день+время: дело без времени выше дел
   const res = await dragTo(z, 'B', ...Object.values(above(await rectOf(z, 'T'))));
   assert(res.order[0] === 'T', `порядок ${res.order}`);
 });
+
+// ---------- Цели в роли: 1, 2, 3 цели ----------
+async function setupRole(name, titles) {
+  const role = await api('POST', 'roles', { name, color: null });
+  for (const title of titles) await api('POST', 'goals', { roleId: role.id, weekStart: monday, title });
+}
+await setupRole('Одна', ['A']);
+await setupRole('Две', ['A', 'B']);
+await setupRole('Три цели', ['A', 'B', 'C']);
+await load();
+
+// Под последней целью — «+ цель» внутри карточки роли (ниже уже соседняя роль)
+const belowGoal = r => ({ x: r.x + 30, y: r.bottom + 10 });
+async function roleMove(name, z, title, pointFn, expected) {
+  await check(name, async () => {
+    await reveal(z);
+    const res = await dragTo(z, title, ...Object.values(await pointFn()));
+    assert(res.line, 'линия не видна');
+    assert(JSON.stringify(res.order) === JSON.stringify(expected), `порядок ${JSON.stringify(res.order)}`);
+    await load();
+    await reveal(z);
+    assert(JSON.stringify(await titlesIn(z)) === JSON.stringify(expected), `после перезагрузки ${JSON.stringify(await titlesIn(z))}`);
+  });
+}
+{
+  const one = { role: 'Одна' }, two = { role: 'Две' }, three = { role: 'Три цели' };
+  await roleMove('роль, 1 цель: вниз под неё — остаётся', one, 'A', async () => belowGoal(await rectOf(one, 'A')), ['A']);
+  await roleMove('роль, 2 цели: A под B → B, A', two, 'A', async () => belowGoal(await rectOf(two, 'B')), ['B', 'A']);
+  await roleMove('роль, 2 цели: A над первой → A, B', two, 'A', async () => above(await rectOf(two, 'B')), ['A', 'B']);
+  await roleMove('роль, 3 цели: A в конец → B, C, A', three, 'A', async () => belowGoal(await rectOf(three, 'C')), ['B', 'C', 'A']);
+  await roleMove('роль, 3 цели: A над первой → A, B, C', three, 'A', async () => above(await rectOf(three, 'B')), ['A', 'B', 'C']);
+  await roleMove('роль, 3 цели: C между A и B → A, C, B', three, 'C', async () => above(await rectOf(three, 'B')), ['A', 'C', 'B']);
+}
 
 // ---------- Небольшой сдвиг: край призрака заходит за середину соседа ----------
 // Сдвинуть запись на долю её высоты (вверх — отрицательная доля)

@@ -124,18 +124,33 @@ public partial class PlannerState
         }
 
         var wasSomeday = task.State == TaskStateDto.Someday;
-        var siblings = SomedayIn(categoryId).Where(t => t.Id != taskId).ToList();
-        index = Math.Clamp(index, 0, siblings.Count);
 
         // Бросили туда же, где лежало, — ничего не делаем
         if (wasSomeday && task.CategoryId == categoryId
-            && SomedayIn(categoryId).ToList().FindIndex(t => t.Id == taskId) == index)
+            && SomedayIn(categoryId).ToList().FindIndex(t => t.Id == taskId)
+               == Math.Clamp(index, 0, SomedayCount(categoryId) - 1))
         {
             return;
         }
 
-        var oldCategoryId = wasSomeday ? task.CategoryId : null;
-        siblings.Insert(index, task with
+        PlaceInFeedLocally(task, categoryId, index);
+        if (!wasSomeday)
+        {
+            UnlinkGoalsFrom(taskId); // сервер тоже разрывает связь с целью при возврате в ленту
+        }
+
+        await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index)));
+    }
+
+    /// <summary>
+    /// Поставить дело в категорию ленты локально (без сервера): без даты, времени и отметки,
+    /// на позицию index среди дел категории без него самого.
+    /// </summary>
+    private void PlaceInFeedLocally(TaskDto task, int categoryId, int index)
+    {
+        var oldCategoryId = task.State == TaskStateDto.Someday ? task.CategoryId : null;
+        var siblings = SomedayIn(categoryId).Where(t => t.Id != task.Id).ToList();
+        siblings.Insert(Math.Clamp(index, 0, siblings.Count), task with
         {
             State = TaskStateDto.Someday,
             CategoryId = categoryId,
@@ -151,13 +166,6 @@ public partial class PlannerState
         {
             RenumberSomeday(old);
         }
-
-        if (!wasSomeday)
-        {
-            UnlinkGoalsFrom(taskId); // сервер тоже разрывает связь с целью при возврате в ленту
-        }
-
-        await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index)));
     }
 
     /// <summary>Переименовать дело (остальные поля не меняются).</summary>

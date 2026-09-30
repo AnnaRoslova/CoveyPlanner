@@ -145,11 +145,13 @@ function moveGhost() {
 
 // Куда сейчас упадёт запись: зона под указателем, принимающая этот вид, и позиция в ней
 function updateTarget() {
+    // Ближайшая зона, принимающая этот вид; зоны бывают вложенными (роль — зона для целей
+    // внутри списка ролей), поэтому, если ближайшая не принимает, ищем выше
     const hit = document.elementFromPoint(drag.x, drag.y);
-    const zone = hit?.closest('[data-drop]');
-    const accepts = zone && (zone.dataset.accept ?? '').split(' ').includes(drag.kind);
+    let zone = hit?.closest('[data-drop]');
+    while (zone && !accepts(zone)) zone = zone.parentElement?.closest('[data-drop]');
 
-    if (!accepts) {
+    if (!zone) {
         drag.target = null;
         drag.line.hidden = true;
         drag.zoneBox.hidden = true;
@@ -168,7 +170,7 @@ function updateTarget() {
 
     // Записи этой зоны (без самой перетаскиваемой и без записей вложенных зон)
     const items = [...zone.querySelectorAll('[data-drag]')]
-        .filter(item => item !== drag.el && item.closest('[data-drop]') === zone);
+        .filter(item => item !== drag.el && ownZone(item) === zone);
     const autoSorted = zone.hasAttribute('data-fixed-sort');
 
     // Запись со своим местом (дело со временем): встанет сама, по времени — только подсветка дня
@@ -208,11 +210,21 @@ function updateTarget() {
 // бывают в 2–3 строки, и по центру призрака пришлось бы тащить на целую высоту записи).
 // Из другой зоны — по указателю.
 function probeY(zone) {
-    if (drag.el.closest('[data-drop]') !== zone) return drag.y;
+    if (ownZone(drag.el) !== zone) return drag.y;
     const src = drag.el.getBoundingClientRect();
     const ghostTop = drag.y - drag.offsetY;
     const ghostBottom = ghostTop + drag.height;
     return ghostTop + drag.height / 2 < src.top + src.height / 2 ? ghostTop : ghostBottom;
+}
+
+function accepts(zone) {
+    return (zone.dataset.accept ?? '').split(' ').includes(drag.kind);
+}
+
+// Зона, в списке которой стоит запись. Сама запись тоже может быть зоной (карточка роли —
+// зона для целей), поэтому ищем начиная с родителя.
+function ownZone(item) {
+    return item.parentElement?.closest('[data-drop]') ?? null;
 }
 
 function showBox(box, rect) {

@@ -140,24 +140,155 @@ public partial class PlannerState
         await SaveAsync(() => api.UpdateRoleAsync(roleId, new UpdateRoleRequest(newName, color)));
     }
 
-    /// <summary>Сдвинуть пользовательскую роль вверх (-1) или вниз (+1).</summary>
-    public async Task MoveRoleAsync(int roleId, int delta)
+    /// <summary>Перетаскивание роли: новое место среди пользовательских ролей (index — без самой роли).</summary>
+    public async Task MoveRoleToAsync(int roleId, int index)
     {
         var order = UserRoles.ToList();
-        var index = order.FindIndex(r => r.Id == roleId);
-        var target = index + delta;
-        if (index < 0 || target < 0 || target >= order.Count)
+        var current = order.FindIndex(r => r.Id == roleId);
+        if (current < 0)
+        {
+            return; // измерения пилы не переставляются
+        }
+
+        var role = order[current];
+        order.RemoveAt(current);
+        index = Math.Clamp(index, 0, order.Count);
+        if (index == current)
         {
             return;
         }
 
-        (order[index], order[target]) = (order[target], order[index]);
+        order.Insert(index, role);
         for (var i = 0; i < order.Count; i++)
         {
             ReplaceRole(order[i] with { SortOrder = i });
         }
 
         await SaveAsync(() => api.ReorderRolesAsync(order.Select(r => r.Id).ToList()));
+    }
+
+    // ---------- Перетаскивание целей ----------
+
+    /// <summary>Цель → другое место в своей роли или в другой роли (дело цели получает эту роль).</summary>
+    public async Task MoveGoalAsync(int goalId, int roleId, int index)
+    {
+        if (goalId < 0 || FindGoal(goalId) is not { } goal || FindRole(roleId) is null)
+        {
+            return;
+        }
+
+        var siblings = GoalsFor(roleId).Where(g => g.Id != goalId).ToList();
+        index = Math.Clamp(index, 0, siblings.Count);
+        if (goal.RoleId == roleId && GoalsFor(roleId).ToList().FindIndex(g => g.Id == goalId) == index)
+        {
+            return; // бросили туда же
+        }
+
+        siblings.Insert(index, goal with { RoleId = roleId });
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            ReplaceGoal(siblings[i] with { SortOrder = i });
+        }
+
+        if (goal.TaskId is { } taskId && FindTask(taskId) is { } task)
+        {
+            _tasks[taskId] = task with { RoleId = roleId };
+        }
+
+        await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index)));
+    }
+
+    /// <summary>
+    /// Дело из ленты или из дня → роль: оно становится целью недели («камнем»).
+    /// Дело из ленты уходит из ленты (запланировано на неделю без дня); дело из дня остаётся в своём дне.
+    /// Если дело уже связано с целью — просто переносим ту цель.
+    /// </summary>
+    public async Task CreateGoalFromTaskAsync(int taskId, int roleId, int index)
+    {
+        if (taskId < 0 || FindTask(taskId) is not { } task || FindRole(roleId) is null)
+        {
+            return;
+        }
+
+        if (GoalOfTask(taskId) is { } existing)
+        {
+            await MoveGoalAsync(existing.Id, roleId, index);
+            return;
+        }
+
+        // Локально: цель с временным Id на месте; дело из ленты — «на неделю без дня»
+        var siblings = GoalsFor(roleId).ToList();
+        index = Math.Clamp(index, 0, siblings.Count);
+        var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, task.Title, task.State == TaskStateDto.Done,
+            SortOrder: 0, taskId, task.PlannedDate, task.StartTime);
+        siblings.Insert(index, temp);
+        Goals.Add(temp);
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            ReplaceGoal(siblings[i] with { SortOrder = i });
+        }
+
+        _tasks[taskId] = task.State == TaskStateDto.Someday
+            ? task with { State = TaskStateDto.Planned, RoleId = roleId }
+            : task with { RoleId = roleId };
+
+        await SaveAsync(async () =>
+        {
+            var result = await api.CreateGoalFromTaskAsync(new GoalFromTaskRequest(taskId, roleId, WeekStart, index));
+            ReplaceTempGoal(temp.Id, result.Goal);
+        });
+    }
+
+    /// <summary>Цель → день: связанное дело переносится в этот день, а если дела ещё нет — появляется новое.</summary>
+    public async Task ScheduleGoalAsync(int goalId, DateOnly date, int index)
+    {
+        if (goalId < 0 || FindGoal(goalId) is not { } goal)
+        {
+            return;
+        }
+
+        // Дело цели: уже на экране (в одном из дней) или ещё нет — тогда временное по данным цели
+        var task = goal.TaskId is { } taskId && FindTask(taskId) is { } shown
+            ? shown
+            : new TaskDto(goal.TaskId ?? NextTempId(), goal.Title, null, null, goal.RoleId, null,
+                goal.IsDone ? TaskStateDto.Done : TaskStateDto.Planned, null, null, 0, null);
+
+        PlaceInDayLocally(task, date, index);
+        ReplaceGoal(goal with { TaskId = task.Id, PlannedDate = date, StartTime = _tasks[task.Id].StartTime });
+
+        await SaveAsync(async () =>
+        {
+            var result = await api.ScheduleGoalAsync(goalId, new DayTargetDto(date, index));
+            if (result.Task is { } saved)
+            {
+                ReplaceTempTask(task.Id, saved);
+            }
+
+            ReplaceGoal(result.Goal);
+        });
+    }
+
+    /// <summary>Цель → лента: цель исчезает, её дело (или новое с её названием) встаёт в категорию.</summary>
+    public async Task MoveGoalToFeedAsync(int goalId, int categoryId, int index)
+    {
+        if (goalId < 0 || FindGoal(goalId) is not { } goal || FindCategory(categoryId) is null)
+        {
+            return;
+        }
+
+        var task = goal.TaskId is { } taskId && FindTask(taskId) is { } shown
+            ? shown
+            : new TaskDto(goal.TaskId ?? NextTempId(), goal.Title, null, categoryId, goal.RoleId, null,
+                TaskStateDto.Someday, null, null, 0, null);
+
+        PlaceInFeedLocally(task, categoryId, index);
+        Goals.RemoveAll(g => g.Id == goalId);
+
+        await SaveAsync(async () =>
+        {
+            var saved = await api.MoveGoalToSomedayAsync(goalId, new GoalToSomedayRequest(categoryId, index));
+            ReplaceTempTask(task.Id, saved);
+        });
     }
 
     /// <summary>
@@ -196,6 +327,16 @@ public partial class PlannerState
         {
             notifier.Error(ex.Message);
             return ReturnResult.Failed;
+        }
+    }
+
+    /// <summary>Заменить временную цель сохранённой, сохранив локальный порядок.</summary>
+    private void ReplaceTempGoal(int tempId, WeeklyGoalDto saved)
+    {
+        var index = Goals.FindIndex(g => g.Id == tempId);
+        if (index >= 0)
+        {
+            Goals[index] = saved with { SortOrder = Goals[index].SortOrder };
         }
     }
 
