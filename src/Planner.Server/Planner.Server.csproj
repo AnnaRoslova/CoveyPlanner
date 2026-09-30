@@ -1,5 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <!-- Установка (tools/install.ps1) публикует с -p:PlannerNoConsole=true: сервер работает в фоне без окна консоли.
+       Обычный dotnet run — как раньше, с консолью и журналом в ней. -->
+  <PropertyGroup Condition="'$(PlannerNoConsole)' == 'true'">
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">

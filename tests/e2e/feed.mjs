@@ -215,7 +215,18 @@ await check('сменить эмодзи и название категории'
 });
 
 await check('нет связи: сообщение, несохранённая запись исчезает', async () => {
-  await page.setOfflineMode(true);
+  // В опубликованной сборке запросы идут через service worker, а page.setOfflineMode действует
+  // только на страницу — «отключаем сеть» и у service worker (через его CDP-сессию)
+  const setOffline = async offline => {
+    await page.setOfflineMode(offline);
+    for (const target of browser.targets().filter(t => t.type() === 'service_worker')) {
+      const session = await target.createCDPSession();
+      await session.send('Network.enable');
+      await session.send('Network.emulateNetworkConditions',
+        { offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    }
+  };
+  await setOffline(true);
   await typeAndEnter('.quick input', 'Мысль без сети');
   await sleep(800);
   const toast = await page.$eval('.toast', e => e.textContent.trim()).catch(() => null);
@@ -223,7 +234,7 @@ await check('нет связи: сообщение, несохранённая �
   const all = await page.$$eval('.cat-b .item .tx', els => els.map(e => e.textContent.trim()));
   assert(!all.includes('Мысль без сети'), 'запись осталась');
   assert(!(await page.$('.saved')), 'осталось «записано»');
-  await page.setOfflineMode(false);
+  await setOffline(false);
 });
 
 await page.screenshot({ path: `${SHOTS}/feed-final.png` });
