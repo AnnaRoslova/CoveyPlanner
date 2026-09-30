@@ -2,6 +2,7 @@
 @inherits StateComponent
 @inject LayoutState Layout
 @inject DragDropService DragDrop
+@inject TodayWatcher Today
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -35,7 +36,7 @@ else
         Layout.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync());
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync());
     }
 
     public override void Dispose()

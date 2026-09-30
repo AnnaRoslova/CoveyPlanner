@@ -13,3 +13,15 @@ export function watchWidth(dotnet) {
     });
     return window.innerWidth;
 }
+
+// Сообщает .NET (TodayWatcher.OnActivated), что окно снова активно: вкладка стала видимой
+// или окно получило фокус. Там проверяется, не наступил ли новый день.
+export function watchActivation(dotnet) {
+    const report = () => {
+        if (document.visibilityState === 'visible') {
+            dotnet.invokeMethodAsync('OnActivated');
+        }
+    };
+    document.addEventListener('visibilitychange', report);
+    window.addEventListener('focus', report);
+}

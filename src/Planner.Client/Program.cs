@@ -13,5 +13,6 @@ builder.Services.AddScoped<Notifier>();
 builder.Services.AddScoped<LayoutState>();
 builder.Services.AddScoped<PlannerState>();
 builder.Services.AddScoped<DragDropService>();
+builder.Services.AddScoped<TodayWatcher>();
 
 await builder.Build().RunAsync();
