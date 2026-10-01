@@ -56,9 +56,9 @@ else
 
             @if (_adding)
             {
-                <Dismissable OnDismiss="StopAdding">
+                <Dismissable OnDismiss="StopAdding" OnClickOutside="SaveAndCloseAsync">
                     <InlineInput @bind-Value="_newTitle" Placeholder="Новое дело — Enter" MaxLength="500"
-                                 OnSubmit="AddAsync" OnCancel="StopAdding" />
+                                 OnSubmit="AddAsync" OnCancel="StopAdding" CancelOnEmptyBlur="false" />
                 </Dismissable>
             }
             else if (!IsSearching)
@@ -139,6 +139,14 @@ else
 
         _newTitle = "";
         await State.CreateSomedayTaskAsync(title, Category.Id, atEnd: true);
+    }
+
+    /// <summary>Клик мимо: набранный текст сохраняется, пустое поле просто закрывается (Esc — отмена).</summary>
+    private async Task SaveAndCloseAsync()
+    {
+        var title = _newTitle;
+        StopAdding();
+        await AddAsync(title);
     }
 
     private void StopAdding()

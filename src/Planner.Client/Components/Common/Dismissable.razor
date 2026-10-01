@@ -1,4 +1,5 @@
-@* Встроенный редактор, который закрывается, как окно: кликом мимо и по Esc (js/dismiss.js).
+@* Встроенный редактор, который закрывается кликом мимо и по Esc (js/dismiss.js); что при этом
+   происходит, решают обработчики: Esc — OnDismiss (отмена); клик мимо — OnClickOutside, а если его нет — тоже OnDismiss.
    Своей рамки нет (display: contents) — раскладка содержимого не меняется. *@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
@@ -15,9 +16,13 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    /// <summary>Клик мимо или Esc.</summary>
+    /// <summary>Esc; и клик мимо, если не задан <see cref="OnClickOutside"/>.</summary>
     [Parameter]
     public EventCallback OnDismiss { get; set; }
+
+    /// <summary>Клик мимо — когда он не то же, что отмена (например, «сохранить набранное»).</summary>
+    [Parameter]
+    public EventCallback OnClickOutside { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -43,8 +48,10 @@
         }
     }
 
+    /// <summary>Вызывает js/dismiss.js: byClick — клик мимо, иначе Esc.</summary>
     [JSInvokable]
-    public Task Dismiss() => OnDismiss.InvokeAsync();
+    public Task Dismiss(bool byClick) =>
+        byClick && OnClickOutside.HasDelegate ? OnClickOutside.InvokeAsync() : OnDismiss.InvokeAsync();
 
     public async ValueTask DisposeAsync()
     {

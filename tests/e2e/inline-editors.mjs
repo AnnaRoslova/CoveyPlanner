@@ -1,5 +1,6 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// Встроенные редакторы закрываются, как окна: кликом мимо и по Esc — это «Отмена», ничего не сохраняется.
+// Встроенные редакторы закрываются кликом мимо и по Esc. Esc — отмена. Клик мимо: в редакторе категории и выборе
+// категории — отмена; в полях «+ дело», «+ добавить», «+ цель» — набранное сохраняется, пустое поле закрывается.
 // Лента: правка категории, новая категория, «+ добавить», переименование дела (клик мимо = сохранить, как раньше).
 // Неделя: «+ дело». Левая панель: «+ цель», выбор категории при удалении цели.
 import puppeteer from 'puppeteer-core';
@@ -99,16 +100,26 @@ await check('новая категория: клик мимо и Esc закры�
   assert((await categoryNames()).length === before, `категории: ${await categoryNames()}`);
 });
 
-await check('«+ добавить» в ленте: клик мимо и Esc закрывают, дело не создаётся', async () => {
-  const before = await feedTitles('Идеи');
-  for (const close of [clickAway, () => page.keyboard.press('Escape').then(settle)]) {
-    await (await (await category('Идеи')).$('.cat-b > .add')).click(); await settle();
-    await page.keyboard.type('Недописанная мысль');
-    await close();
-    assert(!(await (await category('Идеи')).$('.inline-input')), 'поле не закрылось');
-  }
-  assert(JSON.stringify(await feedTitles('Идеи')) === JSON.stringify(before), `дела: ${await feedTitles('Идеи')}`);
-});
+// Поля «+ …»: Esc — отмена; клик мимо — набранное сохраняется, пустое поле просто закрывается
+async function addField(name, open, field, count) {
+  await check(`${name}: Esc — отмена, клик мимо — сохраняет набранное, пустое — закрывает`, async () => {
+    const before = await count();
+    await open(); await page.keyboard.type('Недописанное'); await page.keyboard.press('Escape'); await settle();
+    assert(!(await field()), 'Esc не закрыл');
+    assert(await count() === before, 'Esc сохранил');
+    await open(); await clickAway();
+    assert(!(await field()), 'пустое поле не закрылось');
+    assert(await count() === before, 'пустое поле что-то создало');
+    await open(); await page.keyboard.type('Дописанное до конца'); await clickAway(); await settle();
+    assert(!(await field()), 'поле с текстом не закрылось');
+    assert(await count() === before + 1, `не сохранилось: ${await count()} вместо ${before + 1}`);
+  });
+}
+
+await addField('«+ добавить» в ленте',
+  async () => { await (await (await category('Идеи')).$('.cat-b > .add')).click(); await settle(); },
+  async () => (await category('Идеи')).$('.inline-input'),
+  async () => (await feedTitles('Идеи')).length);
 
 await check('переименование дела в ленте: клик мимо — сохраняет и закрывает (как раньше), Esc — отменяет', async () => {
   const first = (await feedTitles('Идеи'))[0];
@@ -123,29 +134,15 @@ await check('переименование дела в ленте: клик ми�
   assert((await feedTitles('Идеи'))[0] === first + '!', 'Esc сохранил');
 });
 
-await check('«+ дело» в дне: клик мимо и Esc закрывают, дело не создаётся', async () => {
-  const count = () => page.$$eval('.day', ds => ds[6].querySelectorAll('.item').length);
-  const before = await count();
-  for (const close of [clickAway, () => page.keyboard.press('Escape').then(settle)]) {
-    await page.$$eval('.day', ds => ds[6].querySelector('.add').click()); await settle();
-    await page.keyboard.type('Недописанное дело');
-    await close();
-    assert(!(await page.$$eval('.day', ds => !!ds[6].querySelector('.inline-input'))), 'поле не закрылось');
-  }
-  assert(await count() === before, 'дело создалось');
-});
+await addField('«+ дело» в дне',
+  async () => { await page.$$eval('.day', ds => ds[6].querySelector('.add').click()); await settle(); },
+  () => page.$$eval('.day', ds => ds[6].querySelector('.inline-input')),
+  () => page.$$eval('.day', ds => ds[6].querySelectorAll('.item').length));
 
-await check('«+ цель»: клик мимо и Esc закрывают, цель не создаётся', async () => {
-  const goals = async () => (await (await role('Дом')).$$('.item')).length;
-  const before = await goals();
-  for (const close of [clickAway, () => page.keyboard.press('Escape').then(settle)]) {
-    await (await (await role('Дом')).$('.add')).click(); await settle();
-    await page.keyboard.type('Недописанная цель');
-    await close();
-    assert(!(await (await role('Дом')).$('.inline-input')), 'поле не закрылось');
-  }
-  assert(await goals() === before, 'цель создалась');
-});
+await addField('«+ цель»',
+  async () => { await (await (await role('Дом')).$('.add')).click(); await settle(); },
+  async () => (await role('Дом')).$('.inline-input'),
+  async () => (await (await role('Дом')).$$('.item')).length);
 
 await check('выбор категории при удалении цели: клик мимо и Esc — цель остаётся', async () => {
   const home = (await api('GET', 'board')).roles.find(r => r.name === 'Дом');
