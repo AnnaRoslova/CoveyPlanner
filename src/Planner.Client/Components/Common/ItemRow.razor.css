@@ -56,6 +56,68 @@
     hyphens: manual;
 }
 
+/* Название; с Clamp — не больше двух строк, с «…» */
+.title-wrap {
+    position: relative;
+    display: block;
+}
+
+.title {
+    display: block;
+}
+
+.clamp:not(.expanded) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+/* Кнопка поверх «…»: в правом нижнем углу обрезанного названия; только у длинных */
+.ellipsis-hit {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: none;
+    width: 2.4em;
+    height: 1.3em;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.clamp[data-long] + .ellipsis-hit {
+    display: block;
+}
+
+/* Стрелка «развернуть / свернуть» справа — только у длинных записей */
+.more {
+    flex: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 17px;
+    margin: 0 -4px 0 -2px;
+    border-radius: 6px;
+    color: var(--faint);
+    transform: rotate(90deg);
+    transition: transform 0.15s;
+}
+
+.item:has(.clamp[data-long]) .more {
+    display: inline-flex;
+}
+
+.more.open {
+    transform: rotate(-90deg);
+}
+
+.more:hover {
+    color: var(--b-deep);
+}
+
 /* Значок «есть заметка» сразу после названия */
 .note {
     display: inline-flex;

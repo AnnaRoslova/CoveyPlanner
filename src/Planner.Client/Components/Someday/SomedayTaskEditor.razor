@@ -1,0 +1,109 @@
+@* Окно дела ленты «Когда-нибудь»: название, подробное описание (заметки), категория; «в корзину».
+   Сменили категорию — дело встаёт наверх новой. Enter в названии — сохранить, Esc или клик мимо — отмена.
+   Стили — css/editor.css (как у окна дела в дне). *@
+@inject PlannerState State
+
+<div class="editor-backdrop" @onclick="OnClose"></div>
+
+<div class="editor" role="dialog" aria-label="Мысль" @onkeydown="OnKeyDown">
+    <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
+           @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
+
+    <div class="field">
+        <div class="label">Подробно</div>
+        <textarea rows="5" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
+    </div>
+
+    <div class="field">
+        <div class="label">Категория</div>
+        <div class="chips">
+            @foreach (var category in State.OrderedCategories)
+            {
+                var id = category.Id;
+                <button type="button" class="chip @(_categoryId == id ? "on" : "")" @onclick="() => _categoryId = id">
+                    @if (category.Emoji is not null)
+                    {
+                        <span class="emoji">@category.Emoji</span>
+                    }
+                    @category.Name
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="buttons">
+        <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
+        <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
+        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
+    </div>
+</div>
+
+@code {
+    private ElementReference _titleInput;
+    private string _title = "";
+    private string? _notes;
+    private int? _categoryId;
+
+    [Parameter, EditorRequired]
+    public TaskDto EditedTask { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _title = EditedTask.Title;
+        _notes = EditedTask.Notes;
+        _categoryId = EditedTask.CategoryId;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _titleInput.FocusAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+        else if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+        {
+            await SaveAsync(); // Ctrl+Enter — сохранить из любого поля, и из описания тоже
+        }
+    }
+
+    private async Task OnTitleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.CtrlKey && !e.MetaKey)
+        {
+            await SaveAsync();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            return;
+        }
+
+        await OnClose.InvokeAsync();
+        var task = EditedTask;
+        await State.UpdateTaskAsync(task.Id, _title, _notes, task.RoleId, task.Quadrant, null, task.DurationMinutes);
+        if (_categoryId is { } categoryId && categoryId != task.CategoryId)
+        {
+            await State.MoveTaskToFeedAsync(task.Id, categoryId, 0);
+        }
+    }
+
+    private async Task TrashAsync()
+    {
+        await OnClose.InvokeAsync();
+        await State.TrashTaskAsync(EditedTask.Id);
+    }
+}

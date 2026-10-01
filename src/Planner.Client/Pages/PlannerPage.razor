@@ -4,6 +4,7 @@
 @inject DragDropService DragDrop
 @inject TodayWatcher Today
 @inject WindowHost Windows
+@inject IJSRuntime JS
 @inject ThemeState Theme
 
 <PageTitle>CoveyPlanner</PageTitle>
@@ -33,6 +34,10 @@
     {
         <RoleEditor OnClose="Windows.Close" />
     }
+    else if (Windows.SomedayTaskId is { } somedayTaskId && State.FindTask(somedayTaskId) is { } somedayTask)
+    {
+        <SomedayTaskEditor @key="somedayTaskId" EditedTask="somedayTask" OnClose="Windows.Close" />
+    }
 }
 else if (State.LoadError is not null)
 {
@@ -53,7 +58,22 @@ else
         Windows.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync());
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(),
+            WatchLongTitlesAsync());
+    }
+
+    /// <summary>Длинные названия записей: «…» и стрелка «развернуть» (js/clamp.js).</summary>
+    private async Task WatchLongTitlesAsync()
+    {
+        try
+        {
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/clamp.js");
+            await module.InvokeVoidAsync("watch");
+        }
+        catch (JSException)
+        {
+            // Без JS длинные названия просто обрезаются на двух строках
+        }
     }
 
     public override void Dispose()

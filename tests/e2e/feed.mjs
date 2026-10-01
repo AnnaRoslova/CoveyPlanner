@@ -139,16 +139,14 @@ await check('«+ добавить» в категории: Enter → в коне
   assert(JSON.stringify(await itemsIn('Идеи')) === '["Идея","Ещё идея"]', `Идеи: ${await itemsIn('Идеи')}`);
 });
 
-await check('переименование по клику', async () => {
-  await clickText('.cat-b .item', 'Идея');   // «Ещё идея» тоже содержит — берём точное ниже
-  await page.keyboard.press('Escape'); await settle();
+await check('переименование: клик по делу — окно, Enter в названии — сохранить', async () => {
   const handles = await page.$$('.cat-b .item');
   for (const h of handles) {
     if ((await h.$eval('.tx', e => e.textContent.trim())) === 'Идея') { await h.click(); break; }
   }
   await settle();
-  await page.$eval('.cat-b .inline-input', e => e.select());
-  await typeAndEnter('.cat-b .inline-input', 'Идея про хлеб');
+  await page.$eval('.editor[aria-label="Мысль"] .title-input', e => e.select());
+  await typeAndEnter('.editor[aria-label="Мысль"] .title-input', 'Идея про хлеб');
   await load();
   assert(JSON.stringify(await itemsIn('Идеи')) === '["Идея про хлеб","Ещё идея"]', `Идеи: ${await itemsIn('Идеи')}`);
 });

@@ -1,7 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
 // Встроенные редакторы закрываются кликом мимо и по Esc. Esc — отмена. Клик мимо: в редакторе категории и выборе
 // категории — отмена; в полях «+ дело», «+ добавить», «+ цель» — набранное сохраняется, пустое поле закрывается.
-// Лента: правка категории, новая категория, «+ добавить», переименование дела (клик мимо = сохранить, как раньше).
+// Лента: правка категории, новая категория, «+ добавить».
 // Неделя: «+ дело». Левая панель: «+ цель», выбор категории при удалении цели.
 import puppeteer from 'puppeteer-core';
 
@@ -120,19 +120,6 @@ await addField('«+ добавить» в ленте',
   async () => { await (await (await category('Идеи')).$('.cat-b > .add')).click(); await settle(); },
   async () => (await category('Идеи')).$('.inline-input'),
   async () => (await feedTitles('Идеи')).length);
-
-await check('переименование дела в ленте: клик мимо — сохраняет и закрывает (как раньше), Esc — отменяет', async () => {
-  const first = (await feedTitles('Идеи'))[0];
-  await (await (await category('Идеи')).$('.item .tx')).click(); await settle();
-  await page.keyboard.press('End'); await page.keyboard.type('!');
-  await clickAway();
-  assert(!(await (await category('Идеи')).$('.inline-input')), 'поле не закрылось');
-  assert((await feedTitles('Идеи'))[0] === first + '!', `первое дело: ${(await feedTitles('Идеи'))[0]}`);
-  await (await (await category('Идеи')).$('.item .tx')).click(); await settle();
-  await page.keyboard.type('???');
-  await page.keyboard.press('Escape'); await settle();
-  assert((await feedTitles('Идеи'))[0] === first + '!', 'Esc сохранил');
-});
 
 await addField('«+ дело» в дне',
   async () => { await page.$$eval('.day', ds => ds[6].querySelector('.add').click()); await settle(); },

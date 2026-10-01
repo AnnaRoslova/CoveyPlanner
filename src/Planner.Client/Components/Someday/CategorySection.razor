@@ -1,6 +1,8 @@
 @* Категория ленты: заголовок (эмодзи, название, серый счётчик), при раскрытии — дела и «+ добавить».
-   Во время поиска показываются только совпадения, и категория раскрыта принудительно. *@
+   Во время поиска показываются только совпадения, и категория раскрыта принудительно.
+   Клик по делу — окно редактирования (название, описание, категория). *@
 @inject PlannerState State
+@inject WindowHost Windows
 
 @if (_editingCategory)
 {
@@ -31,27 +33,19 @@ else
         <div class="cat-b" data-drop="someday" data-key="@Category.Id" data-accept="@DropAccept">
             @foreach (var task in VisibleTasks)
             {
-                if (task.Id == _editingTaskId)
-                {
-                    <InlineInput Value="@task.Title" MaxLength="500" SubmitOnBlur="true"
-                                 OnSubmit="title => RenameAsync(task.Id, title)" OnCancel="() => _editingTaskId = null" />
-                }
-                else
-                {
-                    <ItemRow Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search"
-                             IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
-                             OnClick="() => StartEditing(task.Id)">
-                        <Actions>
-                            @if (task.Id > 0)
-                            {
-                                <button type="button" class="row-action" title="В корзину"
-                                        @onclick="() => State.TrashTaskAsync(task.Id)">
-                                    <Icon Name="x" Size="12" />
-                                </button>
-                            }
-                        </Actions>
-                    </ItemRow>
-                }
+                <ItemRow Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search" Clamp="true"
+                         IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
+                         OnClick="() => OpenTask(task.Id)">
+                    <Actions>
+                        @if (task.Id > 0)
+                        {
+                            <button type="button" class="row-action" title="В корзину"
+                                    @onclick="() => State.TrashTaskAsync(task.Id)">
+                                <Icon Name="x" Size="12" />
+                            </button>
+                        }
+                    </Actions>
+                </ItemRow>
             }
 
             @if (_adding)
@@ -74,7 +68,6 @@ else
     private bool _editingCategory;
     private bool _adding;
     private string _newTitle = "";
-    private int? _editingTaskId;
 
     [Parameter, EditorRequired]
     public CategoryDto Category { get; set; } = null!;
@@ -115,19 +108,13 @@ else
         }
     }
 
-    /// <summary>Клик по делу — переименование (кроме ещё не сохранённых).</summary>
-    private void StartEditing(int taskId)
+    /// <summary>Клик по делу — окно редактирования (кроме ещё не сохранённых).</summary>
+    private void OpenTask(int taskId)
     {
         if (taskId > 0)
         {
-            _editingTaskId = taskId;
+            Windows.OpenSomedayTask(taskId);
         }
-    }
-
-    private async Task RenameAsync(int taskId, string title)
-    {
-        _editingTaskId = null;
-        await State.RenameTaskAsync(taskId, title);
     }
 
     private async Task AddAsync(string title)

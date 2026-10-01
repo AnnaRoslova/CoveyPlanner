@@ -185,20 +185,6 @@ public partial class PlannerState
         }
     }
 
-    /// <summary>Переименовать дело (остальные поля не меняются).</summary>
-    public async Task RenameTaskAsync(int taskId, string title)
-    {
-        title = title.Trim();
-        if (taskId < 0 || !_tasks.TryGetValue(taskId, out var task) || title.Length == 0 || title == task.Title)
-        {
-            return;
-        }
-
-        _tasks[taskId] = task with { Title = title };
-        await SaveAsync(() => api.UpdateTaskAsync(taskId,
-            new UpdateTaskRequest(title, task.Notes, task.RoleId, task.Quadrant, task.StartTime, task.DurationMinutes)));
-    }
-
     /// <summary>Удалить дело — в корзину. Занятие цели перестаёт считаться в её прогрессе.</summary>
     public async Task TrashTaskAsync(int taskId)
     {

@@ -1,5 +1,5 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// Клик против перетаскивания: окно/переименование открывается только коротким нажатием почти без движения;
+// Клик против перетаскивания: окно открывается только коротким нажатием почти без движения;
 // после сброса клики полсекунды не принимаются; порог перетаскивания 8px; автопрокрутка с задержкой;
 // выделение текста только в полях ввода. Для записей в ленте, днях и целях — одинаково.
 import puppeteer from 'puppeteer-core';
@@ -40,7 +40,7 @@ const itemIn = (scope, title) => boxOf(`(() => { ${T} return [...document.queryS
 
 // Три вида записей: где лежит, что открывает клик
 const kinds = [
-  { name: 'лента', item: () => itemIn('.cat-b .item', 'Сад с травами на балконе'), opened: '.cat-b .inline-input' },
+  { name: 'лента', item: () => itemIn('.cat-b .item', 'Сад с травами на балконе'), opened: '.editor[aria-label="Мысль"]' },
   { name: 'день', item: () => itemIn('.day .item', 'Оплатить интернет'), opened: '.editor' },
   { name: 'цель', item: () => itemIn('.role .item', '100 страниц'), opened: '.editor[aria-label="Цель недели"]' },
 ];
@@ -122,14 +122,14 @@ await check('лента → день: клик сразу после сброс�
   assert(!(await isOpen('.editor')), 'окно открылось');
 });
 
-await check('во время поиска правило то же: долгое нажатие — не переименование, короткое — да', async () => {
+await check('во время поиска правило то же: долгое нажатие — не окно, короткое — да', async () => {
   await page.type('.search input', 'Сад'); await sleep(400);
   const b = await itemIn('.cat-b .item', 'Сад с травами на балконе');
   assert(!(await page.$('.cat-b .item[data-drag]')), 'во время поиска записи перетаскиваемые');
   await press(b, { holdMs: 400 });
-  assert(!(await isOpen('.cat-b .inline-input')), 'долгое нажатие открыло переименование');
+  assert(!(await isOpen('.editor[aria-label="Мысль"]')), 'долгое нажатие открыло окно');
   await press(await itemIn('.cat-b .item', 'Сад с травами на балконе'));
-  assert(await isOpen('.cat-b .inline-input'), 'короткий клик не открыл');
+  assert(await isOpen('.editor[aria-label="Мысль"]'), 'короткий клик не открыл');
   await page.keyboard.press('Escape'); await sleep(200);
   await page.focus('.search input'); await page.keyboard.press('Escape'); await sleep(300);
 });

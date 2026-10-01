@@ -63,6 +63,84 @@ await check('«свернуть всё» сворачивает все кате�
   assert((await expanded()).every(e => e), `свёрнуты: ${await expanded()}`);
 });
 
+const api = (method, path, body) => page.evaluate(async (method, path, body) => {
+  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  return r.status === 204 ? null : r.json();
+}, method, path, body);
+const feedItem = title => page.evaluateHandle(t => [...document.querySelectorAll('.someday .cat-b .item')]
+  .find(i => i.querySelector('.title').textContent.trim() === t), title);
+const titlesIn = name => page.evaluate(n => [...[...document.querySelectorAll('.someday .cat')]
+  .find(c => c.querySelector('.cat-h .name')?.textContent.trim() === n).querySelectorAll('.item .title')]
+  .map(t => t.textContent.trim()), name);
+const editor = '.editor[aria-label="Мысль"]';
+
+await check('дело ленты: окно — название, подробно, категория; сменили категорию — дело наверху новой', async () => {
+  await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
+  assert(await page.$(editor), 'окно не открылось');
+  const labels = await page.$$eval(`${editor} .label`, ls => ls.map(l => l.textContent.trim()));
+  assert(JSON.stringify(labels) === '["Подробно","Категория"]', `поля: ${labels}`);
+  await page.type(`${editor} textarea`, 'Базилик, мята, розмарин');
+  await page.evaluate(sel => [...document.querySelectorAll(`${sel} .chip`)].find(c => c.textContent.includes('Дом')).click(), editor);
+  await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();
+  assert(!(await page.$(editor)), 'окно не закрылось');
+  if (!(await page.$$eval('.someday .cat', cs => cs.find(c => c.textContent.includes('Дом')).classList.contains('open')))) {
+    await page.evaluate(() => [...document.querySelectorAll('.someday .cat-h')].find(h => h.textContent.includes('Дом')).click()); await settle();
+  }
+  assert((await titlesIn('Дом'))[0] === 'Сад с травами на балконе', `Дом: ${await titlesIn('Дом')}`);
+  assert(!(await titlesIn('Идеи')).includes('Сад с травами на балконе'), 'осталось в Идеях');
+  await load();
+  await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
+  assert(await page.$eval(`${editor} textarea`, t => t.value) === 'Базилик, мята, розмарин', 'описание не сохранилось');
+});
+
+await check('окно дела ленты: Esc и клик мимо — отмена', async () => {
+  await page.$eval(`${editor} .title-input`, e => e.select());
+  await page.keyboard.type('Не сохранять'); await page.keyboard.press('Escape'); await settle();
+  assert(!(await page.$(editor)), 'Esc не закрыл');
+  await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
+  await page.keyboard.type('!!!');
+  await page.mouse.click(8, 890); await settle();
+  assert(!(await page.$(editor)), 'клик мимо не закрыл');
+  assert(await feedItem('Сад с травами на балконе').then(h => h.asElement()), 'название поменялось');
+});
+
+const LONG = 'Очень длинная запись, которая точно не помещается в две строки узкой колонки дня и ленты, поэтому её нужно обрезать';
+await check('длинные записи — не больше двух строк, с «…»; короткие без стрелки', async () => {
+  const ideas = (await api('GET', 'board')).categories.find(c => c.name === 'Идеи');
+  await api('POST', 'tasks', { title: LONG, target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
+  const today = new Date().toISOString().slice(0, 10);
+  await api('POST', 'tasks', { title: LONG, target: { kind: 'day', date: today, index: 0 } });
+  await load();
+  const m = await page.$$eval('.item', (items, long) => items.filter(i => i.querySelector('.title')?.textContent.trim() === long).map(i => {
+    const t = i.querySelector('.title');
+    return { lines: t.clientHeight / parseFloat(getComputedStyle(t).lineHeight), ellipsis: getComputedStyle(t).webkitLineClamp, more: getComputedStyle(i.querySelector('.more')).display };
+  }), LONG);
+  assert(m.length === 2, `записей: ${m.length}`);
+  assert(m.every(x => Math.round(x.lines) === 2 && x.ellipsis === '2' && x.more !== 'none'), JSON.stringify(m));
+  const shortMore = await page.$$eval('.day .item', is => is.filter(i => i.querySelector('.title').textContent.trim() === 'Кофе с Олей')
+    .map(i => getComputedStyle(i.querySelector('.more')).display));
+  assert(shortMore.every(d => d === 'none'), `у короткой стрелка: ${shortMore}`);
+});
+
+for (const [where, scope] of [['в дне', '.day'], ['в ленте', '.someday']]) {
+  await check(`длинная запись ${where}: стрелка и «…» разворачивают, стрелка сворачивает; окно не открывается`, async () => {
+    const row = await page.evaluateHandle((scope, long) => [...document.querySelectorAll(`${scope} .item`)]
+      .find(i => i.querySelector('.title')?.textContent.trim() === long), scope, LONG);
+    const lines = () => row.evaluate(i => { const t = i.querySelector('.title'); return Math.round(t.clientHeight / parseFloat(getComputedStyle(t).lineHeight)); });
+    await (await row.$('.more')).click(); await settle();
+    assert(await lines() > 2, `после стрелки строк: ${await lines()}`);
+    assert(!(await page.$('.editor')), 'открылось окно');
+    await (await row.$('.more')).click(); await settle();
+    assert(await lines() === 2, `после второй стрелки строк: ${await lines()}`);
+    // «…» — в правом нижнем углу названия
+    const t = await row.$eval('.title', e => e.getBoundingClientRect().toJSON());
+    await page.mouse.click(t.right - 6, t.bottom - 6); await settle();
+    assert(await lines() > 2, `после «…» строк: ${await lines()}`);
+    assert(!(await page.$('.editor')), 'клик по «…» открыл окно');
+    await (await row.$('.more')).click(); await settle();
+  });
+}
+
 await check('в консоли нет ошибок', async () => {
   assert(consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 600));
 });

@@ -20,7 +20,7 @@
 
     @foreach (var task in Tasks)
     {
-        <ItemRow Title="@task.Title"
+        <ItemRow Title="@task.Title" Clamp="true"
                  Color="@State.FindRole(task.RoleId)?.Color"
                  IsDone="task.State == TaskStateDto.Done"
                  TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"

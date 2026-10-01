@@ -82,11 +82,11 @@ await check('мышь: порядок внутри категории, посл�
   assert(JSON.stringify(await itemsIn('Идеи')) === JSON.stringify(order), 'после перезагрузки порядок другой');
 });
 
-await check('после перетаскивания клик не открывает переименование; обычный клик — открывает', async () => {
-  assert(!(await page.$('.cat-b .inline-input')), 'открылось переименование после перетаскивания');
+await check('после перетаскивания клик не открывает окно; обычный клик — открывает', async () => {
+  assert(!(await page.$('.editor[aria-label="Мысль"]')), 'открылось окно после перетаскивания');
   const b = await itemBox('Идеи', 'Сад с травами на балконе');
   await page.mouse.click(b.x + 40, b.y + b.height / 2); await settle();
-  assert(await page.$('.cat-b .inline-input'), 'клик не открыл переименование');
+  assert(await page.$('.editor[aria-label="Мысль"]'), 'клик не открыл окно');
   await page.keyboard.press('Escape'); await settle();
 });
 
@@ -181,13 +181,13 @@ await check('палец: долгое нажатие и перенос', async (
   await sleep(150);
   await page.touchscreen.touchEnd(); await settle();
   assert((await itemsIn('Идеи'))[0] === 'Сделать фотокнигу за лето', `Идеи: ${await itemsIn('Идеи')}`);
-  assert(!(await page.$('.cat-b .inline-input')), 'после перетаскивания открылось переименование');
+  assert(!(await page.$('.editor[aria-label="Мысль"]')), 'после перетаскивания открылось окно');
 });
 
-await check('палец: короткое касание — это клик (переименование)', async () => {
+await check('палец: короткое касание — это клик (окно)', async () => {
   const b = await itemBox('Идеи', 'Сад с травами на балконе');
   await page.touchscreen.tap(b.x + 40, b.y + b.height / 2); await settle();
-  assert(await page.$('.cat-b .inline-input'), 'касание не открыло переименование');
+  assert(await page.$('.editor[aria-label="Мысль"]'), 'касание не открыло окно');
 });
 
 await browser.close();
