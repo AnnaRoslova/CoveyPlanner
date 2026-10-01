@@ -173,6 +173,11 @@ textarea:focus-visible {
     color: var(--b-deep);
 }
 
+/* Обёртка встроенного редактора (Dismissable) — без своей рамки, не влияет на раскладку */
+.dismiss-scope {
+    display: contents;
+}
+
 /* Поле ввода «без форм» (InlineInput): строка записи, которую можно сразу печатать */
 .inline-input {
     display: block;

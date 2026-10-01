@@ -1,6 +1,8 @@
-@* Создание или правка категории: эмодзи + название; при правке — ещё и удаление *@
+@* Создание или правка категории: эмодзи + название; при правке — ещё и удаление.
+   Закрывается, как окно: кликом мимо и по Esc (= «Отмена»). *@
 @inject PlannerState State
 
+<Dismissable OnDismiss="OnClose">
 <div class="cat-editor">
     <div class="line">
         <button type="button" class="emoji-btn @(_emoji.Length == 0 ? "empty" : "")"
@@ -47,6 +49,7 @@
         </div>
     }
 </div>
+</Dismissable>
 
 @code {
     private string _name = "";

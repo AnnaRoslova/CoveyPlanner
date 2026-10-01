@@ -40,9 +40,11 @@
 
         if (goal.Id == _askCategoryForGoalId)
         {
-            <CategoryChoice Prompt="Мысль цели вернуть в категорию:" ButtonText="Удалить цель"
-                            OnChoose="categoryId => DeleteGoalAsync(goal.Id, categoryId)"
-                            OnCancel="() => _askCategoryForGoalId = null" />
+            <Dismissable OnDismiss="() => _askCategoryForGoalId = null">
+                <CategoryChoice Prompt="Мысль цели вернуть в категорию:" ButtonText="Удалить цель"
+                                OnChoose="categoryId => DeleteGoalAsync(goal.Id, categoryId)"
+                                OnCancel="() => _askCategoryForGoalId = null" />
+            </Dismissable>
         }
     }
 
@@ -53,8 +55,10 @@
 
     @if (_adding)
     {
-        <InlineInput @bind-Value="_newTitle" Placeholder="Цель на неделю — Enter" MaxLength="500"
-                     OnSubmit="AddAsync" OnCancel="StopAdding" />
+        <Dismissable OnDismiss="StopAdding">
+            <InlineInput @bind-Value="_newTitle" Placeholder="Цель на неделю — Enter" MaxLength="500"
+                         OnSubmit="AddAsync" OnCancel="StopAdding" />
+        </Dismissable>
     }
     else
     {

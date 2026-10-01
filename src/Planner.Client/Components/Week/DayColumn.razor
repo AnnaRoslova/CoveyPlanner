@@ -37,8 +37,10 @@
 
     @if (_adding)
     {
-        <InlineInput @bind-Value="_newTitle" Placeholder="Новое дело — Enter" MaxLength="500"
-                     OnSubmit="AddAsync" OnCancel="StopAdding" />
+        <Dismissable OnDismiss="StopAdding">
+            <InlineInput @bind-Value="_newTitle" Placeholder="Новое дело — Enter" MaxLength="500"
+                         OnSubmit="AddAsync" OnCancel="StopAdding" />
+        </Dismissable>
     }
     else
     {
