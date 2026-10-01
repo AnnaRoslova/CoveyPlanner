@@ -1,9 +1,10 @@
-/* Страница «в точку»: бумага с бирюзовой точечной сеткой */
+/* Страница «в точку»: бумага с бирюзовой точечной сеткой.
+   День растёт вниз вместе со списком; все дни — одна строка сетки, поэтому одной высоты
+   (по самому длинному), а неделя прокручивается вертикально (.days в WeekView). */
 .day {
     display: flex;
     flex-direction: column;
     gap: 3px;
-    min-height: 0;
     padding: 10px 6px 6px;
     border-radius: var(--day-radius);
     background-color: var(--paper);
@@ -17,10 +18,10 @@
     background-color: color-mix(in srgb, var(--b) 5%, var(--paper));
 }
 
-/* Сегодня — очень нежная розовая подсветка и тонкая бледная обводка (важнее выходного) */
+/* Сегодня — заметная, но мягкая подсветка и обводка цвета акцента (важнее выходного); цвета — от темы */
 .day.today {
-    background-color: color-mix(in srgb, var(--a) 4%, var(--paper));
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--a) 22%, var(--surface));
+    background-color: var(--today-bg);
+    box-shadow: inset 0 0 0 2px var(--today-ring);
 }
 
 .day-h {
@@ -79,14 +80,9 @@
     background: var(--b-soft);
 }
 
-/* Поле «+ дело» и сама кнопка прижаты к низу страницы дня */
-.day ::deep .inline-input {
-    margin-top: auto;
-}
-
+/* «+ дело» — сразу под последним делом */
 .day .add {
     width: max-content;
-    margin-top: auto;
     padding: 4px 8px;
     border-radius: 8px;
     background: var(--paper);

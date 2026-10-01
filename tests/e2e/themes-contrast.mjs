@@ -153,6 +153,26 @@ for (const theme of THEMES) {
     await shot('screen');
     windows.push(['экран', await audit(theme, 'screen')]);
   });
+  await check(`${theme}: сегодняшний день заметно выделен (обводка от 2:1 к обычному дню, фон другой)`, async () => {
+    const m = await page.evaluate(() => {
+      // Цвета приводим к rgb через canvas — так понимаются и color-mix, и color(srgb …)
+      const ctx = document.createElement('canvas').getContext('2d');
+      const rgb = c => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };
+      const page = rgb(getComputedStyle(document.documentElement).getPropertyValue('--page-color'));
+      const flat = c => c[3] === 255 ? c : [0, 1, 2].map(i => Math.round(c[i] * c[3] / 255 + page[i] * (1 - c[3] / 255))).concat(255);
+      const lum = c => 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2]);
+      const ch = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const today = document.querySelector('.day.today');
+      const other = document.querySelector('.day:not(.today):not(.weekend)');
+      const ring = getComputedStyle(today).boxShadow.match(/(rgba?\([^)]*\)|color\([^)]*\)|#[0-9a-f]+)/i)[1];
+      const todayBg = flat(rgb(getComputedStyle(today).backgroundColor));
+      const otherBg = flat(rgb(getComputedStyle(other).backgroundColor));
+      return { ring: ratio(flat(rgb(ring)), otherBg), bgDiff: Math.max(...[0, 1, 2].map(i => Math.abs(todayBg[i] - otherBg[i]))) };
+    });
+    assert(m.ring >= 2, `обводка ${m.ring.toFixed(2)}:1`);
+    assert(m.bgDiff >= 6, `фон отличается на ${m.bgDiff}`);
+  });
   await check(`${theme}: окно дела`, async () => {
     await clickItem('.day', 'Созвон с заказчиком');
     await page.waitForSelector('.editor[aria-label="Дело"]');

@@ -75,19 +75,31 @@
     transition: 0.15s;
 }
 
-/* Чекбокс-кнопка: квадратик побольше для попадания, видимая часть та же */
-button.ck {
-    padding: 0;
+/* Кнопка-чекбокс: зона нажатия — вся левая полоса записи по высоте (поля записи — тоже её),
+   шириной 30px; видимый квадратик тот же. Правое поле заходит под зазор — текст не сдвигается. */
+.ck-hit {
+    flex: none;
+    align-self: stretch;
+    width: 30px;
+    margin: -6px -8px -6px -8px;
+    padding: 6px 8px 0;
+    border-radius: 8px 0 0 8px;
     background: transparent;
     cursor: pointer;
 }
 
-button.ck:hover {
+/* Квадратик — у первой строки (кнопка иначе ставит содержимое по центру) */
+.ck-hit {
+    display: flex;
+    align-items: flex-start;
+}
+
+.ck-hit:hover .ck {
     background: color-mix(in srgb, var(--c, var(--b)) 30%, transparent);
 }
 
 .done .ck,
-.done button.ck:hover {
+.done .ck-hit:hover .ck {
     background: var(--c, var(--b));
 }
 

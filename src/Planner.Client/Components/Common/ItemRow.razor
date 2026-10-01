@@ -7,9 +7,10 @@
      @onclick="OnClick">
     @if (Marker == ItemMarker.Check && OnToggle.HasDelegate)
     {
-        <button type="button" class="ck" role="checkbox" aria-checked="@(IsDone ? "true" : "false")"
+        @* Зона нажатия — вся левая полоса записи (~30px, на всю высоту); квадратик внутри прежний *@
+        <button type="button" class="ck-hit" role="checkbox" aria-checked="@(IsDone ? "true" : "false")"
                 title="@(IsDone ? "Снять отметку" : "Выполнено")"
-                @onclick="OnToggle" @onclick:stopPropagation="true"></button>
+                @onclick="OnToggle" @onclick:stopPropagation="true"><span class="ck"></span></button>
     }
     else if (Marker == ItemMarker.Check)
     {

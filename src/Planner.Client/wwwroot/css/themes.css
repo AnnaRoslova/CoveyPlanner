@@ -21,8 +21,8 @@
     --line: #efe6e7;
     --a: #f9d0e0;
     --a-soft: #fff5f9;
-    --a-deep: #c5779b;
-    --a-ink: #a6597d;
+    --a-deep: #c4769a;
+    --a-ink: #a5587c;
     --b: #9fd6c9;
     --b-soft: #e8f6f2;
     --b-deep: #327b6e;
@@ -76,12 +76,15 @@
     --b-soft: #eeeff0;
     --b-deep: #3a3d42;
     --dot: #cfd1d4;
+    --font: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;  /* Manrope — во всём тексте */
     --font-hand: Manrope, system-ui, sans-serif;
     --font-title: Manrope, system-ui, sans-serif;
     --panel-radius: 16px;
     --day-radius: 12px;
     --shadow-panel: 0 1px 0 #fff inset, 0 8px 28px rgba(40, 44, 50, 0.08);
     --on-accent: #f4f4f5;
+    --today-bg: #e9eaecf2;  /* сегодня — страница чуть графитовая, с графитовой обводкой */
+    --today-ring: #6f7378;
 }
 
 /* ---------- Обсидиан: тёмная; геометрия, серебряные линии, редкие искры; акценты — серебристо-белый ---------- */
@@ -104,6 +107,7 @@
     --b-soft: #2a2c31;
     --b-deep: #d9dce1;
     --dot: #ffffff14;
+    --font: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;  /* Manrope — во всём тексте */
     --font-hand: Manrope, system-ui, sans-serif;
     --font-title: Manrope, system-ui, sans-serif;
     --panel-radius: 16px;
@@ -115,6 +119,8 @@
     --shadow-window: 0 18px 56px rgba(0, 0, 0, 0.6);
     --shadow-drag: 0 10px 28px rgba(0, 0, 0, 0.55);
     --shadow-edge: 0 -1px 2px rgba(0, 0, 0, 0.4);
+    --today-bg: #3a3c42d9;  /* сегодня — светлее остальных и серебристая обводка */
+    --today-ring: #d6d9deb3;
     color-scheme: dark;
 }
 
@@ -178,7 +184,7 @@
 }
 
 :root[data-theme="platinum"] .day.today {
-    box-shadow: inset 0 0 0 1.5px #9ea2a8, 0 2px 14px rgba(0, 0, 0, 0.06);
+    box-shadow: inset 0 0 0 2px var(--today-ring), 0 2px 14px rgba(0, 0, 0, 0.08);
 }
 
 :root[data-theme="obsidian"] .day {
@@ -186,7 +192,7 @@
 }
 
 :root[data-theme="obsidian"] .day.today {
-    box-shadow: inset 0 0 0 1px #d6d9de66, 0 0 22px #ffffff10;
+    box-shadow: inset 0 0 0 1.5px var(--today-ring), 0 0 22px #ffffff18;
 }
 
 :root:is([data-theme="platinum"], [data-theme="obsidian"]) .day.today :is(.dow, .num) {
