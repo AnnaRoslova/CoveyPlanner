@@ -44,9 +44,13 @@
 }
 
 /* Розовым — только сегодняшний день */
-.today .dow,
-.today .num {
+.today .dow {
     color: var(--a-deep);
+}
+
+/* Число мельче названия дня — ему нужен более глубокий розовый (WCAG AA) */
+.today .num {
+    color: var(--a-ink);
 }
 
 /* Сумма длительностей «~3 ч» — тихо, рядом с числом */
@@ -61,7 +65,7 @@
     padding: 1px 7px;
     border-radius: 20px;
     background: color-mix(in srgb, var(--a) 14%, var(--surface));
-    color: var(--a-deep);
+    color: var(--a-ink);
     font-size: 10px;
     font-weight: 800;
 }

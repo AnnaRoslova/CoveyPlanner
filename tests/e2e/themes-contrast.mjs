@@ -2,7 +2,9 @@
 // Темы: контраст текста по WCAG и снимки для сравнения с образцом docs/themes.html.
 // Для каждой темы — весь экран и открытые окна (дело, цель, роль, корзина, меню тем).
 // Контраст: у каждой видимой надписи цвет текста против фактического фона (подложки складываются
-// от страницы вверх, с прозрачностью). Тёмная тема обязана пройти AA: 4.5:1, крупный текст — 3:1.
+// от страницы вверх, с прозрачностью). Тёмная тема обязана пройти AA целиком: 4.5:1, крупный текст — 3:1.
+// Светлые темы: основной текст — AA, второстепенный (SECONDARY: «+ цель», «+ дело», счётчики,
+// выполненные дела, подсказки и плейсхолдеры) — не ниже 3:1.
 // Снимки — в out/cmp-<тема>-<окно>.png и out/mock-<тема>.png, отчёт о контрасте — out/contrast.json.
 import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';
@@ -14,6 +16,10 @@ const SHOTS = process.argv[2] ?? '.';
 const MOCKUP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/themes.html');
 const THEMES = ['lotus', 'peony', 'platinum', 'obsidian'];
 const MUST_PASS_AA = ['obsidian'];
+const LIGHT = ['lotus', 'peony', 'platinum'];
+// Второстепенный текст: «+ …», счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
+const SECONDARY = ['.add', '.n', '.cnt', '.progress', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
+  '.load', '.rocks', '.goal-days', '.unit', '.step', '.saved', '.nothing', '.first-category'].join(', ');
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -31,7 +37,7 @@ async function check(name, fn) {
 }
 
 // Замер контраста всех надписей внутри scope (по умолчанию — весь документ)
-function measure(scopeSelector) {
+function measure(scopeSelector, secondarySelector) {
   const parse = s => {
     s = s.trim();
     let m = s.match(/^#([0-9a-f]{3,8})$/i);
@@ -69,11 +75,12 @@ function measure(scopeSelector) {
     const cs = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
   };
+  const hex = c => '#' + c.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
   const describe = el => (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : el.tagName.toLowerCase());
 
   const scope = scopeSelector ? document.querySelector(scopeSelector) : document.body;
   const out = [];
-  const add = (el, text, colorString) => {
+  const add = (el, text, colorString, placeholder = false) => {
     const o = opacity(el);
     if (o < 0.05 || !visible(el)) return;
     const bg = background(el);
@@ -82,7 +89,12 @@ function measure(scopeSelector) {
     const cs = getComputedStyle(el);
     const size = parseFloat(cs.fontSize);
     const large = size >= 24 || (size >= 18.66 && Number(cs.fontWeight) >= 700);
-    out.push({ text: text.slice(0, 40), where: describe(el), ratio: Math.round(ratio(fg, bg) * 100) / 100, need: large ? 3 : 4.5 });
+    // Значки-эмодзи — картинки, а не текст
+    if (/^[\p{Extended_Pictographic}️‍\s]+$/u.test(text)) return;
+    out.push({
+      text: text.slice(0, 40), where: describe(el), ratio: Math.round(ratio(fg, bg) * 100) / 100, need: large ? 3 : 4.5,
+      secondary: !!el.closest(secondarySelector) || !!placeholder, fg: hex(fg), bg: hex(bg),
+    });
   };
   for (const el of scope.querySelectorAll('*')) {
     // Недоступные кнопки WCAG из требований к контрасту исключает
@@ -91,7 +103,7 @@ function measure(scopeSelector) {
     if (text) add(el, text, getComputedStyle(el).color);
     if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.type !== 'time') {
       if (el.value) add(el, el.value, getComputedStyle(el).color);
-      else if (el.placeholder) add(el, el.placeholder, getComputedStyle(el, '::placeholder').color);
+      else if (el.placeholder) add(el, el.placeholder, getComputedStyle(el, '::placeholder').color, true);
     }
   }
   return out;
@@ -99,8 +111,10 @@ function measure(scopeSelector) {
 
 const report = {};
 async function audit(theme, state, scope) {
-  const items = await page.evaluate(measure, scope ?? null);
-  const fails = items.filter(i => i.ratio < i.need).sort((a, b) => a.ratio - b.ratio);
+  const items = await page.evaluate(measure, scope ?? null, SECONDARY);
+  // В светлых темах второстепенному тексту достаточно 3:1
+  const need = i => LIGHT.includes(theme) && i.secondary ? 3 : i.need;
+  const fails = items.filter(i => i.ratio < need(i)).map(i => ({ ...i, need: need(i) })).sort((a, b) => a.ratio - b.ratio);
   report[`${theme}/${state}`] = { checked: items.length, min: Math.min(...items.map(i => i.ratio)), fails };
   return fails;
 }
@@ -174,8 +188,9 @@ for (const theme of THEMES) {
     await escape();
   });
 
-  if (MUST_PASS_AA.includes(theme)) {
-    await check(`${theme}: контраст текста не ниже WCAG AA`, async () => {
+  if (MUST_PASS_AA.includes(theme) || LIGHT.includes(theme)) {
+    const what = LIGHT.includes(theme) ? 'основной текст — AA, второстепенный — от 3:1' : 'весь текст не ниже WCAG AA';
+    await check(`${theme}: контраст: ${what}`, async () => {
       const bad = windows.flatMap(([w, fails]) => fails.map(f => `${w}: «${f.text}» ${f.where} ${f.ratio} < ${f.need}`));
       assert(bad.length === 0, `${bad.length} надписей: ${bad.slice(0, 8).join(' | ')}`);
     });

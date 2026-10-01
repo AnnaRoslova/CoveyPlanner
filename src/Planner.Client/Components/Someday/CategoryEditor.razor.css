@@ -40,7 +40,7 @@
 }
 
 .delete:hover {
-    color: var(--a-deep);
+    color: var(--a-ink);
 }
 
 .confirm {

@@ -16,15 +16,16 @@
     --paper: #fffcfc;
     --surface: #fff;
     --text: #3e4d52;
-    --soft: #88999c;
-    --faint: #c3cfd0;
+    --soft: #657579;
+    --faint: #828f92;
     --line: #efe6e7;
     --a: #f9d0e0;
     --a-soft: #fff5f9;
-    --a-deep: #e495b8;
+    --a-deep: #c5779b;
+    --a-ink: #a6597d;
     --b: #9fd6c9;
     --b-soft: #e8f6f2;
-    --b-deep: #3f9585;
+    --b-deep: #327b6e;
     --font: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
     --font-hand: Caveat, "Segoe Print", cursive;
     --font-title: Lora, Georgia, serif;
@@ -40,12 +41,13 @@
     --paper: #fdfaf5;
     --surface: #fffdf9;
     --text: #33403a;
-    --soft: #8a8f86;
-    --faint: #c9c6bc;
+    --soft: #6e766e;
+    --faint: #858a81;
     --line: #ebe3d7;
     --a: #e8d2c2;
     --a-soft: #f6ece4;
     --a-deep: #a97c63;
+    --a-ink: #8c634d;
     --b: #9fbfae;
     --b-soft: #e6efe8;
     --b-deep: #3f6b5a;
@@ -64,8 +66,8 @@
     --paper: #f8f8f9c4;
     --surface: #fff;
     --text: #2b2d30;
-    --soft: #6f7378;
-    --faint: #b4b7bb;
+    --soft: #676a6f;
+    --faint: #84878b;
     --line: #e2e3e5;
     --a: #c4c7cb;
     --a-soft: #ececee;
@@ -142,7 +144,7 @@
 }
 
 :root[data-theme="peony"] .day.today :is(.dow, .num) {
-    color: #a97c63;
+    color: var(--a-ink); /* дни в Пионе не крупные — нужен AA */
 }
 
 :root[data-theme="peony"] .someday {
