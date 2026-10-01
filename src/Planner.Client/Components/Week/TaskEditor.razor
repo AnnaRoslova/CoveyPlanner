@@ -1,4 +1,4 @@
-@* Окно редактирования дела: название, роль, время, квадрант, длительность, заметки; «в корзину».
+@* Окно редактирования дела: название, роли (можно несколько), время, квадрант, длительность, заметки; «в корзину».
    У занятия цели роль и квадрант задаются у цели (здесь только видны), а время, длительность
    и заметки могут быть «своими» — тогда метка «своё» и кнопка «как у цели».
    Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
@@ -33,12 +33,15 @@
         }
         else
         {
-            <div class="chips">
-                <button type="button" class="chip @(_roleId is null ? "on" : "")" @onclick="() => _roleId = null">без роли</button>
-                @foreach (var role in State.Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder))
+            @* Роли — множественный выбор: чип включает и выключает роль; «без роли» снимает все *@
+            <div class="chips" role="group" aria-label="Роли">
+                <button type="button" class="chip @(_roleIds.Count == 0 ? "on" : "")" aria-pressed="@(_roleIds.Count == 0 ? "true" : "false")"
+                        @onclick="() => _roleIds.Clear()">без роли</button>
+                @foreach (var role in State.OrderedRoles)
                 {
-                    <button type="button" class="chip @(_roleId == role.Id ? "on" : "")" style="--c: @role.Color"
-                            @onclick="() => _roleId = role.Id">
+                    var on = _roleIds.Contains(role.Id);
+                    <button type="button" class="chip @(on ? "on" : "")" style="--c: @role.Color" aria-pressed="@(on ? "true" : "false")"
+                            @onclick="() => ToggleRole(role.Id)">
                         <span class="dot"></span>@role.Name
                     </button>
                 }
@@ -122,7 +125,7 @@
     private ElementReference _titleInput;
     private string _title = "";
     private string? _notes;
-    private int? _roleId;
+    private readonly HashSet<int> _roleIds = [];
     private TimeOnly? _time;
     private int? _quadrant;
     private int? _duration;
@@ -151,7 +154,7 @@
     {
         _title = EditedTask.Title;
         _notes = EditedTask.Notes;
-        _roleId = EditedTask.RoleId;
+        _roleIds.UnionWith(EditedTask.RoleIds);
         _time = EditedTask.StartTime;
         _quadrant = EditedTask.Quadrant;
         _duration = EditedTask.DurationMinutes;
@@ -162,6 +165,14 @@
         if (firstRender)
         {
             await _titleInput.FocusAsync();
+        }
+    }
+
+    private void ToggleRole(int roleId)
+    {
+        if (!_roleIds.Remove(roleId))
+        {
+            _roleIds.Add(roleId);
         }
     }
 
@@ -193,7 +204,7 @@
         }
 
         await OnClose.InvokeAsync();
-        await State.UpdateTaskAsync(EditedTask.Id, _title, _notes, _roleId, _quadrant, _time, _duration);
+        await State.UpdateTaskAsync(EditedTask.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
     }
 
     private async Task TrashAsync()

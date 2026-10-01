@@ -17,9 +17,19 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Property(t => t.PreviousState).HasConversion<string>().HasMaxLength(16);
         builder.Property(t => t.Quadrant).HasConversion<int?>();
 
-        // Удалили категорию или роль — у дел ссылка просто обнуляется
+        // Удалили категорию — у дел ссылка просто обнуляется
         builder.HasOne<Category>().WithMany().HasForeignKey(t => t.CategoryId).OnDelete(DeleteBehavior.SetNull);
-        builder.HasOne<Role>().WithMany().HasForeignKey(t => t.RoleId).OnDelete(DeleteBehavior.SetNull);
+
+        // Роли дела — таблица TaskRoles (TaskId, RoleId); удалили дело или роль — строка удаляется
+        builder.OwnsMany(t => t.Roles, roles =>
+        {
+            roles.ToTable("TaskRoles");
+            roles.WithOwner().HasForeignKey("TaskId");
+            roles.HasKey("TaskId", nameof(TaskRole.RoleId));
+            roles.HasOne<Role>().WithMany().HasForeignKey(r => r.RoleId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Navigation(t => t.Roles).HasField("_roles");
+        builder.Ignore(t => t.RoleIds);
 
         builder.HasIndex(t => new { t.State, t.CategoryId, t.SortOrder });
         builder.HasIndex(t => new { t.State, t.PlannedDate });

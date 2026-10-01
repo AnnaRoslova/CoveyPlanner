@@ -23,7 +23,8 @@ public enum SawDimensionDto
 }
 
 /// <summary>
-/// Дело. Quadrant — 1..4 или null; StartTime — необязательная метка времени;
+/// Дело. RoleIds — роли дела (может быть несколько, у занятия цели — одна, роль цели);
+/// Quadrant — 1..4 или null; StartTime — необязательная метка времени;
 /// DurationMinutes — необязательная примерная длительность. GoalId — дело — занятие этой цели.
 /// </summary>
 public sealed record TaskDto(
@@ -31,7 +32,7 @@ public sealed record TaskDto(
     string Title,
     string? Notes,
     int? CategoryId,
-    int? RoleId,
+    IReadOnlyList<int> RoleIds,
     int? GoalId,
     int? Quadrant,
     TaskStateDto State,

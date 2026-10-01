@@ -46,6 +46,12 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public RoleDto? FindRole(int? roleId) => roleId is { } id ? Roles.FirstOrDefault(r => r.Id == id) : null;
 
+    /// <summary>Все роли в порядке экрана: сначала измерения пилы, затем пользовательские.</summary>
+    public IEnumerable<RoleDto> OrderedRoles => Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder);
+
+    /// <summary>Роли дела в порядке экрана (первая — цвет чекбокса).</summary>
+    public IReadOnlyList<RoleDto> RolesOf(TaskDto task) => OrderedRoles.Where(r => task.RoleIds.Contains(r.Id)).ToList();
+
     public IEnumerable<CategoryDto> OrderedCategories => Categories.OrderBy(c => c.SortOrder).ThenBy(c => c.Id);
 
     /// <summary>Дела ленты в категории; categoryId = null — «неразобранное».</summary>

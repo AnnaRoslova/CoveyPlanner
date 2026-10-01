@@ -36,7 +36,7 @@ async function setupDay(i, untimed, timed = []) {
   for (const t of week.tasks.filter(t => t.plannedDate === dateOf(i))) await api('DELETE', `tasks/${t.id}`);
   for (const [title, time] of timed) {
     const t = await api('POST', 'tasks', { title, target: { kind: 'day', date: dateOf(i), index: 99 } });
-    await api('PUT', `tasks/${t.id}`, { title, notes: null, roleId: null, quadrant: null, startTime: time + ':00' });
+    await api('PUT', `tasks/${t.id}`, { title, notes: null, roleIds: [], quadrant: null, startTime: time + ':00' });
   }
   for (const title of untimed) await api('POST', 'tasks', { title, target: { kind: 'day', date: dateOf(i), index: 99 } });
 }

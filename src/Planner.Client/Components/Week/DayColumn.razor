@@ -20,8 +20,10 @@
 
     @foreach (var task in Tasks)
     {
+        var roles = State.RolesOf(task);
         <ItemRow Title="@task.Title" Clamp="true"
-                 Color="@State.FindRole(task.RoleId)?.Color"
+                 Color="@roles.FirstOrDefault()?.Color"
+                 RoleDots="@(roles.Count > 1 ? roles : null)"
                  IsDone="task.State == TaskStateDto.Done"
                  TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"
                  DurationLabel="@(task.DurationMinutes is { } minutes ? "~" + RuDates.Duration(minutes) : null)"

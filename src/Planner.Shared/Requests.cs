@@ -19,9 +19,12 @@ public sealed record DayTargetDto(DateOnly Date, int Index) : TaskTargetDto;
 
 public sealed record CreateTaskRequest(string Title, TaskTargetDto Target);
 
-/// <summary>StartTime / DurationMinutes = null — без времени / длительности. У занятия цели RoleId и Quadrant берутся от цели.</summary>
+/// <summary>
+/// StartTime / DurationMinutes = null — без времени / длительности. RoleIds — роли дела (null или пусто — без ролей).
+/// У занятия цели роль и Quadrant берутся от цели.
+/// </summary>
 public sealed record UpdateTaskRequest(
-    string Title, string? Notes, int? RoleId, int? Quadrant, TimeOnly? StartTime, int? DurationMinutes);
+    string Title, string? Notes, IReadOnlyList<int>? RoleIds, int? Quadrant, TimeOnly? StartTime, int? DurationMinutes);
 
 public sealed record SetDoneRequest(bool IsDone);
 

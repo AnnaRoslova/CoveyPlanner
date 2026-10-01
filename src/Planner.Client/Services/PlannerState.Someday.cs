@@ -113,7 +113,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, categoryId, null, null, null, TaskStateDto.Someday, null, null, null,
+        var temp = new TaskDto(NextTempId(), title, null, categoryId, [], null, null, TaskStateDto.Someday, null, null, null,
             SortOrder: atEnd ? int.MaxValue : int.MinValue, TrashedAt: null);
         _tasks[temp.Id] = temp;
         RenumberSomeday(categoryId);

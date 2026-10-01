@@ -29,23 +29,26 @@ public class TaskService(
     }
 
     /// <summary>
-    /// Изменить дело из окна редактирования. startTime / durationMinutes = null — убрать.
+    /// Изменить дело из окна редактирования. startTime / durationMinutes = null — убрать; roleIds пусто — без ролей.
     /// У занятия цели роль и квадрант всегда от цели — присланные значения не применяются.
     /// </summary>
     public async Task<TaskItem> UpdateAsync(
-        int id, string title, string? notes, int? roleId, Quadrant? quadrant, TimeOnly? startTime,
+        int id, string title, string? notes, IReadOnlyCollection<int> roleIds, Quadrant? quadrant, TimeOnly? startTime,
         int? durationMinutes, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
         if (task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } goal)
         {
-            roleId = goal.RoleId;
+            roleIds = [goal.RoleId];
             quadrant = goal.Quadrant;
         }
 
-        if (roleId is { } rid && await roles.FindAsync(rid, ct) is null)
+        foreach (var roleId in roleIds.Distinct())
         {
-            throw new NotFoundException("Роль", rid);
+            if (await roles.FindAsync(roleId, ct) is null)
+            {
+                throw new NotFoundException("Роль", roleId);
+            }
         }
 
         if (quadrant is { } q && !Enum.IsDefined(q))
@@ -56,7 +59,7 @@ public class TaskService(
         task.Rename(title);
         task.SetNotes(notes);
         task.SetDuration(durationMinutes);
-        task.RoleId = roleId;
+        task.SetRoles(roleIds);
         task.Quadrant = quadrant;
 
         var hadTime = task.StartTime is not null;

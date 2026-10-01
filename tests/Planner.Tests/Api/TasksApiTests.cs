@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Planner.Shared;
 
 namespace Planner.Tests.Api;
@@ -119,6 +120,36 @@ public class TasksApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Update_SeveralRoles_ChangeAndClear_RoleDeletionRemovesIt()
+    {
+        var roles = (await GetBoardAsync()).Roles.Where(r => !r.IsSharpenSaw).ToList();
+        var task = await CreateInDayAsync("Семейный ужин с коллегами");
+
+        var both = await UpdateTaskAsync(task, roleIds: [roles[2].Id, roles[1].Id, roles[1].Id]);
+        Assert.Equal(new[] { roles[1].Id, roles[2].Id }.Order(), both.RoleIds); // без повторов, по Id
+
+        var one = await UpdateTaskAsync(both, roleIds: [roles[2].Id]);
+        Assert.Equal([roles[2].Id], one.RoleIds);
+
+        await UpdateTaskAsync(one, roleIds: [roles[0].Id, roles[2].Id]);
+        await Client.DeleteAsync($"/api/roles/{roles[2].Id}");
+        Assert.Equal([roles[0].Id], (await GetWeekAsync()).Tasks.Single(t => t.Id == task.Id).RoleIds);
+
+        var none = await PutAsync<TaskDto>($"/api/tasks/{task.Id}", new UpdateTaskRequest(task.Title, null, null, null, null, null));
+        Assert.Empty(none.RoleIds);
+    }
+
+    [Fact]
+    public async Task Update_UnknownRole_NotFound()
+    {
+        var task = await CreateInDayAsync("Дело");
+
+        var response = await Client.PutAsJsonAsync($"/api/tasks/{task.Id}", new UpdateTaskRequest("Дело", null, [99999], null, null, null));
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Update_TitleNotesRoleQuadrant()
     {
         var board = await GetBoardAsync();
@@ -126,11 +157,11 @@ public class TasksApiTests : ApiTestBase
         var task = await CreateInDayAsync("Дело");
 
         var updated = await PutAsync<TaskDto>($"/api/tasks/{task.Id}",
-            new UpdateTaskRequest("Новое название", "заметка", role.Id, 2, null, null));
+            new UpdateTaskRequest("Новое название", "заметка", [role.Id], 2, null, null));
 
         Assert.Equal("Новое название", updated.Title);
         Assert.Equal("заметка", updated.Notes);
-        Assert.Equal(role.Id, updated.RoleId);
+        Assert.Equal([role.Id], updated.RoleIds);
         Assert.Equal(2, updated.Quadrant);
     }
 

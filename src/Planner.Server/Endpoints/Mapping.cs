@@ -13,7 +13,7 @@ public static class Mapping
         t.Title,
         t.Notes,
         t.CategoryId,
-        t.RoleId,
+        t.RoleIds,
         t.GoalId,
         (int?)t.Quadrant,
         (TaskStateDto)t.State,

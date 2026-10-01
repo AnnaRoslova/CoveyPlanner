@@ -19,7 +19,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, null, null, null, null, TaskStateDto.Planned, date, null, null,
+        var temp = new TaskDto(NextTempId(), title, null, null, [], null, null, TaskStateDto.Planned, date, null, null,
             SortOrder: NextUntimedOrder(date), TrashedAt: null);
         _tasks[temp.Id] = temp;
 
@@ -113,9 +113,9 @@ public partial class PlannerState
         await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone));
     }
 
-    /// <summary>Сохранить окно редактирования. startTime = null — без времени.</summary>
+    /// <summary>Сохранить окно редактирования. startTime = null — без времени; roleIds пусто — без ролей.</summary>
     public async Task UpdateTaskAsync(
-        int taskId, string title, string? notes, int? roleId, int? quadrant, TimeOnly? startTime, int? durationMinutes)
+        int taskId, string title, string? notes, IReadOnlyList<int> roleIds, int? quadrant, TimeOnly? startTime, int? durationMinutes)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task || string.IsNullOrWhiteSpace(title))
         {
@@ -125,7 +125,7 @@ public partial class PlannerState
         // У занятия цели роль и квадрант всегда от цели (так же решает сервер)
         if (GoalOfTask(taskId) is { } goal)
         {
-            roleId = goal.RoleId;
+            roleIds = [goal.RoleId];
             quadrant = goal.Quadrant;
         }
 
@@ -141,7 +141,7 @@ public partial class PlannerState
         {
             Title = title,
             Notes = notes,
-            RoleId = roleId,
+            RoleIds = [.. roleIds.Distinct().Order()],
             Quadrant = quadrant,
             StartTime = startTime,
             DurationMinutes = durationMinutes,
@@ -149,7 +149,7 @@ public partial class PlannerState
         };
 
         await SaveAsync(() => api.UpdateTaskAsync(taskId,
-            new UpdateTaskRequest(title, notes, roleId, quadrant, startTime, durationMinutes)));
+            new UpdateTaskRequest(title, notes, roleIds, quadrant, startTime, durationMinutes)));
     }
 
     private int NextUntimedOrder(DateOnly date)

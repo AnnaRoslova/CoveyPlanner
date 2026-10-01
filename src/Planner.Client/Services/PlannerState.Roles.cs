@@ -226,7 +226,7 @@ public partial class PlannerState
 
         foreach (var task in SessionTasks(goal))
         {
-            _tasks[task.Id] = task with { RoleId = roleId };
+            _tasks[task.Id] = task with { RoleIds = [roleId] };
         }
 
         await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index)));
@@ -256,7 +256,7 @@ public partial class PlannerState
         var session = task with
         {
             State = task.State == TaskStateDto.Someday ? TaskStateDto.Planned : task.State,
-            RoleId = roleId,
+            RoleIds = [roleId],
             GoalId = NextTempId(),
         };
         // Шаблон цели — из дела (так же делает сервер)
@@ -330,7 +330,7 @@ public partial class PlannerState
         var unscheduled = goal.Sessions.FirstOrDefault(s => s.PlannedDate is null && !s.IsDone);
         var task = unscheduled is not null && FindTask(unscheduled.TaskId) is { } shown
             ? shown with { GoalId = null }
-            : new TaskDto(unscheduled?.TaskId ?? NextTempId(), goal.Title, null, categoryId, goal.RoleId, null, null,
+            : new TaskDto(unscheduled?.TaskId ?? NextTempId(), goal.Title, null, categoryId, [goal.RoleId], null, null,
                 TaskStateDto.Someday, null, null, null, 0, null);
 
         PlaceInFeedLocally(task, categoryId, index);
@@ -373,7 +373,7 @@ public partial class PlannerState
 
     /// <summary>Новое занятие по шаблону цели (время — когда встанет в день, так же делает сервер).</summary>
     private static TaskDto NewSessionTask(WeeklyGoalDto goal, int id) =>
-        new(id, goal.Title, goal.Notes, null, goal.RoleId, goal.Id, goal.Quadrant, TaskStateDto.Planned,
+        new(id, goal.Title, goal.Notes, null, [goal.RoleId], goal.Id, goal.Quadrant, TaskStateDto.Planned,
             null, goal.StartTime, goal.DurationMinutes, 0, null);
 
     private static GoalSessionDto ToSession(TaskDto task) =>

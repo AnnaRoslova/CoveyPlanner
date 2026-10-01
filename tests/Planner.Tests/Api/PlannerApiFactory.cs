@@ -98,9 +98,9 @@ public abstract class ApiTestBase : IAsyncLifetime
     protected Task<TaskDto> MoveTaskAsync(int id, TaskTargetDto target) =>
         PostTargetAsync<TaskDto>($"/api/tasks/{id}/move", target);
 
-    protected Task<TaskDto> UpdateTaskAsync(TaskDto task, TimeOnly? startTime = null, int? roleId = null) =>
+    protected Task<TaskDto> UpdateTaskAsync(TaskDto task, TimeOnly? startTime = null, IReadOnlyList<int>? roleIds = null) =>
         PutAsync<TaskDto>($"/api/tasks/{task.Id}",
-            new UpdateTaskRequest(task.Title, task.Notes, roleId ?? task.RoleId, task.Quadrant, startTime, task.DurationMinutes));
+            new UpdateTaskRequest(task.Title, task.Notes, roleIds ?? task.RoleIds, task.Quadrant, startTime, task.DurationMinutes));
 
     protected Task<CategoryDto> CreateCategoryAsync(string name = "Идеи", string? emoji = null) =>
         PostAsync<CategoryDto>("/api/categories", new CreateCategoryRequest(name, emoji));

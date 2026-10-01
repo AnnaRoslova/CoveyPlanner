@@ -12,6 +12,8 @@ namespace Planner.Core.Entities;
 /// </summary>
 public class TaskItem : ISortable
 {
+    private readonly List<TaskRole> _roles = [];
+
     // Для EF Core
     private TaskItem()
     {
@@ -26,7 +28,11 @@ public class TaskItem : ISortable
     /// <summary>Категория ленты. null — в ленте это «неразобранное»; в плане — дело создано сразу там (или категорию удалили).</summary>
     public int? CategoryId { get; private set; }
 
-    public int? RoleId { get; set; }
+    /// <summary>Роли дела (может быть несколько). У занятия цели — ровно одна, роль цели.</summary>
+    public IReadOnlyCollection<TaskRole> Roles => _roles;
+
+    /// <summary>Id ролей по возрастанию.</summary>
+    public IReadOnlyList<int> RoleIds => _roles.Select(r => r.RoleId).Order().ToList();
 
     /// <summary>Цель недели, занятием которой является дело («камень»). У цели может быть несколько занятий.</summary>
     public int? GoalId { get; private set; }
@@ -80,6 +86,20 @@ public class TaskItem : ISortable
         State = TaskState.Planned,
         CreatedAt = now,
     };
+
+    /// <summary>
+    /// Задать роли дела (повторы не считаются). Уже стоящие роли остаются теми же записями —
+    /// EF не пытается удалить и тут же добавить строку с тем же ключом.
+    /// </summary>
+    public void SetRoles(IEnumerable<int> roleIds)
+    {
+        var wanted = roleIds.ToHashSet();
+        _roles.RemoveAll(r => !wanted.Contains(r.RoleId));
+        foreach (var roleId in wanted.Where(id => _roles.All(r => r.RoleId != id)))
+        {
+            _roles.Add(new TaskRole(roleId));
+        }
+    }
 
     /// <summary>Отвязать от цели: дело вернули в ленту или цель удалили.</summary>
     public void DetachFromGoal() => GoalId = null;

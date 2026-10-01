@@ -118,6 +118,20 @@
     color: var(--b-deep);
 }
 
+/* Несколько ролей — маленькие точки их цветов под названием */
+.role-dots {
+    display: flex;
+    gap: 3px;
+    margin-top: 3px;
+}
+
+.role-dots i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--c);
+}
+
 /* Значок «есть заметка» сразу после названия */
 .note {
     display: inline-flex;

@@ -199,7 +199,7 @@ public class GoalService(
         if (task is null)
         {
             task = TaskItem.CreateSomeday(goal.Title, categoryId, Now);
-            task.RoleId = goal.RoleId;
+            task.SetRoles([goal.RoleId]);
             tasks.Add(task);
         }
         else

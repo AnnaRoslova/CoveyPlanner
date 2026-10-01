@@ -103,7 +103,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
 
         Assert.NotEqual(thursday.Task!.Id, friday.Task!.Id);
         Assert.Equal(goal.Id, friday.Task.GoalId);
-        Assert.Equal(role.Id, friday.Task.RoleId);
+        Assert.Equal([role.Id], friday.Task.RoleIds);
         Assert.Null(friday.Task.CategoryId);
         Assert.Equal([Monday.AddDays(3), Monday.AddDays(4)], friday.Goal.Sessions.Select(s => s.PlannedDate));
         Assert.Equal(2, (await GetWeekAsync()).Tasks.Count(t => t.GoalId == goal.Id));
@@ -199,7 +199,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var goal = await CreateGoalAsync((await FirstUserRoleAsync()).Id, "Пробежка");
         var same = (await ScheduleAsync(goal.Id, Monday)).Task!;
         var own = (await ScheduleAsync(goal.Id, Monday.AddDays(1))).Task!;
-        await PutAsync<TaskDto>($"/api/tasks/{own.Id}", new UpdateTaskRequest("Пробежка 10 км", null, own.RoleId, null, null, null));
+        await PutAsync<TaskDto>($"/api/tasks/{own.Id}", new UpdateTaskRequest("Пробежка 10 км", null, own.RoleIds, null, null, null));
         Assert.Equal("Пробежка", (await GoalAsync(goal.Id)).Title); // переименование занятия цель не меняет
 
         await UpdateGoalAsync(goal.Id, f => f with { Title = "Бег" });
@@ -353,7 +353,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var moved = await PostAsync<WeeklyGoalDto>($"/api/goals/{goal.Id}/move", new MoveGoalRequest(roles[1].Id, 0));
 
         Assert.Equal(roles[1].Id, moved.RoleId);
-        Assert.Equal(roles[1].Id, (await GetWeekAsync()).Tasks.Single(t => t.Id == session.Id).RoleId);
+        Assert.Equal([roles[1].Id], (await GetWeekAsync()).Tasks.Single(t => t.Id == session.Id).RoleIds);
     }
 
     [Fact]
@@ -397,7 +397,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         await Client.DeleteAsync($"/api/roles/{role.Id}");
 
         var back = Assert.Single((await GetBoardAsync()).SomedayTasks);
-        Assert.Null(back.RoleId);
+        Assert.Empty(back.RoleIds);
         Assert.Empty((await GetWeekAsync()).Goals);
     }
 
@@ -415,7 +415,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var session = (await ScheduleAsync(goal.Id, Monday)).Task!;
 
         Assert.Equal(("Бег", role.Id, Morning, 2, "Парк, 5 км", 45),
-            (session.Title, session.RoleId!.Value, session.StartTime!.Value, session.Quadrant!.Value, session.Notes, session.DurationMinutes!.Value));
+            (session.Title, session.RoleIds.Single(), session.StartTime!.Value, session.Quadrant!.Value, session.Notes, session.DurationMinutes!.Value));
     }
 
     [Fact]
@@ -427,7 +427,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var own = (await ScheduleAsync(goal.Id, Monday.AddDays(1))).Task!;
         var done = (await ScheduleAsync(goal.Id, Monday.AddDays(2))).Task!;
         await PutAsync<TaskDto>($"/api/tasks/{own.Id}",
-            new UpdateTaskRequest(own.Title, "Стадион", own.RoleId, own.Quadrant, new TimeOnly(9, 0), own.DurationMinutes));
+            new UpdateTaskRequest(own.Title, "Стадион", own.RoleIds, own.Quadrant, new TimeOnly(9, 0), own.DurationMinutes));
         await SetDoneAsync(done.Id);
 
         var result = await UpdateGoalAsync(goal.Id, f => f with
@@ -475,9 +475,9 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var session = (await ScheduleAsync(goal.Id, Monday)).Task!;
 
         var updated = await PutAsync<TaskDto>($"/api/tasks/{session.Id}",
-            new UpdateTaskRequest("Бег", null, roles[1].Id, 4, null, null));
+            new UpdateTaskRequest("Бег", null, [roles[1].Id], 4, null, null));
 
-        Assert.Equal(roles[0].Id, updated.RoleId);
+        Assert.Equal([roles[0].Id], updated.RoleIds);
         Assert.Equal(2, updated.Quadrant);
     }
 
@@ -494,7 +494,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         Assert.Equal(roles[1].Id, result.Goal.RoleId);
         var inRole = (await GetWeekAsync()).Goals.Where(g => g.RoleId == roles[1].Id).OrderBy(g => g.SortOrder);
         Assert.Equal(["Уже есть", "Цель"], inRole.Select(g => g.Title));
-        Assert.Equal(roles[1].Id, (await GetWeekAsync()).Tasks.Single(t => t.Id == session.Id).RoleId);
+        Assert.Equal([roles[1].Id], (await GetWeekAsync()).Tasks.Single(t => t.Id == session.Id).RoleIds);
     }
 
     [Fact]

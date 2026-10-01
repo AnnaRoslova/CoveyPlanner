@@ -160,7 +160,7 @@ public class WeeklyGoal : ISortable
         RoleId = roleId;
         foreach (var session in _sessions)
         {
-            session.RoleId = roleId;
+            session.SetRoles([roleId]);
         }
     }
 
@@ -172,7 +172,7 @@ public class WeeklyGoal : ISortable
             throw new DomainException("Это дело уже связано с другой целью.");
         }
 
-        task.RoleId = RoleId;
+        task.SetRoles([RoleId]); // у занятия ровно одна роль — роль цели
         task.Quadrant = Quadrant;
         if (!_sessions.Contains(task))
         {

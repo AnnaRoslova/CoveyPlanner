@@ -42,6 +42,15 @@
             <button type="button" class="ellipsis-hit" aria-label="Развернуть" title="Развернуть"
                     @onclick="ToggleExpanded" @onclick:stopPropagation="true"></button>
         }</span>
+        @if (RoleDots is { Count: > 0 } dots)
+        {
+            <span class="role-dots" title="@string.Join(", ", dots.Select(r => r.Name))">
+                @foreach (var role in dots)
+                {
+                    <i style="--c: @role.Color"></i>
+                }
+            </span>
+        }
         @if (TimeLabel is not null || DurationLabel is not null || IsRock)
         {
             <div class="pills">
@@ -101,6 +110,10 @@
     public bool Clamp { get; set; }
 
     private void ToggleExpanded() => _expanded = !_expanded;
+
+    /// <summary>Роли дела, когда их несколько: маленькие точки их цветов после названия.</summary>
+    [Parameter]
+    public IReadOnlyList<RoleDto>? RoleDots { get; set; }
 
     /// <summary>Цвет роли (чекбокс). null — бледный по умолчанию.</summary>
     [Parameter]

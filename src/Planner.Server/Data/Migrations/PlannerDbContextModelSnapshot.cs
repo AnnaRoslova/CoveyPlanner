@@ -109,9 +109,6 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int?>("Quadrant")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("RoleId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
@@ -136,8 +133,6 @@ namespace Planner.Server.Data.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("GoalId");
-
-                    b.HasIndex("RoleId");
 
                     b.HasIndex("State", "PlannedDate");
 
@@ -203,10 +198,31 @@ namespace Planner.Server.Data.Migrations
                         .HasForeignKey("GoalId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Planner.Core.Entities.Role", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                    b.OwnsMany("Planner.Core.Entities.TaskRole", "Roles", b1 =>
+                        {
+                            b1.Property<int>("TaskId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("RoleId")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("TaskId", "RoleId");
+
+                            b1.HasIndex("RoleId");
+
+                            b1.ToTable("TaskRoles", (string)null);
+
+                            b1.HasOne("Planner.Core.Entities.Role", null)
+                                .WithMany()
+                                .HasForeignKey("RoleId")
+                                .OnDelete(DeleteBehavior.Cascade)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("TaskId");
+                        });
+
+                    b.Navigation("Roles");
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>

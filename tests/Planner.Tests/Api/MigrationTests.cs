@@ -183,6 +183,29 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal([2, 2, 2, 4], quadrants); // дело не цели не трогаем
     }
 
+    [Fact]
+    public async Task TaskRoles_RoleOfTaskMovesToTaskRoles_TasksKept()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("GoalTemplate");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Работа', '#8fb4e3', 0, NULL), (2, 'Дом', '#f3e3a6', 1, NULL);
+            INSERT INTO Tasks (Id, Title, RoleId, State, PlannedDate, SortOrder, CreatedAt) VALUES
+                (1, 'Отчёт', 1, 'Planned', '2026-09-29', 0, '2026-09-28 10:00:00'),
+                (2, 'Полить цветы', 2, 'Done', '2026-09-30', 0, '2026-09-28 10:00:00'),
+                (3, 'Без роли', NULL, 'Someday', NULL, 0, '2026-09-28 10:00:00');
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
+        Assert.Equal(3, tasks.Count); // пересборка таблицы Tasks ничего не удалила
+        Assert.Equal([1], tasks[0].RoleIds);
+        Assert.Equal([2], tasks[1].RoleIds);
+        Assert.Empty(tasks[2].RoleIds);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

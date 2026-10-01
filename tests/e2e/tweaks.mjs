@@ -68,10 +68,10 @@ await check('длинное название категории — две ст�
 await check('значок заметки — в дне и в ленте, подсказка с текстом', async () => {
   const week = await api('GET', 'week/' + new Date().toISOString().slice(0, 10));
   const t = week.tasks.find(x => x.title === 'Оплатить интернет');
-  await api('PUT', `tasks/${t.id}`, { title: t.title, notes: 'до 5 числа', roleId: null, quadrant: null, startTime: null });
+  await api('PUT', `tasks/${t.id}`, { title: t.title, notes: 'до 5 числа', roleIds: [], quadrant: null, startTime: null });
   const board = await api('GET', 'board');
   const s = board.somedayTasks.find(x => x.title === 'Камчатка');
-  await api('PUT', `tasks/${s.id}`, { title: s.title, notes: 'летом, вулканы', roleId: null, quadrant: null, startTime: null });
+  await api('PUT', `tasks/${s.id}`, { title: s.title, notes: 'летом, вулканы', roleIds: [], quadrant: null, startTime: null });
   await load();
   const dayNote = await page.evaluate(() => [...document.querySelectorAll('.day .item')].find(i => i.textContent.includes('Оплатить интернет'))?.querySelector('.note')?.title);
   assert(dayNote === 'до 5 числа', `в дне: ${dayNote}`);

@@ -95,7 +95,7 @@
 
         await OnClose.InvokeAsync();
         var task = EditedTask;
-        await State.UpdateTaskAsync(task.Id, _title, _notes, task.RoleId, task.Quadrant, null, task.DurationMinutes);
+        await State.UpdateTaskAsync(task.Id, _title, _notes, task.RoleIds, task.Quadrant, null, task.DurationMinutes);
         if (_categoryId != task.CategoryId)
         {
             await State.MoveTaskToFeedAsync(task.Id, _categoryId, 0);
