@@ -38,11 +38,20 @@ await check('«Записать мысль»: видна только иконк
   assert(await page.$eval('.cat-pick .cat-icon', e => e.textContent.trim()) === '💡', 'иконка не сменилась');
 });
 
-await check('категория без эмодзи — первая буква', async () => {
-  const c = await api('POST', 'categories', { name: 'чтение', emoji: null });
+await check('категория без эмодзи — короткое название, обрезанное по ширине: «Проекты» и «Покупки» различаются', async () => {
+  const a = await api('POST', 'categories', { name: 'Проекты', emoji: null });
+  const b = await api('POST', 'categories', { name: 'Покупки', emoji: null });
+  const c = await api('POST', 'categories', { name: 'Очень длинное название категории', emoji: null });
   await load();
-  await page.select('.quick select', String(c.id)); await sleep(200);
-  assert(await page.$eval('.cat-pick .cat-icon', e => e.textContent.trim()) === 'Ч', 'нет буквы');
+  const shown = async id => {
+    await page.select('.quick select', String(id)); await sleep(200);
+    return page.$eval('.cat-pick .cat-icon', e => ({ text: e.textContent.trim(), visible: e.clientWidth, full: e.scrollWidth }));
+  };
+  const pa = await shown(a.id), pb = await shown(b.id), pc = await shown(c.id);
+  assert(pa.text === 'Проекты' && pb.text === 'Покупки', `${pa.text} / ${pb.text}`);
+  assert(pa.full <= pa.visible + 1, '«Проекты» обрезано');
+  assert(pc.full > pc.visible && pc.visible <= 66, `длинное не обрезано: ${pc.visible}/${pc.full}`);
+  assert(await page.$eval('.quick input', e => e.clientWidth) >= 110, 'поле ввода зажато');
 });
 
 await check('длинное название категории — две строки, без многоточия в одну строку', async () => {

@@ -32,7 +32,7 @@
     font-weight: 700;
 }
 
-/* Выбор категории: видна только иконка, прозрачный select лежит поверх неё */
+/* Выбор категории: видна иконка (эмодзи или короткое название), прозрачный select лежит поверх неё */
 .cat-pick {
     position: relative;
     flex: none;
@@ -48,6 +48,16 @@
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
+}
+
+/* Категория без эмодзи — коротким названием, обрезанным по ширине */
+.cat-icon.text {
+    max-width: 64px;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .cat-pick:hover {
