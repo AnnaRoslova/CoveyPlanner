@@ -13,12 +13,13 @@ public sealed class ThemeState(IJSRuntime js)
 {
     public const string DefaultKey = "lotus";
 
-    // Пока три темы; остальные из docs/themes.html — после проверки этих
+    // Пока четыре темы; остальные из docs/themes.html — после проверки этих
     public static readonly IReadOnlyList<ThemeInfo> Themes =
     [
         new("lotus", "Лотос"),
         new("peony", "Пион"),
-        new("night", "Ночь"),
+        new("platinum", "Платина"),
+        new("obsidian", "Обсидиан"),
     ];
 
     private IJSObjectReference? _module;

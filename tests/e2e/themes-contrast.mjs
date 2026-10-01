@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
 const MOCKUP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/themes.html');
-const THEMES = ['lotus', 'peony', 'night'];
-const MUST_PASS_AA = ['night'];
+const THEMES = ['lotus', 'peony', 'platinum', 'obsidian'];
+const MUST_PASS_AA = ['obsidian'];
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({

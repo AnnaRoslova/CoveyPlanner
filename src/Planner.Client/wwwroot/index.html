@@ -15,7 +15,13 @@
     <script>
         // Тема оформления — до первой отрисовки, чтобы страница не мигала «Лотосом» (см. js/theme.js)
         try {
-            document.documentElement.dataset.theme = localStorage.getItem('planner.theme') || 'lotus';
+            let theme = localStorage.getItem('planner.theme') || 'lotus';
+            if (theme === 'night') {
+                // «Ночь» заменена «Обсидианом»
+                theme = 'obsidian';
+                localStorage.setItem('planner.theme', theme);
+            }
+            document.documentElement.dataset.theme = theme;
         } catch {
             document.documentElement.dataset.theme = 'lotus';
         }

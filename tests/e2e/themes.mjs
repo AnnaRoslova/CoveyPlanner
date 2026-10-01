@@ -53,20 +53,20 @@ await check('по умолчанию «Лотос»; шрифты тем не с
   assert(!(await fontFiles()).some(f => themeFonts.test(f)), 'шрифты тем скачаны');
 });
 
-await check('меню: карточки Лотос, Пион, Ночь — цвета и имя, без описаний; у выбранной галочка', async () => {
+await check('меню: карточки Лотос, Пион, Платина, Обсидиан — цвета и имя, без описаний; у выбранной галочка', async () => {
   await openMenu();
   const cards = await page.$$eval('.themes .theme', ts => ts.map(t => ({
     key: t.dataset.key, name: t.querySelector('.t-name').textContent.trim(), on: t.classList.contains('on'),
     check: !!t.querySelector('.check'), swatches: t.querySelectorAll('.swatches .sw').length,
     text: t.textContent.trim(),
   })));
-  assert(JSON.stringify(cards.map(c => c.name)) === '["Лотос","Пион","Ночь"]', `карточки: ${cards.map(c => c.name)}`);
+  assert(JSON.stringify(cards.map(c => c.name)) === '["Лотос","Пион","Платина","Обсидиан"]', `карточки: ${cards.map(c => c.name)}`);
   assert(cards.every(c => c.swatches >= 3 && c.swatches <= 4), 'не 3–4 цвета');
   assert(cards.every(c => c.text === c.name), 'есть описания');
   assert(cards.filter(c => c.on && c.check).map(c => c.key).join() === 'lotus', 'галочка не у выбранной');
   // Цвета превью — свои у каждой темы
   const papers = await page.$$eval('.themes .sw.paper', s => s.map(e => getComputedStyle(e).backgroundColor));
-  assert(new Set(papers).size === 3, `цвета превью одинаковые: ${papers}`);
+  assert(new Set(papers).size === 4, `цвета превью одинаковые: ${papers}`);
   await page.screenshot({ path: `${SHOTS}/theme-menu.png` });
 });
 
@@ -83,25 +83,33 @@ await check('клик мимо закрывает меню, тема не мен
   assert(await theme() === 'lotus', 'тема поменялась');
 });
 
-await check('«Ночь»: применяется сразу и переживает перезагрузку', async () => {
-  await choose('night');
-  assert(await theme() === 'night', `тема: ${await theme()}`);
+await check('«Обсидиан»: применяется сразу и переживает перезагрузку', async () => {
+  await choose('obsidian');
+  assert(await theme() === 'obsidian', `тема: ${await theme()}`);
   assert(!(await isOpen()), 'меню не закрылось');
   const panel = await page.$eval('.roles-panel', p => getComputedStyle(p).backgroundColor);
   assert(!/255, 255, 255/.test(panel) && !/srgb 1 1 1/.test(panel), `левая панель светлая: ${panel}`);
   await load();
-  assert(await theme() === 'night', `после перезагрузки: ${await theme()}`);
+  assert(await theme() === 'obsidian', `после перезагрузки: ${await theme()}`);
   await openMenu();
-  assert(await page.$eval('.themes .theme.on', t => t.dataset.key) === 'night', 'в меню отмечена не «Ночь»');
+  assert(await page.$eval('.themes .theme.on', t => t.dataset.key) === 'obsidian', 'в меню отмечена не «Обсидиан»');
   await page.keyboard.press('Escape'); await sleep(200);
 });
 
 await check('«Пион»: скачан только его шрифт (Cormorant Garamond)', async () => {
-  await load(); // свежий список загрузок
+  await page.evaluate(() => localStorage.setItem('planner.theme', 'lotus'));
+  await load(); // свежий список загрузок, страница в «Лотосе»
   await choose('peony');
   await page.evaluate(() => document.fonts.ready); await sleep(400);
   const files = (await fontFiles()).filter(f => themeFonts.test(f));
   assert(files.length > 0 && files.every(f => f.startsWith('cormorant')), `шрифты: ${files}`);
+});
+
+await check('кто выбрал «Ночь», тому включается «Обсидиан» (и запоминается)', async () => {
+  await page.evaluate(() => localStorage.setItem('planner.theme', 'night'));
+  await load();
+  assert(await theme() === 'obsidian', `тема: ${await theme()}`);
+  assert(await page.evaluate(() => localStorage.getItem('planner.theme')) === 'obsidian', 'выбор не сохранён');
 });
 
 await check('сохранённая тема, которой нет в списке, — возвращается «Лотос»', async () => {
