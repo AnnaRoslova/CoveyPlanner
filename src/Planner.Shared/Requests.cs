@@ -27,7 +27,11 @@ public sealed record SetDoneRequest(bool IsDone);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 
-public sealed record CreateCategoryRequest(string Name, string? Emoji);
+/// <summary>AtTop — новая категория встаёт в начало списка (кнопка «+ категория» сверху ленты), иначе — в конец.</summary>
+public sealed record CreateCategoryRequest(string Name, string? Emoji, bool AtTop = false);
+
+/// <summary>Раскрыть или свернуть все категории разом.</summary>
+public sealed record SetAllExpandedRequest(bool IsExpanded);
 
 /// <summary>null — поле не менять; Emoji = "" — убрать иконку.</summary>
 public sealed record UpdateCategoryRequest(string? Name, string? Emoji, bool? IsExpanded);

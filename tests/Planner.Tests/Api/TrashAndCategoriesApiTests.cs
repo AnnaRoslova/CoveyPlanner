@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Planner.Shared;
 
 namespace Planner.Tests.Api;
@@ -90,6 +91,32 @@ public class TrashAndCategoriesApiTests : ApiTestBase
 
         var cleared = await PutAsync<CategoryDto>($"/api/categories/{created.Id}", new UpdateCategoryRequest(null, "", null));
         Assert.Null(cleared.Emoji);
+    }
+
+    [Fact]
+    public async Task Category_CreatedAtTop_GoesFirst()
+    {
+        await CreateCategoryAsync("Идеи");
+        await CreateCategoryAsync("Дом");
+        await PostAsync<CategoryDto>("/api/categories", new CreateCategoryRequest("Срочное", null, AtTop: true));
+
+        var names = (await GetBoardAsync()).Categories.OrderBy(c => c.SortOrder).Select(c => c.Name);
+
+        Assert.Equal(["Срочное", "Идеи", "Дом"], names);
+    }
+
+    [Fact]
+    public async Task Categories_ExpandAndCollapseAll()
+    {
+        await CreateCategoryAsync("Идеи");
+        await CreateCategoryAsync("Дом");
+
+        var collapse = await Client.PutAsJsonAsync("/api/categories/expanded", new SetAllExpandedRequest(false));
+        Assert.Equal(HttpStatusCode.NoContent, collapse.StatusCode);
+        Assert.All((await GetBoardAsync()).Categories, c => Assert.False(c.IsExpanded));
+
+        await Client.PutAsJsonAsync("/api/categories/expanded", new SetAllExpandedRequest(true));
+        Assert.All((await GetBoardAsync()).Categories, c => Assert.True(c.IsExpanded));
     }
 
     [Fact]

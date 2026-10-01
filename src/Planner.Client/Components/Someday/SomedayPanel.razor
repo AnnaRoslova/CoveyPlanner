@@ -1,4 +1,6 @@
-@* Правая зона: лента «Когда-нибудь» — поиск, быстрый ввод, категории-аккордеон, корзина *@
+@* Правая зона: лента «Когда-нибудь» — поиск, быстрый ввод, категории-аккордеон, корзина.
+   Сверху над категориями — «+ категория» (новая встаёт в начало) и «свернуть / развернуть всё»;
+   «+ категория» есть и внизу (новая — в конец). *@
 @inherits StateComponent
 
 <aside class="panel someday">
@@ -24,6 +26,21 @@
     }
 
     <div class="panel-scroll">
+        @if (State.Categories.Count > 0 && !IsSearching)
+        {
+            <div class="feed-tools">
+                <button class="add" @onclick="() => _newCategoryAtTop = true">+ категория</button>
+                <button class="fold" @onclick="() => State.SetAllCategoriesExpandedAsync(!State.AnyCategoryExpanded)">
+                    @(State.AnyCategoryExpanded ? "свернуть всё" : "развернуть всё")
+                </button>
+            </div>
+        }
+
+        @if (_newCategoryAtTop)
+        {
+            <CategoryEditor AtTop="true" OnClose="() => _newCategoryAtTop = false" />
+        }
+
         @foreach (var category in State.OrderedCategories)
         {
             var tasks = State.SomedayIn(category.Id).ToList();
@@ -61,6 +78,7 @@
 @code {
     private string _search = "";
     private bool _creatingCategory;
+    private bool _newCategoryAtTop;
     private bool _trashOpen;
 
     private string Query => _search.Trim();

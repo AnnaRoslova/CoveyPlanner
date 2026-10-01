@@ -61,6 +61,10 @@
     [Parameter]
     public CategoryDto? Category { get; set; }
 
+    /// <summary>Новая категория — в начало списка (кнопка сверху ленты), иначе — в конец.</summary>
+    [Parameter]
+    public bool AtTop { get; set; }
+
     /// <summary>Закрыть редактор (после сохранения, удаления или отмены).</summary>
     [Parameter]
     public EventCallback OnClose { get; set; }
@@ -88,7 +92,7 @@
 
         if (Category is null)
         {
-            await State.CreateCategoryAsync(name, _emoji.Length == 0 ? null : _emoji);
+            await State.CreateCategoryAsync(name, _emoji.Length == 0 ? null : _emoji, AtTop);
         }
         else
         {

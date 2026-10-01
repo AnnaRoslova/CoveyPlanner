@@ -52,8 +52,11 @@ public class PlannerApi(HttpClient http)
 
     // Категории
 
-    public Task<CategoryDto> CreateCategoryAsync(string name, string? emoji) =>
-        SendAsync<CategoryDto>(HttpMethod.Post, "api/categories", new CreateCategoryRequest(name, emoji));
+    public Task<CategoryDto> CreateCategoryAsync(string name, string? emoji, bool atTop) =>
+        SendAsync<CategoryDto>(HttpMethod.Post, "api/categories", new CreateCategoryRequest(name, emoji, atTop));
+
+    public Task SetAllCategoriesExpandedAsync(bool isExpanded) =>
+        SendAsync(HttpMethod.Put, "api/categories/expanded", new SetAllExpandedRequest(isExpanded));
 
     public Task<CategoryDto> UpdateCategoryAsync(int id, UpdateCategoryRequest request) =>
         SendAsync<CategoryDto>(HttpMethod.Put, $"api/categories/{id}", request);

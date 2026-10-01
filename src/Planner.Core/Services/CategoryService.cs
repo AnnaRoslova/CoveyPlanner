@@ -12,12 +12,12 @@ public class CategoryService(
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
-    /// <summary>Новая категория — в конец списка.</summary>
-    public async Task<Category> CreateAsync(string name, string? emoji, CancellationToken ct = default)
+    /// <summary>Новая категория — в конец списка, а если <paramref name="atTop"/> — в начало.</summary>
+    public async Task<Category> CreateAsync(string name, string? emoji, bool atTop = false, CancellationToken ct = default)
     {
         var all = await categories.GetAllAsync(ct);
         var category = Category.Create(name, emoji);
-        category.SortOrder = all.Count == 0 ? 0 : all.Max(c => c.SortOrder) + 1;
+        category.SortOrder = all.Count == 0 ? 0 : atTop ? all.Min(c => c.SortOrder) - 1 : all.Max(c => c.SortOrder) + 1;
         categories.Add(category);
         await unitOfWork.SaveChangesAsync(ct);
         return category;
@@ -45,6 +45,17 @@ public class CategoryService(
 
         await unitOfWork.SaveChangesAsync(ct);
         return category;
+    }
+
+    /// <summary>Раскрыть или свернуть все категории.</summary>
+    public async Task SetAllExpandedAsync(bool isExpanded, CancellationToken ct = default)
+    {
+        foreach (var category in await categories.GetAllAsync(ct))
+        {
+            category.IsExpanded = isExpanded;
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     public async Task ReorderAsync(IReadOnlyList<int> orderedIds, CancellationToken ct = default)

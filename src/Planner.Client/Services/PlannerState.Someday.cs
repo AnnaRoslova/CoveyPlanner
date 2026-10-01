@@ -23,12 +23,27 @@ public partial class PlannerState
         await SaveAsync(() => api.UpdateCategoryAsync(categoryId, new UpdateCategoryRequest(null, null, expanded)));
     }
 
-    /// <summary>Новая категория (в конец). Ждём сервер — нужен настоящий Id.</summary>
-    public async Task<CategoryDto?> CreateCategoryAsync(string name, string? emoji)
+    /// <summary>Раскрыта ли хоть одна категория — тогда общая кнопка «свернуть всё».</summary>
+    public bool AnyCategoryExpanded => Categories.Any(c => c.IsExpanded);
+
+    /// <summary>Раскрыть или свернуть все категории разом.</summary>
+    public async Task SetAllCategoriesExpandedAsync(bool expanded)
+    {
+        for (var i = 0; i < Categories.Count; i++)
+        {
+            Categories[i] = Categories[i] with { IsExpanded = expanded };
+        }
+
+        NotifyChanged();
+        await SaveAsync(() => api.SetAllCategoriesExpandedAsync(expanded));
+    }
+
+    /// <summary>Новая категория — в конец или в начало (atTop). Ждём сервер — нужен настоящий Id.</summary>
+    public async Task<CategoryDto?> CreateCategoryAsync(string name, string? emoji, bool atTop = false)
     {
         try
         {
-            var created = await api.CreateCategoryAsync(name.Trim(), emoji);
+            var created = await api.CreateCategoryAsync(name.Trim(), emoji, atTop);
             Categories.Add(created);
             LastUsedCategoryId ??= created.Id;
             NotifyChanged();
