@@ -14,7 +14,7 @@ builder.Services.AddScoped<LayoutState>();
 builder.Services.AddScoped<PlannerState>();
 builder.Services.AddScoped<DragDropService>();
 builder.Services.AddScoped<TodayWatcher>();
-builder.Services.AddScoped<GoalEditorHost>();
+builder.Services.AddScoped<WindowHost>();
 builder.Services.AddScoped<ThemeState>();
 
 await builder.Build().RunAsync();

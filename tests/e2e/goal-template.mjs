@@ -123,10 +123,18 @@ await check('«как у цели» возвращает время цели; д
   assert((await dayItem(2, 'Бег')).time === '06:45', `время: ${(await dayItem(2, 'Бег')).time}`);
 });
 
-await check('длительность дела: 1,5 ч — пилюля «~1,5 ч», сумма дня складывается', async () => {
-  await page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[2].querySelectorAll('.item')].find(it => titleOf(it) === 'Записаться к стоматологу'); })()`);
+await check('длительность дела: «+» — 15, колесо — ещё +15, ввод 90 — пилюля «~1,5 ч», сумма дня складывается', async () => {
   await openSession(2, 'Записаться к стоматологу');
-  await clickIn('.editor .segments button', '1,5 ч');
+  const field = '.editor .field:has(.stepper [aria-label^="Длительность"]) ';
+  await page.click(field + '.step[title="Больше"]'); await sleep(150);
+  assert(await page.$eval(field + 'input', e => e.value) === '15', '«+» от пустого — не 15');
+  const box = await (await page.$(field + 'input')).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel({ deltaY: -100 }); await sleep(200);
+  assert(await page.$eval(field + 'input', e => e.value) === '30', 'колесо вверх — не 30');
+  await page.click(field + 'input', { clickCount: 3 });
+  await page.keyboard.type('90'); await page.keyboard.press('Tab'); await sleep(150);
+  assert(await page.$eval(field + '.hint', e => e.textContent) === '≈1,5 ч', 'нет подсказки «≈1,5 ч»');
   await save();
   assert((await dayItem(2, 'Записаться к стоматологу')).dur === '~1,5 ч', 'нет пилюли');
   assert(await dayLoad(2) === '~2 ч', `заголовок: ${await dayLoad(2)}`);

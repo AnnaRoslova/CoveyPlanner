@@ -103,7 +103,10 @@ await check('отметка занятия в дне → прогресс «1/3�
 
 await check('«раз в неделю» → 2 в окне цели; отметка второго занятия — цель выполнена «2/2»', async () => {
   await openGoal('Бег');
-  await page.evaluate(() => [...document.querySelectorAll('.times-per-week button')].find(b => b.textContent.trim() === '2').click());
+  // «− 3 +»: один шаг вниз
+  assert(await page.$eval('.times-per-week input', e => e.value) === '3', 'в поле не 3');
+  await page.click('.times-per-week .step[title="Меньше"]'); await sleep(150);
+  assert(await page.$eval('.times-per-week input', e => e.value) === '2', 'не стало 2');
   await save();
   assert(!(await page.$('.editor')), 'окно не закрылось');
   assert((await goal('Тело', 'Бег')).progress === '1/2', JSON.stringify(await goal('Тело', 'Бег')));

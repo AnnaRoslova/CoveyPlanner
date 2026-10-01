@@ -1,17 +1,11 @@
-@* Примерная длительность: «без» и готовые значения. Стили — css/editor.css. *@
+@* Примерная длительность: «− 30 мин +», шаг 15 минут; можно ввести число минут или крутить колесом.
+   Пусто — «без». От часа справа подсказка «≈1,5 ч». *@
 
-<div class="segments">
-    <button type="button" class="@(Value is null ? "on" : "")" @onclick="() => SetAsync(null)">без</button>
-    @foreach (var minutes in ShownOptions)
-    {
-        <button type="button" class="@(Value == minutes ? "on" : "")" @onclick="() => SetAsync(minutes)">
-            @RuDates.Duration(minutes)
-        </button>
-    }
-</div>
+<Stepper Value="Value" ValueChanged="ValueChanged" Min="1" Max="MaxMinutes" Step="15" AllowEmpty="true"
+         EmptyText="без" Unit="мин" Label="Длительность, минут" Hint="HintFor" />
 
 @code {
-    private static readonly int[] Options = [15, 30, 45, 60, 90, 120, 180];
+    private const int MaxMinutes = 24 * 60;
 
     [Parameter]
     public int? Value { get; set; }
@@ -19,9 +13,6 @@
     [Parameter]
     public EventCallback<int?> ValueChanged { get; set; }
 
-    // Значение не из списка (например, пришло из API) тоже видно и выбрано
-    private IEnumerable<int> ShownOptions =>
-        Value is { } v && !Options.Contains(v) ? Options.Append(v).Order() : Options;
-
-    private Task SetAsync(int? value) => ValueChanged.InvokeAsync(value);
+    private static string? HintFor(int? minutes) =>
+        minutes is >= 60 ? "≈" + RuDates.Duration(minutes.Value) : null;
 }

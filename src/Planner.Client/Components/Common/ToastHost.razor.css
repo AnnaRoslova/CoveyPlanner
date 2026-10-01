@@ -7,7 +7,7 @@
     padding: 9px 16px;
     border-radius: 14px;
     background: var(--glass-top);
-    box-shadow: 0 6px 24px rgba(60, 90, 90, 0.14);
+    box-shadow: var(--shadow-pop);
     color: var(--b-deep);
     font-size: 13px;
     font-weight: 700;

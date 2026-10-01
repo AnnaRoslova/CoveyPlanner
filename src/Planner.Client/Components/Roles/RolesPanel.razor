@@ -1,5 +1,6 @@
 @* Левая зона: «Затачивание пилы» и роли с целями на неделю *@
 @inherits StateComponent
+@inject WindowHost Windows
 
 <aside class="panel roles-panel">
     <div class="head">
@@ -28,17 +29,6 @@
             }
         </div>
 
-        @if (_creatingRole)
-        {
-            <RoleEditor OnClose="() => _creatingRole = false" />
-        }
-        else
-        {
-            <button class="add" @onclick="() => _creatingRole = true">+ роль</button>
-        }
+        <button class="add" @onclick="Windows.OpenNewRole">+ роль</button>
     </div>
 </aside>
-
-@code {
-    private bool _creatingRole;
-}

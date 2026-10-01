@@ -34,12 +34,8 @@
 
     <div class="field">
         <div class="label">Раз в неделю</div>
-        <div class="segments times-per-week">
-            @for (var n = 1; n <= MaxTimesPerWeek; n++)
-            {
-                var times = n;
-                <button type="button" class="@(_times == times ? "on" : "")" @onclick="() => _times = times">@times</button>
-            }
+        <div class="times-per-week">
+            <Stepper Value="_times" ValueChanged="times => _times = times ?? 1" Min="1" Max="MaxTimesPerWeek" Label="Раз в неделю" />
         </div>
     </div>
 

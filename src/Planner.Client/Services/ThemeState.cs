@@ -2,8 +2,8 @@ using Microsoft.JSInterop;
 
 namespace Planner.Client.Services;
 
-/// <summary>Тема оформления: ключ (атрибут data-theme, css/themes.css), название и характер для переключателя.</summary>
-public sealed record ThemeInfo(string Key, string Name, string Mood);
+/// <summary>Тема оформления: ключ (атрибут data-theme, css/themes.css) и короткое имя для переключателя.</summary>
+public sealed record ThemeInfo(string Key, string Name);
 
 /// <summary>
 /// Выбранная тема оформления. Сама тема — это CSS (css/themes.css) по атрибуту data-theme на &lt;html&gt;;
@@ -13,18 +13,12 @@ public sealed class ThemeState(IJSRuntime js)
 {
     public const string DefaultKey = "lotus";
 
+    // Пока три темы; остальные из docs/themes.html — после проверки этих
     public static readonly IReadOnlyList<ThemeInfo> Themes =
     [
-        new("lotus", "Лотос", "мята и «зефир», в точку"),
-        new("peony", "Пион", "кремовая бумага, эвкалипт"),
-        new("dune", "Дюна", "тауп, какао, песок"),
-        new("graphite", "Графит", "строгая сине-серая"),
-        new("powder", "Пудра", "беж и серо-розовый"),
-        new("sea", "Море", "бирюза, голубой, песок"),
-        new("lavender", "Лаванда", "сирень и шалфей"),
-        new("night", "Ночь", "тёмная"),
-        new("neon", "Неон", "чёрный, жёлтый, неон"),
-        new("android", "Андроид", "белый, голубой светодиод"),
+        new("lotus", "Лотос"),
+        new("peony", "Пион"),
+        new("night", "Ночь"),
     ];
 
     private IJSObjectReference? _module;
@@ -41,6 +35,12 @@ public sealed class ThemeState(IJSRuntime js)
             _module = await js.InvokeAsync<IJSObjectReference>("import", "./js/theme.js");
             var key = await _module.InvokeAsync<string>("getTheme");
             Current = Themes.Any(t => t.Key == key) ? key : DefaultKey;
+            if (Current != key)
+            {
+                // Сохранена тема, которой (пока) нет — возвращаем тему по умолчанию
+                await _module.InvokeVoidAsync("setTheme", Current);
+            }
+
             Changed?.Invoke();
         }
         catch (JSException)

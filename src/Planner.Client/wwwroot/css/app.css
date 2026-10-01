@@ -22,6 +22,16 @@
     /* Поверхности. Темы (css/themes.css) меняют эти значения и палитру выше */
     --page-bg: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%);
     --surface: #fff;     /* поля ввода, всплывающие окна, чипы */
+    --page-color: var(--sky2);   /* сплошной цвет под фоном страницы (и для проверки контраста) */
+    --on-accent: #fff;   /* текст на залитом акценте */
+    --overlay: rgba(62, 77, 82, 0.18);   /* затемнение вокруг окна */
+
+    /* Тени */
+    --shadow-panel: 0 4px 24px rgba(90, 80, 130, 0.05);
+    --shadow-pop: 0 8px 30px rgba(60, 90, 90, 0.16);     /* всплывающие: меню, корзина, подсказки */
+    --shadow-window: 0 16px 48px rgba(60, 90, 90, 0.2);  /* окна редактирования */
+    --shadow-drag: 0 10px 28px rgba(60, 90, 90, 0.22);   /* призрак перетаскивания */
+    --shadow-edge: 0 -1px 2px rgba(0, 0, 0, 0.1);
 
     /* Шрифты: основной, рукописный (дни недели), заголовки */
     --font: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -71,6 +81,7 @@ body {
     color: var(--text);
     /* Фон: у «Лотоса» лёгкий холодно-розовый край → мятная бирюза */
     background: var(--page-bg) fixed;
+    background-color: var(--page-color);
 }
 
 /* Это приложение, а не страница с текстом: при протягивании мышью ничего не выделяется.
@@ -127,7 +138,7 @@ textarea:focus-visible {
     min-height: 0;
     border-radius: var(--panel-radius);
     background: var(--t-panel);
-    box-shadow: 0 4px 24px rgba(90, 80, 130, 0.05);
+    box-shadow: var(--shadow-panel);
 }
 
 /* Прокручиваемая часть панели */
@@ -251,7 +262,7 @@ body.dragging * {
     margin: 0;
     border-radius: 8px;
     background: var(--surface) !important;
-    box-shadow: 0 10px 28px rgba(60, 90, 90, 0.22);
+    box-shadow: var(--shadow-drag);
     opacity: 0.85;
     pointer-events: none;
     will-change: transform;
@@ -303,7 +314,7 @@ mark.hit {
     color-scheme: light only;
     background: var(--a-soft);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-edge);
     display: none;
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
@@ -323,7 +334,7 @@ mark.hit {
     padding: 1rem;
     border-radius: 12px;
     background: var(--a-deep);
-    color: white;
+    color: var(--on-accent);
 }
 
 .blazor-error-boundary::after {

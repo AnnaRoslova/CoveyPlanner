@@ -1,8 +1,9 @@
-/* Прозрачная подложка: клик мимо окна закрывает его */
+/* Затемнение вокруг окна: клик по нему закрывает корзину */
 .backdrop {
     position: fixed;
     inset: 0;
     z-index: 20;
+    background: var(--overlay);
 }
 
 .trash-popup {
@@ -17,7 +18,7 @@
     padding: 10px 8px 8px;
     border-radius: 16px;
     background: var(--glass-top);
-    box-shadow: 0 8px 30px rgba(60, 90, 90, 0.16);
+    box-shadow: var(--shadow-pop);
 }
 
 .title {
@@ -82,5 +83,5 @@
 
 .trash-popup:focus {
     outline: none;
-    box-shadow: 0 8px 30px rgba(60, 90, 90, 0.16); /* фокус окна не подсвечиваем кольцом */
+    box-shadow: var(--shadow-pop); /* фокус окна не подсвечиваем кольцом */
 }

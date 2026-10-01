@@ -4,7 +4,7 @@
     position: fixed;
     inset: 0;
     z-index: 40;
-    background: rgba(62, 77, 82, 0.12);
+    background: var(--overlay);
 }
 
 .editor {
@@ -21,7 +21,7 @@
     padding: 18px 18px 14px;
     border-radius: var(--panel-radius);
     background: var(--paper);
-    box-shadow: 0 16px 48px rgba(60, 90, 90, 0.2);
+    box-shadow: var(--shadow-window);
     transform: translate(-50%, -50%);
 }
 
@@ -263,4 +263,71 @@
 .editor .from-goal .hint {
     color: var(--soft);
     font-size: 11.5px;
+}
+
+/* Заголовок окна без поля названия (роль) */
+.editor .window-title {
+    font-family: var(--font-title);
+    font-size: 17px;
+    font-weight: 600;
+}
+
+/* Число со стрелками «− 30 мин +» (Stepper) */
+.editor .stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    align-self: flex-start;
+    padding: 2px;
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.editor .stepper .step {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    color: var(--b-deep);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.editor .stepper .step:hover:not(:disabled) {
+    background: var(--b-soft);
+}
+
+.editor .stepper .step:disabled {
+    color: var(--faint);
+    cursor: default;
+}
+
+.editor .stepper input {
+    width: 3.2em;
+    padding: 3px 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.editor .stepper input::placeholder {
+    color: var(--soft);
+    font-weight: 600;
+}
+
+.editor .stepper .unit {
+    margin-left: -4px;
+    padding-right: 2px;
+    color: var(--soft);
+    font-size: 12.5px;
+}
+
+.editor .stepper .hint {
+    padding: 0 8px 0 4px;
+    color: var(--soft);
+    font-size: 12px;
 }

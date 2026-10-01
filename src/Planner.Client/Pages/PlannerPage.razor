@@ -3,7 +3,7 @@
 @inject LayoutState Layout
 @inject DragDropService DragDrop
 @inject TodayWatcher Today
-@inject GoalEditorHost EditorHost
+@inject WindowHost Windows
 @inject ThemeState Theme
 
 <PageTitle>CoveyPlanner</PageTitle>
@@ -20,9 +20,18 @@
         </SidePanel>
     </div>
 
-    @if (EditorHost.GoalId is { } goalId && State.FindGoal(goalId) is { } goal)
+    @* Окна левой панели — поверх всего экрана (см. WindowHost) *@
+    @if (Windows.GoalId is { } goalId && State.FindGoal(goalId) is { } goal)
     {
-        <GoalEditor @key="goalId" EditedGoal="goal" OnClose="EditorHost.Close" />
+        <GoalEditor @key="goalId" EditedGoal="goal" OnClose="Windows.Close" />
+    }
+    else if (Windows.RoleId is { } roleId && State.FindRole(roleId) is { } role)
+    {
+        <RoleEditor @key="roleId" Role="role" OnClose="Windows.Close" />
+    }
+    else if (Windows.IsNewRole)
+    {
+        <RoleEditor OnClose="Windows.Close" />
     }
 }
 else if (State.LoadError is not null)
@@ -41,7 +50,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         Layout.Changed += OnLayoutChanged;
-        EditorHost.Changed += OnLayoutChanged;
+        Windows.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
         await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync());
@@ -50,7 +59,7 @@ else
     public override void Dispose()
     {
         Layout.Changed -= OnLayoutChanged;
-        EditorHost.Changed -= OnLayoutChanged;
+        Windows.Changed -= OnLayoutChanged;
         base.Dispose();
     }
 

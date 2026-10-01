@@ -1,24 +1,11 @@
+/* Окно роли уже окна дела (общие стили окна — css/editor.css) */
 .role-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 6px;
-    padding: 8px;
-    border-radius: 14px;
-    background: var(--glass-mid);
+    width: min(360px, calc(100vw - 32px));
 }
 
 .saw-name {
     padding: 2px 4px;
     font-weight: 700;
-}
-
-.tools {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding-top: 4px;
-    border-top: 1px dashed var(--line);
 }
 
 .buttons {
@@ -29,17 +16,9 @@
     gap: 4px;
 }
 
-.delete:hover {
-    color: var(--a-deep);
-}
-
 .confirm {
     display: flex;
     flex-direction: column;
     gap: 6px;
     font-size: 12.5px;
-}
-
-.confirm .buttons {
-    justify-content: flex-end;
 }

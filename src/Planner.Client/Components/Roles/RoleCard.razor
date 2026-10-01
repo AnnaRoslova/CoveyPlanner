@@ -2,23 +2,17 @@
    Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
    Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»),
    крестик — удалить, «+ цель» — новая цель в конец.
-   «⋯» в заголовке — правка роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки. *@
+   «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки. *@
 @inject PlannerState State
-@inject GoalEditorHost EditorHost
+@inject WindowHost Windows
 
-@if (_editingRole)
-{
-    <RoleEditor Role="Role" OnClose="() => _editingRole = false" />
-}
-else
-{
 <div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
      data-drop="@DragDropService.RoleZone" data-key="@Role.Id" data-accept="@DragDropService.RoleAccepts"
      data-drag="@(Role.IsSharpenSaw ? null : DragDropService.RoleItem)" data-id="@Role.Id">
     <div class="role-h" data-list-head>
         <span class="dot"></span>
         <span class="name">@Role.Name</span>
-        <button type="button" class="menu" title="Изменить роль" @onclick="() => _editingRole = true">
+        <button type="button" class="menu" title="Изменить роль" @onclick="() => Windows.OpenRole(Role.Id)">
             <Icon Name="more" Size="14" />
         </button>
         @if (Goals.Count > 0)
@@ -67,10 +61,8 @@ else
         <button class="add" @onclick="() => _adding = true">+ цель</button>
     }
 </div>
-}
 
 @code {
-    private bool _editingRole;
     private bool _adding;
     private string _newTitle = "";
     private int? _askCategoryForGoalId;
@@ -97,7 +89,7 @@ else
     {
         if (goalId > 0)
         {
-            EditorHost.Open(goalId);
+            Windows.OpenGoal(goalId);
         }
     }
 

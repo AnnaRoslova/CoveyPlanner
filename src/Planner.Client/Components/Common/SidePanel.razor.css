@@ -64,7 +64,7 @@
     bottom: 14px;
     z-index: 31;
     border-radius: var(--panel-radius);
-    box-shadow: 0 12px 40px rgba(60, 90, 90, 0.18);
+    box-shadow: var(--shadow-pop);
 }
 
 .mode-overlay.left .host {

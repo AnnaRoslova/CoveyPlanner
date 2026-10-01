@@ -1,36 +1,34 @@
-@* Переключатель темы оформления в шапке недели: кнопка-палитра и всплывающий список тем
-   с мини-превью. Превью рисуется цветами своей темы (атрибут data-theme на картинке),
-   шрифты тем в превью не используются — они грузятся только для выбранной темы. *@
+@* Переключатель темы оформления — кнопка-палитра в правом верхнем углу шапки недели.
+   Открывает сетку карточек: мини-превью из четырёх цветов темы и короткое имя; выбранная — с галочкой
+   и обводкой. Закрывается выбором, кликом мимо и Esc. Цвета превью берутся из самой темы
+   (атрибут data-theme на картинке); шрифты тем в превью не используются. *@
 @implements IDisposable
 @inject ThemeState Theme
 
 <div class="picker">
-    <button type="button" class="palette-b" title="Тема оформления" aria-expanded="@(_open ? "true" : "false")"
-            @onclick="() => _open = !_open">
+    <button type="button" class="palette-b" title="Тема оформления" aria-haspopup="listbox"
+            aria-expanded="@(_open ? "true" : "false")" @onclick="Toggle">
         <Icon Name="palette" Size="16" />
     </button>
 
     @if (_open)
     {
-        <div class="picker-backdrop" @onclick="() => _open = false"></div>
-        <div class="themes" role="listbox" aria-label="Тема оформления" @onkeydown="OnKeyDown">
+        <div class="picker-backdrop" @onclick="Close"></div>
+        <div @ref="_list" class="themes" role="listbox" aria-label="Тема оформления" tabindex="-1" @onkeydown="OnKeyDown">
             @foreach (var theme in ThemeState.Themes)
             {
                 var key = theme.Key;
-                <button type="button" class="theme @(key == Theme.Current ? "on" : "")" role="option"
-                        aria-selected="@(key == Theme.Current ? "true" : "false")" data-key="@key"
-                        @onclick="() => ChooseAsync(key)">
-                    <span class="mini" data-theme="@key" aria-hidden="true">
-                        <span class="m-left"></span>
-                        <span class="m-week">
-                            <span class="m-day"><i class="m-row"></i><i class="m-row short"></i></span>
-                            <span class="m-day today"><i class="m-row"></i><i class="m-rock"></i></span>
-                            <span class="m-day"><i class="m-row short"></i></span>
-                        </span>
-                        <span class="m-right"></span>
+                var on = key == Theme.Current;
+                <button type="button" class="theme @(on ? "on" : "")" role="option" aria-selected="@(on ? "true" : "false")"
+                        data-key="@key" @onclick="() => ChooseAsync(key)">
+                    <span class="swatches" data-theme="@key" aria-hidden="true">
+                        <i class="sw page"></i><i class="sw paper"></i><i class="sw main"></i><i class="sw accent"></i>
                     </span>
                     <span class="t-name">@theme.Name</span>
-                    <span class="t-mood">@theme.Mood</span>
+                    @if (on)
+                    {
+                        <span class="check" aria-hidden="true"><Icon Name="check" Size="11" /></span>
+                    }
                 </button>
             }
         </div>
@@ -39,12 +37,32 @@
 
 @code {
     private bool _open;
+    private bool _focusList;
+    private ElementReference _list;
 
     protected override void OnInitialized() => Theme.Changed += OnThemeChanged;
 
     public void Dispose() => Theme.Changed -= OnThemeChanged;
 
     private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    private void Toggle()
+    {
+        _open = !_open;
+        _focusList = _open;
+    }
+
+    private void Close() => _open = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Фокус в список — чтобы Esc закрывал его сразу, без клика внутрь
+        if (_focusList)
+        {
+            _focusList = false;
+            await _list.FocusAsync();
+        }
+    }
 
     private async Task ChooseAsync(string key)
     {

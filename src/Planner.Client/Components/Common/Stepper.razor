@@ -1,0 +1,102 @@
+@* Число со стрелками: «− 30 мин +». Шаг кнопками и колесом мыши (над полем), число можно ввести.
+   Для необязательного значения (AllowEmpty) пустое поле — «не задано»: «−» от минимума очищает, «+» от пустого
+   ставит минимум. Стили — css/editor.css. *@
+
+<div class="stepper @(Value is null ? "empty" : "")" @onwheel="OnWheelAsync" @onwheel:preventDefault="true">
+    <button type="button" class="step" title="Меньше" aria-label="Меньше" disabled="@(!CanDecrease)" @onclick="() => StepAsync(-1)">−</button>
+    <input type="text" inputmode="numeric" aria-label="@Label" placeholder="@EmptyText"
+           value="@Value" @onchange="OnInputAsync" @onkeydown="OnKeyDownAsync" />
+    @if (Unit is not null && Value is not null)
+    {
+        <span class="unit">@Unit</span>
+    }
+    <button type="button" class="step" title="Больше" aria-label="Больше" disabled="@(!CanIncrease)" @onclick="() => StepAsync(1)">+</button>
+    @if (Hint?.Invoke(Value) is { } hint)
+    {
+        <span class="hint">@hint</span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> ValueChanged { get; set; }
+
+    [Parameter]
+    public int Min { get; set; } = 1;
+
+    [Parameter]
+    public int Max { get; set; } = int.MaxValue;
+
+    [Parameter]
+    public int Step { get; set; } = 1;
+
+    /// <summary>Можно оставить пустым (значение не задано).</summary>
+    [Parameter]
+    public bool AllowEmpty { get; set; }
+
+    /// <summary>Подпись в пустом поле («без»).</summary>
+    [Parameter]
+    public string? EmptyText { get; set; }
+
+    /// <summary>Единица после числа («мин»).</summary>
+    [Parameter]
+    public string? Unit { get; set; }
+
+    /// <summary>Подсказка справа по значению (например, «≈1,5 ч»); null — без подсказки.</summary>
+    [Parameter]
+    public Func<int?, string?>? Hint { get; set; }
+
+    /// <summary>Название поля для экранного диктора.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    private bool CanDecrease => Value is { } v && (v > Min || AllowEmpty);
+
+    private bool CanIncrease => Value is not { } v || v < Max;
+
+    private Task StepAsync(int direction)
+    {
+        int? next = (Value, direction) switch
+        {
+            (null, > 0) => Math.Max(Min, Step),
+            (null, _) => null,
+            ({ } v, < 0) when v - Step < Min => AllowEmpty ? null : Min,
+            // С «неровного» числа (введено руками) — к ближайшему шагу в нужную сторону
+            ({ } v, < 0) => v % Step == 0 ? v - Step : v - v % Step,
+            ({ } v, _) => Math.Min(Max, v - v % Step + Step),
+        };
+        return SetAsync(next);
+    }
+
+    private Task OnWheelAsync(WheelEventArgs e) =>
+        e.DeltaY == 0 ? Task.CompletedTask : StepAsync(e.DeltaY < 0 ? 1 : -1);
+
+    private Task OnKeyDownAsync(KeyboardEventArgs e) => e.Key switch
+    {
+        "ArrowUp" => StepAsync(1),
+        "ArrowDown" => StepAsync(-1),
+        _ => Task.CompletedTask,
+    };
+
+    private Task OnInputAsync(ChangeEventArgs e)
+    {
+        var text = (e.Value as string)?.Trim() ?? "";
+        if (text.Length == 0)
+        {
+            return SetAsync(AllowEmpty ? null : Value);
+        }
+
+        return int.TryParse(text, out var number)
+            ? SetAsync(Math.Clamp(number, Min, Max))
+            : SetAsync(Value); // не число — вернуть как было
+    }
+
+    private async Task SetAsync(int? value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+}

@@ -151,7 +151,7 @@ button.ck:hover {
 }
 
 .item.done .progress {
-    opacity: 0.6;
+    color: var(--soft);
 }
 
 /* Дни занятий цели — мелко под названием; дни с отмеченным занятием насыщеннее */
@@ -160,16 +160,12 @@ button.ck:hover {
     flex-wrap: wrap;
     gap: 3px;
     margin-top: 1px;
-    color: var(--b-deep);
+    color: var(--soft);
     font-size: 10.5px;
     font-weight: 700;
     text-decoration: none;
 }
 
-.goal-days .d {
-    opacity: 0.5;
-}
-
 .goal-days .d.done {
-    opacity: 1;
+    color: var(--b-deep);
 }

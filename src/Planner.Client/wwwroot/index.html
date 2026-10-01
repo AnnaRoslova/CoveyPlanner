@@ -42,7 +42,20 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
-    <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
+    <script>
+        // Страница уже шла из кеша прежней версии, а новая версия (после обновления) взяла управление —
+        // перезагружаемся один раз, чтобы страница, стили и скрипты были из одной версии
+        if (navigator.serviceWorker.controller) {
+            let reloading = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!reloading) {
+                    reloading = true;
+                    location.reload();
+                }
+            });
+        }
+        navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });
+    </script>
 </body>
 
 </html>

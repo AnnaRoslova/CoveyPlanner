@@ -1,9 +1,14 @@
-@* Создание или правка роли: название и цвет; для пользовательских ролей — ещё удаление.
+@* Окно роли: создание или правка — название и цвет; для пользовательских ролей — ещё удаление.
    Измерения «Затачивания пилы» нельзя переименовать и удалить — только сменить цвет.
-   Порядок ролей меняется перетаскиванием карточки роли. *@
+   Порядок ролей меняется перетаскиванием карточки роли. Esc или клик по затемнению — отмена.
+   Общие стили окна — css/editor.css. *@
 @inject PlannerState State
 
-<div class="role-editor">
+<div class="editor-backdrop" @onclick="OnClose"></div>
+
+<div class="editor role-editor" role="dialog" aria-label="@(Role is null ? "Новая роль" : "Роль")" @onkeydown="OnKeyDown">
+    <div class="window-title">@(Role is null ? "Новая роль" : "Роль")</div>
+
     @if (Role is { IsSharpenSaw: true })
     {
         <div class="saw-name">@Role.Name</div>
@@ -33,15 +38,11 @@
     }
     else
     {
-        @* Два ряда: «удалить» и «Отмена / Сохранить» — в узкой панели в один ряд не помещаются.
-           Порядок ролей меняется перетаскиванием карточки. *@
-        @if (Role is { IsSharpenSaw: false })
-        {
-            <div class="tools">
-                <button type="button" class="btn quiet delete" @onclick="() => _confirmDelete = true">удалить</button>
-            </div>
-        }
         <div class="buttons">
+            @if (Role is { IsSharpenSaw: false })
+            {
+                <button type="button" class="btn danger trash delete" @onclick="() => _confirmDelete = true">удалить</button>
+            }
             <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
             <button type="button" class="btn" disabled="@(Role is not { IsSharpenSaw: true } && string.IsNullOrWhiteSpace(_name))"
                     @onclick="() => SaveAsync(_name)">
@@ -91,6 +92,14 @@
 
             await OnClose.InvokeAsync();
             await State.UpdateRoleAsync(Role.Id, name, _color);
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
         }
     }
 
