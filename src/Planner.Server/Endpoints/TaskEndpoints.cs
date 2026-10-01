@@ -41,9 +41,9 @@ public static class TaskEndpoints
         trash.MapGet("/", async (ITaskRepository repository, CancellationToken ct) =>
             (await repository.GetTrashedAsync(ct)).Select(t => t.ToDto()).ToList());
 
-        // ?categoryId= — куда вернуть, если своей категории у дела нет (иначе 409 category-required)
-        trash.MapPost("/{id:int}/restore", async (int id, int? categoryId, TaskService service, CancellationToken ct) =>
-            (await service.RestoreAsync(id, categoryId, ct)).ToDto());
+        // Дело ленты без своей категории возвращается в «неразобранное»
+        trash.MapPost("/{id:int}/restore", async (int id, TaskService service, CancellationToken ct) =>
+            (await service.RestoreAsync(id, ct)).ToDto());
 
         trash.MapDelete("/{id:int}", async (int id, TaskService service, CancellationToken ct) =>
         {

@@ -66,17 +66,32 @@ public class CategoryService(
     }
 
     /// <summary>
-    /// Удалить категорию. Её дела из ленты уходят в корзину (CategoryId обнулится на уровне БД);
-    /// при восстановлении категорию спросят.
+    /// Удалить категорию. Её дела из ленты: <paramref name="keepTasks"/> — перекладываются наверх
+    /// «неразобранного» (в том же порядке), иначе уходят в корзину (из корзины вернутся в «неразобранное»).
+    /// У дел в плане ссылка на категорию обнулится на уровне БД.
     /// </summary>
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    public async Task DeleteAsync(int id, bool keepTasks, CancellationToken ct = default)
     {
         var category = await GetAsync(id, ct);
+        var categoryTasks = await tasks.GetSomedayInCategoryAsync(id, ct);
 
-        var now = clock.GetUtcNow().UtcDateTime;
-        foreach (var task in await tasks.GetSomedayInCategoryAsync(id, ct))
+        if (keepTasks)
         {
-            task.Trash(now);
+            var unsorted = await tasks.GetSomedayInCategoryAsync(null, ct);
+            foreach (var task in categoryTasks)
+            {
+                task.MoveToSomeday(null);
+            }
+
+            SortOrdering.Renumber(categoryTasks.Concat(unsorted));
+        }
+        else
+        {
+            var now = clock.GetUtcNow().UtcDateTime;
+            foreach (var task in categoryTasks)
+            {
+                task.Trash(now);
+            }
         }
 
         categories.Remove(category);

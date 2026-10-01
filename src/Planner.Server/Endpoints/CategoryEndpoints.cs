@@ -31,10 +31,10 @@ public static class CategoryEndpoints
             return Results.NoContent();
         });
 
-        // Дела категории уходят в корзину
-        categories.MapDelete("/{id:int}", async (int id, CategoryService service, CancellationToken ct) =>
+        // ?keepTasks=true — дела категории перекладываются в «неразобранное», иначе уходят в корзину
+        categories.MapDelete("/{id:int}", async (int id, bool? keepTasks, CategoryService service, CancellationToken ct) =>
         {
-            await service.DeleteAsync(id, ct);
+            await service.DeleteAsync(id, keepTasks ?? false, ct);
             return Results.NoContent();
         });
     }

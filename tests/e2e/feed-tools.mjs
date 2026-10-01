@@ -141,6 +141,88 @@ for (const [where, scope] of [['в дне', '.day'], ['в ленте', '.someday
   });
 }
 
+// ---------- «Неразобранное» ----------
+const unsortedTitles = () => page.$$eval('.unsorted .item .title', ts => ts.map(t => t.textContent.trim()));
+const boxOf = handle => handle.evaluate(e => e.getBoundingClientRect().toJSON());
+async function mouseDrag(from, x, y) {
+  const sx = from.x + from.width / 2, sy = from.y + from.height / 2;
+  await page.mouse.move(sx, sy); await page.mouse.down();
+  for (let i = 1; i <= 12; i++) { await page.mouse.move(sx + (x - sx) * i / 12, sy + (y - sy) * i / 12); await sleep(16); }
+  await sleep(150); await page.mouse.up(); await settle();
+}
+
+await check('«неразобранное» — сверху ленты, над категориями; перетаскивание в категорию и обратно', async () => {
+  await api('POST', 'tasks', { title: 'Неразобранная мысль', target: { kind: 'someday', categoryId: null, index: 0 } });
+  await load();
+  const u = await page.$eval('.unsorted', e => e.getBoundingClientRect().bottom);
+  const tools = await page.$eval('.someday .feed-tools', e => e.getBoundingClientRect().top);
+  assert(u <= tools, '«неразобранное» не над категориями');
+  assert(JSON.stringify(await unsortedTitles()) === '["Неразобранная мысль"]', `неразобранное: ${await unsortedTitles()}`);
+
+  const item = await page.evaluateHandle(() => [...document.querySelectorAll('.unsorted .item')].find(i => i.textContent.includes('Неразобранная мысль')));
+  const firstInIdeas = (await titlesIn('Идеи'))[0];
+  const target = await boxOf(await (await feedItem(firstInIdeas)).$('.tx'));
+  await mouseDrag(await boxOf(item), target.x + 40, target.y + 2);
+  assert((await unsortedTitles()).length === 0, 'осталось в неразобранном');
+  assert((await titlesIn('Идеи'))[0] === 'Неразобранная мысль', `Идеи: ${await titlesIn('Идеи')}`);
+
+  // Пустое «неразобранное» во время перетаскивания видно как место, куда бросить
+  const back = await boxOf(await feedItem('Неразобранная мысль'));
+  await page.mouse.move(back.x + back.width / 2, back.y + back.height / 2); await page.mouse.down();
+  await page.mouse.move(back.x + back.width / 2, back.y + back.height / 2 + 20, { steps: 4 }); await sleep(100);
+  const zone = await page.$eval('.unsorted', e => ({ display: getComputedStyle(e).display, ...e.getBoundingClientRect().toJSON() }));
+  assert(zone.display !== 'none' && zone.height >= 30, `место для сброса не видно: ${JSON.stringify(zone)}`);
+  for (let i = 1; i <= 10; i++) { await page.mouse.move(zone.x + zone.width / 2, back.y + (zone.y + zone.height / 2 - back.y) * i / 10); await sleep(16); }
+  await sleep(150); await page.mouse.up(); await settle();
+  assert(JSON.stringify(await unsortedTitles()) === '["Неразобранная мысль"]', `обратно не вернулось: ${await unsortedTitles()}`);
+  await load();
+  assert(JSON.stringify(await unsortedTitles()) === '["Неразобранная мысль"]', 'после перезагрузки');
+});
+
+await check('окно мысли: чип «неразобранное» переносит в «неразобранное»', async () => {
+  await (await (await feedItem('Научиться печь хлеб на закваске')).$('.tx')).click(); await settle();
+  await page.evaluate(sel => [...document.querySelectorAll(`${sel} .chip`)].find(c => c.textContent.trim() === 'неразобранное').click(), editor);
+  await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();
+  assert((await unsortedTitles())[0] === 'Научиться печь хлеб на закваске', `неразобранное: ${await unsortedTitles()}`);
+});
+
+async function deleteCategory(name) {
+  await page.evaluate(n => [...document.querySelectorAll('.someday .cat-h')].find(h => h.querySelector('.name').textContent.trim() === n)
+    .querySelector('.menu').click(), name);
+  await settle();
+  await page.evaluate(() => [...document.querySelectorAll('.cat-editor .btn')].find(b => b.textContent.trim() === 'удалить').click());
+  await settle();
+}
+
+await check('удалить непустую категорию: «Переложить в неразобранное» — дела наверху «неразобранного», корзина не растёт', async () => {
+  const books = await titlesIn('Книги и фильмы');
+  const trashBefore = (await api('GET', 'board')).trashCount;
+  await deleteCategory('Книги и фильмы');
+  assert(await page.$('.cat-editor .confirm'), 'не спросили');
+  await page.evaluate(() => [...document.querySelectorAll('.cat-editor .confirm .btn')].find(b => b.textContent.includes('Переложить')).click());
+  await settle();
+  assert(!(await categoryNames()).includes('Книги и фильмы'), 'категория осталась');
+  assert(JSON.stringify((await unsortedTitles()).slice(0, books.length)) === JSON.stringify(books), `неразобранное: ${await unsortedTitles()}`);
+  assert((await api('GET', 'board')).trashCount === trashBefore, 'дела ушли в корзину');
+});
+
+await check('удалить непустую категорию: «Отмена» — ничего не меняется', async () => {
+  await deleteCategory('Идеи');
+  await page.evaluate(() => [...document.querySelectorAll('.cat-editor .confirm .btn')].find(b => b.textContent.trim() === 'Отмена').click());
+  await settle();
+  assert(!(await page.$('.cat-editor .confirm')), 'вопрос не закрылся');
+  await page.keyboard.press('Escape'); await settle(); // закрыть редактор — заголовок категории снова виден
+  assert((await categoryNames()).includes('Идеи'), 'категория удалилась');
+});
+
+await check('пустая категория удаляется без вопроса', async () => {
+  await api('POST', 'categories', { name: 'Пустая', emoji: null });
+  await load();
+  await deleteCategory('Пустая');
+  assert(!(await page.$('.cat-editor .confirm')), 'спросили про пустую');
+  assert(!(await categoryNames()).includes('Пустая'), 'не удалилась');
+});
+
 await check('в консоли нет ошибок', async () => {
   assert(consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 600));
 });

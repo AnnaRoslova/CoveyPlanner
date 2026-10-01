@@ -1,4 +1,6 @@
 @* Создание или правка категории: эмодзи + название; при правке — ещё и удаление.
+   Пустая категория удаляется сразу; в непустой спрашиваем, что делать с делами:
+   переложить в «неразобранное» или удалить вместе с ними (дела — в корзину).
    Закрывается, как окно: кликом мимо и по Esc (= «Отмена»). *@
 @inject PlannerState State
 
@@ -21,17 +23,11 @@
     @if (_confirmDelete)
     {
         <div class="confirm">
-            @if (TaskCount > 0)
-            {
-                <span>Удалить «@Category!.Name»? @TaskCount @TasksWord(TaskCount) уйдут в корзину.</span>
-            }
-            else
-            {
-                <span>Удалить «@Category!.Name»?</span>
-            }
-            <div class="buttons">
-                <button type="button" class="btn quiet" @onclick="() => _confirmDelete = false">Нет</button>
-                <button type="button" class="btn danger" @onclick="DeleteAsync">Удалить</button>
+            <span>Удалить «@Category!.Name»? В ней @TaskCount @TasksWord(TaskCount).</span>
+            <div class="choices">
+                <button type="button" class="btn" @onclick="() => DeleteAsync(keepTasks: true)">Переложить в неразобранное</button>
+                <button type="button" class="btn danger" @onclick="() => DeleteAsync(keepTasks: false)">Удалить вместе с делами</button>
+                <button type="button" class="btn quiet" @onclick="() => _confirmDelete = false">Отмена</button>
             </div>
         </div>
     }
@@ -40,7 +36,7 @@
         <div class="buttons">
             @if (Category is not null)
             {
-                <button type="button" class="btn quiet delete" @onclick="() => _confirmDelete = true">удалить</button>
+                <button type="button" class="btn quiet delete" @onclick="AskDeleteAsync">удалить</button>
             }
             <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
             <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="() => SaveAsync(_name)">
@@ -102,10 +98,24 @@
         await OnClose.InvokeAsync();
     }
 
-    private async Task DeleteAsync()
+    /// <summary>Пустую категорию — удалить сразу, в непустой — спросить, что делать с делами.</summary>
+    private async Task AskDeleteAsync()
+    {
+        if (TaskCount == 0)
+        {
+            await DeleteAsync(keepTasks: false);
+        }
+        else
+        {
+            _confirmDelete = true;
+        }
+    }
+
+    /// <summary>keepTasks — дела в «неразобранное», иначе — в корзину.</summary>
+    private async Task DeleteAsync(bool keepTasks)
     {
         await OnClose.InvokeAsync();
-        await State.DeleteCategoryAsync(Category!.Id);
+        await State.DeleteCategoryAsync(Category!.Id, keepTasks);
     }
 
     private static string TasksWord(int count) => (count % 100, count % 10) switch

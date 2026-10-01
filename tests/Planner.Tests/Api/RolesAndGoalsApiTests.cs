@@ -249,14 +249,13 @@ public class RolesAndGoalsApiTests : ApiTestBase
     }
 
     /// <summary>Цель из дела ленты (дело — занятие без дня), потом удалили категорию этого дела.</summary>
-    private async Task<(GoalResultDto Goal, CategoryDto Other)> WeekOnlyTaskWithoutCategoryAsync(int roleId)
+    private async Task<GoalResultDto> WeekOnlyTaskWithoutCategoryAsync(int roleId)
     {
         var doomed = await CreateCategoryAsync("Удаляемая");
-        var other = await CreateCategoryAsync("Другая");
         var task = await CreateTaskAsync("Дело", new SomedayTargetDto(doomed.Id, 0));
         var goal = await PostAsync<GoalResultDto>("/api/goals/from-task", new GoalFromTaskRequest(task.Id, roleId, Monday, 0));
         await Client.DeleteAsync($"/api/categories/{doomed.Id}");
-        return (goal, other);
+        return goal;
     }
 
     [Fact]
@@ -294,32 +293,40 @@ public class RolesAndGoalsApiTests : ApiTestBase
     }
 
     [Fact]
-    public async Task DeleteGoal_TaskWithoutCategory_AsksCategory()
+    public async Task DeleteGoal_TaskWithoutCategory_GoesToUnsorted()
     {
         var role = await FirstUserRoleAsync();
-        var (goal, other) = await WeekOnlyTaskWithoutCategoryAsync(role.Id);
+        var goal = await WeekOnlyTaskWithoutCategoryAsync(role.Id);
 
-        await AssertCategoryRequiredAsync(await Client.DeleteAsync($"/api/goals/{goal.Goal.Id}"));
-        Assert.Single((await GetWeekAsync()).Goals); // ничего не удалилось
+        var ok = await Client.DeleteAsync($"/api/goals/{goal.Goal.Id}");
 
-        var ok = await Client.DeleteAsync($"/api/goals/{goal.Goal.Id}?categoryId={other.Id}");
         Assert.Equal(HttpStatusCode.NoContent, ok.StatusCode);
-        var back = Assert.Single((await GetBoardAsync()).SomedayTasks);
-        Assert.Equal(other.Id, back.CategoryId);
+        Assert.Empty((await GetWeekAsync()).Goals);
+        Assert.Null(Assert.Single((await GetBoardAsync()).SomedayTasks).CategoryId);
     }
 
     [Fact]
-    public async Task DeleteRole_TaskWithoutCategory_AsksCategory()
+    public async Task DeleteRole_TaskWithoutCategory_GoesToUnsorted()
     {
         var role = await PostAsync<RoleDto>("/api/roles", new CreateRoleRequest("Временная", null));
-        var (_, other) = await WeekOnlyTaskWithoutCategoryAsync(role.Id);
+        await WeekOnlyTaskWithoutCategoryAsync(role.Id);
 
-        await AssertCategoryRequiredAsync(await Client.DeleteAsync($"/api/roles/{role.Id}"));
-        Assert.Contains((await GetBoardAsync()).Roles, r => r.Id == role.Id);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync($"/api/roles/{role.Id}")).StatusCode);
 
-        await Client.DeleteAsync($"/api/roles/{role.Id}?categoryId={other.Id}");
         Assert.DoesNotContain((await GetBoardAsync()).Roles, r => r.Id == role.Id);
-        Assert.Equal(other.Id, Assert.Single((await GetBoardAsync()).SomedayTasks).CategoryId);
+        Assert.Null(Assert.Single((await GetBoardAsync()).SomedayTasks).CategoryId);
+    }
+
+    [Fact]
+    public async Task Goal_ToUnsorted()
+    {
+        var goal = await CreateGoalAsync((await FirstUserRoleAsync()).Id, "Выучить песню");
+
+        var task = await PostAsync<TaskDto>($"/api/goals/{goal.Id}/to-someday", new GoalToSomedayRequest(null, 0));
+
+        Assert.Null(task.CategoryId);
+        Assert.Equal(TaskStateDto.Someday, task.State);
+        Assert.Empty((await GetWeekAsync()).Goals);
     }
 
     [Fact]

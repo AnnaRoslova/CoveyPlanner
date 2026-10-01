@@ -24,7 +24,6 @@ public static class BoardEndpoints
         var allCategories = await categories.GetAllAsync(ct);
         var someday = await tasks.GetSomedayAsync(ct);
         var trashed = await tasks.GetTrashedAsync(ct);
-        var lastUsedCategoryId = await tasks.GetLastUsedCategoryIdAsync(ct);
 
         return new BoardDto(
             RolePalette.Colors,
@@ -32,8 +31,7 @@ public static class BoardEndpoints
             allRoles.Select(r => r.ToDto()).ToList(),
             allCategories.Select(c => c.ToDto()).ToList(),
             someday.Select(t => t.ToDto()).ToList(),
-            trashed.Count,
-            lastUsedCategoryId);
+            trashed.Count);
     }
 
     /// <summary>Неделя по любой её дате (приводится к понедельнику).</summary>

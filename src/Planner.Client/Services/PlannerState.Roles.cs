@@ -115,18 +115,18 @@ public partial class PlannerState
 
     /// <summary>
     /// Удалить цель. Выполненные занятия остаются в неделе, невыполненные уходят в корзину,
-    /// занятие без дня возвращается в ленту; когда у него нет своей категории — <see cref="ReturnResult.NeedsCategory"/>.
-    /// Ждём ответа сервера, а не удаляем сразу: иначе при 409 пришлось бы возвращать цель на место.
+    /// занятие без дня возвращается в ленту (без своей категории — в «неразобранное»).
+    /// Ждём ответа сервера, а не удаляем сразу: занятия разошлись по разным местам — их берём с сервера.
     /// </summary>
-    public async Task<ReturnResult> DeleteGoalAsync(int goalId, int? categoryId = null)
+    public async Task<bool> DeleteGoalAsync(int goalId)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal)
         {
-            return ReturnResult.Failed;
+            return false;
         }
 
-        var result = await RunReturningToFeedAsync(() => api.DeleteGoalAsync(goalId, categoryId));
-        if (result == ReturnResult.Done)
+        var ok = await TryServerAsync(() => api.DeleteGoalAsync(goalId));
+        if (ok)
         {
             Goals.RemoveAll(g => g.Id == goalId);
 
@@ -139,7 +139,7 @@ public partial class PlannerState
             NotifyChanged();
         }
 
-        return result;
+        return ok;
     }
 
     // ---------- Роли ----------
@@ -320,9 +320,9 @@ public partial class PlannerState
     /// Цель → лента: цель исчезает, её занятие без дня (или новое дело с её названием) встаёт в категорию.
     /// Остальные занятия — как при удалении цели.
     /// </summary>
-    public async Task MoveGoalToFeedAsync(int goalId, int categoryId, int index)
+    public async Task MoveGoalToFeedAsync(int goalId, int? categoryId, int index)
     {
-        if (goalId < 0 || FindGoal(goalId) is not { } goal || FindCategory(categoryId) is null)
+        if (goalId < 0 || FindGoal(goalId) is not { } goal || !IsFeedPlace(categoryId))
         {
             return;
         }
@@ -349,19 +349,18 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Удалить роль вместе с её целями (на всех неделях); занятия — как при удалении цели.
-    /// Занятия без дня возвращаются в ленту — без своей категории нужна одна категория на все
-    /// (<see cref="ReturnResult.NeedsCategory"/>).
+    /// Удалить роль вместе с её целями (на всех неделях); занятия — как при удалении цели,
+    /// занятия без дня возвращаются в ленту (без своей категории — в «неразобранное»).
     /// </summary>
-    public async Task<ReturnResult> DeleteRoleAsync(int roleId, int? categoryId = null)
+    public async Task<bool> DeleteRoleAsync(int roleId)
     {
-        var result = await RunReturningToFeedAsync(() => api.DeleteRoleAsync(roleId, categoryId));
-        if (result == ReturnResult.Done)
+        var ok = await TryServerAsync(() => api.DeleteRoleAsync(roleId));
+        if (ok)
         {
             await ReloadAsync(); // цели, роли у дел и лента поменялись — берём всё с сервера
         }
 
-        return result;
+        return ok;
     }
 
     // ---------- Помощники ----------
@@ -415,22 +414,18 @@ public partial class PlannerState
         }
     }
 
-    /// <summary>Вызов, который может ответить «нужна категория» (409).</summary>
-    private async Task<ReturnResult> RunReturningToFeedAsync(Func<Task> serverCall)
+    /// <summary>Вызов сервера, после которого меняем экран (а не до): ошибка — сообщение внизу и false.</summary>
+    private async Task<bool> TryServerAsync(Func<Task> serverCall)
     {
         try
         {
             await serverCall();
-            return ReturnResult.Done;
-        }
-        catch (ApiException ex) when (ex.IsCategoryRequired)
-        {
-            return ReturnResult.NeedsCategory;
+            return true;
         }
         catch (ApiException ex)
         {
             notifier.Error(ex.Message);
-            return ReturnResult.Failed;
+            return false;
         }
     }
 

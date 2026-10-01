@@ -21,18 +21,13 @@
 
     <ColorSwatches @bind-Selected="_color" />
 
-    @if (_askCategory)
-    {
-        <CategoryChoice Prompt="Дела целей без дня вернуть в категорию:" ButtonText="Удалить роль"
-                        OnChoose="categoryId => DeleteAsync(categoryId)" OnCancel="() => _askCategory = false" />
-    }
-    else if (_confirmDelete)
+    @if (_confirmDelete)
     {
         <div class="confirm">
             <span>Удалить роль «@Role!.Name»? Её цели на всех неделях удалятся, у дел роль снимется.</span>
             <div class="buttons">
                 <button type="button" class="btn quiet" @onclick="() => _confirmDelete = false">Нет</button>
-                <button type="button" class="btn danger" @onclick="() => DeleteAsync(null)">Удалить</button>
+                <button type="button" class="btn danger" @onclick="DeleteAsync">Удалить</button>
             </div>
         </div>
     }
@@ -56,7 +51,6 @@
     private string _name = "";
     private string _color = "";
     private bool _confirmDelete;
-    private bool _askCategory;
 
     /// <summary>Правка роли; null — создание новой.</summary>
     [Parameter]
@@ -103,18 +97,11 @@
         }
     }
 
-    private async Task DeleteAsync(int? categoryId)
+    private async Task DeleteAsync()
     {
-        switch (await State.DeleteRoleAsync(Role!.Id, categoryId))
+        if (await State.DeleteRoleAsync(Role!.Id))
         {
-            case ReturnResult.Done:
-                await OnClose.InvokeAsync();
-                break;
-
-            case ReturnResult.NeedsCategory:
-                _confirmDelete = false;
-                _askCategory = true;
-                break;
+            await OnClose.InvokeAsync();
         }
     }
 }

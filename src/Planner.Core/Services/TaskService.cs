@@ -116,10 +116,9 @@ public class TaskService(
 
     /// <summary>
     /// Вернуть из корзины на прежнее место. Занятие цели без дня снова висит на цели.
-    /// Если дело возвращается в ленту (было в ленте или его цель удалили), а его категории нет —
-    /// нужна <paramref name="fallbackCategoryId"/>.
+    /// Дело ленты возвращается в свою категорию, а если её нет — в «неразобранное».
     /// </summary>
-    public async Task<TaskItem> RestoreAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
+    public async Task<TaskItem> RestoreAsync(int id, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
         task.Restore();
@@ -130,7 +129,7 @@ public class TaskService(
         }
         else if (task.GoalId is null)
         {
-            await placer.ReturnToSomedayAsync(task, fallbackCategoryId, ct);
+            await placer.ReturnToSomedayAsync(task, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

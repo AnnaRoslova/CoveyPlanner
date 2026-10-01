@@ -84,8 +84,7 @@ public sealed record BoardDto(
     IReadOnlyList<RoleDto> Roles,
     IReadOnlyList<CategoryDto> Categories,
     IReadOnlyList<TaskDto> SomedayTasks,
-    int TrashCount,
-    int? LastUsedCategoryId);
+    int TrashCount);
 
 /// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели).</summary>
 public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
@@ -95,10 +94,3 @@ public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskD
 
 /// <summary>Результат операции с целью: сама цель и занятие, которое поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
-
-/// <summary>Коды ошибок в ProblemDetails (поле "code"), на которые клиент реагирует особо.</summary>
-public static class ProblemCodes
-{
-    /// <summary>Дело возвращается в ленту без категории — спросить категорию и повторить запрос с ?categoryId=.</summary>
-    public const string CategoryRequired = "category-required";
-}

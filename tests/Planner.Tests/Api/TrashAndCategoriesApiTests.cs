@@ -46,33 +46,47 @@ public class TrashAndCategoriesApiTests : ApiTestBase
     }
 
     [Fact]
-    public async Task DeleteCategory_TasksGoToTrash_RestoreAsksCategory()
+    public async Task DeleteCategory_WithTasks_TasksGoToTrash_RestoreToUnsorted()
     {
         var ideas = await CreateCategoryAsync("Идеи");
-        var other = await CreateCategoryAsync("Другое");
         var task = await CreateTaskAsync("Идея", new SomedayTargetDto(ideas.Id, 0));
 
-        var response = await Client.DeleteAsync($"/api/categories/{ideas.Id}");
+        var response = await Client.DeleteAsync($"/api/categories/{ideas.Id}?keepTasks=false");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Single(await GetAsync<List<TaskDto>>("/api/trash"), t => t.Id == task.Id);
 
-        // Своей категории больше нет — сервер просит выбрать
-        await AssertCategoryRequiredAsync(await Client.PostAsync($"/api/trash/{task.Id}/restore", null));
-
-        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore?categoryId={other.Id}", new { });
+        // Своей категории больше нет — дело возвращается в «неразобранное»
+        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore", new { });
         Assert.Equal(TaskStateDto.Someday, restored.State);
-        Assert.Equal(other.Id, restored.CategoryId);
+        Assert.Null(restored.CategoryId);
     }
 
     [Fact]
-    public async Task Restore_OwnCategoryWins_OverFallback()
+    public async Task DeleteCategory_KeepTasks_MovesThemToTopOfUnsorted_InOrder()
     {
         var ideas = await CreateCategoryAsync("Идеи");
-        var other = await CreateCategoryAsync("Другое");
+        await CreateTaskAsync("Старая мысль", new SomedayTargetDto(null, 0));
+        await CreateTaskAsync("Б", new SomedayTargetDto(ideas.Id, 0));
+        await CreateTaskAsync("А", new SomedayTargetDto(ideas.Id, 0));
+
+        var response = await Client.DeleteAsync($"/api/categories/{ideas.Id}?keepTasks=true");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var board = await GetBoardAsync();
+        Assert.Empty(board.Categories);
+        Assert.Equal(0, board.TrashCount);
+        Assert.Equal(["А", "Б", "Старая мысль"],
+            board.SomedayTasks.Where(t => t.CategoryId is null).OrderBy(t => t.SortOrder).Select(t => t.Title));
+    }
+
+    [Fact]
+    public async Task Restore_ReturnsToOwnCategory()
+    {
+        var ideas = await CreateCategoryAsync("Идеи");
         var task = await CreateTaskAsync("Идея", new SomedayTargetDto(ideas.Id, 0));
         await Client.DeleteAsync($"/api/tasks/{task.Id}");
 
-        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore?categoryId={other.Id}", new { });
+        var restored = await PostAsync<TaskDto>($"/api/trash/{task.Id}/restore", new { });
 
         Assert.Equal(ideas.Id, restored.CategoryId);
     }

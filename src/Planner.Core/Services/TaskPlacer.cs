@@ -16,9 +16,9 @@ public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories)
         switch (target)
         {
             case SomedayTarget someday:
-                if (await categories.FindAsync(someday.CategoryId, ct) is null)
+                if (someday.CategoryId is { } categoryId && await categories.FindAsync(categoryId, ct) is null)
                 {
-                    throw new NotFoundException("Категория", someday.CategoryId);
+                    throw new NotFoundException("Категория", categoryId);
                 }
 
                 var categorySiblings = await tasks.GetSomedayInCategoryAsync(someday.CategoryId, ct);
@@ -54,22 +54,12 @@ public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories)
     }
 
     /// <summary>
-    /// Вернуть дело в ленту наверх его категории. Если своей категории нет —
-    /// в <paramref name="fallbackCategoryId"/>; если и её не передали — <see cref="CategoryRequiredException"/>.
+    /// Вернуть дело в ленту наверх его категории, а если своей категории нет (создано в плане,
+    /// категорию удалили) — наверх «неразобранного».
     /// </summary>
-    public async Task ReturnToSomedayAsync(TaskItem task, int? fallbackCategoryId, CancellationToken ct = default)
+    public async Task ReturnToSomedayAsync(TaskItem task, CancellationToken ct = default)
     {
         var category = task.CategoryId is { } own ? await categories.FindAsync(own, ct) : null;
-        if (category is null && fallbackCategoryId is { } fallback)
-        {
-            category = await categories.FindAsync(fallback, ct) ?? throw new NotFoundException("Категория", fallback);
-        }
-
-        if (category is null)
-        {
-            throw new CategoryRequiredException();
-        }
-
-        await PlaceAsync(task, new SomedayTarget(category.Id, 0), ct);
+        await PlaceAsync(task, new SomedayTarget(category?.Id, 0), ct);
     }
 }

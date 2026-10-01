@@ -6,7 +6,7 @@ using Planner.Shared;
 namespace Planner.Server.Endpoints;
 
 /// <summary>
-/// Ошибки домена → 400, «не найдено» → 404, «нужна категория» → 409 с code = category-required.
+/// Ошибки домена → 400, «не найдено» → 404.
 /// Формат — ProblemDetails, в title текст для пользователя.
 /// </summary>
 public class DomainExceptionHandler(IProblemDetailsService problemDetails) : IExceptionHandler
@@ -16,7 +16,6 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetails) : IEx
         var status = exception switch
         {
             NotFoundException => StatusCodes.Status404NotFound,
-            CategoryRequiredException => StatusCodes.Status409Conflict,
             DomainException => StatusCodes.Status400BadRequest,
             _ => (int?)null,
         };
@@ -27,11 +26,6 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetails) : IEx
         }
 
         var details = new ProblemDetails { Status = status, Title = exception.Message };
-        if (exception is CategoryRequiredException)
-        {
-            details.Extensions["code"] = ProblemCodes.CategoryRequired;
-        }
-
         context.Response.StatusCode = status.Value;
         return await problemDetails.TryWriteAsync(new ProblemDetailsContext
         {

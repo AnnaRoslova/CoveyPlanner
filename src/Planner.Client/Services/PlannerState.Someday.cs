@@ -8,6 +8,9 @@ public partial class PlannerState
     public CategoryDto? FindCategory(int? categoryId) =>
         categoryId is { } id ? Categories.FirstOrDefault(c => c.Id == id) : null;
 
+    /// <summary>Есть ли такое место в ленте: категория или «неразобранное» (null).</summary>
+    private bool IsFeedPlace(int? categoryId) => categoryId is null || FindCategory(categoryId) is not null;
+
     // ---------- Категории ----------
 
     /// <summary>Раскрыть/свернуть категорию; состояние запоминается на сервере.</summary>
@@ -45,7 +48,6 @@ public partial class PlannerState
         {
             var created = await api.CreateCategoryAsync(name.Trim(), emoji, atTop);
             Categories.Add(created);
-            LastUsedCategoryId ??= created.Id;
             NotifyChanged();
             return created;
         }
@@ -68,35 +70,45 @@ public partial class PlannerState
         await SaveAsync(() => api.UpdateCategoryAsync(categoryId, new UpdateCategoryRequest(name.Trim(), emoji, null)));
     }
 
-    /// <summary>Удалить категорию; её дела уходят в корзину.</summary>
-    public async Task DeleteCategoryAsync(int categoryId)
+    /// <summary>
+    /// Удалить категорию. Её дела: keepTasks — наверх «неразобранного» в том же порядке (так же делает сервер),
+    /// иначе — в корзину.
+    /// </summary>
+    public async Task DeleteCategoryAsync(int categoryId, bool keepTasks)
     {
         var tasks = SomedayIn(categoryId).ToList();
         Categories.RemoveAll(c => c.Id == categoryId);
-        foreach (var task in tasks)
+        if (keepTasks)
         {
-            _tasks.Remove(task.Id);
+            var order = 0;
+            foreach (var task in tasks.Concat(SomedayIn(null).ToList()))
+            {
+                _tasks[task.Id] = task with { CategoryId = null, SortOrder = order++ };
+            }
+        }
+        else
+        {
+            foreach (var task in tasks)
+            {
+                _tasks.Remove(task.Id);
+            }
+
+            TrashCount += tasks.Count;
         }
 
-        TrashCount += tasks.Count;
-        if (LastUsedCategoryId == categoryId)
-        {
-            LastUsedCategoryId = OrderedCategories.FirstOrDefault()?.Id;
-        }
-
-        await SaveAsync(() => api.DeleteCategoryAsync(categoryId));
+        await SaveAsync(() => api.DeleteCategoryAsync(categoryId, keepTasks));
     }
 
     // ---------- Дела ленты ----------
 
     /// <summary>
-    /// Новое дело в ленте: «Записать мысль» кладёт наверх категории, «+ добавить» внизу категории — в конец.
-    /// false — не сохранилось.
+    /// Новое дело в ленте: «Записать мысль» кладёт наверх категории (null — «неразобранного»),
+    /// «+ добавить» внизу категории — в конец. false — не сохранилось.
     /// </summary>
-    public async Task<bool> CreateSomedayTaskAsync(string title, int categoryId, bool atEnd = false)
+    public async Task<bool> CreateSomedayTaskAsync(string title, int? categoryId, bool atEnd = false)
     {
         title = title.Trim();
-        if (title.Length == 0 || FindCategory(categoryId) is null)
+        if (title.Length == 0 || !IsFeedPlace(categoryId))
         {
             return false;
         }
@@ -105,7 +117,6 @@ public partial class PlannerState
             SortOrder: atEnd ? int.MaxValue : int.MinValue, TrashedAt: null);
         _tasks[temp.Id] = temp;
         RenumberSomeday(categoryId);
-        LastUsedCategoryId = categoryId;
 
         // Позиция на сервере: 0 — наверх, «очень большая» — в конец (сервер прижимает к краю)
         var index = atEnd ? int.MaxValue : 0;
@@ -126,14 +137,14 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Перетаскивание в ленту: из другой категории, внутри категории или из плана.
+    /// Перетаскивание в ленту: из другой категории (или «неразобранного», categoryId = null), внутри категории или из плана.
     /// Дело из плана возвращается без даты, времени и отметки «выполнено», связь с целью разрывается.
     /// index — позиция среди дел категории без самого перетаскиваемого (так же считает сервер).
     /// </summary>
-    public async Task MoveTaskToFeedAsync(int taskId, int categoryId, int index)
+    public async Task MoveTaskToFeedAsync(int taskId, int? categoryId, int index)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task || task.State == TaskStateDto.Trashed
-            || FindCategory(categoryId) is null)
+            || !IsFeedPlace(categoryId))
         {
             return;
         }
@@ -163,9 +174,10 @@ public partial class PlannerState
     /// Поставить дело в категорию ленты локально (без сервера): без даты, времени и отметки,
     /// на позицию index среди дел категории без него самого.
     /// </summary>
-    private void PlaceInFeedLocally(TaskDto task, int categoryId, int index)
+    private void PlaceInFeedLocally(TaskDto task, int? categoryId, int index)
     {
-        var oldCategoryId = task.State == TaskStateDto.Someday ? task.CategoryId : null;
+        var wasInFeed = task.State == TaskStateDto.Someday;
+        var oldCategoryId = task.CategoryId;
         var siblings = SomedayIn(categoryId).Where(t => t.Id != task.Id).ToList();
         siblings.Insert(Math.Clamp(index, 0, siblings.Count), task with
         {
@@ -179,9 +191,9 @@ public partial class PlannerState
             _tasks[siblings[i].Id] = siblings[i] with { SortOrder = i };
         }
 
-        if (oldCategoryId is { } old && old != categoryId)
+        if (wasInFeed && oldCategoryId != categoryId)
         {
-            RenumberSomeday(old);
+            RenumberSomeday(oldCategoryId);
         }
     }
 
@@ -214,24 +226,20 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Вернуть из корзины на прежнее место. Если своей категории у дела нет —
-    /// <see cref="ReturnResult.NeedsCategory"/>: спросить категорию и вызвать ещё раз с categoryId.
+    /// Вернуть из корзины на прежнее место. Дело ленты без своей категории вернётся в «неразобранное».
+    /// false — не получилось (сообщение уже показано).
     /// </summary>
-    public async Task<ReturnResult> RestoreFromTrashAsync(int taskId, int? categoryId = null)
+    public async Task<bool> RestoreFromTrashAsync(int taskId)
     {
         TaskDto restored;
         try
         {
-            restored = await api.RestoreTaskAsync(taskId, categoryId);
-        }
-        catch (ApiException ex) when (ex.IsCategoryRequired)
-        {
-            return ReturnResult.NeedsCategory;
+            restored = await api.RestoreTaskAsync(taskId);
         }
         catch (ApiException ex)
         {
             notifier.Error(ex.Message);
-            return ReturnResult.Failed;
+            return false;
         }
 
         TrashCount = Math.Max(0, TrashCount - 1);
@@ -241,9 +249,9 @@ public partial class PlannerState
         }
         else if (restored.State == TaskStateDto.Someday)
         {
-            // Сервер поставил дело наверх категории — повторяем порядок локально
+            // Сервер поставил дело наверх категории (или «неразобранного») — повторяем порядок локально
             _tasks[restored.Id] = restored with { SortOrder = int.MinValue };
-            RenumberSomeday(restored.CategoryId!.Value);
+            RenumberSomeday(restored.CategoryId);
         }
         else if (restored.PlannedDate is { } date)
         {
@@ -258,7 +266,7 @@ public partial class PlannerState
         }
 
         NotifyChanged();
-        return ReturnResult.Done;
+        return true;
     }
 
     public async Task DeleteForeverAsync(int taskId)
@@ -296,7 +304,7 @@ public partial class PlannerState
     }
 
     /// <summary>Проставить SortOrder = 0..n-1 делам категории в текущем порядке.</summary>
-    private void RenumberSomeday(int categoryId)
+    private void RenumberSomeday(int? categoryId)
     {
         var order = 0;
         foreach (var task in SomedayIn(categoryId).ToList())

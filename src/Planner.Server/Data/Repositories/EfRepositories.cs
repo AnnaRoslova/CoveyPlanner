@@ -15,7 +15,7 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .OrderBy(t => t.CategoryId).ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
-    public Task<List<TaskItem>> GetSomedayInCategoryAsync(int categoryId, CancellationToken ct = default) =>
+    public Task<List<TaskItem>> GetSomedayInCategoryAsync(int? categoryId, CancellationToken ct = default) =>
         db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId == categoryId)
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
@@ -39,12 +39,6 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
         db.Tasks.Where(t => t.State == TaskState.Trashed)
             .OrderByDescending(t => t.TrashedAt)
             .ToListAsync(ct);
-
-    public Task<int?> GetLastUsedCategoryIdAsync(CancellationToken ct = default) =>
-        db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId != null)
-            .OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
-            .Select(t => t.CategoryId)
-            .FirstOrDefaultAsync(ct);
 
     public void Add(TaskItem task) => db.Tasks.Add(task);
 

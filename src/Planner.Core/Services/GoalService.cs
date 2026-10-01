@@ -112,10 +112,10 @@ public class GoalService(
     }
 
     /// <summary>Удалить цель; что станет с занятиями — см. <see cref="GoalRemover"/>.</summary>
-    public async Task DeleteAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
+    public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        await remover.RemoveAsync(goal, fallbackCategoryId, ct);
+        await remover.RemoveAsync(goal, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -189,10 +189,10 @@ public class GoalService(
     }
 
     /// <summary>
-    /// Цель → обратно в ленту: цель исчезает, в категорию встаёт её занятие без дня (или новое дело).
+    /// Цель → обратно в ленту: цель исчезает, в категорию (null — в «неразобранное») встаёт её занятие без дня (или новое дело).
     /// Остальные занятия — как при удалении цели.
     /// </summary>
-    public async Task<TaskItem> MoveToSomedayAsync(int id, int categoryId, int index, CancellationToken ct = default)
+    public async Task<TaskItem> MoveToSomedayAsync(int id, int? categoryId, int index, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
         var task = goal.UnscheduledSession;
@@ -208,7 +208,7 @@ public class GoalService(
         }
 
         await placer.PlaceAsync(task, new SomedayTarget(categoryId, index), ct);
-        await remover.RemoveAsync(goal, fallbackCategoryId: categoryId, ct);
+        await remover.RemoveAsync(goal, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
         return task;

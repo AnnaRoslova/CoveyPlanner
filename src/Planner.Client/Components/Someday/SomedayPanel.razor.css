@@ -22,6 +22,11 @@
     color: var(--b-deep);
 }
 
+/* Относительно прокручиваемой части лежит пустое «неразобранное» во время перетаскивания (app.css) */
+.panel-scroll {
+    position: relative;
+}
+
 .nothing {
     padding: 10px 6px;
     color: var(--faint);
@@ -65,7 +70,7 @@
 
 /* Подсказка, пока нет ни одной категории */
 .first-category {
-    margin: 0 14px 8px;
+    margin: 0 0 8px;
     padding: 12px;
     border: 1.5px dashed color-mix(in srgb, var(--b) 80%, var(--surface));
     border-radius: 14px;

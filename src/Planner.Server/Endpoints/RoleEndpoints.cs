@@ -25,10 +25,10 @@ public static class RoleEndpoints
             return Results.NoContent();
         });
 
-        // ?categoryId= — куда вернуть дела целей без дня, у которых нет своей категории
-        roles.MapDelete("/{id:int}", async (int id, int? categoryId, RoleService service, CancellationToken ct) =>
+        // Дела целей без дня возвращаются в ленту (без своей категории — в «неразобранное»)
+        roles.MapDelete("/{id:int}", async (int id, RoleService service, CancellationToken ct) =>
         {
-            await service.DeleteAsync(id, categoryId, ct);
+            await service.DeleteAsync(id, ct);
             return Results.NoContent();
         });
     }

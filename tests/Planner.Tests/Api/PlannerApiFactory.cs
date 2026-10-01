@@ -104,11 +104,4 @@ public abstract class ApiTestBase : IAsyncLifetime
 
     protected Task<CategoryDto> CreateCategoryAsync(string name = "Идеи", string? emoji = null) =>
         PostAsync<CategoryDto>("/api/categories", new CreateCategoryRequest(name, emoji));
-
-    /// <summary>Ответ 409 с кодом category-required.</summary>
-    protected static async Task AssertCategoryRequiredAsync(HttpResponseMessage response)
-    {
-        Assert.Equal(System.Net.HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Contains(ProblemCodes.CategoryRequired, await response.Content.ReadAsStringAsync());
-    }
 }

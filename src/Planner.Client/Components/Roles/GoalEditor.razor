@@ -73,14 +73,8 @@
         <textarea rows="3" maxlength="10000" placeholder="Что делать на занятии, ссылки…" @bind="_notes" @bind:event="oninput"></textarea>
     </div>
 
-    @if (_askCategory)
-    {
-        <CategoryChoice Prompt="Мысль цели вернуть в категорию:" ButtonText="Удалить цель"
-                        OnChoose="categoryId => DeleteAsync(categoryId)" OnCancel="() => _askCategory = false" />
-    }
-
     <div class="buttons">
-        <button type="button" class="btn danger trash" @onclick="() => DeleteAsync(null)">удалить цель</button>
+        <button type="button" class="btn danger trash" @onclick="DeleteAsync">удалить цель</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
         <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
@@ -97,7 +91,6 @@
     private int? _quadrant;
     private int? _duration;
     private string? _notes;
-    private bool _askCategory;
 
     [Parameter, EditorRequired]
     public WeeklyGoalDto EditedGoal { get; set; } = null!;
@@ -156,15 +149,10 @@
             new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration));
     }
 
-    /// <summary>Удалить; если мысли цели некуда вернуться в ленту — спросить категорию.</summary>
-    private async Task DeleteAsync(int? categoryId)
+    /// <summary>Удалить; мысль цели без дня вернётся в ленту (без своей категории — в «неразобранное»).</summary>
+    private async Task DeleteAsync()
     {
-        var result = await State.DeleteGoalAsync(EditedGoal.Id, categoryId);
-        if (result == ReturnResult.NeedsCategory)
-        {
-            _askCategory = true;
-        }
-        else if (result == ReturnResult.Done)
+        if (await State.DeleteGoalAsync(EditedGoal.Id))
         {
             await OnClose.InvokeAsync();
         }

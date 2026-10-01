@@ -1,5 +1,5 @@
 @* Корзина: всплывающее окно над иконкой. Вернуть / удалить навсегда / очистить всё.
-   Если у дела нет своей категории, при возврате под ним появляется выбор категории. *@
+   Дело ленты, у которого больше нет своей категории, возвращается в «неразобранное». *@
 @inject PlannerState State
 
 <div class="backdrop" @onclick="OnClose"></div>
@@ -28,19 +28,13 @@
                         <div>@task.Title</div>
                         <div class="from">@FromLabel(task)</div>
                     </div>
-                    <button type="button" class="row-action positive" title="Вернуть" @onclick="() => RestoreAsync(task, null)">
+                    <button type="button" class="row-action positive" title="Вернуть" @onclick="() => RestoreAsync(task)">
                         <Icon Name="restore" Size="13" />
                     </button>
                     <button type="button" class="row-action" title="Удалить навсегда" @onclick="() => DeleteAsync(task)">
                         <Icon Name="x" Size="12" />
                     </button>
                 </div>
-
-                @if (task.Id == _askCategoryFor)
-                {
-                    <CategoryChoice OnChoose="categoryId => RestoreAsync(task, categoryId)"
-                                    OnCancel="() => _askCategoryFor = null" />
-                }
             }
         </div>
 
@@ -62,7 +56,6 @@
 @code {
     private ElementReference _popup;
     private List<TaskDto>? _items;
-    private int? _askCategoryFor;
     private bool _confirmEmpty;
 
     [Parameter]
@@ -97,21 +90,14 @@
 
         return State.FindCategory(task.CategoryId) is { } category
             ? $"из ленты: {(category.Emoji is null ? "" : category.Emoji + " ")}{category.Name}"
-            : "категории больше нет";
+            : "из ленты: неразобранное";
     }
 
-    private async Task RestoreAsync(TaskDto task, int? categoryId)
+    private async Task RestoreAsync(TaskDto task)
     {
-        switch (await State.RestoreFromTrashAsync(task.Id, categoryId))
+        if (await State.RestoreFromTrashAsync(task.Id))
         {
-            case ReturnResult.Done:
-                _items?.Remove(task);
-                _askCategoryFor = null;
-                break;
-
-            case ReturnResult.NeedsCategory:
-                _askCategoryFor = task.Id;
-                break;
+            _items?.Remove(task);
         }
     }
 

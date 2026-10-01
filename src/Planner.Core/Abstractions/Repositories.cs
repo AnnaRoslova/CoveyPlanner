@@ -12,7 +12,8 @@ public interface ITaskRepository
     /// <summary>Все дела ленты (для экрана «Когда-нибудь»).</summary>
     Task<List<TaskItem>> GetSomedayAsync(CancellationToken ct = default);
 
-    Task<List<TaskItem>> GetSomedayInCategoryAsync(int categoryId, CancellationToken ct = default);
+    /// <summary>Дела ленты в категории; categoryId = null — «неразобранное».</summary>
+    Task<List<TaskItem>> GetSomedayInCategoryAsync(int? categoryId, CancellationToken ct = default);
 
     /// <summary>Дела дня без времени (включая выполненные) — те, у которых ручной порядок.</summary>
     Task<List<TaskItem>> GetUntimedOnDayAsync(DateOnly date, CancellationToken ct = default);
@@ -22,9 +23,6 @@ public interface ITaskRepository
 
     /// <summary>Корзина, свежие сверху.</summary>
     Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default);
-
-    /// <summary>Категория самого свежего дела ленты — «последняя использованная» для быстрого ввода.</summary>
-    Task<int?> GetLastUsedCategoryIdAsync(CancellationToken ct = default);
 
     void Add(TaskItem task);
 

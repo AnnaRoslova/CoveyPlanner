@@ -34,9 +34,6 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public int TrashCount { get; private set; }
 
-    /// <summary>Категория по умолчанию для поля «Записать мысль».</summary>
-    public int? LastUsedCategoryId { get; private set; }
-
     public DateOnly WeekStart { get; private set; } = RuDates.WeekStartOf(RuDates.Today);
 
     public IEnumerable<DateOnly> WeekDays => Enumerable.Range(0, 7).Select(WeekStart.AddDays);
@@ -51,10 +48,11 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public IEnumerable<CategoryDto> OrderedCategories => Categories.OrderBy(c => c.SortOrder).ThenBy(c => c.Id);
 
-    public IEnumerable<TaskDto> SomedayIn(int categoryId) =>
+    /// <summary>Дела ленты в категории; categoryId = null — «неразобранное».</summary>
+    public IEnumerable<TaskDto> SomedayIn(int? categoryId) =>
         _tasks.Values.Where(t => t.State == TaskStateDto.Someday && t.CategoryId == categoryId).OrderBy(t => t.SortOrder);
 
-    public int SomedayCount(int categoryId) =>
+    public int SomedayCount(int? categoryId) =>
         _tasks.Values.Count(t => t.State == TaskStateDto.Someday && t.CategoryId == categoryId);
 
     /// <summary>Дела дня: сначала со временем (по времени), затем без времени (ручной порядок).</summary>
@@ -149,7 +147,6 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         Roles = [.. board.Roles];
         Categories = [.. board.Categories];
         TrashCount = board.TrashCount;
-        LastUsedCategoryId = board.LastUsedCategoryId;
 
         foreach (var id in _tasks.Values.Where(t => t.State == TaskStateDto.Someday).Select(t => t.Id).ToList())
         {

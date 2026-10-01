@@ -26,11 +26,11 @@ public static class GoalEndpoints
         goals.MapPost("/{id:int}/toggle", async (int id, ToggleGoalRequest request, GoalService service, CancellationToken ct) =>
             (await service.ToggleDoneAsync(id, request.Today, ct)).ToResultDto());
 
-        // Выполненные занятия остаются в неделе, невыполненные — в корзину, занятие без дня — в ленту.
-        // ?categoryId= — куда вернуть занятие без дня, если у него нет своей категории
-        goals.MapDelete("/{id:int}", async (int id, int? categoryId, GoalService service, CancellationToken ct) =>
+        // Выполненные занятия остаются в неделе, невыполненные — в корзину, занятие без дня — в ленту
+        // (в свою категорию или в «неразобранное»)
+        goals.MapDelete("/{id:int}", async (int id, GoalService service, CancellationToken ct) =>
         {
-            await service.DeleteAsync(id, categoryId, ct);
+            await service.DeleteAsync(id, ct);
             return Results.NoContent();
         });
 

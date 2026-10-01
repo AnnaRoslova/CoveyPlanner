@@ -28,11 +28,11 @@ await load();
 
 await check('«Записать мысль»: видна только иконка категории, поле не зажато; в списке — названия', async () => {
   const icon = await page.$eval('.cat-pick .cat-icon', e => e.textContent.trim());
-  assert(icon === '✈️', `иконка «${icon}»`); // последняя использованная в демо — «Когда-нибудь поехать»
+  assert(icon === 'неразобранное', `иконка «${icon}»`); // по умолчанию мысль идёт в «неразобранное»
   const inputWidth = await page.$eval('.quick input', e => e.clientWidth);
-  assert(inputWidth >= 140, `ширина поля ${inputWidth}`);
+  assert(inputWidth >= 110, `ширина поля ${inputWidth}`); // рядом подпись «неразобр…» (до 64px)
   const options = await page.$$eval('.quick select option', os => os.map(o => o.textContent));
-  assert(options.includes('💡 Идеи'), `в списке ${options}`);
+  assert(options[0] === 'неразобранное' && options.includes('💡 Идеи'), `в списке ${options}`);
   const ideas = await page.$$eval('.quick select option', os => os.find(o => o.textContent.includes('Идеи')).value);
   await page.select('.quick select', ideas); await sleep(200);
   assert(await page.$eval('.cat-pick .cat-icon', e => e.textContent.trim()) === '💡', 'иконка не сменилась');

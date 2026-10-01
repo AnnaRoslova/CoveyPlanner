@@ -261,6 +261,24 @@ body.dragging * {
     -webkit-user-select: none;
 }
 
+/* Пустое «неразобранное» (UnsortedSection) во время перетаскивания — место, куда бросить.
+   Ложится поверх строки «+ категория / свернуть всё», не сдвигая ленту: иначе всё под указателем уехало бы */
+body.dragging .unsorted.empty {
+    position: absolute;
+    top: 2px;
+    right: 14px;
+    left: 14px;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    border: 1.5px dashed color-mix(in srgb, var(--b) 70%, var(--surface));
+    border-radius: 12px;
+    background: var(--surface);
+}
+
 /* Исходная запись, пока её тащат */
 .drag-source {
     opacity: 0.35;

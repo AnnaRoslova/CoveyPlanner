@@ -1,0 +1,53 @@
+@* «Неразобранное»: мысли без категории — сверху ленты, над категориями, без папки, с тихой подписью.
+   Сюда по умолчанию пишет «Записать мысль»; отсюда и сюда дела перетаскиваются, как между категориями.
+   Пустой список не виден; во время перетаскивания он показывается как место, куда можно бросить. *@
+@inject PlannerState State
+@inject WindowHost Windows
+
+<div class="unsorted @(Tasks.Count == 0 ? "empty" : "")"
+     data-drop="@DragDropService.SomedayZone" data-key="@DragDropService.UnsortedKey" data-accept="@DropAccept">
+    <div class="u-h">
+        <span>неразобранное</span>
+        @if (Tasks.Count > 0)
+        {
+            <span class="cnt">@Tasks.Count</span>
+        }
+    </div>
+    @foreach (var task in Tasks)
+    {
+        <ItemRow Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search" Clamp="true"
+                 IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
+                 OnClick="() => OpenTask(task.Id)">
+            <Actions>
+                @if (task.Id > 0)
+                {
+                    <button type="button" class="row-action" title="В корзину" @onclick="() => State.TrashTaskAsync(task.Id)">
+                        <Icon Name="x" Size="12" />
+                    </button>
+                }
+            </Actions>
+        </ItemRow>
+    }
+</div>
+
+@code {
+    /// <summary>Дела без категории — уже отфильтрованные поиском.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TaskDto> Tasks { get; set; } = [];
+
+    [Parameter]
+    public string? Search { get; set; }
+
+    private bool IsSearching => !string.IsNullOrEmpty(Search);
+
+    /// <summary>Во время поиска список отфильтрован — позиция при перетаскивании была бы неверной.</summary>
+    private string DropAccept => IsSearching ? "" : DragDropService.SomedayAccepts;
+
+    private void OpenTask(int taskId)
+    {
+        if (taskId > 0)
+        {
+            Windows.OpenSomedayTask(taskId);
+        }
+    }
+}

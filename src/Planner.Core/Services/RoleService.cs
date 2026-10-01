@@ -50,17 +50,17 @@ public class RoleService(
 
     /// <summary>
     /// Удалить роль вместе с её целями; занятия целей — как при удалении цели (<see cref="GoalRemover"/>).
-    /// Занятия без дня возвращаются в ленту (без своей категории — в <paramref name="fallbackCategoryId"/>,
-    /// одну на все); у остальных дел роль просто сбрасывается (на уровне БД).
+    /// Занятия без дня возвращаются в ленту (без своей категории — в «неразобранное»);
+    /// у остальных дел роль просто сбрасывается (на уровне БД).
     /// </summary>
-    public async Task DeleteAsync(int id, int? fallbackCategoryId, CancellationToken ct = default)
+    public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var role = await GetAsync(id, ct);
         role.EnsureEditable();
 
         foreach (var goal in await goals.GetAllForRoleAsync(id, ct))
         {
-            await remover.RemoveAsync(goal, fallbackCategoryId, ct);
+            await remover.RemoveAsync(goal, ct);
         }
 
         roles.Remove(role);

@@ -26,6 +26,9 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
     public const string RoleZone = "role";       // цели одной роли
     public const string RolesZone = "roles";     // список пользовательских ролей
 
+    /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
+    public const string UnsortedKey = "unsorted";
+
     /// <summary>Категория ленты: дела ленты, дела из плана (возврат в ленту), цели (цель → мысль).</summary>
     public const string SomedayAccepts = SomedayItem + " " + DayItem + " " + GoalItem;
 
@@ -55,13 +58,31 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
         }
     }
 
+    /// <summary>Ключ зоны ленты (data-key): Id категории или <see cref="UnsortedKey"/> — «неразобранное» (null).</summary>
+    private static bool TryFeedKey(string? key, out int? categoryId)
+    {
+        categoryId = null;
+        if (key == UnsortedKey)
+        {
+            return true;
+        }
+
+        if (int.TryParse(key, out var id))
+        {
+            categoryId = id;
+            return true;
+        }
+
+        return false;
+    }
+
     [JSInvokable]
     public async Task OnDrop(DropEvent drop)
     {
         switch (drop)
         {
             // Лента или день → лента: порядок в категории, другая категория, возврат из плана
-            case { Kind: SomedayItem or DayItem, Zone: SomedayZone } when int.TryParse(drop.Key, out var categoryId):
+            case { Kind: SomedayItem or DayItem, Zone: SomedayZone } when TryFeedKey(drop.Key, out var categoryId):
                 await state.MoveTaskToFeedAsync(drop.Id, categoryId, drop.Index);
                 break;
 
@@ -87,7 +108,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
                 break;
 
             // Цель → лента: цель исчезает, дело встаёт в категорию
-            case { Kind: GoalItem, Zone: SomedayZone } when int.TryParse(drop.Key, out var categoryId):
+            case { Kind: GoalItem, Zone: SomedayZone } when TryFeedKey(drop.Key, out var categoryId):
                 await state.MoveGoalToFeedAsync(drop.Id, categoryId, drop.Index);
                 break;
 

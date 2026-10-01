@@ -115,7 +115,7 @@ await check('удалить цель без занятий и цель с нев
   assert(!(await dayItem(2, 'Записаться к стоматологу')), 'занятие осталось в среде');
 });
 
-await check('удалить цель, чьё дело без дня и без категории — спрашивает категорию', async () => {
+await check('удалить цель, чьё дело без дня и без категории — дело в «неразобранное», без вопросов', async () => {
   const board = await api('GET', 'board');
   const home = board.roles.find(r => r.name === 'Дом');
   const cat = await api('POST', 'categories', { name: 'Временная', emoji: null });
@@ -126,14 +126,9 @@ await check('удалить цель, чьё дело без дня и без к
   await load();
   const g = await goalRow('Дом', 'Разобрать антресоль');
   await g.hover(); await (await g.$('.row-action[title="Удалить цель"]')).click(); await settle();
-  assert(await page.$('.role .choice select'), 'не спросили категорию');
-  assert((await goalsOf('Дом')).length === 1, 'цель удалилась до выбора категории');
-  const ideas = await page.$$eval('.role .choice select option', os => os.find(o => o.textContent.includes('Идеи')).value);
-  await page.select('.role .choice select', ideas);
-  await clickButton('.role .choice', 'Удалить цель');
   assert((await goalsOf('Дом')).length === 0, 'цель не удалилась');
-  const inIdeas = await page.evaluate(() => [...document.querySelectorAll('.cat')].find(c => c.textContent.includes('Идеи'))?.textContent.includes('Разобрать антресоль'));
-  assert(inIdeas, 'дело не появилось в «Идеях»');
+  const inUnsorted = await page.evaluate(() => [...document.querySelectorAll('.unsorted .item')].some(i => i.textContent.includes('Разобрать антресоль')));
+  assert(inUnsorted, 'дело не появилось в «неразобранном»');
 });
 
 await check('«+ роль» с цветом из палитры', async () => {
@@ -190,7 +185,7 @@ await check('удалить роль с подтверждением', async () 
   assert(!(await userRoles()).includes('Друзья и соседи'), 'роль осталась');
 });
 
-await check('удалить роль, у цели которой дело без дня и категории — спрашивает категорию', async () => {
+await check('удалить роль, у цели которой дело без дня и категории — дело в «неразобранное», без вопросов', async () => {
   const role = await api('POST', 'roles', { name: 'Временная роль', color: null });
   const cat = await api('POST', 'categories', { name: 'Ещё временная', emoji: null });
   const task = await api('POST', 'tasks', { title: 'Купить ёлку', target: { kind: 'someday', categoryId: cat.id, index: 0 } });
@@ -201,10 +196,8 @@ await check('удалить роль, у цели которой дело без
   await openRoleMenu('Временная роль');
   await clickButton('.role-editor', 'удалить');
   await clickButton('.role-editor', 'Удалить');
-  assert(await page.$('.role-editor .choice select'), 'не спросили категорию');
-  await clickButton('.role-editor .choice', 'Удалить роль');
   assert(!(await userRoles()).includes('Временная роль'), 'роль осталась');
-  const inFeed = await page.evaluate(() => [...document.querySelectorAll('.cat-b .item')].some(i => i.textContent.includes('Купить ёлку')));
+  const inFeed = await page.evaluate(() => [...document.querySelectorAll('.unsorted .item')].some(i => i.textContent.includes('Купить ёлку')));
   assert(inFeed, 'дело не вернулось в ленту');
 });
 

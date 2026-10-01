@@ -8,6 +8,7 @@ namespace Planner.Core.Entities;
 /// Дело. Одна и та же сущность живёт в ленте «Когда-нибудь», в плане недели и в корзине —
 /// при переносе меняются только State и дата, а не создаётся копия.
 /// CategoryId сохраняется и в плане, чтобы при возврате в ленту дело попало в свою категорию.
+/// Дело ленты без категории — «неразобранное»: мысль, записанная сразу, без выбора категории.
 /// </summary>
 public class TaskItem : ISortable
 {
@@ -22,7 +23,7 @@ public class TaskItem : ISortable
 
     public string? Notes { get; private set; }
 
-    /// <summary>Категория ленты. null — дело создано сразу в плане (или его категорию удалили).</summary>
+    /// <summary>Категория ленты. null — в ленте это «неразобранное»; в плане — дело создано сразу там (или категорию удалили).</summary>
     public int? CategoryId { get; private set; }
 
     public int? RoleId { get; set; }
@@ -63,8 +64,8 @@ public class TaskItem : ISortable
     /// <summary>Дело стоит в конкретном дне.</summary>
     public bool IsOnDay => IsInPlan && PlannedDate is not null;
 
-    /// <summary>Новое дело в ленте.</summary>
-    public static TaskItem CreateSomeday(string title, int categoryId, DateTime now) => new()
+    /// <summary>Новое дело в ленте; categoryId = null — в «неразобранное».</summary>
+    public static TaskItem CreateSomeday(string title, int? categoryId, DateTime now) => new()
     {
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название дела"),
         CategoryId = categoryId,
@@ -103,8 +104,8 @@ public class TaskItem : ISortable
         StartTime = time is { } t ? new TimeOnly(t.Hour, t.Minute) : null;
     }
 
-    /// <summary>Вернуть в ленту, в указанную категорию. Дата, время и отметка «выполнено» сбрасываются.</summary>
-    public void MoveToSomeday(int categoryId)
+    /// <summary>Вернуть в ленту, в указанную категорию (null — в «неразобранное»). Дата, время и отметка «выполнено» сбрасываются.</summary>
+    public void MoveToSomeday(int? categoryId)
     {
         EnsureNotTrashed();
         State = TaskState.Someday;

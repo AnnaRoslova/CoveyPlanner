@@ -1,15 +1,17 @@
-@* Быстрое поле «Записать мысль…» + выбор категории (по умолчанию — последняя использованная).
-   Enter — мысль уходит наверх выбранной категории, поле очищается и готово к следующей. *@
+@* Быстрое поле «Записать мысль…» + выбор категории (по умолчанию — «неразобранное»; выбранная
+   категория держится до перезагрузки страницы). Enter — мысль уходит наверх выбранного места,
+   поле очищается и готово к следующей. *@
 @inherits StateComponent
 
 <div class="quick">
     <input placeholder="Записать мысль…" maxlength="500"
            @bind="_text" @bind:event="oninput" @onkeydown="OnKeyDown" />
     @* Видна только иконка категории; сам select прозрачный поверх неё — список раскрывается с названиями *@
-    <label class="cat-pick" title="Категория: @State.FindCategory(SelectedCategoryId)?.Name">
-        @{ var selected = State.FindCategory(SelectedCategoryId); }
+    @{ var selected = State.FindCategory(SelectedCategoryId); }
+    <label class="cat-pick" title="Куда: @(selected?.Name ?? UnsortedName)">
         <span class="cat-icon @(selected?.Emoji is null ? "text" : "")">@CategoryIcon(selected)</span>
-        <select aria-label="Категория" @bind:get="SelectedCategoryId" @bind:set="value => _categoryId = value">
+        <select aria-label="Категория" @bind:get="SelectedKey" @bind:set="SetSelectedKey">
+            <option value="">@UnsortedName</option>
             @foreach (var category in State.OrderedCategories)
             {
                 <option value="@category.Id">@CategoryLabel(category)</option>
@@ -31,11 +33,15 @@
     private string? _saved;
     private int _savedVersion;
 
-    /// <summary>Выбранная вручную категория, а если её нет (или удалили) — последняя использованная или первая.</summary>
-    private int SelectedCategoryId =>
-        _categoryId is { } id && State.FindCategory(id) is not null
-            ? id
-            : State.FindCategory(State.LastUsedCategoryId)?.Id ?? State.OrderedCategories.FirstOrDefault()?.Id ?? 0;
+    private const string UnsortedName = "неразобранное";
+
+    /// <summary>Выбранная категория; null (или её удалили) — «неразобранное».</summary>
+    private int? SelectedCategoryId => State.FindCategory(_categoryId)?.Id;
+
+    /// <summary>Значение в списке: Id категории или "" — «неразобранное».</summary>
+    private string SelectedKey => SelectedCategoryId?.ToString() ?? "";
+
+    private void SetSelectedKey(string? key) => _categoryId = int.TryParse(key, out var id) ? id : null;
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
@@ -45,16 +51,16 @@
             return;
         }
 
-        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_text) || State.FindCategory(SelectedCategoryId) is not { } category)
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_text))
         {
             return;
         }
 
         var title = _text;
         _text = "";
-        _categoryId = category.Id;
-        ShowSaved(CategoryLabel(category));
-        if (!await State.CreateSomedayTaskAsync(title, category.Id))
+        var category = State.FindCategory(SelectedCategoryId);
+        ShowSaved(category is null ? UnsortedName : CategoryLabel(category));
+        if (!await State.CreateSomedayTaskAsync(title, category?.Id))
         {
             _saved = null; // не сохранилось — об этом скажет сообщение внизу
         }
@@ -76,7 +82,7 @@
     }
 
     /// <summary>Эмодзи категории, а без него — название (обрезается по ширине: «Проекты» и «Покупки» различаются).</summary>
-    private static string CategoryIcon(CategoryDto? category) => category?.Emoji ?? category?.Name ?? "";
+    private static string CategoryIcon(CategoryDto? category) => category?.Emoji ?? category?.Name ?? UnsortedName;
 
     private static string CategoryLabel(CategoryDto category) =>
         category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}";

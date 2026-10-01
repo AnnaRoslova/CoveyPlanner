@@ -10,7 +10,6 @@ public class ApiException(string message, string? code = null) : Exception(messa
     public string? Code { get; } = code;
 
     /// <summary>Дело возвращается в ленту без категории — нужно спросить категорию и повторить запрос.</summary>
-    public bool IsCategoryRequired => Code == ProblemCodes.CategoryRequired;
 }
 
 /// <summary>Типизированный клиент к /api сервера.</summary>
@@ -42,9 +41,9 @@ public class PlannerApi(HttpClient http)
 
     public Task<List<TaskDto>> GetTrashAsync() => GetAsync<List<TaskDto>>("api/trash");
 
-    /// <summary>categoryId — куда вернуть, если своей категории у дела нет (иначе ApiException.IsCategoryRequired).</summary>
-    public Task<TaskDto> RestoreTaskAsync(int id, int? categoryId = null) =>
-        SendAsync<TaskDto>(HttpMethod.Post, $"api/trash/{id}/restore{CategoryQuery(categoryId)}");
+    /// <summary>Дело ленты без своей категории вернётся в «неразобранное».</summary>
+    public Task<TaskDto> RestoreTaskAsync(int id) =>
+        SendAsync<TaskDto>(HttpMethod.Post, $"api/trash/{id}/restore");
 
     public Task DeleteForeverAsync(int id) => SendAsync(HttpMethod.Delete, $"api/trash/{id}");
 
@@ -64,7 +63,9 @@ public class PlannerApi(HttpClient http)
     public Task ReorderCategoriesAsync(IReadOnlyList<int> ids) =>
         SendAsync(HttpMethod.Post, "api/categories/reorder", new ReorderRequest(ids));
 
-    public Task DeleteCategoryAsync(int id) => SendAsync(HttpMethod.Delete, $"api/categories/{id}");
+    /// <summary>keepTasks — дела категории переложить в «неразобранное», иначе — в корзину.</summary>
+    public Task DeleteCategoryAsync(int id, bool keepTasks) =>
+        SendAsync(HttpMethod.Delete, $"api/categories/{id}?keepTasks={(keepTasks ? "true" : "false")}");
 
     // Роли
 
@@ -77,9 +78,7 @@ public class PlannerApi(HttpClient http)
     public Task ReorderRolesAsync(IReadOnlyList<int> ids) =>
         SendAsync(HttpMethod.Post, "api/roles/reorder", new ReorderRequest(ids));
 
-    /// <summary>categoryId — куда вернуть дела целей без дня, у которых нет своей категории.</summary>
-    public Task DeleteRoleAsync(int id, int? categoryId = null) =>
-        SendAsync(HttpMethod.Delete, $"api/roles/{id}{CategoryQuery(categoryId)}");
+    public Task DeleteRoleAsync(int id) => SendAsync(HttpMethod.Delete, $"api/roles/{id}");
 
     // Цели
 
@@ -92,9 +91,7 @@ public class PlannerApi(HttpClient http)
     public Task<GoalResultDto> ToggleGoalAsync(int id, ToggleGoalRequest request) =>
         SendAsync<GoalResultDto>(HttpMethod.Post, $"api/goals/{id}/toggle", request);
 
-    /// <summary>categoryId — куда вернуть дело цели без дня, если у него нет своей категории.</summary>
-    public Task DeleteGoalAsync(int id, int? categoryId = null) =>
-        SendAsync(HttpMethod.Delete, $"api/goals/{id}{CategoryQuery(categoryId)}");
+    public Task DeleteGoalAsync(int id) => SendAsync(HttpMethod.Delete, $"api/goals/{id}");
 
     public Task<WeeklyGoalDto> MoveGoalAsync(int id, MoveGoalRequest request) =>
         SendAsync<WeeklyGoalDto>(HttpMethod.Post, $"api/goals/{id}/move", request);

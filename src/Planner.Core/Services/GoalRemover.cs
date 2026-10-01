@@ -7,12 +7,12 @@ namespace Planner.Core.Services;
 /// <summary>
 /// Удаление цели вместе с судьбой её занятий (общее для удаления цели, цели → в ленту и удаления роли):
 /// выполненные остаются в неделе обычными делами (история), невыполненные в днях уходят в корзину,
-/// невыполненное занятие без дня (мысль из ленты) возвращается в ленту. Сам не сохраняет изменения.
+/// невыполненное занятие без дня (мысль из ленты) возвращается в ленту — в свою категорию или в «неразобранное».
+/// Сам не сохраняет изменения.
 /// </summary>
 public class GoalRemover(IGoalRepository goals, ITaskRepository tasks, TaskPlacer placer, TimeProvider clock)
 {
-    /// <param name="fallbackCategoryId">Куда вернуть занятие без дня, если у него нет своей категории.</param>
-    public async Task RemoveAsync(WeeklyGoal goal, int? fallbackCategoryId, CancellationToken ct = default)
+    public async Task RemoveAsync(WeeklyGoal goal, CancellationToken ct = default)
     {
         var now = clock.GetUtcNow().UtcDateTime;
 
@@ -23,7 +23,7 @@ public class GoalRemover(IGoalRepository goals, ITaskRepository tasks, TaskPlace
             switch (session)
             {
                 case { State: TaskState.Planned, PlannedDate: null }:
-                    await placer.ReturnToSomedayAsync(session, fallbackCategoryId, ct);
+                    await placer.ReturnToSomedayAsync(session, ct);
                     break;
 
                 case { State: TaskState.Planned }:

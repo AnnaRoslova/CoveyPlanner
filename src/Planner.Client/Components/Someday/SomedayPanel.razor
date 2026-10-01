@@ -1,6 +1,7 @@
 @* Правая зона: лента «Когда-нибудь» — поиск, быстрый ввод, категории-аккордеон, корзина.
    Сверху над категориями — «+ категория» (новая встаёт в начало) и «свернуть / развернуть всё»;
-   «+ категория» есть и внизу (новая — в конец). *@
+   «+ категория» есть и внизу (новая — в конец). Над всем этим — «неразобранное» (мысли без категории).
+   «Записать мысль» есть всегда: без категорий мысли просто копятся в «неразобранном». *@
 @inherits StateComponent
 
 <aside class="panel someday">
@@ -13,19 +14,20 @@
         </div>
     </div>
 
-    @if (State.Categories.Count > 0)
-    {
-        <QuickCapture />
-    }
-    else if (!_creatingCategory)
-    {
-        <button class="first-category" @onclick="() => _creatingCategory = true">
-            Здесь будут мысли на «когда-нибудь».<br />
-            <span>+ создайте первую категорию</span>
-        </button>
-    }
+    <QuickCapture />
 
     <div class="panel-scroll">
+        @{ var unsorted = State.SomedayIn(null).Where(t => !IsSearching || TextSearch.Contains(t.Title, Query)).ToList(); }
+        <UnsortedSection Tasks="unsorted" Search="@Query" />
+
+        @if (State.Categories.Count == 0 && !_creatingCategory && !IsSearching)
+        {
+            <button class="first-category" @onclick="() => _creatingCategory = true">
+                Разложить мысли по темам помогут категории.<br />
+                <span>+ создайте первую категорию</span>
+            </button>
+        }
+
         @if (State.Categories.Count > 0 && !IsSearching)
         {
             <div class="feed-tools">
@@ -50,7 +52,7 @@
             }
         }
 
-        @if (IsSearching && !State.OrderedCategories.Any(c => MatchesSearch(c, State.SomedayIn(c.Id).ToList())))
+        @if (IsSearching && unsorted.Count == 0 && !State.OrderedCategories.Any(c => MatchesSearch(c, State.SomedayIn(c.Id).ToList())))
         {
             <div class="nothing">Ничего не нашлось</div>
         }

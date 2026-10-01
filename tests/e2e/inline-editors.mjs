@@ -1,8 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// Встроенные редакторы закрываются кликом мимо и по Esc. Esc — отмена. Клик мимо: в редакторе категории и выборе
-// категории — отмена; в полях «+ дело», «+ добавить», «+ цель» — набранное сохраняется, пустое поле закрывается.
+// Встроенные редакторы закрываются кликом мимо и по Esc. Esc — отмена. Клик мимо: в редакторе категории — отмена; в полях «+ дело», «+ добавить», «+ цель» — набранное сохраняется, пустое поле закрывается.
 // Лента: правка категории, новая категория, «+ добавить».
-// Неделя: «+ дело». Левая панель: «+ цель», выбор категории при удалении цели.
+// Неделя: «+ дело». Левая панель: «+ цель».
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -14,8 +13,7 @@ const browser = await puppeteer.launch({
   headless: true, defaultViewport: { width: 1600, height: 900 },
 });
 const page = await browser.newPage();
-// 409 — ожидаемый ответ «нужна категория» при удалении цели
-page.on('console', m => { if (m.type() === 'error' && !m.text().includes('409')) consoleErrors.push(m.text()); });
+page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
 page.on('pageerror', e => consoleErrors.push(e.message));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const settle = () => sleep(400);
@@ -130,28 +128,6 @@ await addField('«+ цель»',
   async () => { await (await (await role('Дом')).$('.add')).click(); await settle(); },
   async () => (await role('Дом')).$('.inline-input'),
   async () => (await (await role('Дом')).$$('.item')).length);
-
-await check('выбор категории при удалении цели: клик мимо и Esc — цель остаётся', async () => {
-  const home = (await api('GET', 'board')).roles.find(r => r.name === 'Дом');
-  const cat = await api('POST', 'categories', { name: 'Временная', emoji: null });
-  const task = await api('POST', 'tasks', { title: 'Разобрать антресоль', target: { kind: 'someday', categoryId: cat.id, index: 0 } });
-  const monday = (await api('GET', 'week/' + new Date().toISOString().slice(0, 10))).weekStart;
-  await api('POST', 'goals/from-task', { taskId: task.id, roleId: home.id, weekStart: monday, index: 0 });
-  await api('DELETE', `categories/${cat.id}`);
-  await load();
-  const ask = async () => {
-    const row = await page.evaluateHandle(() => [...document.querySelectorAll('.role .item')].find(i => i.textContent.includes('Разобрать антресоль')));
-    await row.hover(); await (await row.$('.row-action[title="Удалить цель"]')).click(); await settle();
-    assert(await has('.role .choice select'), 'не спросили категорию');
-  };
-  await ask();
-  await clickAway();
-  assert(!(await has('.role .choice')), 'клик мимо не закрыл');
-  await ask();
-  await page.keyboard.press('Escape'); await settle();
-  assert(!(await has('.role .choice')), 'Esc не закрыл');
-  assert(await page.evaluate(() => [...document.querySelectorAll('.role .item')].some(i => i.textContent.includes('Разобрать антресоль'))), 'цель удалилась');
-});
 
 await check('окна по-прежнему закрываются по Esc (слои редакторов им не мешают)', async () => {
   await page.click('.palette-b'); await page.waitForSelector('.themes'); await sleep(200);

@@ -8,8 +8,8 @@ namespace Planner.Shared;
 [JsonDerivedType(typeof(DayTargetDto), "day")]
 public abstract record TaskTargetDto;
 
-/// <summary>В ленту: категория и позиция (0 — наверх).</summary>
-public sealed record SomedayTargetDto(int CategoryId, int Index) : TaskTargetDto;
+/// <summary>В ленту: категория (null — «неразобранное») и позиция (0 — наверх).</summary>
+public sealed record SomedayTargetDto(int? CategoryId, int Index) : TaskTargetDto;
 
 /// <summary>
 /// В день. Index — позиция среди дел дня БЕЗ времени, считая без самого перетаскиваемого дела.
@@ -60,4 +60,5 @@ public sealed record MoveGoalRequest(int RoleId, int Index);
 
 public sealed record GoalFromTaskRequest(int TaskId, int RoleId, DateOnly WeekStart, int Index);
 
-public sealed record GoalToSomedayRequest(int CategoryId, int Index);
+/// <summary>CategoryId = null — в «неразобранное».</summary>
+public sealed record GoalToSomedayRequest(int? CategoryId, int Index);

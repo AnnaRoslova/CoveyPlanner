@@ -55,10 +55,17 @@ const typeAndEnter = async (selector, text) => { await page.type(selector, text)
 
 await load();
 
-await check('пустая база: подсказка «создайте первую категорию»', async () => {
-  const hint = await page.$('.first-category');
-  assert(hint, 'нет подсказки');
-  assert(!(await page.$('.quick')), 'поле «Записать мысль» не должно показываться');
+await check('пустая база: «Записать мысль» есть, подсказка «создайте первую категорию»', async () => {
+  assert(await page.$('.first-category'), 'нет подсказки');
+  assert(await page.$('.quick'), 'нет поля «Записать мысль»');
+  assert(!(await page.$('.unsorted:not(.empty)')), '«неразобранное» видно, хотя пусто');
+});
+
+await check('мысль без категорий — в «неразобранное» сверху ленты', async () => {
+  await typeAndEnter('.quick input', 'Мысль без категории');
+  const unsorted = await page.$$eval('.unsorted .item .tx', ts => ts.map(t => t.textContent.trim()));
+  assert(JSON.stringify(unsorted) === '["Мысль без категории"]', `неразобранное: ${unsorted}`);
+  assert(await page.$eval('.unsorted .u-h', h => h.textContent.includes('неразобранное')), 'нет подписи');
 });
 
 await check('создать первую категорию с эмодзи', async () => {
@@ -69,10 +76,13 @@ await check('создать первую категорию с эмодзи', as
   assert(JSON.stringify(await categories()) === '["Книги"]', `категории: ${await categories()}`);
   const emoji = await page.$eval('.cat-h .emoji', e => e.textContent);
   assert(emoji === '📚', `эмодзи ${emoji}`);
-  assert(await page.$('.quick'), 'поле «Записать мысль» не появилось');
 });
 
-await check('«Записать мысль»: Enter → наверх категории, поле очищается', async () => {
+await check('«Записать мысль»: по умолчанию «неразобранное»; выбрали категорию — Enter → наверх категории, поле очищается', async () => {
+  const selected = await page.$eval('.quick select', s => s.options[s.selectedIndex].textContent);
+  assert(selected === 'неразобранное', `по умолчанию: ${selected}`);
+  const booksId = await page.$$eval('.quick select option', os => os.find(o => o.textContent.includes('Книги')).value);
+  await page.select('.quick select', booksId);
   await typeAndEnter('.quick input', 'Мысль 1');
   await typeAndEnter('.quick input', 'Мысль 2');
   await sleep(300);
@@ -97,11 +107,11 @@ await check('выбор категории в «Записать мысль»', 
   assert(JSON.stringify(items) === '["Идея"]', `в Идеях: ${items}`);
 });
 
-await check('после перезагрузки — те же дела и последняя категория в поле', async () => {
+await check('после перезагрузки — те же дела, в поле снова «неразобранное»', async () => {
   await load();
   assert(JSON.stringify(await itemsIn('Книги')) === '["Мысль 2","Мысль 1"]', 'Книги');
   const selected = await page.$eval('.quick select', s => s.options[s.selectedIndex].textContent);
-  assert(selected.includes('Идеи'), `выбрана ${selected}`);
+  assert(selected === 'неразобранное', `выбрана ${selected}`);
 });
 
 await check('свернуть категорию, состояние запоминается', async () => {
@@ -117,8 +127,11 @@ await check('поиск раскрывает совпадения и подсв�
   await page.type('.search input', 'мысль'); await settle();
   assert(JSON.stringify(await categories()) === '["Книги"]', `видны ${await categories()}`);
   assert((await itemsIn('Книги')).length === 2, 'совпадения не показаны');
+  // Ещё одно совпадение — «Мысль без категории» в «неразобранном»
+  const unsorted = await page.$$eval('.unsorted .item .tx', ts => ts.map(t => t.textContent.trim()));
+  assert(JSON.stringify(unsorted) === '["Мысль без категории"]', `неразобранное: ${unsorted}`);
   const marks = await page.$$eval('mark.hit', ms => ms.length);
-  assert(marks === 2, `подсветок ${marks}`);
+  assert(marks === 3, `подсветок ${marks}`);
   await page.focus('.search input'); await page.keyboard.press('Escape'); await settle();
   assert(JSON.stringify(await categories()) === '["Книги","Идеи"]', 'поиск не очистился');
   assert((await itemsIn('Книги')).length === 0, 'Книги должны снова быть свёрнуты');
@@ -165,24 +178,25 @@ await check('в корзину и обратно (возврат — навер�
   assert(!(await page.$('.trash-popup')), 'окно не закрылось');
 });
 
-await check('удалить категорию → дела в корзину; вернуть с выбором категории', async () => {
+await check('удалить категорию «вместе с делами» → дела в корзину; вернуть — в «неразобранное»', async () => {
   const cat = (await page.$$('.cat-h'))[0];            // Книги
   await cat.hover();
   await (await cat.$('.menu')).click(); await settle();
   await clickText('.cat-editor .btn', 'удалить');
   const text = await page.$eval('.cat-editor .confirm span', e => e.textContent);
-  assert(text.includes('2 дела'), `подтверждение: ${text}`);
-  await clickText('.cat-editor .btn', 'Удалить');
+  assert(text.includes('Удалить «Книги»? В ней 2 дела'), `подтверждение: ${text}`);
+  const answers = await page.$$eval('.cat-editor .confirm .btn', bs => bs.map(b => b.textContent.trim()));
+  assert(JSON.stringify(answers) === '["Переложить в неразобранное","Удалить вместе с делами","Отмена"]', `кнопки: ${answers}`);
+  await clickText('.cat-editor .btn', 'Удалить вместе с делами');
   assert(JSON.stringify(await categories()) === '["Идеи"]', `категории ${await categories()}`);
 
   await page.click('.trash'); await sleep(600);
   const froms = await page.$$eval('.trash-popup .from', els => els.map(e => e.textContent));
-  assert(froms.length === 2 && froms.every(f => f === 'категории больше нет'), `откуда: ${froms}`);
+  assert(froms.length === 2 && froms.every(f => f === 'из ленты: неразобранное'), `откуда: ${froms}`);
   await page.click('.trash-popup .row-action.positive'); await sleep(600);
-  assert(await page.$('.trash-popup .choice select'), 'не спросили категорию');
-  await clickText('.trash-popup .choice .btn', 'Вернуть'); await sleep(400);
-  const ideas = await itemsIn('Идеи');
-  assert(ideas.length === 3 && ideas[0].startsWith('Мысль'), `Идеи: ${ideas}`);
+  assert(!(await page.$('.trash-popup select')), 'спросили категорию');
+  const unsorted = await page.$$eval('.unsorted .item .tx', ts => ts.map(t => t.textContent.trim()));
+  assert(unsorted.length === 2 && unsorted[0].startsWith('Мысль'), `неразобранное: ${unsorted}`);
 });
 
 await check('удалить навсегда и «очистить всё»', async () => {

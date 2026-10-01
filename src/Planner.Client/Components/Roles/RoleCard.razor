@@ -31,21 +31,12 @@
             <Actions>
                 @if (goal.Id > 0)
                 {
-                    <button type="button" class="row-action" title="Удалить цель" @onclick="() => DeleteGoalAsync(goal.Id, null)">
+                    <button type="button" class="row-action" title="Удалить цель" @onclick="() => State.DeleteGoalAsync(goal.Id)">
                         <Icon Name="x" Size="12" />
                     </button>
                 }
             </Actions>
         </ItemRow>
-
-        if (goal.Id == _askCategoryForGoalId)
-        {
-            <Dismissable OnDismiss="() => _askCategoryForGoalId = null">
-                <CategoryChoice Prompt="Мысль цели вернуть в категорию:" ButtonText="Удалить цель"
-                                OnChoose="categoryId => DeleteGoalAsync(goal.Id, categoryId)"
-                                OnCancel="() => _askCategoryForGoalId = null" />
-            </Dismissable>
-        }
     }
 
     @if (!Role.IsSharpenSaw && Goals.Count > State.RecommendedGoalsPerWeek)
@@ -69,7 +60,6 @@
 @code {
     private bool _adding;
     private string _newTitle = "";
-    private int? _askCategoryForGoalId;
 
     [Parameter, EditorRequired]
     public RoleDto Role { get; set; } = null!;
@@ -95,12 +85,6 @@
         {
             Windows.OpenGoal(goalId);
         }
-    }
-
-    private async Task DeleteGoalAsync(int goalId, int? categoryId)
-    {
-        var result = await State.DeleteGoalAsync(goalId, categoryId);
-        _askCategoryForGoalId = result == ReturnResult.NeedsCategory ? goalId : null;
     }
 
     private async Task AddAsync(string title)

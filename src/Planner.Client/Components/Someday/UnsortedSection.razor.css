@@ -1,0 +1,36 @@
+/* «Неразобранное» — без папки: тихая подпись и записи, как в раскрытой категории */
+.unsorted {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 0 8px;
+    padding: 0 0 0 6px;
+}
+
+.u-h {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 6px 4px;
+    color: var(--faint);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.cnt {
+    margin-left: auto;
+}
+
+.unsorted ::deep .item {
+    background: var(--glass-mid);
+}
+
+.unsorted ::deep .item:hover {
+    background: var(--b-soft);
+}
+
+/* Пусто — не видно; во время перетаскивания показывается (app.css, body.dragging) */
+.unsorted.empty {
+    display: none;
+}
