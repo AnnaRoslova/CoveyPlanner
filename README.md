@@ -121,6 +121,15 @@ powershell -File tools/e2e.ps1 -AppDir "$env:LOCALAPPDATA\CoveyPlanner\app"   # 
 лента, неделя, роли и цели, раскладка, перетаскивание, клики. У каждого сценария своя чистая база
 и сервер на порту 5071; демо и основная база не затрагиваются.
 
+## Иконки
+
+Все иконки (PWA 192/512, maskable, apple-touch-icon, favicon) делаются из одной картинки
+`docs/icon-1024.png` (квадрат 1024×1024, фон до краёв):
+
+```powershell
+powershell -File tools/icons.ps1
+```
+
 ## Устройство
 
 | Проект | Что внутри |
@@ -131,7 +140,7 @@ powershell -File tools/e2e.ps1 -AppDir "$env:LOCALAPPDATA\CoveyPlanner\app"   # 
 | `src/Planner.Client` | Blazor WebAssembly (PWA): экран, состояние, перетаскивание (`wwwroot/js/dnd.js`) |
 | `tests/Planner.Tests` | xUnit: домен, API (WebApplicationFactory), миграции, копии |
 | `tests/e2e` | Проверки в браузере (puppeteer-core + установленный Edge) |
-| `tools` | `install.ps1`, `uninstall.ps1`, `demo.ps1`, `seed-demo.ps1`, `backup.ps1`, `e2e.ps1` |
+| `tools` | `install.ps1`, `uninstall.ps1`, `demo.ps1`, `seed-demo.ps1`, `backup.ps1`, `e2e.ps1`, `icons.ps1` |
 
 Новая миграция после изменения модели:
 
