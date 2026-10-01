@@ -8,9 +8,19 @@ export function getTheme() {
 
 export function setTheme(name) {
     document.documentElement.dataset.theme = name;
+    syncWindowColor();
     try {
         localStorage.setItem(Key, name);
     } catch {
         // Хранилище недоступно (приватный режим) — тема действует до перезагрузки
+    }
+}
+
+// Рамка окна установленного приложения (<meta name="theme-color">) — в цвет фона темы (--page-color)
+function syncWindowColor() {
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--page-color').trim();
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta && color) {
+        meta.content = color;
     }
 }

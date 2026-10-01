@@ -70,6 +70,20 @@ await check('меню: карточки Лотос, Пион, Платина, О
   await page.screenshot({ path: `${SHOTS}/theme-menu.png` });
 });
 
+const windowColor = () => page.$eval('meta[name="theme-color"]', m => m.content);
+
+await check('рамка окна (theme-color) — в цвет фона темы: при смене и после перезагрузки', async () => {
+  assert(await windowColor() === '#d3ece4', `Лотос: ${await windowColor()}`);
+  await choose('obsidian');
+  assert(await windowColor() === '#16171a', `Обсидиан: ${await windowColor()}`);
+  await load();
+  assert(await windowColor() === '#16171a', `после перезагрузки: ${await windowColor()}`);
+  await choose('lotus');
+  assert(await windowColor() === '#d3ece4', `снова Лотос: ${await windowColor()}`);
+  const manifest = await (await fetch(new URL('manifest.webmanifest', BASE))).json();
+  assert(manifest.theme_color === '#d3ece4', `manifest: ${manifest.theme_color}`);
+});
+
 await check('Esc закрывает меню сразу после открытия', async () => {
   await openMenu();
   await page.keyboard.press('Escape'); await sleep(200);

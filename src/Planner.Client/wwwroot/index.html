@@ -4,6 +4,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Цвет рамки окна установленного приложения; при смене темы — под её фон (js/theme.js) -->
+    <meta name="theme-color" content="#d3ece4" />
     <title>CoveyPlanner</title>
     <base href="/" />
     <link rel="preload" id="webassembly" />
@@ -24,6 +26,11 @@
             document.documentElement.dataset.theme = theme;
         } catch {
             document.documentElement.dataset.theme = 'lotus';
+        }
+        // Стили уже загружены (скрипт ждёт их) — рамка окна сразу в цвет фона темы
+        const pageColor = getComputedStyle(document.documentElement).getPropertyValue('--page-color').trim();
+        if (pageColor) {
+            document.querySelector('meta[name="theme-color"]').content = pageColor;
         }
     </script>
     <link rel="icon" type="image/png" href="icon-192.png" />
