@@ -102,3 +102,19 @@
     background: var(--glass-lo);
     color: var(--soft);
 }
+
+/* Во время перетаскивания корзина — место, куда можно бросить: чуть заметнее, а под записью — подсвечена */
+body.dragging .trash {
+    color: var(--soft);
+}
+
+.trash.drop-hover {
+    background: var(--a-soft);
+    box-shadow: 0 0 0 2px var(--a);
+    color: var(--a-ink);
+    transform: scale(1.15);
+}
+
+.trash {
+    transition: transform 0.15s, background 0.15s;
+}

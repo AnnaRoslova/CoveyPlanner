@@ -25,6 +25,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
     public const string DayZone = "day";         // день недели
     public const string RoleZone = "role";       // цели одной роли
     public const string RolesZone = "roles";     // список пользовательских ролей
+    public const string TrashZone = "trash";     // значок корзины внизу ленты
 
     /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
     public const string UnsortedKey = "unsorted";
@@ -40,6 +41,9 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
 
     /// <summary>Список ролей: только роли (порядок).</summary>
     public const string RolesAccepts = RoleItem;
+
+    /// <summary>Корзина: дела ленты и плана, цели — удалить, как из окна (с «Вернуть»).</summary>
+    public const string TrashAccepts = SomedayItem + " " + DayItem + " " + GoalItem;
 
     private DotNetObjectReference<DragDropService>? _selfRef;
     private IJSObjectReference? _module;
@@ -110,6 +114,15 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
             // Цель → лента: цель исчезает, дело встаёт в категорию
             case { Kind: GoalItem, Zone: SomedayZone } when TryFeedKey(drop.Key, out var categoryId):
                 await state.MoveGoalToFeedAsync(drop.Id, categoryId, drop.Index);
+                break;
+
+            // Запись → корзина: удалить (как из окна, с «Вернуть»)
+            case { Kind: SomedayItem or DayItem, Zone: TrashZone }:
+                await state.TrashTaskAsync(drop.Id);
+                break;
+
+            case { Kind: GoalItem, Zone: TrashZone }:
+                await state.DeleteGoalAsync(drop.Id);
                 break;
 
             // Роль → список ролей: порядок

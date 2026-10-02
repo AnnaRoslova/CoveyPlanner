@@ -18,7 +18,7 @@ const THEMES = ['lotus', 'peony', 'platinum', 'obsidian'];
 const MUST_PASS_AA = ['obsidian'];
 const LIGHT = ['lotus', 'peony', 'platinum'];
 // Второстепенный текст: «+ …» и «свернуть всё», счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
-const SECONDARY = ['.add', '.fold', '.n', '.cnt', '.progress', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
+const SECONDARY = ['.add', '.others-h', '.other .d', '.other .sep', '.other.done', '.fold', '.n', '.cnt', '.progress', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
   '.load', '.rocks', '.goal-days', '.unit', '.step', '.saved', '.nothing', '.first-category'].join(', ');
 const results = [];
 const consoleErrors = [];

@@ -15,18 +15,9 @@
     </div>
     @foreach (var task in Tasks)
     {
-        <ItemRow Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search" Clamp="true"
+        <ItemRow @key="task.Id" Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search" Clamp="true"
                  IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
-                 OnClick="() => OpenTask(task.Id)">
-            <Actions>
-                @if (task.Id > 0)
-                {
-                    <button type="button" class="row-action" title="В корзину" @onclick="() => State.TrashTaskAsync(task.Id)">
-                        <Icon Name="x" Size="12" />
-                    </button>
-                }
-            </Actions>
-        </ItemRow>
+                 OnClick="() => OpenTask(task.Id)" />
     }
 </div>
 

@@ -166,8 +166,9 @@ await check('переименование: клик по делу — окно, 
 
 await check('в корзину и обратно (возврат — наверх категории)', async () => {
   const row = (await page.$$('.cat-b .item'))[1]; // «Ещё идея»
-  await row.hover();
-  await (await row.$('.row-action')).click(); await settle();
+  assert(!(await row.$('.row-action')), 'в строке ленты остался крестик');
+  await (await row.$('.title')).click(); await settle();
+  await clickText('.editor .btn', 'в корзину'); await settle();
   assert(JSON.stringify(await itemsIn('Идеи')) === '["Идея про хлеб"]', 'не удалилось');
   await page.click('.trash'); await sleep(600);
   const rows = await page.$$eval('.trash-popup .row .text > div:first-child', els => els.map(e => e.textContent));
@@ -199,12 +200,24 @@ await check('удалить категорию «вместе с делами» 
   assert(unsorted.length === 2 && unsorted[0].startsWith('Мысль'), `неразобранное: ${unsorted}`);
 });
 
-await check('удалить навсегда и «очистить всё»', async () => {
+await check('удалить навсегда — с подтверждением в строке; «очистить всё» — сразу, с «Вернуть»', async () => {
   const left = await page.$$eval('.trash-popup .row', rs => rs.length);
   assert(left === 1, `в корзине ${left}`);
-  await clickText('.trash-popup .btn', 'очистить всё');
-  await clickText('.trash-popup .btn', 'Да');
-  assert(await page.$eval('.trash-popup .empty', e => e.textContent) === 'Пусто', 'не очистилось');
+  await page.click('.trash-popup .row-action[title="Удалить навсегда"]'); await settle();
+  assert(await page.$eval('.trash-popup .confirm span', e => e.textContent) === 'Удалить навсегда?', 'нет подтверждения');
+  await clickText('.trash-popup .confirm .btn', 'Нет'); await settle();
+  assert(await page.$$eval('.trash-popup .row', rs => rs.length) === 1 && !(await page.$('.trash-popup .confirm')), '«Нет» не отменило');
+
+  await clickText('.trash-popup .btn', 'очистить всё'); await settle();
+  assert(!(await page.$('.trash-popup')), 'окно не закрылось');
+  assert((await page.$eval('.toast', e => e.textContent)).includes('Корзина очищена'), 'нет плашки');
+  await page.click('.toast .action'); await settle();
+  await page.click('.trash'); await sleep(600);
+  assert(await page.$$eval('.trash-popup .row', rs => rs.length) === 1, '«Вернуть» не вернуло корзину');
+
+  await page.click('.trash-popup .row-action[title="Удалить навсегда"]'); await settle();
+  await clickText('.trash-popup .confirm .btn', 'Да'); await settle();
+  assert(await page.$eval('.trash-popup .empty', e => e.textContent) === 'Пусто', 'не удалилось');
   await page.click('.backdrop'); await settle();
   await load();
   await page.click('.trash'); await sleep(600);

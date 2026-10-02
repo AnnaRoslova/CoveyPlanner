@@ -25,3 +25,15 @@ export function watchActivation(dotnet) {
     document.addEventListener('visibilitychange', report);
     window.addEventListener('focus', report);
 }
+
+// Сообщает .NET (TodayWatcher.OnHidden), что окно ушло в фон или закрывается: отложенное удаление
+// («Удалено · Вернуть») нужно отправить на сервер сейчас, а не через несколько секунд.
+export function watchHidden(dotnet) {
+    const report = () => {
+        if (document.visibilityState === 'hidden') {
+            dotnet.invokeMethodAsync('OnHidden');
+        }
+    };
+    document.addEventListener('visibilitychange', report);
+    window.addEventListener('pagehide', () => dotnet.invokeMethodAsync('OnHidden'));
+}

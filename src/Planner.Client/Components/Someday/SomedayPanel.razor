@@ -67,7 +67,9 @@
         }
     </div>
 
-    <button class="trash" title="Корзина" @onclick="() => _trashOpen = !_trashOpen">
+    @* Корзина — ещё и место, куда можно бросить запись (дело, мысль, цель): она удаляется, как из окна *@
+    <button class="trash" title="Корзина" @onclick="() => _trashOpen = !_trashOpen"
+            data-drop="@DragDropService.TrashZone" data-accept="@DragDropService.TrashAccepts" data-drop-index="0" data-drop-hover>
         <Icon Name="trash" Size="15" />
     </button>
 

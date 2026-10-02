@@ -116,36 +116,24 @@ public partial class PlannerState
     /// <summary>
     /// Удалить цель. Выполненные занятия остаются в неделе, невыполненные уходят в корзину,
     /// занятие без дня возвращается в ленту (без своей категории — в «неразобранное»).
-    /// Ждём ответа сервера, а не удаляем сразу: занятия разошлись по разным местам — их берём с сервера.
+    /// С «Вернуть»; после удаления на сервере — перечитываем: занятие без дня пришло в ленту.
     /// </summary>
-    public async Task<bool> DeleteGoalAsync(int goalId)
+    public async Task DeleteGoalAsync(int goalId)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal)
         {
-            return false;
+            return;
         }
 
-        var ok = await TryServerAsync(() => api.DeleteGoalAsync(goalId));
-        if (ok)
-        {
-            Goals.RemoveAll(g => g.Id == goalId);
-
-            // Занятия ушли в корзину, в ленту или стали обычными делами — берём всё с сервера
-            if (goal.Sessions.Count > 0)
-            {
-                await ReloadAsync();
-            }
-
-            NotifyChanged();
-        }
-
-        return ok;
+        await DeleteWithUndoAsync(Deleted(goal.Title), () => RemoveGoalLocally(goal),
+            () => api.DeleteGoalAsync(goalId), reloadAfter: goal.Sessions.Count > 0);
     }
 
     // ---------- Роли ----------
 
     public async Task<RoleDto?> CreateRoleAsync(string name, string color)
     {
+        await CommitPendingDeleteAsync();
         try
         {
             var created = await api.CreateRoleAsync(name.Trim(), color);
@@ -351,16 +339,28 @@ public partial class PlannerState
     /// <summary>
     /// Удалить роль вместе с её целями (на всех неделях); занятия — как при удалении цели,
     /// занятия без дня возвращаются в ленту (без своей категории — в «неразобранное»).
+    /// С «Вернуть»; после удаления на сервере — перечитываем всё (цели других недель, лента).
     /// </summary>
-    public async Task<bool> DeleteRoleAsync(int roleId)
+    public async Task DeleteRoleAsync(int roleId)
     {
-        var ok = await TryServerAsync(() => api.DeleteRoleAsync(roleId));
-        if (ok)
+        if (FindRole(roleId) is not { } role)
         {
-            await ReloadAsync(); // цели, роли у дел и лента поменялись — берём всё с сервера
+            return;
         }
 
-        return ok;
+        await DeleteWithUndoAsync(Deleted(role.Name), () =>
+        {
+            Roles.RemoveAll(r => r.Id == roleId);
+            foreach (var goal in GoalsFor(roleId).ToList())
+            {
+                RemoveGoalLocally(goal);
+            }
+
+            foreach (var task in _tasks.Values.Where(t => t.RoleIds.Contains(roleId)).ToList())
+            {
+                _tasks[task.Id] = task with { RoleIds = [.. task.RoleIds.Where(id => id != roleId)] };
+            }
+        }, () => api.DeleteRoleAsync(roleId), reloadAfter: true);
     }
 
     // ---------- Помощники ----------
@@ -411,21 +411,6 @@ public partial class PlannerState
             {
                 Goals[i] = Goals[i] with { Sessions = [.. Goals[i].Sessions.Where(s => s.TaskId != taskId)] };
             }
-        }
-    }
-
-    /// <summary>Вызов сервера, после которого меняем экран (а не до): ошибка — сообщение внизу и false.</summary>
-    private async Task<bool> TryServerAsync(Func<Task> serverCall)
-    {
-        try
-        {
-            await serverCall();
-            return true;
-        }
-        catch (ApiException ex)
-        {
-            notifier.Error(ex.Message);
-            return false;
         }
     }
 

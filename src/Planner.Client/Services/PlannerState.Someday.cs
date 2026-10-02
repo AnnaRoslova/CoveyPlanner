@@ -44,6 +44,7 @@ public partial class PlannerState
     /// <summary>Новая категория — в конец или в начало (atTop). Ждём сервер — нужен настоящий Id.</summary>
     public async Task<CategoryDto?> CreateCategoryAsync(string name, string? emoji, bool atTop = false)
     {
+        await CommitPendingDeleteAsync();
         try
         {
             var created = await api.CreateCategoryAsync(name.Trim(), emoji, atTop);
@@ -76,27 +77,33 @@ public partial class PlannerState
     /// </summary>
     public async Task DeleteCategoryAsync(int categoryId, bool keepTasks)
     {
-        var tasks = SomedayIn(categoryId).ToList();
-        Categories.RemoveAll(c => c.Id == categoryId);
-        if (keepTasks)
+        if (FindCategory(categoryId) is not { } category)
         {
-            var order = 0;
-            foreach (var task in tasks.Concat(SomedayIn(null).ToList()))
-            {
-                _tasks[task.Id] = task with { CategoryId = null, SortOrder = order++ };
-            }
-        }
-        else
-        {
-            foreach (var task in tasks)
-            {
-                _tasks.Remove(task.Id);
-            }
-
-            TrashCount += tasks.Count;
+            return;
         }
 
-        await SaveAsync(() => api.DeleteCategoryAsync(categoryId, keepTasks));
+        await DeleteWithUndoAsync(Deleted(category.Name), () =>
+        {
+            var tasks = SomedayIn(categoryId).ToList();
+            Categories.RemoveAll(c => c.Id == categoryId);
+            if (keepTasks)
+            {
+                var order = 0;
+                foreach (var task in tasks.Concat(SomedayIn(null).ToList()))
+                {
+                    _tasks[task.Id] = task with { CategoryId = null, SortOrder = order++ };
+                }
+            }
+            else
+            {
+                foreach (var task in tasks)
+                {
+                    _tasks.Remove(task.Id);
+                }
+
+                TrashCount += tasks.Count;
+            }
+        }, () => api.DeleteCategoryAsync(categoryId, keepTasks));
     }
 
     // ---------- Дела ленты ----------
@@ -200,20 +207,24 @@ public partial class PlannerState
     /// <summary>Удалить дело — в корзину. Занятие цели перестаёт считаться в её прогрессе.</summary>
     public async Task TrashTaskAsync(int taskId)
     {
-        if (taskId < 0 || !_tasks.Remove(taskId))
+        if (taskId < 0 || FindTask(taskId) is not { } task)
         {
             return;
         }
 
-        TrashCount++;
-        RemoveSession(taskId);
-        await SaveAsync(() => api.TrashTaskAsync(taskId));
+        await DeleteWithUndoAsync(Deleted(task.Title), () =>
+        {
+            _tasks.Remove(taskId);
+            TrashCount++;
+            RemoveSession(taskId);
+        }, () => api.TrashTaskAsync(taskId));
     }
 
     // ---------- Корзина ----------
 
     public async Task<List<TaskDto>> GetTrashAsync()
     {
+        await CommitPendingDeleteAsync();
         try
         {
             return await api.GetTrashAsync();
@@ -231,6 +242,7 @@ public partial class PlannerState
     /// </summary>
     public async Task<bool> RestoreFromTrashAsync(int taskId)
     {
+        await CommitPendingDeleteAsync();
         TaskDto restored;
         try
         {
@@ -275,11 +287,9 @@ public partial class PlannerState
         await SaveAsync(() => api.DeleteForeverAsync(taskId));
     }
 
-    public async Task EmptyTrashAsync()
-    {
-        TrashCount = 0;
-        await SaveAsync(api.EmptyTrashAsync);
-    }
+    /// <summary>Очистить корзину — тоже с «Вернуть» (на сервере корзина очищается через несколько секунд).</summary>
+    public async Task EmptyTrashAsync() =>
+        await DeleteWithUndoAsync("Корзина очищена", () => TrashCount = 0, api.EmptyTrashAsync);
 
     // ---------- Помощники ----------
 

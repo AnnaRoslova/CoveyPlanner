@@ -18,3 +18,21 @@
 .toast.error {
     color: var(--a-ink);
 }
+
+.sep {
+    margin: 0 6px;
+    color: var(--faint);
+}
+
+/* «Вернуть», «Показать» — розовый акцент, как ссылка */
+.action {
+    padding: 0;
+    color: var(--a-ink);
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.action:hover {
+    color: var(--b-deep);
+}

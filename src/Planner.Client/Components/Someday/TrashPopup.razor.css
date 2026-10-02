@@ -85,3 +85,23 @@
     outline: none;
     box-shadow: var(--shadow-pop); /* фокус окна не подсвечиваем кольцом */
 }
+
+/* «Удалить навсегда? Нет / Да» — прямо в строке, вместо «откуда» */
+.confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    font-size: 11.5px;
+}
+
+.confirm span {
+    margin-right: 2px;
+    color: var(--a-ink);
+}
+
+.confirm .btn {
+    padding: 1px 8px;
+    font-size: 11.5px;
+}

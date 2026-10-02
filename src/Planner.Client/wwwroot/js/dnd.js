@@ -4,6 +4,7 @@
 //   что тащим:   data-drag="<вид>" data-id="<Id>"            — например, data-drag="someday"
 //   куда бросаем: data-drop="<зона>" data-key="<ключ>" data-accept="<виды через пробел>"
 //                 data-drop-index="0" — зона-«мишень» с фиксированной позицией (заголовок категории)
+//                 data-drop-hover — зона подсвечивается сама (класс drop-hover, например корзина), без общей рамки
 //                 data-fixed-sort — в зоне есть записи со своим местом (data-fixed: дела со временем в дне);
 //                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
 //                 data-list-head — внутри зоны: заголовок, под которым начинается список (для пустого дня)
@@ -153,6 +154,7 @@ function start(x, y) {
         height: rect.height,
         x, y,
         target: null,
+        hoverZone: null,
         raf: 0,
     };
 
@@ -176,6 +178,7 @@ function updateTarget() {
     let zone = hit?.closest('[data-drop]');
     while (zone && !accepts(zone)) zone = zone.parentElement?.closest('[data-drop]');
 
+    setHoverZone(zone?.hasAttribute('data-drop-hover') ? zone : null);
     if (!zone) {
         drag.target = null;
         drag.line.hidden = true;
@@ -184,7 +187,8 @@ function updateTarget() {
     }
 
     const zoneRect = zone.getBoundingClientRect();
-    showBox(drag.zoneBox, zoneRect);
+    if (drag.hoverZone) drag.zoneBox.hidden = true;
+    else showBox(drag.zoneBox, zoneRect);
 
     // Зона-«мишень» (заголовок категории): позиция фиксированная, линию не рисуем
     if (zone.dataset.dropIndex !== undefined) {
@@ -240,6 +244,15 @@ function probeY(zone) {
     const ghostTop = drag.y - drag.offsetY;
     const ghostBottom = ghostTop + drag.height;
     return ghostTop + drag.height / 2 < src.top + src.height / 2 ? ghostTop : ghostBottom;
+}
+
+// Зона с data-drop-hover под указателем — класс drop-hover (единственный класс, который ставим на разметку Blazor,
+// кроме drag-source; снимаем его сами)
+function setHoverZone(zone) {
+    if (drag.hoverZone === zone) return;
+    drag.hoverZone?.classList.remove('drop-hover');
+    zone?.classList.add('drop-hover');
+    drag.hoverZone = zone;
 }
 
 function accepts(zone) {
@@ -319,6 +332,7 @@ function finish() {
     drag.line.remove();
     drag.zoneBox.remove();
     drag.el.classList.remove('drag-source');
+    drag.hoverZone?.classList.remove('drop-hover');
     document.body.classList.remove('dragging');
     drag = null;
     // Сброс или отмена: отпускание кнопки над новым местом — не клик

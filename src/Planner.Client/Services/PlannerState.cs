@@ -109,6 +109,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public async Task GoToWeekAsync(DateOnly anyDate)
     {
+        await CommitPendingDeleteAsync();
         var weekStart = RuDates.WeekStartOf(anyDate);
         WeekStart = weekStart;
         NotifyChanged();
@@ -197,7 +198,15 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         NotifyChanged();
         try
         {
+            // Отложенное удаление — на сервер раньше этого изменения; перечитываем после него,
+            // иначе перечитанное затёрло бы только что сделанное на экране
+            var reload = await CommitPendingDeleteAsync(reload: false);
             await serverCall();
+            if (reload)
+            {
+                await ReloadAsync();
+            }
+
             NotifyChanged();
             return true;
         }
@@ -212,6 +221,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     /// <summary>Перечитать всё с сервера, не показывая экран загрузки.</summary>
     private async Task ReloadAsync()
     {
+        await CommitPendingDeleteAsync(reload: false);
         try
         {
             var boardTask = api.GetBoardAsync();

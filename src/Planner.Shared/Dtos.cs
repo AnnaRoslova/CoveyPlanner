@@ -87,7 +87,7 @@ public sealed record BoardDto(
     IReadOnlyList<TaskDto> SomedayTasks,
     int TrashCount);
 
-/// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели).</summary>
+/// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).</summary>
 public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
 
 /// <summary>Цель после сохранения окна и её занятия в днях (у них могли поменяться поля по шаблону).</summary>

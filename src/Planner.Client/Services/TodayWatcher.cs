@@ -6,6 +6,7 @@ namespace Planner.Client.Services;
 /// Следит, чтобы «сегодня» на экране было настоящим: проверяет дату в полночь и когда окно
 /// снова становится активным (вкладку открыли, окно получило фокус, компьютер проснулся).
 /// Если дата сменилась — сообщает <see cref="PlannerState"/>, а тот при необходимости листает неделю.
+/// А когда окно уходит в фон или закрывается — отправляет на сервер отложенное удаление («Удалено · Вернуть»).
 /// </summary>
 public sealed class TodayWatcher(PlannerState state, IJSRuntime js) : IAsyncDisposable
 {
@@ -22,6 +23,7 @@ public sealed class TodayWatcher(PlannerState state, IJSRuntime js) : IAsyncDisp
             await using var module = await js.InvokeAsync<IJSObjectReference>("import", "./js/layout.js");
             _selfRef = DotNetObjectReference.Create(this);
             await module.InvokeVoidAsync("watchActivation", _selfRef);
+            await module.InvokeVoidAsync("watchHidden", _selfRef);
         }
         catch (JSException)
         {
@@ -32,6 +34,10 @@ public sealed class TodayWatcher(PlannerState state, IJSRuntime js) : IAsyncDisp
     /// <summary>Окно снова активно (вызывается из layout.js).</summary>
     [JSInvokable]
     public Task OnActivated() => CheckAsync();
+
+    /// <summary>Окно ушло в фон или закрывается (вызывается из layout.js).</summary>
+    [JSInvokable]
+    public Task OnHidden() => state.CommitPendingDeleteAsync();
 
     private async Task CheckAsync()
     {

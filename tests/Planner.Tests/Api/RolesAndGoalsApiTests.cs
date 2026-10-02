@@ -233,6 +233,22 @@ public class RolesAndGoalsApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Week_IncludesUnscheduledSessions_ButNotOtherWeeks()
+    {
+        var role = await FirstUserRoleAsync();
+        var home = await CreateCategoryAsync("Дом");
+        var task = await CreateTaskAsync("Разобрать шкаф", new SomedayTargetDto(home.Id, 0));
+        await PostAsync<GoalResultDto>("/api/goals/from-task", new GoalFromTaskRequest(task.Id, role.Id, Monday, 0));
+
+        // Клиенту нужно дело целиком (с категорией): удалив цель, он сразу покажет его в ленте
+        var shown = Assert.Single((await GetWeekAsync()).Tasks);
+        Assert.Equal(task.Id, shown.Id);
+        Assert.Null(shown.PlannedDate);
+        Assert.Equal(home.Id, shown.CategoryId);
+        Assert.Empty((await Client.GetFromJsonAsync<WeekDto>($"/api/week/{Monday.AddDays(7):yyyy-MM-dd}"))!.Tasks);
+    }
+
+    [Fact]
     public async Task DeleteGoal_UnscheduledSession_BackToItsCategory()
     {
         var role = await FirstUserRoleAsync();

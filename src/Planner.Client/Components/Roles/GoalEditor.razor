@@ -152,9 +152,8 @@
     /// <summary>Удалить; мысль цели без дня вернётся в ленту (без своей категории — в «неразобранное»).</summary>
     private async Task DeleteAsync()
     {
-        if (await State.DeleteGoalAsync(EditedGoal.Id))
-        {
-            await OnClose.InvokeAsync();
-        }
+        var goalId = EditedGoal.Id;
+        await OnClose.InvokeAsync();
+        await State.DeleteGoalAsync(goalId);
     }
 }

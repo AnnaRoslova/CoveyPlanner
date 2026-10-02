@@ -99,9 +99,8 @@
 
     private async Task DeleteAsync()
     {
-        if (await State.DeleteRoleAsync(Role!.Id))
-        {
-            await OnClose.InvokeAsync();
-        }
+        var roleId = Role!.Id;
+        await OnClose.InvokeAsync();
+        await State.DeleteRoleAsync(roleId);
     }
 }

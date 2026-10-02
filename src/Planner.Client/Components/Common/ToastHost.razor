@@ -1,16 +1,23 @@
-@* Всплывающее сообщение внизу по центру; исчезает само через несколько секунд *@
+@* Всплывающее сообщение внизу по центру; исчезает само через несколько секунд.
+   У сообщения может быть кнопка-действие («Вернуть», «Показать»); клик по остальному — закрыть. *@
 @implements IDisposable
 @inject Notifier Notifier
 
 @if (Notifier.Message is { } message)
 {
-    <div class="toast @(Notifier.IsError ? "error" : "")" role="status" @onclick="() => Notifier.Dismiss(Notifier.Version)">
-        @message
+    var version = Notifier.Version;
+    <div class="toast @(Notifier.IsError ? "error" : "")" role="status" @onclick="() => Notifier.Dismiss(version)">
+        <span>@message</span>
+        @if (Notifier.ActionLabel is { } label)
+        {
+            <span class="sep">·</span>
+            <button type="button" class="action" @onclick="() => Notifier.RunActionAsync(version)" @onclick:stopPropagation="true">@label</button>
+        }
     </div>
 }
 
 @code {
-    private static readonly TimeSpan ShowFor = TimeSpan.FromSeconds(5);
+    private int _shownVersion;
 
     protected override void OnInitialized() => Notifier.Changed += OnChanged;
 
@@ -22,9 +29,12 @@
         _ = InvokeAsync(async () =>
         {
             StateHasChanged();
-            if (Notifier.Message is not null)
+
+            // Таймер — один на сообщение (Changed приходит и при его закрытии)
+            if (Notifier.Message is not null && version != _shownVersion)
             {
-                await Task.Delay(ShowFor);
+                _shownVersion = version;
+                await Task.Delay(Notifier.Duration);
                 Notifier.Dismiss(version);
             }
         });

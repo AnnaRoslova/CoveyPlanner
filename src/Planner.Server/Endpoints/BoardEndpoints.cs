@@ -1,5 +1,6 @@
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
+using Planner.Core.Enums;
 using Planner.Core.Time;
 using Planner.Shared;
 
@@ -45,9 +46,13 @@ public static class BoardEndpoints
         var weekGoals = await goals.GetForWeekAsync(monday, ct);
         var weekTasks = await tasks.GetPlannedAsync(monday, monday.AddDays(Week.DaysInWeek - 1), ct);
 
+        // И занятия целей без дня: в днях их не видно, но клиенту они нужны целиком
+        // (удаление цели или перенос её в ленту сразу показывают это дело в ленте)
+        var unscheduled = weekGoals.SelectMany(g => g.ActiveSessions).Where(t => t.State == TaskState.Planned && t.PlannedDate is null);
+
         return new WeekDto(
             monday,
             weekGoals.Select(g => g.ToDto()).ToList(),
-            weekTasks.Select(t => t.ToDto()).ToList());
+            weekTasks.Concat(unscheduled).Select(t => t.ToDto()).ToList());
     }
 }
