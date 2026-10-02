@@ -1,8 +1,9 @@
-@* Окно цели — шаблон занятий: название, роль, «раз в неделю», время, квадрант, длительность, заметки.
+@* Окно цели — шаблон занятий: название, роль, «раз в неделю», «каждую неделю», время, квадрант, длительность, заметки.
    Изменения расходятся по невыполненным занятиям недели (кроме полей, которые у занятия свои);
    роль и квадрант — по всем занятиям. Enter в названии — сохранить, Esc или клик мимо — отмена.
    Стили — css/editor.css. *@
 @inject PlannerState State
+@inject WindowHost Windows
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
@@ -38,6 +39,14 @@
             <Stepper Value="_times" ValueChanged="times => _times = times ?? 1" Min="1" Max="MaxTimesPerWeek" Label="Раз в неделю" />
         </div>
     </div>
+
+    @* «Каждую неделю»: цель сама появляется на следующих неделях; правка — с этой недели и дальше *@
+    <label class="switch-row">
+        <input type="checkbox" role="switch" @bind="_recurring" />
+        <span class="switch"></span>
+        <span>каждую неделю</span>
+        <span class="hint">@(_recurring ? "появится и на следующих неделях; изменения — с этой недели и дальше" : "только на этой неделе")</span>
+    </label>
 
     <div class="row">
         <div class="field">
@@ -91,6 +100,7 @@
     private int? _quadrant;
     private int? _duration;
     private string? _notes;
+    private bool _recurring;
 
     [Parameter, EditorRequired]
     public WeeklyGoalDto EditedGoal { get; set; } = null!;
@@ -107,6 +117,7 @@
         _quadrant = EditedGoal.Quadrant;
         _duration = EditedGoal.DurationMinutes;
         _notes = EditedGoal.Notes;
+        _recurring = EditedGoal.IsRecurring;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -146,7 +157,7 @@
 
         await OnClose.InvokeAsync();
         await State.UpdateGoalAsync(EditedGoal.Id,
-            new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration));
+            new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration, _recurring));
     }
 
     /// <summary>Удалить; мысль цели без дня вернётся в ленту (без своей категории — в «неразобранное»).</summary>
@@ -154,6 +165,6 @@
     {
         var goalId = EditedGoal.Id;
         await OnClose.InvokeAsync();
-        await State.DeleteGoalAsync(goalId);
+        await Windows.DeleteGoalAsync(State, goalId); // постоянную — с вопросом
     }
 }

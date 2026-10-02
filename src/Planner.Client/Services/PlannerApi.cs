@@ -91,7 +91,9 @@ public class PlannerApi(HttpClient http)
     public Task<GoalResultDto> ToggleGoalAsync(int id, ToggleGoalRequest request) =>
         SendAsync<GoalResultDto>(HttpMethod.Post, $"api/goals/{id}/toggle", request);
 
-    public Task DeleteGoalAsync(int id) => SendAsync(HttpMethod.Delete, $"api/goals/{id}");
+    /// <summary>Постоянная цель: fromThisWeekOn — с этой недели и дальше, иначе — только на этой неделе.</summary>
+    public Task DeleteGoalAsync(int id, bool fromThisWeekOn) =>
+        SendAsync(HttpMethod.Delete, $"api/goals/{id}{(fromThisWeekOn ? "?scope=series" : "")}");
 
     public Task<WeeklyGoalDto> MoveGoalAsync(int id, MoveGoalRequest request) =>
         SendAsync<WeeklyGoalDto>(HttpMethod.Post, $"api/goals/{id}/move", request);

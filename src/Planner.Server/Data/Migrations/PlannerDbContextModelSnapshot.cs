@@ -43,6 +43,57 @@ namespace Planner.Server.Data.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("Planner.Core.Entities.GoalSeries", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("FirstWeek")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("GeneratedThrough")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly?>("LastWeek")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(10000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Quadrant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TimesPerWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsRecurring");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("GoalSeries");
+                });
+
             modelBuilder.Entity("Planner.Core.Entities.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -160,6 +211,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int>("RoleId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("SeriesId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
@@ -181,9 +235,21 @@ namespace Planner.Server.Data.Migrations
 
                     b.HasIndex("RoleId");
 
+                    b.HasIndex("SeriesId", "WeekStart")
+                        .IsUnique();
+
                     b.HasIndex("WeekStart", "RoleId", "SortOrder");
 
                     b.ToTable("WeeklyGoals");
+                });
+
+            modelBuilder.Entity("Planner.Core.Entities.GoalSeries", b =>
+                {
+                    b.HasOne("Planner.Core.Entities.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.TaskItem", b =>
@@ -232,6 +298,13 @@ namespace Planner.Server.Data.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Planner.Core.Entities.GoalSeries", "Series")
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Series");
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>

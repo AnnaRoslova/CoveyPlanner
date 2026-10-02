@@ -72,5 +72,22 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         builder.Ignore(g => g.UnscheduledSession);
 
         builder.HasIndex(g => new { g.WeekStart, g.RoleId, g.SortOrder });
+
+        // Серия: удалили серию (вместе с ролью) — цели остаются разовыми; на неделе у серии одна цель
+        builder.HasOne(g => g.Series).WithMany().HasForeignKey(g => g.SeriesId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(g => new { g.SeriesId, g.WeekStart }).IsUnique();
+    }
+}
+
+public class GoalSeriesConfiguration : IEntityTypeConfiguration<GoalSeries>
+{
+    public void Configure(EntityTypeBuilder<GoalSeries> builder)
+    {
+        builder.Property(s => s.Title).IsRequired().HasMaxLength(TextRules.TitleMaxLength);
+        builder.Property(s => s.Notes).HasMaxLength(TextRules.NotesMaxLength);
+        builder.Property(s => s.Quadrant).HasConversion<int?>();
+
+        builder.HasOne<Role>().WithMany().HasForeignKey(s => s.RoleId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(s => s.IsRecurring);
     }
 }

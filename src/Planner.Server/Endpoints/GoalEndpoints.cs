@@ -12,14 +12,14 @@ public static class GoalEndpoints
 
         goals.MapPost("/", async (CreateGoalRequest request, GoalService service, CancellationToken ct) =>
         {
-            var goal = await service.CreateAsync(request.RoleId, request.WeekStart, request.Title, ct);
+            var goal = await service.CreateAsync(request.RoleId, request.WeekStart, request.Title, request.IsRecurring, ct);
             return Results.Created($"/api/goals/{goal.Id}", goal.ToDto());
         });
 
         goals.MapPut("/{id:int}", async (int id, UpdateGoalRequest request, GoalService service, CancellationToken ct) =>
             (await service.UpdateAsync(id, new GoalChanges(
                 request.Title, request.RoleId, request.TimesPerWeek, request.StartTime,
-                request.Quadrant.ToQuadrant(), request.Notes, request.DurationMinutes), ct))
+                request.Quadrant.ToQuadrant(), request.Notes, request.DurationMinutes, request.IsRecurring), ct))
             .ToUpdateResultDto());
 
         // Клик по отметке цели: отметить ближайшее занятие или снять отметку с последнего
@@ -27,10 +27,11 @@ public static class GoalEndpoints
             (await service.ToggleDoneAsync(id, request.Today, ct)).ToResultDto());
 
         // Выполненные занятия остаются в неделе, невыполненные — в корзину, занятие без дня — в ленту
-        // (в свою категорию или в «неразобранное»)
-        goals.MapDelete("/{id:int}", async (int id, GoalService service, CancellationToken ct) =>
+        // (в свою категорию или в «неразобранное»). Постоянная цель: ?scope=series — с этой недели и дальше,
+        // иначе — только на этой неделе
+        goals.MapDelete("/{id:int}", async (int id, string? scope, GoalService service, CancellationToken ct) =>
         {
-            await service.DeleteAsync(id, ct);
+            await service.DeleteAsync(id, fromThisWeekOn: scope == "series", ct);
             return Results.NoContent();
         });
 

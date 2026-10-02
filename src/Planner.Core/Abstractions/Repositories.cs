@@ -64,9 +64,24 @@ public interface IGoalRepository
     /// <summary>Цели роли за все недели (для удаления роли).</summary>
     Task<List<WeeklyGoal>> GetAllForRoleAsync(int roleId, CancellationToken ct = default);
 
+    /// <summary>Цели серии с недели <paramref name="fromWeek"/> включительно, по неделям.</summary>
+    Task<List<WeeklyGoal>> GetInSeriesAsync(int seriesId, DateOnly fromWeek, CancellationToken ct = default);
+
+    /// <summary>Цель серии на неделю (у серии на неделе не больше одной цели).</summary>
+    Task<WeeklyGoal?> FindInSeriesAsync(int seriesId, DateOnly weekStart, CancellationToken ct = default);
+
     void Add(WeeklyGoal goal);
 
     void Remove(WeeklyGoal goal);
+}
+
+/// <summary>Серии целей (постоянные цели «каждую неделю» и связи перенесённых занятий).</summary>
+public interface IGoalSeriesRepository
+{
+    /// <summary>Постоянные серии, у которых могут появиться новые недели.</summary>
+    Task<List<GoalSeries>> GetRecurringAsync(CancellationToken ct = default);
+
+    void Add(GoalSeries series);
 }
 
 /// <summary>Сохранение всех изменений одной транзакцией.</summary>

@@ -206,6 +206,47 @@ public sealed class MigrationTests : IDisposable
         Assert.Empty(tasks[2].RoleIds);
     }
 
+    [Fact]
+    public async Task GoalSeries_SawGoals_BecomeSeries_RecurringOnlyIfRecent()
+    {
+        await using var db = CreateContext();
+        var thisWeek = Planner.Core.Time.Week.StartOf(DateOnly.FromDateTime(DateTime.Now));
+        string W(int offset) => thisWeek.AddDays(7 * offset).ToString("yyyy-MM-dd");
+
+        await db.GetService<IMigrator>().MigrateAsync("TaskRoles");
+        var sql = $"""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES
+                (1, 'Тело', '#9fd3bd', 0, 'Body'), (2, 'Ум', '#a9cde8', 1, 'Mind'), (3, 'Работа', '#8fb4e3', 0, NULL);
+            INSERT INTO WeeklyGoals (Id, RoleId, WeekStart, Title, TimesPerWeek, SortOrder, Notes) VALUES
+                (1, 1, '{W(-3)}', 'Тренировка', 2, 0, NULL),
+                (2, 1, '{W(-1)}', 'Тренировка', 3, 0, 'в зале'),
+                (3, 2, '{W(0)}', 'Чтение', 1, 0, NULL),
+                (4, 2, '{W(0)}', 'Чтение', 1, 1, NULL),
+                (5, 2, '{W(-6)}', 'Курс', 1, 0, NULL),
+                (6, 3, '{W(0)}', 'Отчёт', 1, 0, NULL);
+            """;
+        await db.Database.ExecuteSqlRawAsync(sql); // даты — свои, из теста
+
+        await db.Database.MigrateAsync();
+
+        var series = await db.GoalSeries.OrderBy(s => s.Title).ToListAsync();
+        Assert.Equal(["Курс", "Тренировка", "Чтение"], series.Select(s => s.Title));
+
+        var course = series[0];
+        Assert.False(course.IsRecurring); // давняя — законченная серия
+        Assert.Equal(DateOnly.Parse(W(-6)), course.LastWeek);
+
+        var training = series[1];
+        Assert.True(training.IsRecurring);
+        Assert.Null(training.LastWeek);
+        Assert.Equal((3, "в зале"), (training.TimesPerWeek, training.Notes)); // шаблон — с последней недели
+        Assert.Equal(DateOnly.Parse(W(-3)), training.FirstWeek);
+        Assert.Equal(DateOnly.Parse(W(-1)), training.GeneratedThrough);
+
+        var goals = await db.WeeklyGoals.OrderBy(g => g.Id).ToListAsync();
+        Assert.Equal([training.Id, training.Id, series[2].Id, null, course.Id, null], goals.Select(g => g.SeriesId));
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

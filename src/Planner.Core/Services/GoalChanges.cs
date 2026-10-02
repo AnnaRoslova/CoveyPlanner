@@ -2,7 +2,10 @@ using Planner.Core.Enums;
 
 namespace Planner.Core.Services;
 
-/// <summary>Всё, что меняется в окне цели. null у необязательных полей — «не задано».</summary>
+/// <summary>
+/// Всё, что меняется в окне цели. null у необязательных полей — «не задано»;
+/// IsRecurring — «каждую неделю» (null — не менять).
+/// </summary>
 public sealed record GoalChanges(
     string Title,
     int RoleId,
@@ -10,4 +13,5 @@ public sealed record GoalChanges(
     TimeOnly? StartTime,
     Quadrant? Quadrant,
     string? Notes,
-    int? DurationMinutes);
+    int? DurationMinutes,
+    bool? IsRecurring = null);

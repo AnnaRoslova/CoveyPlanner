@@ -1,0 +1,50 @@
+@* Удаление постоянной цели («каждую неделю»): только на этой неделе (на следующей она снова появится)
+   или с этой недели и дальше (серия заканчивается, прошлые недели остаются). После — плашка «Вернуть».
+   Esc или клик мимо — отмена. Стили — css/editor.css. *@
+@inject PlannerState State
+
+<div class="editor-backdrop" @onclick="OnClose"></div>
+
+<div class="editor confirm-delete" role="alertdialog" aria-label="Удалить цель" tabindex="-1"
+     @ref="_dialog" @onkeydown="OnKeyDown">
+    <div class="question">Удалить «@Goal.Title»?</div>
+    <div class="explain">Это цель «каждую неделю».</div>
+    <div class="buttons">
+        <button type="button" class="btn" @onclick="() => DeleteAsync(fromThisWeekOn: false)">Только на этой неделе</button>
+        <button type="button" class="btn danger" @onclick="() => DeleteAsync(fromThisWeekOn: true)">С этой недели и дальше</button>
+        <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
+    </div>
+</div>
+
+@code {
+    private ElementReference _dialog;
+
+    [Parameter, EditorRequired]
+    public WeeklyGoalDto Goal { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _dialog.FocusAsync(); // чтобы Esc закрывал сразу
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private async Task DeleteAsync(bool fromThisWeekOn)
+    {
+        var goalId = Goal.Id;
+        await OnClose.InvokeAsync();
+        await State.DeleteGoalAsync(goalId, fromThisWeekOn);
+    }
+}

@@ -20,6 +20,9 @@ public sealed class WindowHost
     /// <summary>Дело плана (в дне) в окне редактирования.</summary>
     public int? TaskId { get; private set; }
 
+    /// <summary>Постоянная цель, про которую спрашиваем: удалить только на этой неделе или с этой недели и дальше.</summary>
+    public int? DeleteGoalId { get; private set; }
+
     public event Action? Changed;
 
     public void OpenGoal(int goalId) => Open(goalId: goalId);
@@ -32,15 +35,31 @@ public sealed class WindowHost
 
     public void OpenTask(int taskId) => Open(taskId: taskId);
 
+    public void AskDeleteGoal(int goalId) => Open(deleteGoalId: goalId);
+
+    /// <summary>Удалить цель: постоянную — сначала спросить (только эта неделя или с этой недели и дальше), разовую — сразу.</summary>
+    public Task DeleteGoalAsync(PlannerState state, int goalId)
+    {
+        if (state.FindGoal(goalId) is { IsRecurring: true })
+        {
+            AskDeleteGoal(goalId);
+            return Task.CompletedTask;
+        }
+
+        return state.DeleteGoalAsync(goalId);
+    }
+
     public void Close() => Open();
 
-    private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null)
+    private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
+        int? deleteGoalId = null)
     {
         GoalId = goalId;
         RoleId = roleId;
         IsNewRole = newRole;
         SomedayTaskId = somedayTaskId;
         TaskId = taskId;
+        DeleteGoalId = deleteGoalId;
         Changed?.Invoke();
     }
 }

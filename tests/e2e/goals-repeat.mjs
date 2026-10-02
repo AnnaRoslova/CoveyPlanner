@@ -138,6 +138,9 @@ await check('удалить цель: выполненное занятие ос
   const row = (await page.evaluateHandle(goalSel('Тело', 'Бег'))).asElement();
   await row.hover();
   await (await row.$('.row-action[title="Удалить цель"]')).click(); await settle();
+  // «Бег» в «Теле» — постоянная цель: спрашивают, удалить только на этой неделе или дальше
+  await page.evaluate(() => [...document.querySelectorAll('.confirm-delete .btn')].find(b => b.textContent.trim() === 'Только на этой неделе').click());
+  await settle();
   assert(!(await goal('Тело', 'Бег')), 'цель осталась');
   const tue = await runsOn(1);
   assert(tue.length === 1 && tue[0].done && !tue[0].rock, `Вт: ${JSON.stringify(tue)}`);

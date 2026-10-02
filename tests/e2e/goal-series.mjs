@@ -1,0 +1,182 @@
+// @seed — нужны демо-данные (tools/seed-demo.ps1)
+// Постоянные цели («каждую неделю»): переключатель в окне цели (у пилы включён по умолчанию), цель сама появляется
+// на следующей неделе (без занятий), удаление — вопрос «Только на этой неделе» / «С этой недели и дальше» / «Отмена», с «Вернуть».
+import puppeteer from 'puppeteer-core';
+
+const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
+const SHOTS = process.argv[2] ?? '.';
+const results = [];
+const consoleErrors = [];
+const browser = await puppeteer.launch({
+  executablePath: process.env.PLANNER_BROWSER ?? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  headless: true, defaultViewport: { width: 1600, height: 900 },
+});
+const page = await browser.newPage();
+page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+page.on('pageerror', e => consoleErrors.push(e.message));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const settle = () => sleep(450);
+function assert(c, m) { if (!c) throw new Error(m); }
+async function check(name, fn) {
+  try { await fn(); results.push(`OK   ${name}`); }
+  catch (e) { results.push(`FAIL ${name}: ${e.message}`); await page.screenshot({ path: `${SHOTS}/fail-goal-series-${results.length}.png` }); }
+  for (const sel of ['.editor']) if (await page.$(sel)) { await page.keyboard.press('Escape'); await settle(); }
+}
+async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.day'); await settle(); }
+async function clickText(selector, text) {
+  const ok = await page.evaluate((s, t) => {
+    const el = [...document.querySelectorAll(s)].find(e => e.textContent.trim() === t);
+    el?.click();
+    return !!el;
+  }, selector, text);
+  assert(ok, `нет «${text}» (${selector})`);
+  await settle();
+}
+
+const goalsOf = role => page.evaluate(n => [...[...document.querySelectorAll('.role')]
+  .find(r => r.querySelector('.role-h .name')?.textContent.trim() === n)
+  .querySelectorAll('.item .title')].map(t => t.textContent.trim()), role);
+const goalRow = title => page.evaluateHandle(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title').textContent.trim() === t), title);
+async function addGoal(role, title) {
+  await page.evaluate(n => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n)
+    .querySelector(':scope > .add').click(), role);
+  await settle();
+  await page.keyboard.type(title); await page.keyboard.press('Enter'); await settle();
+  await page.keyboard.press('Escape'); await settle();
+}
+async function openGoal(title) {
+  await (await (await goalRow(title)).$('.title')).click(); await settle();
+  assert(await page.$('.editor[aria-label="Цель недели"]'), 'окно цели не открылось');
+}
+const switchOn = () => page.$eval('.editor .switch-row input', i => i.checked);
+// Листать неделю и дождаться, что заголовок сменился и неделя загрузилась
+async function flip(title) {
+  const before = await page.$eval('.wt', e => e.textContent);
+  await page.click(`.nav[title="${title}"]`);
+  await page.waitForFunction(b => document.querySelector('.wt').textContent !== b, { timeout: 3000 }, before);
+  await sleep(700);
+}
+const nextWeek = () => flip('Следующая неделя');
+const prevWeek = () => flip('Предыдущая неделя');
+const toast = async () => (await page.$('.toast')) ? page.$eval('.toast', e => [...e.querySelectorAll('span, button')].map(x => x.textContent.trim()).join(' ')) : null;
+async function deleteByCross(title) {
+  const row = await goalRow(title);
+  await row.hover();
+  await (await row.$('.row-action[title="Удалить цель"]')).click(); await settle();
+}
+
+await load();
+
+await check('«каждую неделю»: у цели пилы включено, у цели обычной роли — выключено', async () => {
+  await openGoal('Бег');
+  assert(await switchOn(), 'у «Бега» (Тело) выключено');
+  await page.screenshot({ path: `${SHOTS}/goal-series-editor.png` });
+  await page.keyboard.press('Escape'); await settle();
+  await openGoal('Демо для команды');
+  assert(!(await switchOn()), 'у цели «Работы» включено');
+});
+
+await check('новая цель пилы появляется на следующей неделе — без занятий, прогресс с нуля', async () => {
+  await addGoal('Тело', 'Бассейн');
+  await nextWeek();
+  const body = await goalsOf('Тело');
+  assert(body.includes('Бассейн') && body.includes('Бег'), `Тело на следующей неделе: ${body}`);
+  const run = await (await goalRow('Бег')).evaluate(i => ({ days: i.querySelectorAll('.goal-days .d').length, progress: i.querySelector('.progress')?.textContent }));
+  assert(run.days === 0 && run.progress === '0/3', `«Бег»: ${JSON.stringify(run)}`);
+  assert(!(await goalsOf('Работа')).includes('Демо для команды'), 'разовая цель тоже появилась');
+});
+
+await check('удалить постоянную: вопрос с тремя кнопками; «Отмена» ничего не меняет', async () => {
+  await deleteByCross('Бассейн');
+  assert(await page.$eval('.confirm-delete .question', e => e.textContent.trim()) === 'Удалить «Бассейн»?', 'нет вопроса');
+  const buttons = await page.$$eval('.confirm-delete .btn', bs => bs.map(b => b.textContent.trim()));
+  assert(JSON.stringify(buttons) === '["Только на этой неделе","С этой недели и дальше","Отмена"]', `кнопки: ${buttons}`);
+  await clickText('.confirm-delete .btn', 'Отмена');
+  assert(!(await page.$('.confirm-delete')) && (await goalsOf('Тело')).includes('Бассейн'), 'отмена не сработала');
+});
+
+// Перейти на неделю: 0 — текущая, 1 — следующая, -1 — прошлая
+async function goWeek(offset) {
+  if (await page.$('.today-b')) {
+    const before = await page.$eval('.wt', e => e.textContent);
+    await page.click('.today-b');
+    await page.waitForFunction(b => document.querySelector('.wt').textContent !== b, { timeout: 3000 }, before);
+    await sleep(700);
+  }
+  for (let i = 0; i < Math.abs(offset); i++) await (offset > 0 ? nextWeek() : prevWeek());
+}
+// Цели роли на неделе — по данным сервера (неделя открывается — постоянные цели появляются)
+const monday = await page.evaluate(() => {
+  const d = new Date(); d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+});
+async function serverGoals(offset, role) {
+  return page.evaluate(async (monday, offset, role) => {
+    const d = new Date(monday); d.setDate(d.getDate() + 7 * offset);
+    const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const board = await (await fetch('/api/board')).json();
+    const roleId = board.roles.find(r => r.name === role).id;
+    return (await (await fetch(`/api/week/${week}`)).json()).goals.filter(g => g.roleId === roleId).map(g => g.title);
+  }, monday, offset, role);
+}
+
+await check('«Бассейн» — с этой недели и дальше; «Теннис» каждую неделю → через неделю «Теннис» есть, «Бассейна» нет; раньше — на месте', async () => {
+  await goWeek(0);
+  await deleteByCross('Бассейн');
+  await clickText('.confirm-delete .btn', 'С этой недели и дальше');
+  assert(await toast() === 'Удалено «Бассейн» — с этой недели и дальше · Вернуть', `плашка: ${await toast()}`);
+  assert(!(await goalsOf('Тело')).includes('Бассейн'), 'не удалилась');
+  await addGoal('Тело', 'Теннис');
+  await goWeek(1);
+  const body = await goalsOf('Тело');
+  assert(body.includes('Теннис') && !body.includes('Бассейн'), `через неделю: ${body}`);
+  assert(JSON.stringify(await serverGoals(2, 'Тело')) === '["Бег","Теннис"]', `через две недели: ${await serverGoals(2, 'Тело')}`);
+  assert(JSON.stringify(await serverGoals(0, 'Тело')) === '["Бег","Теннис"]', `эта неделя: ${await serverGoals(0, 'Тело')}`);
+});
+
+await check('«Вернуть» после «с этой недели и дальше» — серия продолжается', async () => {
+  await goWeek(1);
+  await deleteByCross('Теннис');
+  await clickText('.confirm-delete .btn', 'С этой недели и дальше');
+  await page.click('.toast .action'); await settle();
+  assert((await goalsOf('Тело')).includes('Теннис'), 'не вернулась');
+  assert((await serverGoals(3, 'Тело')).includes('Теннис'), 'серия не продолжается');
+});
+
+await check('«Только на этой неделе» — на следующей неделе цель снова есть, а здесь не возвращается', async () => {
+  await goWeek(0);
+  await deleteByCross('Теннис');
+  await clickText('.confirm-delete .btn', 'Только на этой неделе');
+  assert(await toast() === 'Удалено «Теннис» — на этой неделе · Вернуть', `плашка: ${await toast()}`);
+  await goWeek(1); // листание отправляет удаление на сервер сразу
+  assert((await goalsOf('Тело')).includes('Теннис'), 'на следующей неделе нет');
+  await goWeek(0);
+  assert(!(await goalsOf('Тело')).includes('Теннис'), 'на этой неделе вернулась');
+});
+
+await check('выключить «каждую неделю» — со следующей недели цели нет; в окне выключено', async () => {
+  await goWeek(0);
+  await openGoal('100 страниц');
+  await page.click('.editor .switch-row'); await settle();
+  assert(!(await switchOn()), 'переключатель не выключился');
+  await page.click('.editor .btn:not(.quiet):not(.danger)'); await settle();
+  await openGoal('100 страниц');
+  assert(!(await switchOn()), 'после сохранения включено');
+  await page.keyboard.press('Escape'); await settle();
+  await goWeek(1);
+  assert(!(await goalsOf('Ум')).includes('100 страниц'), 'на следующей неделе есть');
+});
+
+await check('разовую цель удаляют без вопроса', async () => {
+  await goWeek(0);
+  await deleteByCross('Демо для команды');
+  assert(!(await page.$('.confirm-delete')), 'спросили про разовую');
+  assert(!(await goalsOf('Работа')).includes('Демо для команды'), 'не удалилась');
+});
+
+await check('в консоли нет ошибок', async () => {
+  assert(consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 600));
+});
+
+await browser.close();
+console.log(results.join('\n'));

@@ -34,7 +34,7 @@
             <Actions>
                 @if (goal.Id > 0)
                 {
-                    <button type="button" class="row-action" title="Удалить цель" @onclick="() => State.DeleteGoalAsync(goal.Id)">
+                    <button type="button" class="row-action" title="Удалить цель" @onclick="() => Windows.DeleteGoalAsync(State, goal.Id)">
                         <Icon Name="x" Size="12" />
                     </button>
                 }

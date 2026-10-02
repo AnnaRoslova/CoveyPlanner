@@ -14,6 +14,8 @@ public class PlannerDbContext(DbContextOptions<PlannerDbContext> options) : DbCo
 
     public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
 
+    public DbSet<GoalSeries> GoalSeries => Set<GoalSeries>();
+
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken ct) => await SaveChangesAsync(ct);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>

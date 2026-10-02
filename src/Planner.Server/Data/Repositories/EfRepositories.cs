@@ -76,7 +76,7 @@ public class EfRoleRepository(PlannerDbContext db) : IRoleRepository
 
 public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
 {
-    private IQueryable<WeeklyGoal> Goals => db.WeeklyGoals.Include(g => g.Sessions);
+    private IQueryable<WeeklyGoal> Goals => db.WeeklyGoals.Include(g => g.Sessions).Include(g => g.Series);
 
     public Task<WeeklyGoal?> FindAsync(int id, CancellationToken ct = default) =>
         Goals.FirstOrDefaultAsync(g => g.Id == id, ct);
@@ -94,7 +94,21 @@ public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
     public Task<List<WeeklyGoal>> GetAllForRoleAsync(int roleId, CancellationToken ct = default) =>
         Goals.Where(g => g.RoleId == roleId).ToListAsync(ct);
 
+    public Task<List<WeeklyGoal>> GetInSeriesAsync(int seriesId, DateOnly fromWeek, CancellationToken ct = default) =>
+        Goals.Where(g => g.SeriesId == seriesId && g.WeekStart >= fromWeek).OrderBy(g => g.WeekStart).ToListAsync(ct);
+
+    public Task<WeeklyGoal?> FindInSeriesAsync(int seriesId, DateOnly weekStart, CancellationToken ct = default) =>
+        Goals.FirstOrDefaultAsync(g => g.SeriesId == seriesId && g.WeekStart == weekStart, ct);
+
     public void Add(WeeklyGoal goal) => db.WeeklyGoals.Add(goal);
 
     public void Remove(WeeklyGoal goal) => db.WeeklyGoals.Remove(goal);
+}
+
+public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
+{
+    public Task<List<GoalSeries>> GetRecurringAsync(CancellationToken ct = default) =>
+        db.GoalSeries.Where(s => s.IsRecurring).ToListAsync(ct);
+
+    public void Add(GoalSeries series) => db.GoalSeries.Add(series);
 }

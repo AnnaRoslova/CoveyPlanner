@@ -42,7 +42,8 @@ public static class Mapping
         g.ActiveSessions
             .OrderBy(t => t.PlannedDate ?? DateOnly.MaxValue).ThenBy(t => t.Id)
             .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done))
-            .ToList());
+            .ToList(),
+        g.RepeatsAfterThisWeek);
 
     /// <summary>Цель и её занятия, стоящие в днях (их поля могли поменяться по шаблону).</summary>
     public static GoalUpdateResultDto ToUpdateResultDto(this WeeklyGoal g) =>

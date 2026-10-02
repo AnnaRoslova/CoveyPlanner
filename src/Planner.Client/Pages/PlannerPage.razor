@@ -43,6 +43,10 @@
     {
         <TaskEditor @key="taskId" EditedTask="task" OnClose="Windows.Close" />
     }
+    else if (Windows.DeleteGoalId is { } deleteGoalId && State.FindGoal(deleteGoalId) is { } doomed)
+    {
+        <GoalDeleteDialog @key="deleteGoalId" Goal="doomed" OnClose="Windows.Close" />
+    }
 }
 else if (State.LoadError is not null)
 {

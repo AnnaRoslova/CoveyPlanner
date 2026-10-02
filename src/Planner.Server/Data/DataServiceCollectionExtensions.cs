@@ -34,6 +34,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<ICategoryRepository, EfCategoryRepository>();
         services.AddScoped<IRoleRepository, EfRoleRepository>();
         services.AddScoped<IGoalRepository, EfGoalRepository>();
+        services.AddScoped<IGoalSeriesRepository, EfGoalSeriesRepository>();
 
         services.AddScoped(sp => ResolveBackupOptions(sp.GetRequiredService<IConfiguration>()));
         services.AddScoped<BackupService>();
@@ -41,6 +42,7 @@ public static class DataServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<TaskPlacer>();
         services.AddScoped<GoalRemover>();
+        services.AddScoped<GoalSeriesService>();
         services.AddScoped<TaskService>();
         services.AddScoped<CategoryService>();
         services.AddScoped<RoleService>();

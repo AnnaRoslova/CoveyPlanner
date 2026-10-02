@@ -24,7 +24,7 @@ public partial class PlannerState
         var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, title, TimesPerWeek: 1,
             StartTime: null, Quadrant: null, Notes: null, DurationMinutes: null,
             SortOrder: siblings.Count == 0 ? 0 : siblings.Max(g => g.SortOrder) + 1,
-            Sessions: []);
+            Sessions: [], IsRecurring: FindRole(roleId)?.IsSharpenSaw ?? false); // как решит сервер
         Goals.Add(temp);
 
         var ok = await SaveAsync(async () =>
@@ -70,6 +70,7 @@ public partial class PlannerState
             Notes = string.IsNullOrWhiteSpace(form.Notes) ? null : form.Notes.Trim(),
             DurationMinutes = form.DurationMinutes,
             SortOrder = sortOrder,
+            IsRecurring = form.IsRecurring ?? goal.IsRecurring,
         });
 
         await SaveAsync(async () =>
@@ -117,16 +118,18 @@ public partial class PlannerState
     /// Удалить цель. Выполненные занятия остаются в неделе, невыполненные уходят в корзину,
     /// занятие без дня возвращается в ленту (без своей категории — в «неразобранное»).
     /// С «Вернуть»; после удаления на сервере — перечитываем: занятие без дня пришло в ленту.
+    /// Постоянная цель: <paramref name="fromThisWeekOn"/> — серия заканчивается (с этой недели и дальше), иначе — только эта неделя.
     /// </summary>
-    public async Task DeleteGoalAsync(int goalId)
+    public async Task DeleteGoalAsync(int goalId, bool fromThisWeekOn = false)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal)
         {
             return;
         }
 
-        await DeleteWithUndoAsync(Deleted(goal.Title), () => RemoveGoalLocally(goal),
-            () => api.DeleteGoalAsync(goalId), reloadAfter: goal.Sessions.Count > 0);
+        var scope = !goal.IsRecurring ? "" : fromThisWeekOn ? " — с этой недели и дальше" : " — на этой неделе";
+        await DeleteWithUndoAsync(Deleted(goal.Title) + scope, () => RemoveGoalLocally(goal),
+            () => api.DeleteGoalAsync(goalId, fromThisWeekOn), reloadAfter: goal.Sessions.Count > 0);
     }
 
     // ---------- Роли ----------
@@ -250,7 +253,7 @@ public partial class PlannerState
         // Шаблон цели — из дела (так же делает сервер)
         var temp = new WeeklyGoalDto(session.GoalId!.Value, roleId, WeekStart, task.Title, TimesPerWeek: 1,
             task.StartTime, task.Quadrant, task.Notes, task.DurationMinutes,
-            SortOrder: 0, Sessions: [ToSession(session)]);
+            SortOrder: 0, Sessions: [ToSession(session)], IsRecurring: FindRole(roleId)?.IsSharpenSaw ?? false);
         siblings.Insert(index, temp);
         Goals.Add(temp);
         for (var i = 0; i < siblings.Count; i++)

@@ -47,6 +47,14 @@ public class WeeklyGoal : ISortable
 
     public int SortOrder { get; set; }
 
+    /// <summary>Серия: та же цель на других неделях (постоянная — «каждую неделю»). null — разовая цель.</summary>
+    public int? SeriesId { get; private set; }
+
+    public GoalSeries? Series { get; private set; }
+
+    /// <summary>Повторяется ли цель на следующей неделе («каждую неделю» в окне цели).</summary>
+    public bool RepeatsAfterThisWeek => Series?.RepeatsAfter(WeekStart) ?? false;
+
     /// <summary>Все занятия цели, включая те, что в корзине. Репозиторий подгружает их вместе с целью.</summary>
     public IReadOnlyList<TaskItem> Sessions => _sessions;
 
@@ -75,6 +83,37 @@ public class WeeklyGoal : ISortable
             Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название цели"),
         };
     }
+
+    /// <summary>Цель постоянной серии на неделю: всё — из шаблона серии, занятий нет.</summary>
+    public static WeeklyGoal FromSeries(GoalSeries series, DateOnly weekStart)
+    {
+        var goal = Create(series.RoleId, weekStart, series.Title);
+        goal.TimesPerWeek = series.TimesPerWeek;
+        goal.StartTime = series.StartTime;
+        goal.Quadrant = series.Quadrant;
+        goal.Notes = series.Notes;
+        goal.DurationMinutes = series.DurationMinutes;
+        goal.Series = series;
+        return goal;
+    }
+
+    /// <summary>
+    /// Та же цель на другой неделе — для занятия, которое туда перенесли: шаблон этой цели, но 1 раз в неделю
+    /// и без повтора; цель входит в ту же серию.
+    /// </summary>
+    public WeeklyGoal CopyForWeek(DateOnly weekStart)
+    {
+        var goal = Create(RoleId, weekStart, Title);
+        goal.StartTime = StartTime;
+        goal.Quadrant = Quadrant;
+        goal.Notes = Notes;
+        goal.DurationMinutes = DurationMinutes;
+        goal.Series = Series;
+        return goal;
+    }
+
+    /// <summary>Войти в серию (только что созданную из этой цели).</summary>
+    public void JoinSeries(GoalSeries series) => Series = series;
 
     /// <summary>
     /// Изменить шаблон занятий. Квадрант у занятий всегда от цели — меняется у всех.

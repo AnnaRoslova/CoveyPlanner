@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 using Planner.Core.Enums;
+using Planner.Core.Services;
 using Planner.Core.Time;
 using Planner.Shared;
 
@@ -40,9 +42,21 @@ public static class BoardEndpoints
         DateOnly weekStart,
         IGoalRepository goals,
         ITaskRepository tasks,
+        GoalSeriesService series,
         CancellationToken ct)
     {
         var monday = Week.StartOf(weekStart);
+
+        // Постоянные цели («каждую неделю») появляются на неделе, когда её открывают
+        try
+        {
+            await series.EnsureWeeksAsync(monday, ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Ту же неделю одновременно открыли в другом окне — цели уже создал тот запрос
+        }
+
         var weekGoals = await goals.GetForWeekAsync(monday, ct);
         var weekTasks = await tasks.GetPlannedAsync(monday, monday.AddDays(Week.DaysInWeek - 1), ct);
 

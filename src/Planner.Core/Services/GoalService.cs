@@ -16,6 +16,7 @@ public class GoalService(
     IGoalRepository goals,
     IRoleRepository roles,
     ITaskRepository tasks,
+    IGoalSeriesRepository series,
     TaskPlacer placer,
     GoalRemover remover,
     IUnitOfWork unitOfWork,
@@ -23,14 +24,23 @@ public class GoalService(
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>Новая цель — в конец списка целей роли на эту неделю.</summary>
-    public async Task<WeeklyGoal> CreateAsync(int roleId, DateOnly weekStart, string title, CancellationToken ct = default)
+    /// <summary>
+    /// Новая цель — в конец списка целей роли на эту неделю. <paramref name="recurring"/> — «каждую неделю»;
+    /// null — как принято у роли: у измерений пилы постоянная, у обычных ролей — разовая.
+    /// </summary>
+    public async Task<WeeklyGoal> CreateAsync(
+        int roleId, DateOnly weekStart, string title, bool? recurring = null, CancellationToken ct = default)
     {
-        await EnsureRoleExistsAsync(roleId, ct);
+        var role = await GetRoleAsync(roleId, ct);
         var goal = WeeklyGoal.Create(roleId, weekStart, title);
         var siblings = await goals.GetForRoleAsync(roleId, weekStart, ct);
         SortOrdering.Place(siblings, goal, int.MaxValue);
         goals.Add(goal);
+        if (recurring ?? role.IsSharpenSaw)
+        {
+            StartRecurringSeries(goal);
+        }
+
         await unitOfWork.SaveChangesAsync(ct);
         return goal;
     }
@@ -58,14 +68,89 @@ public class GoalService(
 
         if (changes.RoleId != goal.RoleId)
         {
-            await EnsureRoleExistsAsync(changes.RoleId, ct);
+            await GetRoleAsync(changes.RoleId, ct);
             var siblings = await goals.GetForRoleAsync(changes.RoleId, goal.WeekStart, ct);
             goal.MoveToRole(changes.RoleId);
             SortOrdering.Place(siblings, goal, int.MaxValue);
         }
 
+        await UpdateSeriesAsync(goal, changes.IsRecurring ?? goal.RepeatsAfterThisWeek, ct);
         await unitOfWork.SaveChangesAsync(ct);
         return goal;
+    }
+
+    /// <summary>
+    /// После правки цели — её серия. Постоянная и остаётся такой: шаблон серии и уже созданные цели следующих недель
+    /// меняются так же (прошлые недели — нет). Выключили «каждую неделю» — серия заканчивается на этой неделе,
+    /// уже созданные цели следующих недель удаляются. Включили — серия идёт с этой недели.
+    /// </summary>
+    private async Task UpdateSeriesAsync(WeeklyGoal goal, bool recurring, CancellationToken ct)
+    {
+        var wasRecurring = goal.RepeatsAfterThisWeek;
+        if (wasRecurring && !recurring)
+        {
+            goal.Series!.StopAfter(goal.WeekStart);
+            foreach (var later in await LaterInSeriesAsync(goal, ct))
+            {
+                await remover.RemoveAsync(later, ct);
+            }
+
+            return;
+        }
+
+        if (!recurring)
+        {
+            return; // разовая цель — ничего, кроме неё самой, не меняется
+        }
+
+        if (goal.Series is null)
+        {
+            StartRecurringSeries(goal);
+            return;
+        }
+
+        if (!wasRecurring)
+        {
+            goal.Series.RecurFrom(goal.WeekStart);
+        }
+
+        await SpreadToLaterWeeksAsync(goal, ct);
+    }
+
+    /// <summary>Шаблон постоянной цели — в её серию и в уже созданные цели следующих недель.</summary>
+    private async Task SpreadToLaterWeeksAsync(WeeklyGoal goal, CancellationToken ct)
+    {
+        goal.Series!.CopyTemplateFrom(goal);
+        foreach (var later in await LaterInSeriesAsync(goal, ct))
+        {
+            later.SetTimesPerWeek(goal.TimesPerWeek);
+            var lostTime = later.UpdateTemplate(goal.Title, goal.StartTime, goal.Quadrant, goal.Notes, goal.DurationMinutes);
+            foreach (var session in lostTime)
+            {
+                await placer.MoveToEndOfDayAsync(session, ct);
+            }
+
+            if (later.RoleId != goal.RoleId)
+            {
+                var siblings = await goals.GetForRoleAsync(goal.RoleId, later.WeekStart, ct);
+                later.MoveToRole(goal.RoleId);
+                SortOrdering.Place(siblings, later, int.MaxValue);
+            }
+        }
+    }
+
+    /// <summary>Уже созданные цели той же серии на следующих неделях.</summary>
+    private async Task<List<WeeklyGoal>> LaterInSeriesAsync(WeeklyGoal goal, CancellationToken ct) =>
+        goal.SeriesId is { } seriesId
+            ? await goals.GetInSeriesAsync(seriesId, goal.WeekStart.AddDays(Week.DaysInWeek), ct)
+            : [];
+
+    /// <summary>Сделать цель постоянной: новая серия «каждую неделю» с её шаблоном, начиная с её недели.</summary>
+    private void StartRecurringSeries(WeeklyGoal goal)
+    {
+        var created = GoalSeries.StartFrom(goal, recurring: true);
+        series.Add(created);
+        goal.JoinSeries(created);
     }
 
     /// <summary>
@@ -111,23 +196,44 @@ public class GoalService(
         return (goal, session);
     }
 
-    /// <summary>Удалить цель; что станет с занятиями — см. <see cref="GoalRemover"/>.</summary>
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    /// <summary>
+    /// Удалить цель; что станет с занятиями — см. <see cref="GoalRemover"/>. У постоянной цели:
+    /// <paramref name="fromThisWeekOn"/> = false — только на этой неделе (на следующей она снова появится);
+    /// true — серия заканчивается: цели с этой недели и дальше удаляются, прошлые недели остаются.
+    /// </summary>
+    public async Task DeleteAsync(int id, bool fromThisWeekOn = false, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
+        if (fromThisWeekOn && goal.Series is { IsRecurring: true } recurring)
+        {
+            recurring.StopAfter(goal.WeekStart.AddDays(-Week.DaysInWeek));
+            foreach (var later in await LaterInSeriesAsync(goal, ct))
+            {
+                await remover.RemoveAsync(later, ct);
+            }
+        }
+
         await remover.RemoveAsync(goal, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    /// <summary>Переставить цель внутри роли или перенести к другой роли (та же неделя).</summary>
+    /// <summary>
+    /// Переставить цель внутри роли или перенести к другой роли (та же неделя).
+    /// Постоянная цель переходит к другой роли и на следующих неделях.
+    /// </summary>
     public async Task<WeeklyGoal> MoveAsync(int id, int roleId, int index, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        await EnsureRoleExistsAsync(roleId, ct);
+        await GetRoleAsync(roleId, ct);
 
+        var otherRole = goal.RoleId != roleId;
         var siblings = await goals.GetForRoleAsync(roleId, goal.WeekStart, ct);
         goal.MoveToRole(roleId);
         SortOrdering.Place(siblings, goal, index);
+        if (otherRole && goal.RepeatsAfterThisWeek)
+        {
+            await SpreadToLaterWeeksAsync(goal, ct);
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
         return goal;
@@ -154,12 +260,12 @@ public class GoalService(
 
     /// <summary>
     /// Дело из ленты (или из плана) → цель роли на неделю; дело становится её занятием.
-    /// Дело из ленты уходит из ленты и становится занятием без дня.
+    /// Дело из ленты уходит из ленты и становится занятием без дня. У измерений пилы цель — постоянная.
     /// </summary>
     public async Task<(WeeklyGoal Goal, TaskItem Session)> CreateFromTaskAsync(
         int taskId, int roleId, DateOnly weekStart, int index, CancellationToken ct = default)
     {
-        await EnsureRoleExistsAsync(roleId, ct);
+        var role = await GetRoleAsync(roleId, ct);
         var task = await tasks.FindAsync(taskId, ct) ?? throw new NotFoundException("Дело", taskId);
         if (task.State == TaskState.Trashed)
         {
@@ -183,6 +289,10 @@ public class GoalService(
         var siblings = await goals.GetForRoleAsync(roleId, weekStart, ct);
         SortOrdering.Place(siblings, goal, index);
         goals.Add(goal);
+        if (role.IsSharpenSaw)
+        {
+            StartRecurringSeries(goal);
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
         return (goal, task);
@@ -236,11 +346,6 @@ public class GoalService(
     private async Task<WeeklyGoal> GetAsync(int id, CancellationToken ct) =>
         await goals.FindAsync(id, ct) ?? throw new NotFoundException("Цель", id);
 
-    private async Task EnsureRoleExistsAsync(int roleId, CancellationToken ct)
-    {
-        if (await roles.FindAsync(roleId, ct) is null)
-        {
-            throw new NotFoundException("Роль", roleId);
-        }
-    }
+    private async Task<Role> GetRoleAsync(int roleId, CancellationToken ct) =>
+        await roles.FindAsync(roleId, ct) ?? throw new NotFoundException("Роль", roleId);
 }
