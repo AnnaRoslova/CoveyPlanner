@@ -22,7 +22,10 @@
         <div class="tools">
             @if (State.RocksTotal > 0)
             {
-                <span class="rocks">камней: <b>@State.RocksDone из @State.RocksTotal</b></span>
+                <span class="rocks" title="камень выполнен, когда отмечены все его занятия">
+                    камней: <b>@State.RocksDone из @State.RocksTotal</b>
+                    · занятий <b>@State.SessionsDone из @State.SessionsTotal</b>
+                </span>
             }
         </div>
         <ThemePicker />

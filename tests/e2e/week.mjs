@@ -69,6 +69,20 @@ const rocks = () => page.$eval('.rocks b', b => b.textContent);
 
 await load();
 
+await check('шапка недели: «камней: X из Y · занятий A из B», подсказка про камень', async () => {
+  const goals = await page.evaluate(async () => {
+    const d = new Date(); d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+    const w = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return (await (await fetch(`/api/week/${w}`)).json()).goals;
+  });
+  const done = goals.reduce((s, g) => s + Math.min(g.sessions.filter(x => x.isDone).length, g.timesPerWeek), 0);
+  const total = goals.reduce((s, g) => s + g.timesPerWeek, 0);
+  const rocksDone = goals.filter(g => g.sessions.filter(x => x.isDone).length >= g.timesPerWeek).length;
+  const text = await page.$eval('.rocks', e => e.textContent.replace(/\s+/g, ' ').trim());
+  assert(text === `камней: ${rocksDone} из ${goals.length} · занятий ${done} из ${total}`, `в шапке: ${text}`);
+  assert(await page.$eval('.rocks', e => e.title) === 'камень выполнен, когда отмечены все его занятия', 'нет подсказки');
+});
+
 await check('«+ дело»: в конец дня, поле остаётся; Esc закрывает; после перезагрузки на месте', async () => {
   await page.click('.day:nth-of-type(1) .add'); await settle();
   await page.type('.day:nth-of-type(1) .inline-input', 'Новое дело'); await page.keyboard.press('Enter'); await settle();

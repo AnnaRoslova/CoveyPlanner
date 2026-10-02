@@ -86,6 +86,12 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public int RocksTotal => Goals.Count;
 
+    /// <summary>Отмеченные занятия целей недели (сверх «раз в неделю» не считаются).</summary>
+    public int SessionsDone => Goals.Sum(g => Math.Min(g.DoneCount, g.TimesPerWeek));
+
+    /// <summary>Сколько всего занятий нужно по «раз в неделю» у целей недели.</summary>
+    public int SessionsTotal => Goals.Sum(g => g.TimesPerWeek);
+
     // Загрузка и навигация
 
     public async Task LoadAsync()
