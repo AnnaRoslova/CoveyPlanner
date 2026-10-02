@@ -1,6 +1,6 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
 // Постоянные цели («каждую неделю»): переключатель в окне цели (у пилы включён по умолчанию), цель сама появляется
-// на следующей неделе (без занятий), удаление — вопрос «Только на этой неделе» / «С этой недели и дальше» / «Отмена», с «Вернуть».
+// на следующей неделе (без занятий; если выбраны дни — с занятиями в эти дни), удаление — вопрос «Только на этой неделе» / «С этой недели и дальше» / «Отмена», с «Вернуть».
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -172,6 +172,60 @@ await check('разовую цель удаляют без вопроса', asyn
   await deleteByCross('Демо для команды');
   assert(!(await page.$('.confirm-delete')), 'спросили про разовую');
   assert(!(await goalsOf('Работа')).includes('Демо для команды'), 'не удалилась');
+});
+
+// Занятия цели по дням показанной недели: индексы дней (0 — Пн), где есть дело с этим названием
+const sessionDays = title => page.evaluate(t => [...document.querySelectorAll('.day')]
+  .map((d, i) => [...d.querySelectorAll('.item .title')].some(e => e.textContent.trim() === t) ? i : -1).filter(i => i >= 0), title);
+const dayChips = () => page.$$eval('.editor .chips.days .chip', cs => cs.filter(c => c.classList.contains('on')).map(c => c.textContent.trim()));
+async function chooseDays(...names) {
+  for (const n of names) await clickText('.editor .chips.days .chip', n);
+}
+
+await check('«по каким дням»: только у постоянной цели; по умолчанию «сам раскладываю»', async () => {
+  await goWeek(0);
+  await openGoal('Увидеться с Олей');
+  assert(JSON.stringify(await dayChips()) === '["сам раскладываю"]', `выбрано: ${await dayChips()}`);
+  await page.click('.editor .switch-row'); await settle(); // выключили «каждую неделю»
+  assert(!(await page.$('.editor .chips.days')), 'дни видны у разовой цели');
+  await page.keyboard.press('Escape'); await settle();
+});
+
+await check('дни Пн, Ср, Пт: «раз в неделю» = 3 (заблокировано), занятия встали в эти дни; на следующей неделе — тоже', async () => {
+  await goWeek(0);
+  await openGoal('Увидеться с Олей');
+  await chooseDays('Пн', 'Ср', 'Пт');
+  assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '3', 'не 3');
+  assert(!(await page.$('.editor .times-per-week .step')), 'степпер не заблокирован');
+  await page.screenshot({ path: `${SHOTS}/goal-series-days.png` });
+  await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(1200);
+  assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,2,4]', `эта неделя: ${await sessionDays('Увидеться с Олей')}`);
+  await goWeek(1);
+  assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,2,4]', `следующая: ${await sessionDays('Увидеться с Олей')}`);
+});
+
+await check('сменить дни на Вт, Чт: лишние — в корзину с плашкой «Убрано занятий: N · Вернуть»; «Вернуть» возвращает', async () => {
+  await goWeek(0);
+  await openGoal('Увидеться с Олей');
+  await chooseDays('Пн', 'Ср', 'Пт', 'Вт', 'Чт'); // сняли Пн, Ср, Пт и выбрали Вт, Чт
+  assert(JSON.stringify(await dayChips()) === '["Вт","Чт"]', `выбрано: ${await dayChips()}`);
+  await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(1500);
+  assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[1,3]', `после смены: ${await sessionDays('Увидеться с Олей')}`);
+  const t = await toast();
+  // По 3 занятия (Пн, Ср, Пт) на этой неделе и на каждой уже открытой следующей
+  const removed = Number(/^Убрано занятий: (\d+) · Вернуть$/.exec(t ?? '')?.[1]);
+  assert(removed >= 6 && removed % 3 === 0, `плашка: ${t}`);
+  await page.click('.toast .action'); await sleep(1500);
+  assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,1,2,3,4]', `после «Вернуть»: ${await sessionDays('Увидеться с Олей')}`);
+});
+
+await check('«каждый день» — 7 раз в неделю', async () => {
+  await goWeek(0);
+  await openGoal('Бег');
+  await clickText('.editor .chips.days .chip', 'каждый день');
+  assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '7', 'не 7');
+  assert((await dayChips()).length === 8, `выбрано: ${await dayChips()}`); // «каждый день» и все 7 дней
+  await page.keyboard.press('Escape'); await settle();
 });
 
 await check('в консоли нет ошибок', async () => {

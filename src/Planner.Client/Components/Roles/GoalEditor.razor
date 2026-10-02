@@ -36,7 +36,16 @@
     <div class="field">
         <div class="label">Раз в неделю</div>
         <div class="times-per-week">
-            <Stepper Value="_times" ValueChanged="times => _times = times ?? 1" Min="1" Max="MaxTimesPerWeek" Label="Раз в неделю" />
+            @if (DaysChosen)
+            {
+                @* Дни выбраны — «раз в неделю» задают они *@
+                <span class="times-fixed">@DayCount(_days)</span>
+                <span class="hint">= числу выбранных дней</span>
+            }
+            else
+            {
+                <Stepper Value="_times" ValueChanged="times => _times = times ?? 1" Min="1" Max="MaxTimesPerWeek" Label="Раз в неделю" />
+            }
         </div>
     </div>
 
@@ -47,6 +56,28 @@
         <span>каждую неделю</span>
         <span class="hint">@(_recurring ? "появится и на следующих неделях; изменения — с этой недели и дальше" : "только на этой неделе")</span>
     </label>
+
+    @if (_recurring)
+    {
+        @* По каким дням: «сам раскладываю» — как раньше; дни выбраны — занятия встают в них сами *@
+        <div class="field">
+            <div class="label">По каким дням</div>
+            <div class="chips days" role="group" aria-label="По каким дням">
+                <button type="button" class="chip @(_days == 0 ? "on" : "")" @onclick="() => _days = 0">сам раскладываю</button>
+                <button type="button" class="chip @(_days == EveryDay ? "on" : "")" @onclick="() => _days = EveryDay">каждый день</button>
+                @for (var i = 0; i < DayNames.Length; i++)
+                {
+                    var bit = 1 << i;
+                    <button type="button" class="chip day @((_days & bit) != 0 ? "on" : "")" aria-pressed="@((_days & bit) != 0 ? "true" : "false")"
+                            @onclick="() => _days ^= bit">@DayNames[i]</button>
+                }
+            </div>
+            @if (DaysChosen)
+            {
+                <div class="date-hint">занятия встанут в эти дни сами — на этой неделе и дальше; выполненные не трогаются</div>
+            }
+        </div>
+    }
 
     <label class="switch-row">
         <input type="checkbox" role="switch" @bind="_several" />
@@ -109,6 +140,14 @@
     private string? _notes;
     private bool _recurring;
     private bool _several;
+    private int _days; // маска дней (Пн = 1 … Вс = 64), 0 — «сам раскладываю»
+
+    private const int EveryDay = 127;
+    private static readonly string[] DayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+    private bool DaysChosen => _recurring && _days != 0;
+
+    private static int DayCount(int days) => System.Numerics.BitOperations.PopCount((uint)days);
 
     [Parameter, EditorRequired]
     public WeeklyGoalDto EditedGoal { get; set; } = null!;
@@ -127,6 +166,7 @@
         _notes = EditedGoal.Notes;
         _recurring = EditedGoal.IsRecurring;
         _several = EditedGoal.AllowSeveralPerDay;
+        _days = EditedGoal.Days ?? 0;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -166,7 +206,8 @@
 
         await OnClose.InvokeAsync();
         await State.UpdateGoalAsync(EditedGoal.Id,
-            new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration, _recurring, _several));
+            new UpdateGoalRequest(_title, _roleId, DaysChosen ? DayCount(_days) : _times, _time, _quadrant, _notes, _duration,
+                _recurring, _several, Days: DaysChosen ? _days : 0));
     }
 
     /// <summary>Удалить; мысль цели без дня вернётся в ленту (без своей категории — в «неразобранное»).</summary>

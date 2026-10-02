@@ -17,6 +17,7 @@ public class GoalService(
     IRoleRepository roles,
     ITaskRepository tasks,
     IGoalSeriesRepository series,
+    GoalSessions sessions,
     TaskPlacer placer,
     GoalRemover remover,
     IUnitOfWork unitOfWork,
@@ -50,7 +51,7 @@ public class GoalService(
     /// длительность). Изменения шаблона расходятся по занятиям — см. <see cref="WeeklyGoal.UpdateTemplate"/>.
     /// Новая роль — цель встаёт в конец её списка, занятия получают эту роль.
     /// </summary>
-    public async Task<WeeklyGoal> UpdateAsync(int id, GoalChanges changes, CancellationToken ct = default)
+    public async Task<GoalUpdate> UpdateAsync(int id, GoalChanges changes, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
         if (changes.Quadrant is { } q && !Enum.IsDefined(q))
@@ -58,7 +59,13 @@ public class GoalService(
             throw new DomainException("Квадрант должен быть от 1 до 4.");
         }
 
-        goal.SetTimesPerWeek(changes.TimesPerWeek);
+        var oldDays = goal.Days;
+        if (changes.Days is { } days)
+        {
+            goal.SetDays(days);
+        }
+
+        goal.SetTimesPerWeek(changes.TimesPerWeek); // при выбранных днях «раз в неделю» — их число
         if (changes.AllowSeveralPerDay is { } several)
         {
             goal.SetAllowSeveralPerDay(several);
@@ -79,9 +86,16 @@ public class GoalService(
             SortOrdering.Place(siblings, goal, int.MaxValue);
         }
 
-        await UpdateSeriesAsync(goal, changes.IsRecurring ?? goal.RepeatsAfterThisWeek, ct);
+        // Дни поменялись — занятия этой недели раскладываются по новым дням (с этой недели и дальше)
+        var removed = new List<TaskItem>();
+        if (goal.Days != oldDays)
+        {
+            removed.AddRange(await sessions.ArrangeByDaysAsync(goal, ct));
+        }
+
+        await UpdateSeriesAsync(goal, changes.IsRecurring ?? goal.RepeatsAfterThisWeek, removed, ct);
         await unitOfWork.SaveChangesAsync(ct);
-        return goal;
+        return new GoalUpdate(goal, removed);
     }
 
     /// <summary>
@@ -89,7 +103,8 @@ public class GoalService(
     /// меняются так же (прошлые недели — нет). Выключили «каждую неделю» — серия заканчивается на этой неделе,
     /// уже созданные цели следующих недель удаляются. Включили — серия идёт с этой недели.
     /// </summary>
-    private async Task UpdateSeriesAsync(WeeklyGoal goal, bool recurring, CancellationToken ct)
+    /// <param name="removed">Куда сложить занятия, убранные в корзину при раскладке по новым дням.</param>
+    private async Task UpdateSeriesAsync(WeeklyGoal goal, bool recurring, List<TaskItem> removed, CancellationToken ct)
     {
         var wasRecurring = goal.RepeatsAfterThisWeek;
         if (wasRecurring && !recurring)
@@ -119,15 +134,20 @@ public class GoalService(
             goal.Series.RecurFrom(goal.WeekStart);
         }
 
-        await SpreadToLaterWeeksAsync(goal, ct);
+        await SpreadToLaterWeeksAsync(goal, removed, ct);
     }
 
-    /// <summary>Шаблон постоянной цели — в её серию и в уже созданные цели следующих недель.</summary>
-    private async Task SpreadToLaterWeeksAsync(WeeklyGoal goal, CancellationToken ct)
+    /// <summary>
+    /// Шаблон постоянной цели — в её серию и в уже созданные цели следующих недель
+    /// (поменялись дни — занятия там раскладываются заново; убранные — в <paramref name="removed"/>).
+    /// </summary>
+    private async Task SpreadToLaterWeeksAsync(WeeklyGoal goal, List<TaskItem>? removed, CancellationToken ct)
     {
         goal.Series!.CopyTemplateFrom(goal);
         foreach (var later in await LaterInSeriesAsync(goal, ct))
         {
+            var laterDays = later.Days;
+            later.SetDays(goal.Days);
             later.SetTimesPerWeek(goal.TimesPerWeek);
             later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
             var lostTime = later.UpdateTemplate(goal.Title, goal.StartTime, goal.Quadrant, goal.Notes, goal.DurationMinutes);
@@ -141,6 +161,12 @@ public class GoalService(
                 var siblings = await goals.GetForRoleAsync(goal.RoleId, later.WeekStart, ct);
                 later.MoveToRole(goal.RoleId);
                 SortOrdering.Place(siblings, later, int.MaxValue);
+            }
+
+            if (later.Days != laterDays)
+            {
+                var arranged = await sessions.ArrangeByDaysAsync(later, ct);
+                removed?.AddRange(arranged);
             }
         }
     }
@@ -187,7 +213,7 @@ public class GoalService(
                     .OrderBy(t => t.PlannedDate).ThenBy(t => t.StartTime ?? TimeOnly.MaxValue).ThenBy(t => t.SortOrder)
                     .FirstOrDefault()
                 ?? goal.UnscheduledSession
-                ?? NewSession(goal);
+                ?? sessions.Create(goal);
 
             // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
             if (session.PlannedDate is null && isCurrentWeek)
@@ -198,7 +224,7 @@ public class GoalService(
                     throw new DomainException("Сегодня уже отмечено.");
                 }
 
-                await PlaceInDayAsync(goal, session, new DayTarget(today, int.MaxValue), ct);
+                await sessions.PlaceInDayAsync(goal, session, new DayTarget(today, int.MaxValue), ct);
             }
 
             session.Complete(Now);
@@ -244,7 +270,7 @@ public class GoalService(
         SortOrdering.Place(siblings, goal, index);
         if (otherRole && goal.RepeatsAfterThisWeek)
         {
-            await SpreadToLaterWeeksAsync(goal, ct);
+            await SpreadToLaterWeeksAsync(goal, null, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -264,9 +290,9 @@ public class GoalService(
 
         var goal = await GetAsync(id, ct);
         goal.EnsureDayIsFree(day.Date); // не больше одного занятия в день, если не разрешено несколько
-        var session = goal.UnscheduledSession ?? NewSession(goal);
+        var session = goal.UnscheduledSession ?? sessions.Create(goal);
 
-        await PlaceInDayAsync(goal, session, day, ct);
+        await sessions.PlaceInDayAsync(goal, session, day, ct);
         await unitOfWork.SaveChangesAsync(ct);
         return (goal, session);
     }
@@ -335,25 +361,6 @@ public class GoalService(
 
         await unitOfWork.SaveChangesAsync(ct);
         return task;
-    }
-
-    private TaskItem NewSession(WeeklyGoal goal)
-    {
-        var session = TaskItem.CreatePlanned(goal.Title, Now);
-        goal.FillFromTemplate(session);
-        tasks.Add(session);
-        goal.AddSession(session);
-        return session;
-    }
-
-    /// <summary>Занятие → день; без своего времени оно берёт время цели.</summary>
-    private async Task PlaceInDayAsync(WeeklyGoal goal, TaskItem session, DayTarget day, CancellationToken ct)
-    {
-        await placer.PlaceAsync(session, day, ct);
-        if (session.StartTime is null && goal.StartTime is not null)
-        {
-            session.SetTime(goal.StartTime);
-        }
     }
 
     private async Task<WeeklyGoal> GetAsync(int id, CancellationToken ct) =>

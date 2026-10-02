@@ -52,6 +52,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<bool>("AllowSeveralPerDay")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("Days")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DurationMinutes")
                         .HasColumnType("INTEGER");
 
@@ -202,6 +205,9 @@ namespace Planner.Server.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("AllowSeveralPerDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Days")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("DurationMinutes")

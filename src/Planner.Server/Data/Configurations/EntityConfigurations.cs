@@ -63,6 +63,7 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         builder.Property(g => g.Title).IsRequired().HasMaxLength(TextRules.TitleMaxLength);
         builder.Property(g => g.Notes).HasMaxLength(TextRules.NotesMaxLength);
         builder.Property(g => g.Quadrant).HasConversion<int?>();
+        builder.Property(g => g.Days).HasConversion<int?>(); // набор дней — битовая маска
 
         builder.HasOne<Role>().WithMany().HasForeignKey(g => g.RoleId).OnDelete(DeleteBehavior.Cascade);
         // Занятия цели — обычные дела; удалили цель — у дел ссылка обнуляется
@@ -86,6 +87,7 @@ public class GoalSeriesConfiguration : IEntityTypeConfiguration<GoalSeries>
         builder.Property(s => s.Title).IsRequired().HasMaxLength(TextRules.TitleMaxLength);
         builder.Property(s => s.Notes).HasMaxLength(TextRules.NotesMaxLength);
         builder.Property(s => s.Quadrant).HasConversion<int?>();
+        builder.Property(s => s.Days).HasConversion<int?>();
 
         builder.HasOne<Role>().WithMany().HasForeignKey(s => s.RoleId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(s => s.IsRecurring);

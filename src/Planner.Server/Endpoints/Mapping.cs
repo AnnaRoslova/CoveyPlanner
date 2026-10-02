@@ -44,11 +44,14 @@ public static class Mapping
             .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done))
             .ToList(),
         g.RepeatsAfterThisWeek,
-        g.AllowSeveralPerDay);
+        g.AllowSeveralPerDay,
+        (int?)g.Days);
 
-    /// <summary>Цель и её занятия, стоящие в днях (их поля могли поменяться по шаблону).</summary>
-    public static GoalUpdateResultDto ToUpdateResultDto(this WeeklyGoal g) =>
-        new(g.ToDto(), g.ActiveSessions.Where(t => t.PlannedDate is not null).Select(t => t.ToDto()).ToList());
+    /// <summary>Цель, её занятия, стоящие в днях (их поля могли поменяться по шаблону), и убранные при раскладке по дням.</summary>
+    public static GoalUpdateResultDto ToUpdateResultDto(this GoalUpdate update) =>
+        new(update.Goal.ToDto(),
+            update.Goal.ActiveSessions.Where(t => t.PlannedDate is not null).Select(t => t.ToDto()).ToList(),
+            update.RemovedSessions.Select(t => t.Id).ToList());
 
     public static GoalResultDto ToResultDto(this (WeeklyGoal Goal, TaskItem Session) result) =>
         new(result.Goal.ToDto(), result.Session.ToDto());

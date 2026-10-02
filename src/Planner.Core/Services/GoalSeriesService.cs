@@ -9,7 +9,8 @@ namespace Planner.Core.Services;
 /// занятие, перенесённое на другую неделю, попадает в цель той же серии (или в новую — её копию).
 /// Сам не сохраняет изменения, кроме <see cref="EnsureWeeksAsync"/>.
 /// </summary>
-public class GoalSeriesService(IGoalSeriesRepository series, IGoalRepository goals, IUnitOfWork unitOfWork)
+public class GoalSeriesService(
+    IGoalSeriesRepository series, IGoalRepository goals, GoalSessions sessions, IUnitOfWork unitOfWork)
 {
     // Цели, созданные в этом запросе и ещё не сохранённые: запросы к базе их не видят
     private readonly List<WeeklyGoal> _pending = [];
@@ -68,7 +69,10 @@ public class GoalSeriesService(IGoalSeriesRepository series, IGoalRepository goa
             // Цель могла уже появиться иначе (на эту неделю переносили занятие)
             if (await FindAsync(recurring, week, ct) is null)
             {
-                await AddToEndOfRoleAsync(WeeklyGoal.FromSeries(recurring, week), ct);
+                // Дни выбраны — занятия сразу встают в эти дни (со временем и длительностью из шаблона)
+                var goal = WeeklyGoal.FromSeries(recurring, week);
+                await AddToEndOfRoleAsync(goal, ct);
+                await sessions.ArrangeByDaysAsync(goal, ct);
             }
         }
 

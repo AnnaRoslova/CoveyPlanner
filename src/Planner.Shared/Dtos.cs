@@ -58,6 +58,7 @@ public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDo
 /// StartTime, Quadrant, Notes, DurationMinutes. Sessions — её занятия (без корзины), по дням;
 /// прогресс и «выполнено» считаются по ним. IsRecurring — «каждую неделю»: цель появится и на следующей неделе;
 /// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
+/// Days — дни, по которым занятия встают сами (битовая маска: Пн = 1, Вт = 2, … Вс = 64; 127 — каждый день); null — «сам раскладываю».
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
@@ -72,7 +73,8 @@ public sealed record WeeklyGoalDto(
     int SortOrder,
     IReadOnlyList<GoalSessionDto> Sessions,
     bool IsRecurring = false,
-    bool AllowSeveralPerDay = false)
+    bool AllowSeveralPerDay = false,
+    int? Days = null)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
@@ -93,8 +95,11 @@ public sealed record BoardDto(
 /// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).</summary>
 public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
 
-/// <summary>Цель после сохранения окна и её занятия в днях (у них могли поменяться поля по шаблону).</summary>
-public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskDto> Sessions);
+/// <summary>
+/// Цель после сохранения окна и её занятия в днях (у них могли поменяться поля по шаблону);
+/// RemovedSessionIds — занятия, убранные в корзину при раскладке по новым дням (для «Вернуть»).
+/// </summary>
+public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskDto> Sessions, IReadOnlyList<int>? RemovedSessionIds = null);
 
 /// <summary>Результат операции с целью: сама цель и занятие, которое поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);

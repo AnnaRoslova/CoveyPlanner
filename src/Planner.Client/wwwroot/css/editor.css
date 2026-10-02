@@ -439,3 +439,26 @@
     color: var(--soft);
     font-size: 11.5px;
 }
+
+/* «Раз в неделю» при выбранных днях — просто число, менять его нельзя */
+.editor .times-fixed {
+    min-width: 34px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-weight: 800;
+    text-align: center;
+}
+
+.editor .times-per-week .hint {
+    margin-left: 8px;
+    color: var(--soft);
+    font-size: 11.5px;
+}
+
+/* Чипы дней недели — короткие и одинаковые */
+.editor .chips.days .chip.day {
+    min-width: 34px;
+    justify-content: center;
+}

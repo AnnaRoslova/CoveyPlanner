@@ -42,6 +42,9 @@ public class GoalSeries
     /// <summary>Можно ли несколько занятий в один день.</summary>
     public bool AllowSeveralPerDay { get; private set; }
 
+    /// <summary>Дни, по которым занятия встают сами; null — «сам раскладываю».</summary>
+    public Weekdays? Days { get; private set; }
+
     /// <summary>«Каждую неделю»: цели на следующие недели появляются сами.</summary>
     public bool IsRecurring { get; private set; }
 
@@ -83,6 +86,7 @@ public class GoalSeries
         Notes = goal.Notes;
         DurationMinutes = goal.DurationMinutes;
         AllowSeveralPerDay = goal.AllowSeveralPerDay;
+        Days = goal.Days;
     }
 
     /// <summary>

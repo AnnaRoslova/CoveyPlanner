@@ -42,6 +42,7 @@ public static class DataServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<TaskPlacer>();
         services.AddScoped<GoalRemover>();
+        services.AddScoped<GoalSessions>();
         services.AddScoped<GoalSeriesService>();
         services.AddScoped<TaskService>();
         services.AddScoped<CategoryService>();

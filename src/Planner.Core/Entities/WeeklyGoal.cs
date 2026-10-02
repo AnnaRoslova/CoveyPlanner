@@ -48,6 +48,12 @@ public class WeeklyGoal : ISortable
     /// <summary>Можно ли ставить несколько занятий в один день («Чтение» утром и вечером). По умолчанию — нет.</summary>
     public bool AllowSeveralPerDay { get; private set; }
 
+    /// <summary>
+    /// Дни, по которым занятия встают сами (у постоянной цели — на каждой новой неделе). null — «сам раскладываю».
+    /// Если дни выбраны, «раз в неделю» равно их числу.
+    /// </summary>
+    public Weekdays? Days { get; private set; }
+
     public int SortOrder { get; set; }
 
     /// <summary>Серия: та же цель на других неделях (постоянная — «каждую неделю»). null — разовая цель.</summary>
@@ -85,6 +91,17 @@ public class WeeklyGoal : ISortable
 
     public void SetAllowSeveralPerDay(bool allow) => AllowSeveralPerDay = allow;
 
+    /// <summary>Выбрать дни (None или null — «сам раскладываю»). Выбраны — «раз в неделю» = их число.</summary>
+    public void SetDays(Weekdays? days)
+    {
+        var chosen = days & Weekdays.All;
+        Days = chosen is null or Weekdays.None ? null : chosen;
+        if (Days is { } set)
+        {
+            TimesPerWeek = set.Count();
+        }
+    }
+
     /// <summary>Невыполненное занятие без дня (например, дело, из которого сделали цель) — первым встаёт в день.</summary>
     public TaskItem? UnscheduledSession =>
         ActiveSessions.FirstOrDefault(t => t.State == TaskState.Planned && t.PlannedDate is null);
@@ -114,6 +131,7 @@ public class WeeklyGoal : ISortable
         goal.Notes = series.Notes;
         goal.DurationMinutes = series.DurationMinutes;
         goal.AllowSeveralPerDay = series.AllowSeveralPerDay;
+        goal.Days = series.Days;
         goal.Series = series;
         return goal;
     }
@@ -212,7 +230,8 @@ public class WeeklyGoal : ISortable
             throw new DomainException($"Сколько раз в неделю — от {MinTimesPerWeek} до {MaxTimesPerWeek}.");
         }
 
-        TimesPerWeek = times;
+        // Дни выбраны — «раз в неделю» задают они
+        TimesPerWeek = Days is { } days ? days.Count() : times;
     }
 
     /// <summary>Перенести к другой роли; занятия переходят вместе с целью.</summary>

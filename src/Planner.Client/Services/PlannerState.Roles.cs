@@ -72,9 +72,13 @@ public partial class PlannerState
             SortOrder = sortOrder,
             IsRecurring = form.IsRecurring ?? goal.IsRecurring,
             AllowSeveralPerDay = form.AllowSeveralPerDay ?? goal.AllowSeveralPerDay,
+            Days = form.Days is { } d ? d == 0 ? null : d : goal.Days,
         });
 
-        await SaveAsync(async () =>
+        // Дни поменялись — занятия разложил сервер (добавил и убрал в корзину) — потом перечитываем
+        var daysChanged = form.Days is { } newDays && (newDays == 0 ? null : newDays) != goal.Days;
+        IReadOnlyList<int> removed = [];
+        var ok = await SaveAsync(async () =>
         {
             var result = await api.UpdateGoalAsync(goalId, form);
             ReplaceGoal(result.Goal);
@@ -82,7 +86,33 @@ public partial class PlannerState
             {
                 _tasks[session.Id] = session;
             }
+
+            removed = result.RemovedSessionIds ?? [];
         });
+
+        if (ok && daysChanged)
+        {
+            await ReloadAsync();
+        }
+
+        if (ok && removed.Count > 0)
+        {
+            var ids = removed;
+            notifier.WithAction($"Убрано занятий: {ids.Count}", "Вернуть", () => RestoreSessionsAsync(ids), UndoWindow);
+        }
+    }
+
+    /// <summary>«Вернуть» после смены дней: убранные занятия — из корзины на свои дни.</summary>
+    private async Task RestoreSessionsAsync(IReadOnlyList<int> taskIds)
+    {
+        await SaveAsync(async () =>
+        {
+            foreach (var id in taskIds)
+            {
+                await api.RestoreTaskAsync(id);
+            }
+        });
+        await ReloadAsync();
     }
 
     /// <summary>
