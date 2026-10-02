@@ -1,7 +1,7 @@
 @* Запись-строка (не карточка): дело в дне, дело в ленте или цель роли.
    Слева квадратный чекбокс цвета роли (или точка-маркер в ленте), справа пилюли и действия.
-   Clamp: название не длиннее двух строк, с «…»; разворачивается кликом по «…» или по стрелке
-   (какие записи длинные, отмечает js/clamp.js — атрибут data-long). *@
+   Clamp: название не длиннее двух строк, с «…»; полный текст — в подсказке при наведении (только у обрезанных:
+   их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
 <div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
@@ -23,7 +23,7 @@
         <span class="dot"></span>
     }
     <div class="tx">
-        <span class="title-wrap"><span class="title @(Clamp ? "clamp" : "") @(_expanded ? "expanded" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
+        <span class="title @(Clamp ? "clamp" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
         {
             if (segment.IsMatch)
             {
@@ -36,11 +36,6 @@
         }@if (!string.IsNullOrWhiteSpace(Notes))
         {
             <span class="note" title="@NotesPreview"><Icon Name="note" Size="11" /></span>
-        }</span>@if (Clamp && !_expanded)
-        {
-            @* Невидимая кнопка поверх «…» в конце второй строки *@
-            <button type="button" class="ellipsis-hit" aria-label="Развернуть" title="Развернуть"
-                    @onclick="ToggleExpanded" @onclick:stopPropagation="true"></button>
         }</span>
         @if (RoleDots is { Count: > 0 } dots)
         {
@@ -82,13 +77,6 @@
             </div>
         }
     </div>
-    @if (Clamp)
-    {
-        <button type="button" class="more @(_expanded ? "open" : "")" title="@(_expanded ? "Свернуть" : "Развернуть")"
-                @onclick="ToggleExpanded" @onclick:stopPropagation="true">
-            <Icon Name="chevron-right" Size="11" />
-        </button>
-    }
     @if (Progress is not null)
     {
         <span class="progress">@Progress</span>
@@ -100,16 +88,12 @@
 </div>
 
 @code {
-    private bool _expanded;
-
     [Parameter, EditorRequired]
     public string Title { get; set; } = "";
 
-    /// <summary>Название — не больше двух строк, с «…» и стрелкой «развернуть» (дела в днях и в ленте).</summary>
+    /// <summary>Название — не больше двух строк, с «…»; полный текст — в подсказке и в окне (дела в днях и в ленте).</summary>
     [Parameter]
     public bool Clamp { get; set; }
-
-    private void ToggleExpanded() => _expanded = !_expanded;
 
     /// <summary>Роли дела, когда их несколько: маленькие точки их цветов после названия.</summary>
     [Parameter]

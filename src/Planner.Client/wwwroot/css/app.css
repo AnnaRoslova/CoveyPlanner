@@ -318,6 +318,22 @@ body.dragging .unsorted.empty {
     pointer-events: none;
 }
 
+/* Подсказка с полным текстом обрезанной записи (js/clamp.js) */
+.clamp-tip {
+    position: fixed;
+    z-index: 90;
+    max-width: 320px;
+    padding: 7px 11px;
+    border-radius: 10px;
+    background: var(--glass-top);
+    box-shadow: var(--shadow-pop);
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+    pointer-events: none;
+}
+
 /* Подсветка совпадений поиска */
 mark.hit {
     border-radius: 3px;

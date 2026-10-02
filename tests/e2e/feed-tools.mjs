@@ -105,7 +105,7 @@ await check('окно дела ленты: Esc и клик мимо — отме
 });
 
 const LONG = 'Очень длинная запись, которая точно не помещается в две строки узкой колонки дня и ленты, поэтому её нужно обрезать';
-await check('длинные записи — не больше двух строк, с «…»; короткие без стрелки', async () => {
+await check('длинные записи — не больше двух строк, с «…»; стрелки «развернуть» нет', async () => {
   const ideas = (await api('GET', 'board')).categories.find(c => c.name === 'Идеи');
   await api('POST', 'tasks', { title: LONG, target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
   const today = new Date().toISOString().slice(0, 10);
@@ -113,33 +113,41 @@ await check('длинные записи — не больше двух стро
   await load();
   const m = await page.$$eval('.item', (items, long) => items.filter(i => i.querySelector('.title')?.textContent.trim() === long).map(i => {
     const t = i.querySelector('.title');
-    return { lines: t.clientHeight / parseFloat(getComputedStyle(t).lineHeight), ellipsis: getComputedStyle(t).webkitLineClamp, more: getComputedStyle(i.querySelector('.more')).display };
+    return { lines: t.clientHeight / parseFloat(getComputedStyle(t).lineHeight), ellipsis: getComputedStyle(t).webkitLineClamp,
+      long: t.hasAttribute('data-long'), more: !!i.querySelector('.more, .ellipsis-hit') };
   }), LONG);
   assert(m.length === 2, `записей: ${m.length}`);
-  assert(m.every(x => Math.round(x.lines) === 2 && x.ellipsis === '2' && x.more !== 'none'), JSON.stringify(m));
-  const shortMore = await page.$$eval('.day .item', is => is.filter(i => i.querySelector('.title').textContent.trim() === 'Кофе с Олей')
-    .map(i => getComputedStyle(i.querySelector('.more')).display));
-  assert(shortMore.every(d => d === 'none'), `у короткой стрелка: ${shortMore}`);
+  assert(m.every(x => Math.round(x.lines) === 2 && x.ellipsis === '2' && x.long && !x.more), JSON.stringify(m));
 });
 
+const tipText = () => page.evaluate(() => document.querySelector('.clamp-tip')?.isConnected ? document.querySelector('.clamp-tip').textContent : null);
 for (const [where, scope] of [['в дне', '.day'], ['в ленте', '.someday']]) {
-  await check(`длинная запись ${where}: стрелка и «…» разворачивают, стрелка сворачивает; окно не открывается`, async () => {
+  await check(`длинная запись ${where}: через ~0,5 с — подсказка с полным текстом; клик — окно с полным текстом`, async () => {
+    await page.mouse.move(5, 5); await settle();
     const row = await page.evaluateHandle((scope, long) => [...document.querySelectorAll(`${scope} .item`)]
       .find(i => i.querySelector('.title')?.textContent.trim() === long), scope, LONG);
-    const lines = () => row.evaluate(i => { const t = i.querySelector('.title'); return Math.round(t.clientHeight / parseFloat(getComputedStyle(t).lineHeight)); });
-    await (await row.$('.more')).click(); await settle();
-    assert(await lines() > 2, `после стрелки строк: ${await lines()}`);
-    assert(!(await page.$('.editor')), 'открылось окно');
-    await (await row.$('.more')).click(); await settle();
-    assert(await lines() === 2, `после второй стрелки строк: ${await lines()}`);
-    // «…» — в правом нижнем углу названия
     const t = await row.$eval('.title', e => e.getBoundingClientRect().toJSON());
-    await page.mouse.click(t.right - 6, t.bottom - 6); await settle();
-    assert(await lines() > 2, `после «…» строк: ${await lines()}`);
-    assert(!(await page.$('.editor')), 'клик по «…» открыл окно');
-    await (await row.$('.more')).click(); await settle();
+    await page.mouse.move(t.left + 20, t.top + 6);
+    await sleep(200);
+    assert(await tipText() === null, 'подсказка появилась сразу');
+    await sleep(500);
+    assert(await tipText() === LONG, `подсказка: ${await tipText()}`);
+    const lines = await row.evaluate(i => { const t = i.querySelector('.title'); return Math.round(t.clientHeight / parseFloat(getComputedStyle(t).lineHeight)); });
+    assert(lines === 2, `запись развернулась: ${lines} строк`);
+    if (scope === '.day') await page.screenshot({ path: `${SHOTS}/clamp-tip.png` });
+    await page.mouse.click(t.left + 20, t.top + 6); await settle();
+    assert(await tipText() === null, 'подсказка не спряталась при клике');
+    assert(await page.$eval('.editor .title-input', e => e.value) === LONG, 'в окне не полный текст');
+    await page.keyboard.press('Escape'); await settle();
   });
 }
+
+await check('у короткой записи подсказки нет', async () => {
+  await page.mouse.move(5, 5); await settle();
+  const t = await page.evaluate(() => [...document.querySelectorAll('.day .item .title')].find(e => e.textContent.trim() === 'Кофе с Олей').getBoundingClientRect().toJSON());
+  await page.mouse.move(t.left + 10, t.top + 6); await sleep(900);
+  assert(await tipText() === null, `подсказка у короткой: ${await tipText()}`);
+});
 
 // ---------- «Неразобранное» ----------
 const unsortedTitles = () => page.$$eval('.unsorted .item .title', ts => ts.map(t => t.textContent.trim()));
