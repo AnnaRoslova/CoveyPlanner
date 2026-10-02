@@ -16,7 +16,7 @@
         <div class="saw">
             @foreach (var role in State.SawRoles)
             {
-                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" />
             }
         </div>
 
@@ -25,7 +25,7 @@
         <div class="user-roles" data-drop="@DragDropService.RolesZone" data-accept="@DragDropService.RolesAccepts">
             @foreach (var role in State.UserRoles)
             {
-                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" />
+                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" />
             }
         </div>
 

@@ -2,9 +2,12 @@
    Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
    Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»),
    крестик — удалить, «+ цель» — новая цель в конец.
-   «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки. *@
+   «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки.
+   Под целями — тихая строка «ещё дела: N ▸»: остальные дела недели с этой ролью; раскрывается в список
+   «Чт · название», клик по делу — его окно. Раскрытие запоминается (RoleTasksState). *@
 @inject PlannerState State
 @inject WindowHost Windows
+@inject RoleTasksState RoleTasks
 
 <div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
      data-drop="@DragDropService.RoleZone" data-key="@Role.Id" data-accept="@DragDropService.RoleAccepts"
@@ -55,6 +58,27 @@
     {
         <button class="add" @onclick="() => _adding = true">+ цель</button>
     }
+
+    @if (OtherTasks.Count > 0)
+    {
+        var open = RoleTasks.IsOpen(Role.Id);
+        <button type="button" class="others-h" aria-expanded="@(open ? "true" : "false")"
+                @onclick="() => RoleTasks.ToggleAsync(Role.Id)">
+            ещё дела: @OtherTasks.Count <span class="chev @(open ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
+        </button>
+        @if (open)
+        {
+            <div class="others">
+                @foreach (var task in OtherTasks)
+                {
+                    <button type="button" class="other @(task.State == TaskStateDto.Done ? "done" : "")" title="@task.Title"
+                            @onclick="() => Windows.OpenTask(task.Id)" disabled="@(task.Id < 0)">
+                        <span class="d">@RuDates.ShortDay(task.PlannedDate!.Value)</span><span class="sep">·</span><span class="t">@task.Title</span>
+                    </button>
+                }
+            </div>
+        }
+    }
 </div>
 
 @code {
@@ -66,6 +90,10 @@
 
     [Parameter, EditorRequired]
     public IReadOnlyList<WeeklyGoalDto> Goals { get; set; } = [];
+
+    /// <summary>Дела недели с этой ролью, кроме занятий целей, — тихий список «ещё дела» под целями.</summary>
+    [Parameter]
+    public IReadOnlyList<TaskDto> OtherTasks { get; set; } = [];
 
     /// <summary>«2/5» — только у цели на несколько раз в неделю.</summary>
     private static string? Progress(WeeklyGoalDto goal) =>

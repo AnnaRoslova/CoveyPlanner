@@ -93,3 +93,72 @@
 .role[data-drag] .role-h {
     cursor: grab;
 }
+
+/* «ещё дела: N ▸» — тихая строка под целями, как «+ цель» */
+.others-h {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 4px 4px;
+    color: var(--faint);
+    font-size: 11.5px;
+}
+
+.others-h:hover {
+    color: var(--b-deep);
+}
+
+.chev {
+    display: inline-flex;
+    transition: transform 0.15s;
+}
+
+.chev.open {
+    transform: rotate(90deg);
+}
+
+/* Компактный список «Чт · название»: одна строка на дело */
+.others {
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 4px 4px;
+}
+
+.other {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    padding: 2px 4px;
+    border-radius: 6px;
+    color: var(--soft);
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+}
+
+.other:hover {
+    background: var(--b-soft);
+}
+
+.other .d {
+    flex: none;
+    color: var(--faint);
+    font-weight: 700;
+}
+
+.other .sep {
+    flex: none;
+    color: var(--faint);
+}
+
+.other .t {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.other.done .t {
+    color: var(--faint);
+    text-decoration: line-through;
+}

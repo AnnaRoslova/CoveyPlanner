@@ -6,6 +6,7 @@
 @inject WindowHost Windows
 @inject IJSRuntime JS
 @inject ThemeState Theme
+@inject RoleTasksState RoleTasks
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -21,7 +22,7 @@
         </SidePanel>
     </div>
 
-    @* Окна левой панели — поверх всего экрана (см. WindowHost) *@
+    @* Окна — поверх всего экрана (см. WindowHost) *@
     @if (Windows.GoalId is { } goalId && State.FindGoal(goalId) is { } goal)
     {
         <GoalEditor @key="goalId" EditedGoal="goal" OnClose="Windows.Close" />
@@ -37,6 +38,10 @@
     else if (Windows.SomedayTaskId is { } somedayTaskId && State.FindTask(somedayTaskId) is { } somedayTask)
     {
         <SomedayTaskEditor @key="somedayTaskId" EditedTask="somedayTask" OnClose="Windows.Close" />
+    }
+    else if (Windows.TaskId is { } taskId && State.FindTask(taskId) is { } task)
+    {
+        <TaskEditor @key="taskId" EditedTask="task" OnClose="Windows.Close" />
     }
 }
 else if (State.LoadError is not null)
@@ -58,7 +63,7 @@ else
         Windows.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(),
             WatchLongTitlesAsync());
     }
 

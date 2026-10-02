@@ -16,5 +16,6 @@ builder.Services.AddScoped<DragDropService>();
 builder.Services.AddScoped<TodayWatcher>();
 builder.Services.AddScoped<WindowHost>();
 builder.Services.AddScoped<ThemeState>();
+builder.Services.AddScoped<RoleTasksState>();
 
 await builder.Build().RunAsync();

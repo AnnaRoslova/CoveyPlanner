@@ -69,6 +69,13 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
             .ThenBy(t => t.StartTime)
             .ThenBy(t => t.SortOrder);
 
+    /// <summary>
+    /// Дела показанной недели с этой ролью, кроме занятий целей («ещё дела» в левой панели):
+    /// по дням, в дне — как в списке дня.
+    /// </summary>
+    public IReadOnlyList<TaskDto> OtherTasksOf(int roleId) =>
+        WeekDays.SelectMany(TasksOn).Where(t => t.RoleIds.Contains(roleId) && !IsRock(t.Id)).ToList();
+
     public IEnumerable<WeeklyGoalDto> GoalsFor(int roleId) =>
         Goals.Where(g => g.RoleId == roleId).OrderBy(g => g.SortOrder);
 
