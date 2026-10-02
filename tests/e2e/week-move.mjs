@@ -1,6 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// Перенос дела на другую неделю: поле «Дата» в окне дела (календарь, «сегодня / завтра / через неделю / без даты»),
-// плашка «Перенесено на … · Показать»; перетаскиванием — задержать дело над «‹ ›» (~0,6 с), неделя листается, Esc — возврат.
+// Перенос дела на другую неделю: поле «Дата» в окне дела (календарь, «сегодня / завтра / через неделю / без даты»);
+// плашка «Перенесено на … · Показать». Перетаскиванием — края недели «‹ прошлая неделя / следующая неделя ›» (проступают,
+// пока тащат дело) или стрелки «‹ ›» в шапке: задержать ~0,5 с — неделя листается, Esc — возврат.
 // Камень на другой неделе остаётся камнем — занятием той же цели там.
 import puppeteer from 'puppeteer-core';
 
@@ -194,6 +195,40 @@ await check('камень перетаскиванием на следующую
   assert(rock, 'на новой неделе — не камень');
   const goals = await page.$$eval('.role .item .title', ts => ts.map(t => t.textContent.trim()));
   assert(goals.includes('Записаться к стоматологу'), `целей на новой неделе: ${goals}`);
+});
+
+await check('края недели: проступают, только пока тащат дело; держать над «следующая неделя ›» ~0,5 с — неделя листается, мысль из ленты — в день', async () => {
+  await goToday();
+  const visible = () => page.$$eval('.flip-zone', zs => zs.map(z => getComputedStyle(z).display !== 'none'));
+  assert(JSON.stringify(await visible()) === '[false,false]', 'края видны без перетаскивания');
+  const before = await weekTitle();
+  const from = center(await boxOf(`[...document.querySelectorAll('.cat-b .item')].find(i => i.querySelector('.title').textContent.trim() === 'Сад с травами на балконе')`));
+  await page.mouse.move(from.x, from.y); await page.mouse.down();
+  await moveSmooth(from, { x: from.x - 80, y: from.y });
+  assert(JSON.stringify(await visible()) === '[true,true]', 'края не проступили');
+  const zone = center(await boxOf(`document.querySelector('.flip-zone.next')`));
+  await moveSmooth({ x: from.x - 80, y: from.y }, zone);
+  await sleep(250);
+  assert(await page.$('.flip-zone.next.flip-armed'), 'край не «заряжается»');
+  await page.screenshot({ path: `${SHOTS}/week-move-zone.png` });
+  await sleep(450);
+  assert(await weekTitle() !== before, 'неделя не перелистнулась');
+  const wed = center(await boxOf(`document.querySelectorAll('.day')[2]`));
+  await moveSmooth(zone, wed);
+  await sleep(200);
+  await page.mouse.up(); await sleep(900);
+  assert((await dayTitles(2)).includes('Сад с травами на балконе'), `в среде: ${await dayTitles(2)}`);
+  assert(JSON.stringify(await visible()) === '[false,false]', 'края остались после сброса');
+});
+
+await check('края не проступают, когда тащат цель', async () => {
+  await goToday();
+  const from = center(await boxOf(`[...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title').textContent.trim() === 'Бег')`));
+  await page.mouse.move(from.x, from.y); await page.mouse.down();
+  await moveSmooth(from, { x: from.x + 120, y: from.y + 40 });
+  const shown = await page.$$eval('.flip-zone', zs => zs.some(z => getComputedStyle(z).display !== 'none'));
+  await page.keyboard.press('Escape'); await page.mouse.up(); await settle();
+  assert(!shown, 'края видны при перетаскивании цели');
 });
 
 await check('в консоли нет ошибок', async () => {

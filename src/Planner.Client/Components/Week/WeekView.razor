@@ -1,5 +1,6 @@
 @* Центр: неделя из 7 дней-списков («страницы в точку»).
-   Стрелки «‹ ›» — ещё и места для листания во время перетаскивания дела (data-flip, js/dnd.js). *@
+   Листание во время перетаскивания дела (data-flip, js/dnd.js): широкие зоны по краям недели — они проступают,
+   только пока тащат дело, — и стрелки «‹ ›» в шапке. *@
 @inherits StateComponent
 @inject WindowHost Windows
 
@@ -32,6 +33,14 @@
         {
             <DayColumn @key="day" Date="day" Tasks="State.TasksOn(day).ToList()" OnEdit="Windows.OpenTask" />
         }
+    </div>
+
+    @* Края недели во время перетаскивания: навести и держать — неделя листается *@
+    <div class="flip-zone prev" data-flip="-1" data-flip-overlay data-flip-accept="@DragDropService.FlipAccepts" aria-hidden="true">
+        <span>‹ прошлая неделя</span>
+    </div>
+    <div class="flip-zone next" data-flip="1" data-flip-overlay data-flip-accept="@DragDropService.FlipAccepts" aria-hidden="true">
+        <span>следующая неделя ›</span>
     </div>
 </main>
 

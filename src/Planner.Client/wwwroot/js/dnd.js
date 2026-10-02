@@ -9,8 +9,8 @@
 //                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
 //                 data-list-head — внутри зоны: заголовок, под которым начинается список (для пустого дня)
 //   запись без перетаскивания: data-press — к ней применяются те же правила клика (например, во время поиска)
-//   листание:    data-flip="-1|1" data-flip-accept="<виды>" — стрелки недели: задержать над ней запись ~0,6 с —
-//                .NET OnFlipWeek(direction, id) листает неделю (держат дальше — листает дальше); если потом бросили мимо
+//   листание:    data-flip="-1|1" data-flip-accept="<виды>" — края недели и стрелки в шапке: задержать над ним запись ~0,5 с —
+//                (data-flip-overlay — накладка: сброс ищется под ней). .NET OnFlipWeek(direction, id) листает неделю (держат дальше — листает дальше); если потом бросили мимо
 //                или нажали Esc — OnFlipCancel (неделя возвращается)
 //
 // Мышь: перетаскивание начинается после сдвига на 8px.
@@ -32,7 +32,7 @@ const AFTER_DROP_MS = 500;     // мс — после сброса клики н
 const EDGE = 48;               // px — зона у края прокручиваемой области для автопрокрутки
 const AUTOSCROLL_DELAY = 400;  // мс — сколько держать у края, прежде чем начнётся прокрутка
 const MAX_SPEED = 16;          // px за кадр
-const FLIP_DELAY = 600;        // мс — сколько задержать запись над стрелкой недели, чтобы перелистнуть
+const FLIP_DELAY = 500;        // мс — сколько задержать запись над краем недели или стрелкой, чтобы перелистнуть
 const FLIP_REPEAT = 700;       // мс — держат дальше: следующая неделя через столько
 
 let dotnet = null;
@@ -170,6 +170,7 @@ function start(x, y) {
 
     el.classList.add('drag-source');
     document.body.classList.add('dragging');
+    document.body.dataset.dragKind = drag.kind; // по нему проступают, например, края недели для листания
     window.getSelection()?.removeAllRanges();
     moveGhost();
     updateTarget();
@@ -184,7 +185,7 @@ function moveGhost() {
 function updateTarget() {
     // Ближайшая зона, принимающая этот вид; зоны бывают вложенными (роль — зона для целей
     // внутри списка ролей), поэтому, если ближайшая не принимает, ищем выше
-    const hit = document.elementFromPoint(drag.x, drag.y);
+    const hit = elementUnder(drag.x, drag.y);
     let zone = hit?.closest('[data-drop]');
     while (zone && !accepts(zone)) zone = zone.parentElement?.closest('[data-drop]');
 
@@ -317,7 +318,13 @@ function autoScroll(now) {
 // Стрелка недели под записью: задержали — листаем, держат дальше — листаем дальше
 function checkFlip(now) {
     const arrow = document.elementFromPoint(drag.x, drag.y)?.closest('[data-flip]');
-    const el = arrow && (arrow.dataset.flipAccept ?? '').split(' ').includes(drag.kind) ? arrow : null;
+    let el = arrow && (arrow.dataset.flipAccept ?? '').split(' ').includes(drag.kind) ? arrow : null;
+
+    // Перетаскивание началось под краем недели (запись у левого края понедельника): пока не вышли из края,
+    // он не листает — иначе перестановка внутри дня перелистывала бы неделю
+    if (drag.flipBlocked === undefined) drag.flipBlocked = el;
+    if (el !== drag.flipBlocked) drag.flipBlocked = null;
+    else if (el) el = null;
     if (el !== drag.flipEl) {
         drag.flipEl?.classList.remove('flip-armed');
         drag.ghost.classList.toggle('over-flip', !!el); // призрак бледнеет — стрелку под ним видно
@@ -349,7 +356,7 @@ function edgeSpeed(pos, start, end) {
 }
 
 function scrollableAt(x, y) {
-    for (let el = document.elementFromPoint(x, y); el && el !== document.body; el = el.parentElement) {
+    for (let el = elementUnder(x, y); el && el !== document.body; el = el.parentElement) {
         const style = getComputedStyle(el);
         const scrollY = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
         const scrollX = /(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth;
@@ -381,7 +388,14 @@ function finish() {
     drag.hoverZone?.classList.remove('drop-hover');
     drag.flipEl?.classList.remove('flip-armed');
     document.body.classList.remove('dragging');
+    delete document.body.dataset.dragKind;
     drag = null;
     // Сброс или отмена: отпускание кнопки над новым местом — не клик
     ignoreClicks(AFTER_DROP_MS);
+}
+
+// Элемент под указателем, «сквозь» прозрачные для сброса накладки (data-flip-overlay — края недели для листания):
+// бросить дело у края понедельника можно, а неделя листается, только если задержаться над краем
+function elementUnder(x, y) {
+    return document.elementsFromPoint(x, y).find(el => !el.closest('[data-flip-overlay]')) ?? null;
 }

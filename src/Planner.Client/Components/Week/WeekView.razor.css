@@ -70,7 +70,7 @@
 .nav.flip-armed {
     background: var(--a-soft);
     color: var(--a-ink);
-    animation: flip-charge 0.6s linear;
+    animation: flip-charge 0.5s linear;
 }
 
 @keyframes flip-charge {
@@ -80,5 +80,68 @@
 
     to {
         box-shadow: 0 0 0 5px var(--a);
+    }
+}
+
+/* Края недели для листания: видны, только пока тащат дело (из ленты или дня — атрибут на body ставит js/dnd.js) */
+.week {
+    position: relative;
+}
+
+.flip-zone {
+    position: absolute;
+    top: 52px;
+    bottom: 10px;
+    z-index: 5;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--b) 22%, transparent);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--b) 60%, transparent);
+    color: var(--b-deep);
+    font-size: 12.5px;
+    font-weight: 800;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.flip-zone.prev {
+    left: 6px;
+}
+
+.flip-zone.next {
+    right: 6px;
+}
+
+.flip-zone span {
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+}
+
+.flip-zone.prev span {
+    transform: rotate(180deg);
+}
+
+body[data-drag-kind="someday"] .flip-zone,
+body[data-drag-kind="day"] .flip-zone {
+    display: flex;
+}
+
+/* Навели — «заряжается» розовым акцентом; через ~0,5 с неделя листается */
+.flip-zone.flip-armed {
+    box-shadow: inset 0 0 0 2px var(--a-deep);
+    color: var(--a-ink);
+    animation: flip-zone-charge 0.5s linear forwards;
+}
+
+@keyframes flip-zone-charge {
+    from {
+        background: color-mix(in srgb, var(--a) 10%, transparent);
+    }
+
+    to {
+        background: color-mix(in srgb, var(--a) 50%, transparent);
     }
 }
