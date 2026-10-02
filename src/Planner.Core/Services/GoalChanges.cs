@@ -4,7 +4,7 @@ namespace Planner.Core.Services;
 
 /// <summary>
 /// Всё, что меняется в окне цели. null у необязательных полей — «не задано»;
-/// IsRecurring — «каждую неделю» (null — не менять).
+/// IsRecurring — «каждую неделю», AllowSeveralPerDay — «можно несколько раз в день» (null — не менять).
 /// </summary>
 public sealed record GoalChanges(
     string Title,
@@ -14,4 +14,5 @@ public sealed record GoalChanges(
     Quadrant? Quadrant,
     string? Notes,
     int? DurationMinutes,
-    bool? IsRecurring = null);
+    bool? IsRecurring = null,
+    bool? AllowSeveralPerDay = null);

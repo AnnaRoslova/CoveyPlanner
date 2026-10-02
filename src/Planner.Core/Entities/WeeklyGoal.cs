@@ -45,6 +45,9 @@ public class WeeklyGoal : ISortable
 
     public int? DurationMinutes { get; private set; }
 
+    /// <summary>Можно ли ставить несколько занятий в один день («Чтение» утром и вечером). По умолчанию — нет.</summary>
+    public bool AllowSeveralPerDay { get; private set; }
+
     public int SortOrder { get; set; }
 
     /// <summary>Серия: та же цель на других неделях (постоянная — «каждую неделю»). null — разовая цель.</summary>
@@ -64,6 +67,23 @@ public class WeeklyGoal : ISortable
     public int DoneCount => ActiveSessions.Count(t => t.State == TaskState.Done);
 
     public bool IsDone => DoneCount >= TimesPerWeek;
+
+    /// <summary>Есть ли у цели занятие (выполненное или нет, кроме корзины) в этот день, не считая <paramref name="except"/>.</summary>
+    public bool HasSessionOn(DateOnly date, TaskItem? except = null) =>
+        ActiveSessions.Any(t => t.PlannedDate == date && t != except);
+
+    /// <summary>Поставить занятие в день можно, если там ещё нет занятия этой цели (или разрешено несколько в день).</summary>
+    public void EnsureDayIsFree(DateOnly date, TaskItem? except = null)
+    {
+        if (!AllowSeveralPerDay && HasSessionOn(date, except))
+        {
+            throw new DomainException(DayTakenMessage);
+        }
+    }
+
+    public const string DayTakenMessage = "Уже есть в этот день.";
+
+    public void SetAllowSeveralPerDay(bool allow) => AllowSeveralPerDay = allow;
 
     /// <summary>Невыполненное занятие без дня (например, дело, из которого сделали цель) — первым встаёт в день.</summary>
     public TaskItem? UnscheduledSession =>
@@ -93,6 +113,7 @@ public class WeeklyGoal : ISortable
         goal.Quadrant = series.Quadrant;
         goal.Notes = series.Notes;
         goal.DurationMinutes = series.DurationMinutes;
+        goal.AllowSeveralPerDay = series.AllowSeveralPerDay;
         goal.Series = series;
         return goal;
     }
@@ -108,6 +129,7 @@ public class WeeklyGoal : ISortable
         goal.Quadrant = Quadrant;
         goal.Notes = Notes;
         goal.DurationMinutes = DurationMinutes;
+        goal.AllowSeveralPerDay = AllowSeveralPerDay;
         goal.Series = Series;
         return goal;
     }

@@ -56,7 +56,8 @@ public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDo
 /// <summary>
 /// Цель недели, которую нужно сделать TimesPerWeek раз, — шаблон занятий: новые занятия берут
 /// StartTime, Quadrant, Notes, DurationMinutes. Sessions — её занятия (без корзины), по дням;
-/// прогресс и «выполнено» считаются по ним. IsRecurring — «каждую неделю»: цель появится и на следующей неделе.
+/// прогресс и «выполнено» считаются по ним. IsRecurring — «каждую неделю»: цель появится и на следующей неделе;
+/// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
@@ -70,7 +71,8 @@ public sealed record WeeklyGoalDto(
     int? DurationMinutes,
     int SortOrder,
     IReadOnlyList<GoalSessionDto> Sessions,
-    bool IsRecurring = false)
+    bool IsRecurring = false,
+    bool AllowSeveralPerDay = false)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);

@@ -1,6 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1): цель «Бег» (Тело) 3 раза в неделю, без занятий
 // Цели с повторами: цель → день добавляет занятие, прогресс «1/3», метки дней «Вт · Чт»,
-// выбор «раз в неделю», перенос занятия, удаление цели (выполненные занятия остаются).
+// выбор «раз в неделю», перенос занятия, удаление цели (выполненные занятия остаются);
+// не больше одного занятия в день (подсветка и «уже есть в этот день»), «можно несколько раз в день».
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -88,7 +89,33 @@ await check('цель → вторник и четверг: два заняти�
   assert((await goal('Тело', 'Бег')).when === 'Вт · Чт', 'после перезагрузки');
 });
 
-await check('ещё раз на вторник — второе занятие в тот же день', async () => {
+const toastText = async () => (await page.$('.toast')) ? page.$eval('.toast', e => e.textContent.trim()) : null;
+
+await check('ещё раз на вторник — ничего не создаётся: занятие подсвечено, «уже есть в этот день»', async () => {
+  await goalToDay(1);
+  assert((await runsOn(1)).length === 1, `Вт: ${JSON.stringify(await runsOn(1))}`);
+  assert(await toastText() === 'уже есть в этот день', `плашка: ${await toastText()}`);
+  const flashing = await page.evaluate(`(() => { const el = ${dayItem(1, 'Бег')}; return el?.classList.contains('flash'); })()`);
+  assert(flashing, 'занятие не подсветилось');
+  await page.screenshot({ path: `${SHOTS}/repeat-day-taken.png` });
+});
+
+await check('занятие из четверга во вторник (там уже есть) — остаётся в четверге', async () => {
+  const from = await boxOf(dayItem(3, 'Бег'));
+  const tue = await dayBox(1);
+  await mouseDrag(from, tue.x + 40, tue.y + tue.height - 40);
+  assert((await runsOn(3)).length === 1 && (await runsOn(1)).length === 1, 'занятие переехало');
+  assert(await toastText() === 'уже есть в этот день', `плашка: ${await toastText()}`);
+  await load();
+  assert((await runsOn(3)).length === 1, 'после перезагрузки не в четверге');
+});
+
+await check('«можно несколько раз в день» — второе занятие во вторник', async () => {
+  await openGoal('Бег');
+  const label = await page.$$eval('.editor .switch-row', rs => rs.map(r => r.textContent.replace(/\s+/g, ' ').trim()));
+  assert(label.some(t => t.startsWith('можно несколько раз в день')), `переключатели: ${label}`);
+  await page.evaluate(() => [...document.querySelectorAll('.editor .switch-row')].find(r => r.textContent.includes('несколько раз в день')).click());
+  await save();
   await goalToDay(1);
   assert((await runsOn(1)).length === 2, `Вт: ${JSON.stringify(await runsOn(1))}`);
   assert((await goal('Тело', 'Бег')).when === 'Вт · Вт · Чт', JSON.stringify(await goal('Тело', 'Бег')));

@@ -71,6 +71,7 @@ public partial class PlannerState
             DurationMinutes = form.DurationMinutes,
             SortOrder = sortOrder,
             IsRecurring = form.IsRecurring ?? goal.IsRecurring,
+            AllowSeveralPerDay = form.AllowSeveralPerDay ?? goal.AllowSeveralPerDay,
         });
 
         await SaveAsync(async () =>
@@ -91,8 +92,18 @@ public partial class PlannerState
     /// </summary>
     public async Task ToggleGoalAsync(int goalId)
     {
-        if (goalId < 0 || FindGoal(goalId) is null)
+        if (goalId < 0 || FindGoal(goalId) is not { } goal)
         {
+            return;
+        }
+
+        // Отмечать нечего, кроме нового занятия на сегодня, а сегодня оно уже есть (так же откажет сервер)
+        var today = RuDates.Today;
+        if (!goal.IsDone && !goal.AllowSeveralPerDay && WeekStart == RuDates.WeekStartOf(today)
+            && !goal.Sessions.Any(s => !s.IsDone && s.PlannedDate is not null)
+            && goal.Sessions.Any(s => s.PlannedDate == today))
+        {
+            notifier.Info("сегодня уже отмечено");
             return;
         }
 
@@ -282,6 +293,13 @@ public partial class PlannerState
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal)
         {
+            return;
+        }
+
+        // В этот день у цели уже есть занятие — новое не создаём (если не разрешено несколько в день)
+        if (!goal.AllowSeveralPerDay && goal.Sessions.FirstOrDefault(s => s.PlannedDate == date) is { } existing)
+        {
+            RefuseDayTaken(existing.TaskId);
             return;
         }
 

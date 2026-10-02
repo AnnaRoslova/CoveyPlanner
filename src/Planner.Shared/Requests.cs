@@ -47,7 +47,7 @@ public sealed record UpdateRoleRequest(string? Name, string? Color);
 /// <summary>IsRecurring — «каждую неделю»; null — как принято у роли (у измерений пилы — да, у обычных ролей — нет).</summary>
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title, bool? IsRecurring = null);
 
-/// <summary>Окно цели целиком. null у необязательных полей — «не задано»; IsRecurring = null — «каждую неделю» не менять.</summary>
+/// <summary>Окно цели целиком. null у необязательных полей — «не задано»; IsRecurring / AllowSeveralPerDay = null — «каждую неделю» / «можно несколько раз в день» не менять.</summary>
 public sealed record UpdateGoalRequest(
     string Title,
     int RoleId,
@@ -56,7 +56,8 @@ public sealed record UpdateGoalRequest(
     int? Quadrant,
     string? Notes,
     int? DurationMinutes,
-    bool? IsRecurring = null);
+    bool? IsRecurring = null,
+    bool? AllowSeveralPerDay = null);
 
 /// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
 public sealed record ToggleGoalRequest(DateOnly Today);

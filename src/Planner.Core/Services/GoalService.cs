@@ -59,6 +59,11 @@ public class GoalService(
         }
 
         goal.SetTimesPerWeek(changes.TimesPerWeek);
+        if (changes.AllowSeveralPerDay is { } several)
+        {
+            goal.SetAllowSeveralPerDay(several);
+        }
+
         var lostTime = goal.UpdateTemplate(
             changes.Title, changes.StartTime, changes.Quadrant, changes.Notes, changes.DurationMinutes);
         foreach (var session in lostTime)
@@ -124,6 +129,7 @@ public class GoalService(
         foreach (var later in await LaterInSeriesAsync(goal, ct))
         {
             later.SetTimesPerWeek(goal.TimesPerWeek);
+            later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
             var lostTime = later.UpdateTemplate(goal.Title, goal.StartTime, goal.Quadrant, goal.Notes, goal.DurationMinutes);
             foreach (var session in lostTime)
             {
@@ -186,6 +192,12 @@ public class GoalService(
             // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
             if (session.PlannedDate is null && isCurrentWeek)
             {
+                // Не больше одного занятия цели в день: сегодня уже есть — новое не добавляем
+                if (!goal.AllowSeveralPerDay && goal.HasSessionOn(today, session))
+                {
+                    throw new DomainException("Сегодня уже отмечено.");
+                }
+
                 await PlaceInDayAsync(goal, session, new DayTarget(today, int.MaxValue), ct);
             }
 
@@ -251,6 +263,7 @@ public class GoalService(
         }
 
         var goal = await GetAsync(id, ct);
+        goal.EnsureDayIsFree(day.Date); // не больше одного занятия в день, если не разрешено несколько
         var session = goal.UnscheduledSession ?? NewSession(goal);
 
         await PlaceInDayAsync(goal, session, day, ct);

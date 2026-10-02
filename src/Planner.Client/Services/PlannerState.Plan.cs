@@ -42,12 +42,13 @@ public partial class PlannerState
     /// Перетаскивание в день: из ленты, из другого дня или внутри дня.
     /// Дело без времени встаёт на позицию index среди дел дня без времени (так же считает сервер);
     /// дело со временем сохраняет время и встаёт по нему — index для него не важен.
+    /// false — не перенесли (некуда, в тот день уже есть занятие цели или сервер отказал).
     /// </summary>
-    public async Task MoveTaskToDayAsync(int taskId, DateOnly date, int index)
+    public async Task<bool> MoveTaskToDayAsync(int taskId, DateOnly date, int index)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task || task.State == TaskStateDto.Trashed)
         {
-            return;
+            return false;
         }
 
         // Бросили туда же, где лежало, — ничего не делаем
@@ -56,15 +57,25 @@ public partial class PlannerState
             // Дело со временем стоит по времени — внутри своего дня двигать некуда
             if (task.StartTime is not null)
             {
-                return;
+                return false;
             }
 
             var current = TasksOn(date).Where(t => t.StartTime is null).ToList().FindIndex(t => t.Id == taskId);
             var count = TasksOn(date).Count(t => t.StartTime is null && t.Id != taskId);
             if (current == Math.Clamp(index, 0, count))
             {
-                return;
+                return false;
             }
+        }
+
+        // В другой день этой недели, где у цели уже есть занятие, — нельзя (если не разрешено несколько в день);
+        // на другой неделе то же проверит сервер
+        if (task.PlannedDate != date && GoalOfTask(taskId) is { AllowSeveralPerDay: false } own
+            && own.WeekStart == RuDates.WeekStartOf(date)
+            && own.Sessions.FirstOrDefault(s => s.PlannedDate == date && s.TaskId != taskId) is { } taken)
+        {
+            RefuseDayTaken(taken.TaskId);
+            return false;
         }
 
         // Занятие цели на другую неделю: там оно станет занятием той же цели (её решает сервер) — потом перечитываем
@@ -86,6 +97,8 @@ public partial class PlannerState
         {
             await ReloadAsync();
         }
+
+        return ok;
     }
 
     /// <summary>
@@ -105,8 +118,7 @@ public partial class PlannerState
             return;
         }
 
-        await MoveTaskToDayAsync(taskId, day, int.MaxValue);
-        if (RuDates.WeekStartOf(day) != WeekStart)
+        if (await MoveTaskToDayAsync(taskId, day, int.MaxValue) && RuDates.WeekStartOf(day) != WeekStart)
         {
             notifier.WithAction($"Перенесено на {RuDates.ShortDate(day)}", "Показать", () => GoToWeekAsync(day),
                 Notifier.DefaultDuration);

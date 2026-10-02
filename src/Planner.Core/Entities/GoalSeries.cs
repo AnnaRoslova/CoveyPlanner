@@ -39,6 +39,9 @@ public class GoalSeries
 
     public int? DurationMinutes { get; private set; }
 
+    /// <summary>Можно ли несколько занятий в один день.</summary>
+    public bool AllowSeveralPerDay { get; private set; }
+
     /// <summary>«Каждую неделю»: цели на следующие недели появляются сами.</summary>
     public bool IsRecurring { get; private set; }
 
@@ -79,6 +82,7 @@ public class GoalSeries
         Quadrant = goal.Quadrant;
         Notes = goal.Notes;
         DurationMinutes = goal.DurationMinutes;
+        AllowSeveralPerDay = goal.AllowSeveralPerDay;
     }
 
     /// <summary>

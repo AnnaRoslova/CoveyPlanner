@@ -84,18 +84,32 @@ public class TaskService(
     public async Task<TaskItem> MoveAsync(int id, TaskTarget target, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
+
+        // Занятие цели в день: цель на неделе того дня (эта же или та же на другой неделе); в день, где у неё
+        // уже есть занятие, нельзя (если у цели не разрешено несколько в день) — проверяем до того, как что-то сдвинуть
+        WeeklyGoal? goal = null, targetGoal = null;
+        if (target is DayTarget day && task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } found)
+        {
+            goal = found;
+            targetGoal = goal.WeekStart == Week.StartOf(day.Date)
+                ? goal
+                : await series.GoalForWeekAsync(goal, Week.StartOf(day.Date), ct);
+            if (task.PlannedDate != day.Date) // порядок внутри своего дня — можно и у старых дублей
+            {
+                targetGoal.EnsureDayIsFree(day.Date, except: task);
+            }
+        }
+
         await placer.PlaceAsync(task, target, ct);
 
         if (target is SomedayTarget)
         {
             task.DetachFromGoal();
         }
-        else if (target is DayTarget day && task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } goal
-                 && goal.WeekStart != Week.StartOf(day.Date))
+        else if (goal is not null && targetGoal is not null && targetGoal != goal)
         {
-            var other = await series.GoalForWeekAsync(goal, Week.StartOf(day.Date), ct);
             goal.RemoveSession(task);
-            other.AddSession(task);
+            targetGoal.AddSession(task);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

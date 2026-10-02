@@ -3,7 +3,7 @@
    Clamp: название не длиннее двух строк, с «…»; полный текст — в подсказке при наведении (только у обрезанных:
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
-<div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "")"
+<div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
      data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press
      @onclick="OnClick">
@@ -151,6 +151,10 @@
     /// <summary>Кнопки справа, видны при наведении (клик по ним не считается кликом по записи).</summary>
     [Parameter]
     public RenderFragment? Actions { get; set; }
+
+    /// <summary>Коротко подсветить запись (например, «уже есть в этот день»).</summary>
+    [Parameter]
+    public bool IsFlashing { get; set; }
 
     /// <summary>Запись ещё сохраняется на сервере.</summary>
     [Parameter]

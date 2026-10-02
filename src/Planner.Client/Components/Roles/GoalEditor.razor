@@ -48,6 +48,13 @@
         <span class="hint">@(_recurring ? "появится и на следующих неделях; изменения — с этой недели и дальше" : "только на этой неделе")</span>
     </label>
 
+    <label class="switch-row">
+        <input type="checkbox" role="switch" @bind="_several" />
+        <span class="switch"></span>
+        <span>можно несколько раз в день</span>
+        <span class="hint">@(_several ? "например, утром и вечером" : "в один день — не больше одного занятия")</span>
+    </label>
+
     <div class="row">
         <div class="field">
             <div class="label">Время</div>
@@ -101,6 +108,7 @@
     private int? _duration;
     private string? _notes;
     private bool _recurring;
+    private bool _several;
 
     [Parameter, EditorRequired]
     public WeeklyGoalDto EditedGoal { get; set; } = null!;
@@ -118,6 +126,7 @@
         _duration = EditedGoal.DurationMinutes;
         _notes = EditedGoal.Notes;
         _recurring = EditedGoal.IsRecurring;
+        _several = EditedGoal.AllowSeveralPerDay;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -157,7 +166,7 @@
 
         await OnClose.InvokeAsync();
         await State.UpdateGoalAsync(EditedGoal.Id,
-            new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration, _recurring));
+            new UpdateGoalRequest(_title, _roleId, _times, _time, _quadrant, _notes, _duration, _recurring, _several));
     }
 
     /// <summary>Удалить; мысль цели без дня вернётся в ленту (без своей категории — в «неразобранное»).</summary>

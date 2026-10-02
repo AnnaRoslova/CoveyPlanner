@@ -208,3 +208,21 @@
 .goal-days .d.done {
     color: var(--b-deep);
 }
+
+/* Короткая подсветка: «вот оно, уже есть в этот день» */
+.item.flash {
+    animation: item-flash 1.5s ease-out;
+}
+
+@keyframes item-flash {
+    0%,
+    40% {
+        background: var(--a-soft);
+        box-shadow: inset 0 0 0 2px var(--a-deep);
+    }
+
+    100% {
+        background: transparent;
+        box-shadow: inset 0 0 0 2px transparent;
+    }
+}

@@ -86,6 +86,36 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public int RocksTotal => Goals.Count;
 
+    /// <summary>Занятие, которое сейчас коротко подсвечено (в этот день у цели оно уже есть).</summary>
+    public int? FlashTaskId { get; private set; }
+
+    /// <summary>
+    /// В этот день у цели уже есть занятие (а несколько в день не разрешено): ничего не делаем,
+    /// существующее занятие коротко подсвечиваем, подсказка «уже есть в этот день».
+    /// </summary>
+    private void RefuseDayTaken(int? existingTaskId)
+    {
+        notifier.Info("уже есть в этот день");
+        if (existingTaskId is not { } id)
+        {
+            return;
+        }
+
+        FlashTaskId = id;
+        NotifyChanged();
+        _ = UnflashLaterAsync(id);
+    }
+
+    private async Task UnflashLaterAsync(int taskId)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        if (FlashTaskId == taskId)
+        {
+            FlashTaskId = null;
+            NotifyChanged();
+        }
+    }
+
     /// <summary>Отмеченные занятия целей недели (сверх «раз в неделю» не считаются).</summary>
     public int SessionsDone => Goals.Sum(g => Math.Min(g.DoneCount, g.TimesPerWeek));
 
