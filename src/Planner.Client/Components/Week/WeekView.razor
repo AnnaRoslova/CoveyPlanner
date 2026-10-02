@@ -1,14 +1,17 @@
-@* Центр: неделя из 7 дней-списков («страницы в точку») *@
+@* Центр: неделя из 7 дней-списков («страницы в точку»).
+   Стрелки «‹ ›» — ещё и места для листания во время перетаскивания дела (data-flip, js/dnd.js). *@
 @inherits StateComponent
 @inject WindowHost Windows
 
 <main class="panel week">
     <div class="week-h">
-        <button class="nav" title="Предыдущая неделя" @onclick="State.PreviousWeekAsync">
+        <button class="nav" title="Предыдущая неделя" @onclick="State.PreviousWeekAsync"
+                data-flip="-1" data-flip-accept="@DragDropService.FlipAccepts">
             <Icon Name="chevron-left" />
         </button>
         <span class="wt">@RuDates.WeekRange(State.WeekStart)</span>
-        <button class="nav" title="Следующая неделя" @onclick="State.NextWeekAsync">
+        <button class="nav" title="Следующая неделя" @onclick="State.NextWeekAsync"
+                data-flip="1" data-flip-accept="@DragDropService.FlipAccepts">
             <Icon Name="chevron-right" />
         </button>
         @if (!IsCurrentWeek)

@@ -67,10 +67,59 @@ public partial class PlannerState
             }
         }
 
+        // Занятие цели на другую неделю: там оно станет занятием той же цели (её решает сервер) — потом перечитываем
+        var otherWeekRock = task.GoalId is { } goalId
+                            && (FindGoal(goalId) is not { } goal || goal.WeekStart != RuDates.WeekStartOf(date));
+
         PlaceInDayLocally(task, date, index);
-        SyncSession(_tasks[taskId]);
-        await SaveAsync(() => api.MoveTaskAsync(taskId, new DayTargetDto(date, index)));
+        if (otherWeekRock)
+        {
+            RemoveSession(taskId);
+        }
+        else
+        {
+            SyncSession(_tasks[taskId]);
+        }
+
+        var ok = await SaveAsync(() => api.MoveTaskAsync(taskId, new DayTargetDto(date, index)));
+        if (ok && otherWeekRock)
+        {
+            await ReloadAsync();
+        }
     }
+
+    /// <summary>
+    /// Поле «Дата» в окне дела: любая дата (в конец дел дня без времени) или null — «без даты», обратно в ленту
+    /// (в свою категорию, а если её нет — в «неразобранное»). На другую неделю — плашка «Перенесено на Пн 12 окт · Показать».
+    /// </summary>
+    public async Task MoveTaskToDateAsync(int taskId, DateOnly? date)
+    {
+        if (taskId < 0 || FindTask(taskId) is not { } task || task.PlannedDate == date)
+        {
+            return;
+        }
+
+        if (date is not { } day)
+        {
+            await MoveTaskToFeedAsync(taskId, IsFeedPlace(task.CategoryId) ? task.CategoryId : null, 0);
+            return;
+        }
+
+        await MoveTaskToDayAsync(taskId, day, int.MaxValue);
+        if (RuDates.WeekStartOf(day) != WeekStart)
+        {
+            notifier.WithAction($"Перенесено на {RuDates.ShortDate(day)}", "Показать", () => GoToWeekAsync(day),
+                Notifier.DefaultDuration);
+        }
+    }
+
+    /// <summary>
+    /// Дело, которое сейчас перетаскивают через недели (листание стрелками): при смене недели его не выбрасываем,
+    /// чтобы его можно было бросить в день новой недели. null — никакое.
+    /// </summary>
+    public void KeepWhileDragging(int? taskId) => _draggedTaskId = taskId;
+
+    private int? _draggedTaskId;
 
     /// <summary>
     /// Поставить дело в день локально (без сервера): из ленты — «запланировано» и без времени;

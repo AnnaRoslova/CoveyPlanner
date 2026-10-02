@@ -175,8 +175,8 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     private void ApplyWeek(WeekDto week)
     {
-        // Дела плана храним только для показанной недели
-        foreach (var id in _tasks.Values.Where(t => t.State != TaskStateDto.Someday).Select(t => t.Id).ToList())
+        // Дела плана храним только для показанной недели (и дело, которое перетаскивают через недели)
+        foreach (var id in _tasks.Values.Where(t => t.State != TaskStateDto.Someday && t.Id != _draggedTaskId).Select(t => t.Id).ToList())
         {
             _tasks.Remove(id);
         }

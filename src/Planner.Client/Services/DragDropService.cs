@@ -13,7 +13,7 @@ public sealed record DropEvent(string Kind, int Id, string Zone, string? Key, in
 /// Мост между JS-движком перетаскивания и состоянием экрана:
 /// JS следит за указателем и рисует подсказки, а что означает «бросили сюда» — решается здесь.
 /// </summary>
-public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncDisposable
+public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHost windows) : IAsyncDisposable
 {
     // Виды перетаскиваемого (data-drag) и зоны (data-drop) — те же строки, что в разметке
     public const string SomedayItem = "someday"; // дело в ленте
@@ -41,6 +41,9 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
 
     /// <summary>Список ролей: только роли (порядок).</summary>
     public const string RolesAccepts = RoleItem;
+
+    /// <summary>Стрелки недели: листают во время перетаскивания дела из ленты или из дня (цели привязаны к своей неделе).</summary>
+    public const string FlipAccepts = SomedayItem + " " + DayItem;
 
     /// <summary>Корзина: дела ленты и плана, цели — удалить, как из окна (с «Вернуть»).</summary>
     public const string TrashAccepts = SomedayItem + " " + DayItem + " " + GoalItem;
@@ -80,8 +83,49 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
         return false;
     }
 
+    /// <summary>Неделя, с которой начали листать во время перетаскивания (null — не листали).</summary>
+    private DateOnly? _flipStartWeek;
+
+    /// <summary>
+    /// Во время перетаскивания дела задержали над «‹» или «›» в шапке недели — листаем (direction: −1 / +1).
+    /// Дело держим, чтобы его можно было бросить в день новой недели.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnFlipWeek(int direction, int id)
+    {
+        _flipStartWeek ??= state.WeekStart;
+        state.KeepWhileDragging(id);
+        await state.GoToWeekAsync(state.WeekStart.AddDays(7 * Math.Sign(direction)));
+    }
+
+    /// <summary>Перетаскивание после листания отменили (Esc или бросили мимо) — неделя возвращается.</summary>
+    [JSInvokable]
+    public async Task OnFlipCancel()
+    {
+        if (_flipStartWeek is { } week)
+        {
+            _flipStartWeek = null;
+            state.KeepWhileDragging(null);
+            await state.GoToWeekAsync(week);
+        }
+    }
+
     [JSInvokable]
     public async Task OnDrop(DropEvent drop)
+    {
+        try
+        {
+            await HandleDropAsync(drop);
+        }
+        finally
+        {
+            // Бросили после листания — остаёмся на новой неделе
+            _flipStartWeek = null;
+            state.KeepWhileDragging(null);
+        }
+    }
+
+    private async Task HandleDropAsync(DropEvent drop)
     {
         switch (drop)
         {
@@ -122,7 +166,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state) : IAsyncD
                 break;
 
             case { Kind: GoalItem, Zone: TrashZone }:
-                await state.DeleteGoalAsync(drop.Id);
+                await windows.DeleteGoalAsync(state, drop.Id); // постоянную — с вопросом
                 break;
 
             // Роль → список ролей: порядок

@@ -297,6 +297,12 @@ body.dragging .unsorted.empty {
     will-change: transform;
 }
 
+/* Над стрелкой недели (листание) — призрак бледнеет, чтобы было видно, как стрелка «заряжается» */
+.drag-ghost.over-flip {
+    opacity: 0.35;
+    transition: opacity 0.15s;
+}
+
 /* Линия «сюда встанет» — поверх призрака, иначе он её закрывает */
 .drop-line {
     position: fixed;

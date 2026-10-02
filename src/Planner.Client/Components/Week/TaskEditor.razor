@@ -1,4 +1,5 @@
-@* Окно редактирования дела: название, роли (можно несколько), время, квадрант, длительность, заметки; «в корзину».
+@* Окно редактирования дела: название, роли (можно несколько), дата (другой день, другая неделя или «без даты» — в ленту),
+   время, квадрант, длительность, заметки; «в корзину».
    У занятия цели роль и квадрант задаются у цели (здесь только видны), а время, длительность
    и заметки могут быть «своими» — тогда метка «своё» и кнопка «как у цели».
    Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
@@ -46,6 +47,28 @@
                     </button>
                 }
             </div>
+        }
+    </div>
+
+    @* Дата: любая (календарь) или быстрые кнопки; «без даты» — обратно в ленту *@
+    <div class="field">
+        <div class="label">Дата</div>
+        <div class="date-row">
+            <input type="date" @bind="_date" aria-label="Дата" />
+            <div class="chips">
+                <button type="button" class="chip @(_date == RuDates.Today ? "on" : "")" @onclick="() => _date = RuDates.Today">сегодня</button>
+                <button type="button" class="chip @(_date == RuDates.Today.AddDays(1) ? "on" : "")" @onclick="() => _date = RuDates.Today.AddDays(1)">завтра</button>
+                <button type="button" class="chip @(_date == RuDates.Today.AddDays(7) ? "on" : "")" @onclick="() => _date = RuDates.Today.AddDays(7)">через неделю</button>
+                <button type="button" class="chip @(_date is null ? "on" : "")" @onclick="() => _date = null">без даты</button>
+            </div>
+        </div>
+        @if (_date is null)
+        {
+            <div class="date-hint">вернётся в ленту@(State.FindCategory(EditedTask.CategoryId) is { } category ? $" — в «{category.Name}»" : " — в «неразобранное»")</div>
+        }
+        else if (Goal is { } dateGoal && RuDates.WeekStartOf(_date.Value) != dateGoal.WeekStart)
+        {
+            <div class="date-hint">на той неделе станет занятием цели «@dateGoal.Title» (появится, если её там нет)</div>
         }
     </div>
 
@@ -129,6 +152,7 @@
     private TimeOnly? _time;
     private int? _quadrant;
     private int? _duration;
+    private DateOnly? _date;
 
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;
@@ -158,6 +182,7 @@
         _time = EditedTask.StartTime;
         _quadrant = EditedTask.Quadrant;
         _duration = EditedTask.DurationMinutes;
+        _date = EditedTask.PlannedDate;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -203,8 +228,13 @@
             return;
         }
 
+        var task = EditedTask;
         await OnClose.InvokeAsync();
-        await State.UpdateTaskAsync(EditedTask.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
+        await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
+        if (_date != task.PlannedDate)
+        {
+            await State.MoveTaskToDateAsync(task.Id, _date);
+        }
     }
 
     private async Task TrashAsync()

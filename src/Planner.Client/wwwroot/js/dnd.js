@@ -9,6 +9,9 @@
 //                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
 //                 data-list-head — внутри зоны: заголовок, под которым начинается список (для пустого дня)
 //   запись без перетаскивания: data-press — к ней применяются те же правила клика (например, во время поиска)
+//   листание:    data-flip="-1|1" data-flip-accept="<виды>" — стрелки недели: задержать над ней запись ~0,6 с —
+//                .NET OnFlipWeek(direction, id) листает неделю (держат дальше — листает дальше); если потом бросили мимо
+//                или нажали Esc — OnFlipCancel (неделя возвращается)
 //
 // Мышь: перетаскивание начинается после сдвига на 8px.
 // Палец/перо: после долгого нажатия ~300 мс без движения (иначе это прокрутка).
@@ -29,6 +32,8 @@ const AFTER_DROP_MS = 500;     // мс — после сброса клики н
 const EDGE = 48;               // px — зона у края прокручиваемой области для автопрокрутки
 const AUTOSCROLL_DELAY = 400;  // мс — сколько держать у края, прежде чем начнётся прокрутка
 const MAX_SPEED = 16;          // px за кадр
+const FLIP_DELAY = 600;        // мс — сколько задержать запись над стрелкой недели, чтобы перелистнуть
+const FLIP_REPEAT = 700;       // мс — держат дальше: следующая неделя через столько
 
 let dotnet = null;
 let pending = null;  // нажали на запись, но перетаскивание ещё не началось
@@ -116,11 +121,13 @@ function onPointerUp(e) {
     }
     if (!drag || e.pointerId !== drag.pointerId) return;
 
-    const { kind, id, target } = drag;
+    const { kind, id, target, flipped } = drag;
     finish();
 
     if (target) {
         dotnet?.invokeMethodAsync('OnDrop', { kind, id, zone: target.zone, key: target.key, index: target.index });
+    } else if (flipped) {
+        dotnet?.invokeMethodAsync('OnFlipCancel'); // листали, но бросили мимо — неделя возвращается
     }
 }
 
@@ -155,6 +162,9 @@ function start(x, y) {
         x, y,
         target: null,
         hoverZone: null,
+        flipEl: null,   // стрелка недели под записью
+        flipAt: 0,      // когда перелистнуть
+        flipped: false, // уже листали
         raf: 0,
     };
 
@@ -297,7 +307,39 @@ function autoScroll(now) {
     } else {
         drag.edgeScroller = null;
     }
+
+    checkFlip(now);
+    // После листания дни перерисованы — место сброса пересчитываем, даже если указатель стоит
+    if (drag.flipped) updateTarget();
     drag.raf = requestAnimationFrame(autoScroll);
+}
+
+// Стрелка недели под записью: задержали — листаем, держат дальше — листаем дальше
+function checkFlip(now) {
+    const arrow = document.elementFromPoint(drag.x, drag.y)?.closest('[data-flip]');
+    const el = arrow && (arrow.dataset.flipAccept ?? '').split(' ').includes(drag.kind) ? arrow : null;
+    if (el !== drag.flipEl) {
+        drag.flipEl?.classList.remove('flip-armed');
+        drag.ghost.classList.toggle('over-flip', !!el); // призрак бледнеет — стрелку под ним видно
+        drag.flipEl = el;
+        drag.flipAt = now + FLIP_DELAY;
+        if (el) charge(el);
+        return;
+    }
+
+    if (el && now >= drag.flipAt) {
+        drag.flipped = true;
+        drag.flipAt = now + FLIP_REPEAT;
+        dotnet?.invokeMethodAsync('OnFlipWeek', Number(el.dataset.flip), drag.id);
+        charge(el);
+    }
+}
+
+// Класс flip-armed заново — чтобы анимация «зарядки» стрелки началась сначала
+function charge(el) {
+    el.classList.remove('flip-armed');
+    void el.offsetWidth;
+    el.classList.add('flip-armed');
 }
 
 function edgeSpeed(pos, start, end) {
@@ -318,7 +360,11 @@ function scrollableAt(x, y) {
 
 function cancel() {
     clearPending();
-    if (drag) finish();
+    if (drag) {
+        const { flipped } = drag;
+        finish();
+        if (flipped) dotnet?.invokeMethodAsync('OnFlipCancel'); // Esc после листания — неделя возвращается
+    }
 }
 
 function clearPending() {
@@ -333,6 +379,7 @@ function finish() {
     drag.zoneBox.remove();
     drag.el.classList.remove('drag-source');
     drag.hoverZone?.classList.remove('drop-hover');
+    drag.flipEl?.classList.remove('flip-armed');
     document.body.classList.remove('dragging');
     drag = null;
     // Сброс или отмена: отпускание кнопки над новым местом — не клик

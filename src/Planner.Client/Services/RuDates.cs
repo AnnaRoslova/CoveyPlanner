@@ -13,6 +13,12 @@ public static class RuDates
 
     public static string ShortDay(DateOnly date) => ShortDays[(int)date.DayOfWeek];
 
+    private static readonly string[] MonthsShort =
+        ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
+    /// <summary>«Пн 12 окт».</summary>
+    public static string ShortDate(DateOnly date) => $"{ShortDay(date)} {date.Day} {MonthsShort[date.Month - 1]}";
+
     /// <summary>«28 сентября».</summary>
     public static string DayMonth(DateOnly date) => $"{date.Day} {MonthsGenitive[date.Month - 1]}";
 

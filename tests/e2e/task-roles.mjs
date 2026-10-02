@@ -28,8 +28,8 @@ async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); aw
 const TITLE = 'Кофе с Олей';
 const row = () => page.evaluateHandle(t => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === t), TITLE);
 async function openEditor() { await (await (await row()).$('.title')).click(); await settle(); assert(await page.$('.editor'), 'окно не открылось'); }
-const chip = name => page.evaluateHandle(n => [...document.querySelectorAll('.editor .chip')].find(c => c.textContent.trim() === n), name);
-const chipsOn = () => page.$$eval('.editor .chip.on', cs => cs.map(c => c.textContent.trim()));
+const chip = name => page.evaluateHandle(n => [...document.querySelectorAll('.editor [aria-label="Роли"] .chip')].find(c => c.textContent.trim() === n), name);
+const chipsOn = () => page.$$eval('.editor [aria-label="Роли"] .chip.on', cs => cs.map(c => c.textContent.trim()));
 const save = async () => { await page.click('.editor .btn:not(.quiet):not(.danger)'); await settle(); };
 // Цвет роли по имени — из её точки в левой панели
 const roleColor = name => page.evaluate(n => getComputedStyle([...document.querySelectorAll('.role')]

@@ -2,6 +2,7 @@ using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 using Planner.Core.Enums;
 using Planner.Core.Errors;
+using Planner.Core.Time;
 
 namespace Planner.Core.Services;
 
@@ -10,6 +11,7 @@ public class TaskService(
     ITaskRepository tasks,
     IRoleRepository roles,
     IGoalRepository goals,
+    GoalSeriesService series,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
@@ -74,7 +76,11 @@ public class TaskService(
         return task;
     }
 
-    /// <summary>Перетаскивание дела. При возврате в ленту связь с целью разрывается.</summary>
+    /// <summary>
+    /// Перенос дела (перетаскиванием или датой в окне). При возврате в ленту связь с целью разрывается.
+    /// Занятие цели, перенесённое на другую неделю, остаётся «камнем»: становится занятием той же цели на той неделе
+    /// (цели её серии, а если такой нет — новой копии цели, 1 раз в неделю); у прежней цели прогресс уменьшается.
+    /// </summary>
     public async Task<TaskItem> MoveAsync(int id, TaskTarget target, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
@@ -83,6 +89,13 @@ public class TaskService(
         if (target is SomedayTarget)
         {
             task.DetachFromGoal();
+        }
+        else if (target is DayTarget day && task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } goal
+                 && goal.WeekStart != Week.StartOf(day.Date))
+        {
+            var other = await series.GoalForWeekAsync(goal, Week.StartOf(day.Date), ct);
+            goal.RemoveSession(task);
+            other.AddSession(task);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
