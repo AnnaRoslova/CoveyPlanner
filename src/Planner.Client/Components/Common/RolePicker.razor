@@ -1,0 +1,91 @@
+@* Роли в окне: выбранные — маленькие чипы «● Тело ×», кнопка «+» открывает список всех ролей
+   (точка, название, галочка у выбранных; можно несколько). Locked — роли заданы не здесь («от цели»):
+   только чипы, без «+» и «×». Стили — css/editor.css. *@
+
+<div class="tags" role="group" aria-label="@Label">
+    @foreach (var role in Selected)
+    {
+        var id = role.Id;
+        <span class="tag" style="--c: @role.Color">
+            <span class="dot"></span><span class="tag-name">@role.Name</span>
+            @if (!Locked)
+            {
+                <button type="button" class="tag-x" title="Убрать" aria-label="Убрать роль «@role.Name»" @onclick="() => RemoveAsync(id)">
+                    <Icon Name="x" Size="10" />
+                </button>
+            }
+        </span>
+    }
+    @if (Selected.Count == 0)
+    {
+        <span class="tag-empty">без роли</span>
+    }
+    @if (!Locked)
+    {
+        <button @ref="_add" type="button" class="tag-add" title="Выбрать роли" aria-label="Выбрать роли"
+                aria-haspopup="true" aria-expanded="@(_open ? "true" : "false")" @onclick="() => _open = !_open">+</button>
+    }
+    @if (LockedHint is not null && Locked)
+    {
+        <span class="hint">· @LockedHint</span>
+    }
+</div>
+
+@if (_open)
+{
+    <Popover Anchor="_add" OnClose="() => _open = false" Class="options" Role="group" Label="@Label" Arrows="true">
+        @foreach (var role in Roles)
+        {
+            var id = role.Id;
+            var on = Value.Contains(id);
+            <button type="button" class="option @(on ? "on" : "")" style="--c: @role.Color" role="menuitemcheckbox"
+                    aria-checked="@(on ? "true" : "false")" @onclick="() => ToggleAsync(id)">
+                <span class="dot"></span><span class="option-name">@role.Name</span>
+                <span class="check">@if (on) { <Icon Name="check" Size="14" /> }</span>
+            </button>
+        }
+    </Popover>
+}
+
+@code {
+    private ElementReference _add;
+    private bool _open;
+
+    /// <summary>Все роли — в том порядке, в каком показывать.</summary>
+    [Parameter, EditorRequired]
+    public IEnumerable<RoleDto> Roles { get; set; } = [];
+
+    /// <summary>Id выбранных ролей.</summary>
+    [Parameter]
+    public IReadOnlyCollection<int> Value { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<int>> ValueChanged { get; set; }
+
+    /// <summary>Роли выбираются не здесь — только видны.</summary>
+    [Parameter]
+    public bool Locked { get; set; }
+
+    /// <summary>Подпись после чипов, когда роли не выбираются («от цели»).</summary>
+    [Parameter]
+    public string? LockedHint { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Роли";
+
+    private List<RoleDto> Selected => Roles.Where(r => Value.Contains(r.Id)).ToList();
+
+    private Task ToggleAsync(int roleId)
+    {
+        List<int> next = Value.Contains(roleId) ? [.. Value.Where(id => id != roleId)] : [.. Value, roleId];
+        Value = next;
+        return ValueChanged.InvokeAsync(next);
+    }
+
+    /// <summary>«×» у чипа: чип исчезает вместе с фокусом — фокус на «+», чтобы Esc по-прежнему закрывал окно.</summary>
+    private async Task RemoveAsync(int roleId)
+    {
+        await ToggleAsync(roleId);
+        await _add.FocusAsync();
+    }
+}

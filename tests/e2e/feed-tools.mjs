@@ -73,6 +73,14 @@ const titlesIn = name => page.evaluate(n => [...[...document.querySelectorAll('.
   .find(c => c.querySelector('.cat-h .name')?.textContent.trim() === n).querySelectorAll('.item .title')]
   .map(t => t.textContent.trim()), name);
 const editor = '.editor[aria-label="Мысль"]';
+// Категория — поле «● Книги ▾», клик открывает список
+async function chooseCategory(name) {
+  await page.click(`${editor} .select-field`); await settle();
+  await page.evaluate(n => [...document.querySelectorAll('.editor .popover .option')]
+    .find(o => o.querySelector('.option-name').textContent.trim() === n).click(), name);
+  await settle();
+  assert(!(await page.$('.editor .popover')), 'список не закрылся после выбора');
+}
 
 await check('дело ленты: окно — название, подробно, категория; сменили категорию — дело наверху новой', async () => {
   await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
@@ -80,7 +88,7 @@ await check('дело ленты: окно — название, подробн�
   const labels = await page.$$eval(`${editor} .label`, ls => ls.map(l => l.textContent.trim()));
   assert(JSON.stringify(labels) === '["Подробно","Категория"]', `поля: ${labels}`);
   await page.type(`${editor} textarea`, 'Базилик, мята, розмарин');
-  await page.evaluate(sel => [...document.querySelectorAll(`${sel} .chip`)].find(c => c.textContent.includes('Дом')).click(), editor);
+  await chooseCategory('Дом');
   await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();
   assert(!(await page.$(editor)), 'окно не закрылось');
   if (!(await page.$$eval('.someday .cat', cs => cs.find(c => c.textContent.includes('Дом')).classList.contains('open')))) {
@@ -187,9 +195,9 @@ await check('«неразобранное» — сверху ленты, над 
   assert(JSON.stringify(await unsortedTitles()) === '["Неразобранная мысль"]', 'после перезагрузки');
 });
 
-await check('окно мысли: чип «неразобранное» переносит в «неразобранное»', async () => {
+await check('окно мысли: «неразобранное» в списке категорий переносит в «неразобранное»', async () => {
   await (await (await feedItem('Научиться печь хлеб на закваске')).$('.tx')).click(); await settle();
-  await page.evaluate(sel => [...document.querySelectorAll(`${sel} .chip`)].find(c => c.textContent.trim() === 'неразобранное').click(), editor);
+  await chooseCategory('неразобранное');
   await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();
   assert((await unsortedTitles())[0] === 'Научиться печь хлеб на закваске', `неразобранное: ${await unsortedTitles()}`);
 });

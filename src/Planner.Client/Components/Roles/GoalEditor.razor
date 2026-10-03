@@ -22,15 +22,7 @@
 
     <div class="field">
         <div class="label">Роль</div>
-        <div class="chips">
-            @foreach (var role in State.Roles.OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder))
-            {
-                <button type="button" class="chip @(_roleId == role.Id ? "on" : "")" style="--c: @role.Color"
-                        @onclick="() => _roleId = role.Id">
-                    <span class="dot"></span>@role.Name
-                </button>
-            }
-        </div>
+        <ChoiceField Items="RoleChoices" @bind-Value="_roleId" Label="Роль" />
     </div>
 
     <div class="field">
@@ -59,19 +51,25 @@
 
     @if (_recurring)
     {
-        @* По каким дням: «сам раскладываю» — как раньше; дни выбраны — занятия встают в них сами *@
+        @* Повтор: «сам раскладываю» — как раньше; дни выбраны — занятия встают в них сами.
+           Кружки дней можно переключать руками — тогда в списке «свои дни» *@
         <div class="field">
-            <div class="label">По каким дням</div>
-            <div class="chips days" role="group" aria-label="По каким дням">
-                <button type="button" class="chip @(_days == 0 ? "on" : "")" @onclick="() => _days = 0">сам раскладываю</button>
-                <button type="button" class="chip @(_days == EveryDay ? "on" : "")" @onclick="() => _days = EveryDay">каждый день</button>
-                @for (var i = 0; i < DayNames.Length; i++)
-                {
-                    var bit = 1 << i;
-                    <button type="button" class="chip day @((_days & bit) != 0 ? "on" : "")" aria-pressed="@((_days & bit) != 0 ? "true" : "false")"
-                            @onclick="() => _days ^= bit">@DayNames[i]</button>
-                }
+            <div class="repeat-row">
+                <span class="label">Повтор</span>
+                <ChoiceField TValue="Repeat" Items="RepeatChoices" Value="_repeat" ValueChanged="SetRepeat" Label="Повтор" />
             </div>
+            @if (_repeat != Repeat.Manual)
+            {
+                <div class="day-dots" role="group" aria-label="Дни">
+                    @for (var i = 0; i < DayNames.Length; i++)
+                    {
+                        var bit = 1 << i;
+                        var on = (_days & bit) != 0;
+                        <button type="button" class="day-dot @(on ? "on" : "")" aria-pressed="@(on ? "true" : "false")"
+                                title="@DayNames[i]" aria-label="@DayNames[i]" @onclick="() => ToggleDay(bit)">@DayNames[i][..1]</button>
+                    }
+                </div>
+            }
             @if (DaysChosen)
             {
                 <div class="date-hint">занятия встанут в эти дни сами — на этой неделе и дальше; выполненные не трогаются</div>
@@ -89,15 +87,7 @@
     <div class="row">
         <div class="field">
             <div class="label">Время</div>
-            <div class="time">
-                <input type="time" @bind="_time" />
-                @if (_time is not null)
-                {
-                    <button type="button" class="clear" title="Без времени" @onclick="() => _time = null">
-                        <Icon Name="x" Size="11" />
-                    </button>
-                }
-            </div>
+            <TimePicker @bind-Value="_time" />
         </div>
 
         <div class="field">
@@ -143,9 +133,54 @@
     private int _days; // маска дней (Пн = 1 … Вс = 64), 0 — «сам раскладываю»
 
     private const int EveryDay = 127;
+    private const int WorkDaysMask = 31; // Пн–Пт
+    private const int WeekendMask = 96; // Сб, Вс
     private static readonly string[] DayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
+    private enum Repeat { Manual, EveryDay, Weekdays, Weekend, Custom }
+
+    private static readonly List<Choice<Repeat>> RepeatChoices =
+    [
+        new(Repeat.Manual, "сам раскладываю"),
+        new(Repeat.EveryDay, "каждый день"),
+        new(Repeat.Weekdays, "будни"),
+        new(Repeat.Weekend, "выходные"),
+        new(Repeat.Custom, "свои дни"),
+    ];
+
+    private Repeat _repeat;
+
+    private static Repeat RepeatOf(int days) => days switch
+    {
+        0 => Repeat.Manual,
+        EveryDay => Repeat.EveryDay,
+        WorkDaysMask => Repeat.Weekdays,
+        WeekendMask => Repeat.Weekend,
+        _ => Repeat.Custom,
+    };
+
+    private void SetRepeat(Repeat repeat)
+    {
+        _repeat = repeat;
+        _days = repeat switch
+        {
+            Repeat.Manual => 0,
+            Repeat.EveryDay => EveryDay,
+            Repeat.Weekdays => WorkDaysMask,
+            Repeat.Weekend => WeekendMask,
+            _ => _days, // «свои дни» — с выбранных сейчас
+        };
+    }
+
+    private void ToggleDay(int bit)
+    {
+        _days ^= bit;
+        _repeat = Repeat.Custom;
+    }
+
     private bool DaysChosen => _recurring && _days != 0;
+
+    private List<Choice<int>> RoleChoices => State.OrderedRoles.Select(r => new Choice<int>(r.Id, r.Name, r.Color)).ToList();
 
     private static int DayCount(int days) => System.Numerics.BitOperations.PopCount((uint)days);
 
@@ -167,6 +202,7 @@
         _recurring = EditedGoal.IsRecurring;
         _several = EditedGoal.AllowSeveralPerDay;
         _days = EditedGoal.Days ?? 0;
+        _repeat = RepeatOf(_days);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

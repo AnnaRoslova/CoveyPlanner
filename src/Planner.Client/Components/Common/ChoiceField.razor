@@ -1,0 +1,57 @@
+@* Поле с одиночным выбором: «● Книги ▾» — клик открывает список (точка или эмодзи, название, галочка у выбранного).
+   Выбор пункта закрывает список. Стили — css/editor.css. *@
+@typeparam TValue
+
+<button @ref="_field" type="button" class="select-field" aria-label="@Label" aria-haspopup="listbox"
+        aria-expanded="@(_open ? "true" : "false")" @onclick="() => _open = !_open">
+    @if (Current is { } current)
+    {
+        <ChoiceMark Color="@current.Color" Emoji="@current.Emoji" />
+        <span class="select-label">@current.Label</span>
+    }
+    <Icon Name="chevron-down" Size="13" />
+</button>
+
+@if (_open)
+{
+    <Popover Anchor="_field" OnClose="() => _open = false" Class="options" Role="listbox" Label="@Label" Arrows="true">
+        @foreach (var item in Items)
+        {
+            var on = Is(item.Value);
+            <button type="button" class="option @(on ? "on" : "")" role="option" aria-selected="@(on ? "true" : "false")"
+                    @onclick="() => SelectAsync(item.Value)">
+                <ChoiceMark Color="@item.Color" Emoji="@item.Emoji" />
+                <span class="option-name">@item.Label</span>
+                <span class="check">@if (on) { <Icon Name="check" Size="14" /> }</span>
+            </button>
+        }
+    </Popover>
+}
+
+@code {
+    private ElementReference _field;
+    private bool _open;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Choice<TValue>> Items { get; set; } = [];
+
+    [Parameter]
+    public TValue Value { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<TValue> ValueChanged { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    private Choice<TValue>? Current => Items.FirstOrDefault(i => Is(i.Value));
+
+    private bool Is(TValue value) => EqualityComparer<TValue>.Default.Equals(value, Value);
+
+    private async Task SelectAsync(TValue value)
+    {
+        _open = false;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+}

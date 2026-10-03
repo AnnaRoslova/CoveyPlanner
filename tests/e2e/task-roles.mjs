@@ -1,5 +1,5 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// Несколько ролей у дела: в окне дела роли — чипы с множественным выбором, «без роли» снимает все;
+// Несколько ролей у дела: в окне дела роли — маленькие чипы «● Тело ×» и «+» со списком ролей (множественный выбор);
 // на записи чекбокс цвета первой роли (по порядку ролей), при двух и больше — точки всех ролей.
 // У занятия цели роль одна — от цели, выбрать нельзя.
 import puppeteer from 'puppeteer-core';
@@ -28,8 +28,21 @@ async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); aw
 const TITLE = 'Кофе с Олей';
 const row = () => page.evaluateHandle(t => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === t), TITLE);
 async function openEditor() { await (await (await row()).$('.title')).click(); await settle(); assert(await page.$('.editor'), 'окно не открылось'); }
-const chip = name => page.evaluateHandle(n => [...document.querySelectorAll('.editor [aria-label="Роли"] .chip')].find(c => c.textContent.trim() === n), name);
-const chipsOn = () => page.$$eval('.editor [aria-label="Роли"] .chip.on', cs => cs.map(c => c.textContent.trim()));
+// Роли в окне — чипы «● Тело ×»; «+» открывает список ролей (галочки у выбранных)
+const chipsOn = () => page.$$eval('.editor .tags .tag .tag-name', ts => ts.map(t => t.textContent.trim()));
+const optionsOn = () => page.$$eval('.editor .popover .option.on .option-name', ts => ts.map(t => t.textContent.trim()));
+async function clickOption(name) {
+  await page.evaluate(n => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === n).click(), name);
+  await settle();
+}
+async function pickRoles(...names) {
+  await page.click('.editor .tag-add'); await settle();
+  for (const n of names) await clickOption(n);
+  await page.keyboard.press('Escape'); await settle(); // закрывает только список
+}
+async function clearRoles() {
+  while (await page.$('.editor .tag-x')) { await page.click('.editor .tag-x'); await settle(); }
+}
 const save = async () => { await page.click('.editor .btn:not(.quiet):not(.danger)'); await settle(); };
 // Цвет роли по имени — из её точки в левой панели
 const roleColor = name => page.evaluate(n => getComputedStyle([...document.querySelectorAll('.role')]
@@ -41,24 +54,33 @@ const look = () => row().then(r => r.evaluate(i => ({
 
 await load();
 
-await check('окно дела: роли — множественный выбор, «без роли» снимает все', async () => {
+await check('окно дела: роли — «+» открывает список, можно несколько; «×» снимает; Esc закрывает только список', async () => {
   await openEditor();
-  await (await chip('без роли')).click(); // в демо у дела роль «Общение и эмоции»
-  await (await chip('Семья')).click();
-  await (await chip('Работа')).click();
+  await clearRoles(); // в демо у дела роль «Общение и эмоции»
+  assert(await page.$eval('.editor .tag-empty', e => e.textContent.trim()) === 'без роли', 'нет «без роли»');
+  await page.click('.editor .tag-add'); await settle();
+  assert(await page.$('.editor .popover'), 'список не открылся');
+  await clickOption('Семья');
+  await clickOption('Работа');
+  assert(JSON.stringify(await optionsOn()) === '["Семья","Работа"]', `галочки: ${await optionsOn()}`);
   assert(JSON.stringify(await chipsOn()) === '["Семья","Работа"]', `выбраны: ${await chipsOn()}`);
-  await (await chip('Работа')).click();
+  await page.screenshot({ path: `${SHOTS}/task-roles-popover.png` });
+  await clickOption('Работа');
   assert(JSON.stringify(await chipsOn()) === '["Семья"]', `после снятия: ${await chipsOn()}`);
-  await (await chip('без роли')).click();
-  assert(JSON.stringify(await chipsOn()) === '["без роли"]', `после «без роли»: ${await chipsOn()}`);
+  await page.keyboard.press('Escape'); await settle();
+  assert(!(await page.$('.editor .popover')) && await page.$('.editor'), 'Esc закрыл не только список');
+  await page.click('.editor .tag-add'); await settle();
+  await page.click('.editor .title-input'); await settle();
+  assert(!(await page.$('.editor .popover')) && await page.$('.editor'), 'клик мимо не закрыл список');
+  await page.click('.editor .tag-x'); await settle();
+  assert(JSON.stringify(await chipsOn()) === '[]', `после «×»: ${await chipsOn()}`);
   await page.keyboard.press('Escape'); await settle();
 });
 
 await check('две роли: чекбокс — цвет первой по порядку ролей, точки обеих; после перезагрузки так же', async () => {
   await openEditor();
-  await (await chip('без роли')).click();
-  await (await chip('Работа')).click();
-  await (await chip('Я сама')).click(); // «Я сама» в списке ролей выше «Работы»
+  await clearRoles();
+  await pickRoles('Работа', 'Я сама'); // «Я сама» в списке ролей выше «Работы»
   await save();
   const [self, work] = [await roleColor('Я сама'), await roleColor('Работа')];
   let l = await look();
@@ -74,23 +96,25 @@ await check('две роли: чекбокс — цвет первой по по
 
 await check('одна роль — без точек; без роли — бледный чекбокс', async () => {
   await openEditor();
-  await (await chip('Я сама')).click(); await save();
+  await page.click('.editor .tag-x'); await settle(); // первая — «Я сама»
+  await save();
   let l = await look();
   assert(l.ck === await roleColor('Работа') && l.dots.length === 0, `одна роль: ${JSON.stringify(l)}`);
   await openEditor();
-  await (await chip('без роли')).click(); await save();
+  await clearRoles(); await save();
   l = await look();
   assert(l.dots.length === 0, `без роли — точки: ${l.dots}`);
   await openEditor();
-  assert(JSON.stringify(await chipsOn()) === '["без роли"]', `в окне: ${await chipsOn()}`);
+  assert(JSON.stringify(await chipsOn()) === '[]' && await page.$('.editor .tag-empty'), `в окне: ${await chipsOn()}`);
   await page.keyboard.press('Escape'); await settle();
 });
 
 await check('занятие цели: роль одна, от цели, выбрать нельзя', async () => {
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.pill.rock'))).then(h => h.$('.title'))).click();
   await settle();
-  assert(!(await page.$('.editor .field .chips')) || !(await page.$$eval('.editor .field', fs => fs[0].querySelector('.chips'))), 'у занятия можно выбирать роли');
-  assert(await page.$('.editor .from-goal'), 'нет «задаётся у цели»');
+  assert(!(await page.$('.editor .tag-add')) && !(await page.$('.editor .tag-x')), 'у занятия можно выбирать роли');
+  assert((await chipsOn()).length === 1, `роли: ${await chipsOn()}`);
+  assert(await page.$eval('.editor .tags .hint', e => e.textContent.trim()) === '· от целей', 'нет «от целей»');
   await page.keyboard.press('Escape'); await settle();
 });
 

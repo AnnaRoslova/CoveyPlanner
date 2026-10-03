@@ -1,0 +1,89 @@
+@* Поле, которое открывает барабан «часы | минуты» (как будильник iPhone) во всплывающем окошке.
+   В поле — Text («07:30», «1 ч 30 мин» или «без»). «без» в окошке сбрасывает значение и закрывает его.
+   Само значение хранят TimePicker и DurationPicker. Стили — css/editor.css. *@
+
+<button @ref="_field" type="button" class="select-field wheel-field @(IsEmpty ? "empty" : "")" aria-label="@Label"
+        aria-haspopup="dialog" aria-expanded="@(_open ? "true" : "false")" @onclick="ToggleAsync">
+    <span class="select-label">@Text</span>
+</button>
+
+@if (_open)
+{
+    <Popover Anchor="_field" OnClose="() => _open = false" Class="wheels" Role="dialog" Label="@Label">
+        <div class="wheel-group">
+            <WheelColumn Value="Hours" ValueChanged="h => Changed.InvokeAsync((h, Minutes))" Max="MaxHours" Cyclic="HoursCyclic"
+                         Label="Часы" />
+            @if (Units)
+            {
+                <span class="wheel-unit">ч</span>
+            }
+            else
+            {
+                <span class="wheel-sep">:</span>
+            }
+            <WheelColumn Value="Minutes" ValueChanged="m => Changed.InvokeAsync((Hours, m))" Max="59" Cyclic="true"
+                         Label="Минуты" />
+            @if (Units)
+            {
+                <span class="wheel-unit">мин</span>
+            }
+        </div>
+        <button type="button" class="wheel-none" @onclick="ClearAsync">без</button>
+    </Popover>
+}
+
+@code {
+    private ElementReference _field;
+    private bool _open;
+
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public bool IsEmpty { get; set; }
+
+    [Parameter]
+    public int Hours { get; set; }
+
+    [Parameter]
+    public int Minutes { get; set; }
+
+    [Parameter]
+    public int MaxHours { get; set; } = 23;
+
+    [Parameter]
+    public bool HoursCyclic { get; set; }
+
+    /// <summary>Подписи «ч» и «мин» (длительность) вместо двоеточия (время).</summary>
+    [Parameter]
+    public bool Units { get; set; }
+
+    /// <summary>Повернули барабан: (часы, минуты).</summary>
+    [Parameter]
+    public EventCallback<(int Hours, int Minutes)> Changed { get; set; }
+
+    /// <summary>Открыли окошко у пустого поля — значение по умолчанию появляется сразу.</summary>
+    [Parameter]
+    public EventCallback OnOpenEmpty { get; set; }
+
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    private async Task ToggleAsync()
+    {
+        _open = !_open;
+        if (_open && IsEmpty)
+        {
+            await OnOpenEmpty.InvokeAsync();
+        }
+    }
+
+    private async Task ClearAsync()
+    {
+        _open = false;
+        await OnClear.InvokeAsync();
+    }
+}

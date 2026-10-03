@@ -1,0 +1,28 @@
+@* Время «07:30» — барабан часы (0–23) | минуты (0–59, шаг 1); «без» — без времени.
+   Пустое поле при открытии получает 09:00. *@
+
+<WheelField Text="@(Value is { } t ? t.ToString("HH:mm") : "без")" IsEmpty="Value is null"
+            Hours="Shown.Hour" Minutes="Shown.Minute" MaxHours="23" HoursCyclic="true" Label="@Label"
+            Changed="v => SetAsync(new TimeOnly(v.Hours, v.Minutes))" OnOpenEmpty="() => SetAsync(Default)"
+            OnClear="() => SetAsync(null)" />
+
+@code {
+    private static readonly TimeOnly Default = new(9, 0);
+
+    [Parameter]
+    public TimeOnly? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<TimeOnly?> ValueChanged { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Время";
+
+    private TimeOnly Shown => Value ?? Default;
+
+    private async Task SetAsync(TimeOnly? value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+}

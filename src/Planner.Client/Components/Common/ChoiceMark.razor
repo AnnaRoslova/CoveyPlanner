@@ -1,0 +1,18 @@
+@* Значок пункта списка: эмодзи, иначе цветная точка, иначе ничего (место не занимает). *@
+
+@if (Emoji is not null)
+{
+    <span class="emoji">@Emoji</span>
+}
+else if (Color is not null)
+{
+    <span class="dot" style="--c: @Color"></span>
+}
+
+@code {
+    [Parameter]
+    public string? Color { get; set; }
+
+    [Parameter]
+    public string? Emoji { get; set; }
+}

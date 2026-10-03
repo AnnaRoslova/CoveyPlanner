@@ -23,6 +23,17 @@ async function check(name, fn) {
   try { await fn(); results.push(`OK   ${name}`); }
   catch (e) { results.push(`FAIL ${name}: ${e.message}`); await page.screenshot({ path: `${SHOTS}/fail-week-${results.length}.png` }); }
 }
+// Барабан «часы | минуты» во всплывающем окошке: клик по центру колонки — ввод числа, Enter — принять
+async function setWheel(label, hours, minutes) {
+  await page.click(`.editor .wheel-field[aria-label="${label}"]`); await sleep(250);
+  for (const [name, value] of [['Часы', hours], ['Минуты', minutes]]) {
+    const box = await (await page.$(`.editor .popover .wheel[aria-label="${name}"]`)).boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); await sleep(200);
+    await page.keyboard.type(String(value)); await page.keyboard.press('Enter'); await sleep(150);
+  }
+  await page.keyboard.press('Escape'); await sleep(250); // закрывает только окошко
+}
+const wheelText = label => page.$eval(`.editor .wheel-field[aria-label="${label}"] .select-label`, e => e.textContent.trim());
 async function load() {
   await page.goto(BASE, { waitUntil: 'networkidle0' });
   await page.waitForSelector('.day', { timeout: 20000 });
@@ -121,9 +132,10 @@ await check('окно: название, роль, время, квадрант,
   await openEditor(3, 'Написать отчёт');
   await page.$eval('.editor .title-input', e => e.select());
   await page.type('.editor .title-input', 'Написать отчёт за сентябрь');
-  await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .chip')].find(c => c.textContent.trim() === 'Работа'))).click();
-  await page.$eval('.editor input[type=time]', e => e.focus());
-  await page.keyboard.type('0915');
+  await page.click('.editor .tag-add'); await settle();
+  await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === 'Работа').click());
+  await settle(); await page.keyboard.press('Escape'); await settle();
+  await setWheel('Время', 9, 15);
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .segments button')].find(b => b.textContent.trim() === 'II'))).click();
   await page.type('.editor textarea', 'черновик у Маши');
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить'))).click();
@@ -139,9 +151,9 @@ await check('после перезагрузки окно показывает �
   await openEditor(3, 'Написать отчёт за сентябрь');
   const v = await page.evaluate(() => ({
     notes: document.querySelector('.editor textarea').value,
-    time: document.querySelector('.editor input[type=time]').value,
+    time: document.querySelector('.editor .wheel-field[aria-label="Время"] .select-label').textContent.trim(),
     q: document.querySelector('.editor .segments .on')?.textContent.trim(),
-    role: document.querySelector('.editor .chip.on')?.textContent.trim(),
+    role: document.querySelector('.editor .tags .tag-name')?.textContent.trim(),
   }));
   assert(v.notes === 'черновик у Маши' && v.time === '09:15' && v.q === 'II' && v.role === 'Работа', JSON.stringify(v));
   await page.keyboard.press('Escape'); await settle();
@@ -158,7 +170,9 @@ await check('Esc — отмена без сохранения', async () => {
 await check('убрать время у «камня»: дело уходит в конец, у цели слева по-прежнему «Чт»', async () => {
   assert((await goal('Демо для команды')).when === 'Чт', 'исходно не «Чт»');
   await openEditor(3, 'Демо для команды');
-  await page.click('.editor .clear');
+  await page.click('.editor .wheel-field[aria-label="Время"]'); await settle();
+  await page.click('.editor .popover .wheel-none'); await settle(); // «без»
+  assert(await wheelText('Время') === 'без', 'время не сбросилось');
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить'))).click();
   await settle();
   const t = await titles(3);

@@ -1,0 +1,192 @@
+@* Колонка барабана (часы или минуты): выбранное число по центру крупно, соседние бледнее.
+   Листается колесом мыши, перетаскиванием и пальцем (js/wheel.js), стрелками ↑↓; клик по соседнему числу — выбрать его,
+   по центральному (или Enter) — ввести число с клавиатуры (Enter — принять, Esc — отмена).
+   Cyclic — по кругу (59 → 00). Стили — css/editor.css. *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div @ref="_wheel" class="wheel" tabindex="0" role="spinbutton" aria-label="@Label"
+     aria-valuenow="@Value" aria-valuemin="@Min" aria-valuemax="@Max" @onkeydown="OnKeyDownAsync">
+    <div @ref="_track" class="wheel-track">
+        @for (var offset = -3; offset <= 3; offset++)
+        {
+            @* Соседние числа — подсказка для глаза; значение для экранного диктора — aria-valuenow *@
+            <div class="wheel-cell d@(Math.Abs(offset))" aria-hidden="@(offset == 0 ? null : "true")">@(At(offset) is { } value ? Format(value) : "")</div>
+        }
+    </div>
+    @if (_editing)
+    {
+        <input @ref="_input" class="wheel-input" type="text" inputmode="numeric" maxlength="2" data-esc-local
+               aria-label="@Label" @bind="_text" @bind:event="oninput" @onkeydown="OnInputKeyAsync"
+               @onkeydown:stopPropagation="true" @onblur="CommitAsync" />
+    }
+</div>
+
+@code {
+    private ElementReference _wheel;
+    private ElementReference _track;
+    private ElementReference _input;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<WheelColumn>? _self;
+    private int _id;
+    private bool _editing;
+    private bool _focusInput;
+    private string _text = "";
+
+    [Parameter]
+    public int Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    [Parameter]
+    public int Min { get; set; }
+
+    [Parameter]
+    public int Max { get; set; } = 59;
+
+    /// <summary>По кругу: после максимума — минимум.</summary>
+    [Parameter]
+    public bool Cyclic { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    private static string Format(int value) => value.ToString("00");
+
+    /// <summary>Число на <paramref name="offset"/> строк от центра; null — за краем (не по кругу).</summary>
+    private int? At(int offset)
+    {
+        var value = Value + offset;
+        if (Cyclic)
+        {
+            var count = Max - Min + 1;
+            return Min + (((value - Min) % count) + count) % count;
+        }
+
+        return value >= Min && value <= Max ? value : null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/wheel.js");
+                _self = DotNetObjectReference.Create(this);
+                _id = await _module.InvokeAsync<int>("attach", _wheel, _track, _self);
+            }
+
+            if (_focusInput && _module is not null)
+            {
+                _focusInput = false;
+                await _module.InvokeVoidAsync("focusInput", _input);
+            }
+        }
+        catch (Exception e) when (e is JSException or JSDisconnectedException or ObjectDisposedException)
+        {
+            // Окошко уже закрыли — жестов нет, остаются стрелки
+        }
+    }
+
+    /// <summary>Шаг колесом, перетаскиванием или стрелкой.</summary>
+    [JSInvokable]
+    public Task Step(int delta)
+    {
+        _editing = false;
+        var next = At(delta);
+        StateHasChanged();
+        return next is { } value ? SetAsync(value) : Task.CompletedTask;
+    }
+
+    /// <summary>Короткое нажатие по строке: по центральной — ввод с клавиатуры, по соседней — выбрать её.</summary>
+    [JSInvokable]
+    public Task Tap(int offset)
+    {
+        if (offset == 0)
+        {
+            StartEditing();
+            return Task.CompletedTask;
+        }
+
+        return Step(offset);
+    }
+
+    private void StartEditing()
+    {
+        _editing = true;
+        _focusInput = true;
+        _text = Format(Value);
+        StateHasChanged();
+    }
+
+    private Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowUp":
+                return Step(1);
+            case "ArrowDown":
+                return Step(-1);
+            case "Enter" when !_editing:
+                StartEditing();
+                break;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task OnInputKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CommitAsync();
+            await _wheel.FocusAsync();
+        }
+        else if (e.Key == "Escape")
+        {
+            _editing = false; // отмена: поле закрывается, число прежнее
+            await _wheel.FocusAsync();
+        }
+    }
+
+    /// <summary>Принять введённое число (Enter или уход из поля); не число — остаётся прежнее.</summary>
+    private async Task CommitAsync()
+    {
+        if (!_editing)
+        {
+            return;
+        }
+
+        _editing = false;
+        if (int.TryParse(_text.Trim(), out var number))
+        {
+            await SetAsync(Math.Clamp(number, Min, Max));
+        }
+    }
+
+    private async Task SetAsync(int value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("detach", _id);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Страница уже закрыта
+            }
+        }
+
+        _self?.Dispose();
+    }
+}

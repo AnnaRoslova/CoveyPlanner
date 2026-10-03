@@ -81,7 +81,9 @@ await check('новое дело с ролью сразу попадает в с
   await page.keyboard.press('Escape'); await settle();
   await page.evaluate(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === 'Лекция о памяти').querySelector('.title').click());
   await settle();
-  await page.evaluate(() => [...document.querySelectorAll('.editor .chip')].find(c => c.textContent.trim() === 'Ум').click());
+  await page.click('.editor .tag-add'); await settle();
+  await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === 'Ум').click());
+  await settle(); await page.keyboard.press('Escape'); await settle();
   await page.click('.editor .btn:not(.quiet):not(.danger)'); await settle();
   const after = await roleInfo('Ум');
   assert(before.head === 'ещё дела: 1' && after.head === 'ещё дела: 2', `${before.head} → ${after.head}`);

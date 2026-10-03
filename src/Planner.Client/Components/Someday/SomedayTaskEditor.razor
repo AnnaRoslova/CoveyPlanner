@@ -16,20 +16,7 @@
 
     <div class="field">
         <div class="label">Категория</div>
-        <div class="chips">
-            <button type="button" class="chip @(_categoryId is null ? "on" : "")" @onclick="() => _categoryId = null">неразобранное</button>
-            @foreach (var category in State.OrderedCategories)
-            {
-                var id = category.Id;
-                <button type="button" class="chip @(_categoryId == id ? "on" : "")" @onclick="() => _categoryId = id">
-                    @if (category.Emoji is not null)
-                    {
-                        <span class="emoji">@category.Emoji</span>
-                    }
-                    @category.Name
-                </button>
-            }
-        </div>
+        <ChoiceField Items="CategoryChoices" @bind-Value="_categoryId" Label="Категория" />
     </div>
 
     <div class="buttons">
@@ -44,6 +31,13 @@
     private string _title = "";
     private string? _notes;
     private int? _categoryId;
+
+    /// <summary>«неразобранное» и категории ленты по порядку.</summary>
+    private List<Choice<int?>> CategoryChoices =>
+    [
+        new(null, "неразобранное"),
+        .. State.OrderedCategories.Select(c => new Choice<int?>(c.Id, c.Name, Emoji: c.Emoji)),
+    ];
 
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;

@@ -9,20 +9,21 @@
 
 .editor {
     position: fixed;
-    top: 50%;
-    left: 50%;
+    /* По центру без transform: иначе всплывающие окошки (position: fixed) обрезались бы прокруткой окна */
+    inset: 0;
     z-index: 41;
     display: flex;
     flex-direction: column;
     gap: 12px;
     width: min(420px, calc(100vw - 32px));
+    height: fit-content;
     max-height: calc(100vh - 32px);
+    margin: auto;
     overflow-y: auto;
     padding: 18px 18px 14px;
     border-radius: var(--panel-radius);
     background: var(--paper);
     box-shadow: var(--shadow-window);
-    transform: translate(-50%, -50%);
 }
 
 .editor .title-input {
@@ -116,39 +117,6 @@
     height: 8px;
     border-radius: 50%;
     background: var(--c);
-}
-
-.editor .time {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.editor .time input {
-    padding: 4px 8px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--surface);
-    font-size: 13px;
-}
-
-.editor .time input:focus {
-    border-color: var(--b);
-}
-
-.editor .clear {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    color: var(--faint);
-}
-
-.editor .clear:hover {
-    background: var(--b-soft);
-    color: var(--b-deep);
 }
 
 /* Сегменты: квадрант, длительность, «раз в неделю» */
@@ -469,4 +437,330 @@
     align-items: center;
     gap: 4px;
     margin-right: 8px;
+}
+
+/* Выбранные роли — маленькие чипы «● Тело ×» и кнопка «+» (RolePicker) */
+.editor .tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.editor .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 3px 1px 8px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--c, var(--b)) 24%, var(--surface));
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.editor .tag .tag-name {
+    padding-right: 5px;
+}
+
+.editor .tag .dot,
+.editor .popover .dot,
+.editor .select-field .dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--c);
+}
+
+.editor .tag-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: -4px;
+    border-radius: 50%;
+    color: var(--soft);
+}
+
+.editor .tag-x:hover {
+    background: color-mix(in srgb, var(--c, var(--b)) 45%, var(--surface));
+    color: var(--text);
+}
+
+.editor .tag-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--line);
+    background: var(--surface);
+    color: var(--b-deep);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.editor .tag-add:hover,
+.editor .tag-add[aria-expanded="true"] {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 1.5px var(--b);
+}
+
+.editor .tag-empty {
+    padding-right: 2px;
+    color: var(--soft);
+    font-size: 12px;
+}
+
+.editor .tags .hint {
+    color: var(--soft);
+    font-size: 11.5px;
+}
+
+/* Поле с одиночным выбором «● Книги ▾» (ChoiceField) и поле, открывающее барабан («07:30», «1 ч 30 мин», «без») */
+.editor .select-field {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 8px 4px 10px;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text);
+    font-size: 13px;
+}
+
+.editor .select-field:hover,
+.editor .select-field[aria-expanded="true"] {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 1.5px var(--b);
+}
+
+.editor .select-field .select-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor .select-field .icon {
+    flex: none;
+    color: var(--soft);
+}
+
+.editor .select-field.empty .select-label {
+    color: var(--soft);
+}
+
+.editor .select-field .emoji,
+.editor .popover .emoji {
+    font-size: 13px;
+    line-height: 1;
+}
+
+/* Всплывающее окошко у поля (Popover): стоит по координатам из js/popover.js */
+.editor .popover {
+    position: fixed;
+    z-index: 60;
+    max-height: min(320px, calc(100vh - 16px));
+    overflow-y: auto;
+    padding: 4px;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: var(--shadow-window), inset 0 0 0 1px var(--line);
+    outline: none;
+}
+
+.editor .popover.options {
+    min-width: 180px;
+}
+
+.editor .popover .option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px 6px 10px;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 13px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.editor .popover .option:hover,
+.editor .popover .option:focus-visible {
+    background: var(--b-soft);
+    outline: none;
+}
+
+.editor .popover .option.on {
+    font-weight: 700;
+}
+
+.editor .popover .option .check {
+    display: inline-flex;
+    width: 14px;
+    margin-left: auto;
+    padding-left: 12px;
+    color: var(--b-deep);
+    box-sizing: content-box;
+}
+
+/* Повтор постоянной цели: 7 круглых переключателей П В С Ч П С В */
+.editor .day-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.editor .day-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--soft);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.editor .day-dot:hover {
+    background: var(--b-soft);
+}
+
+.editor .day-dot.on {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 1.5px var(--b);
+    color: var(--b-deep);
+}
+
+.editor .repeat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Барабан времени и длительности (как будильник iPhone): колонки часов и минут */
+.editor .popover.wheels {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+}
+
+.editor .wheel-group {
+    display: flex;
+    align-items: center;
+    padding: 0 2px;
+    border-radius: 12px;
+    background: linear-gradient(transparent calc(50% - 17px), var(--b-soft) calc(50% - 17px),
+        var(--b-soft) calc(50% + 17px), transparent calc(50% + 17px));
+}
+
+.editor .wheel-sep,
+.editor .wheel-unit {
+    color: var(--soft);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.editor .wheel-sep {
+    padding: 0 1px;
+    color: var(--text);
+    font-size: 18px;
+}
+
+.editor .wheel-unit {
+    padding: 0 6px 0 0;
+}
+
+.editor .wheel {
+    position: relative;
+    width: 46px;
+    height: 170px; /* 5 строк по 34px */
+    overflow: hidden;
+    border-radius: 10px;
+    outline: none;
+    cursor: ns-resize;
+    touch-action: none;
+    user-select: none;
+}
+
+.editor .wheel:focus-visible {
+    box-shadow: inset 0 0 0 1.5px var(--b);
+}
+
+.editor .wheel-track {
+    position: absolute;
+    top: -34px;
+    left: 0;
+    right: 0;
+}
+
+.editor .wheel-track.settle {
+    transition: transform 0.15s ease-out;
+}
+
+.editor .wheel-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    opacity: 0.2;
+}
+
+.editor .wheel-cell.d1 {
+    font-size: 15px;
+    opacity: 0.5;
+}
+
+.editor .wheel-cell.d0 {
+    font-size: 21px;
+    font-weight: 800;
+    opacity: 1;
+}
+
+.editor .wheel-input {
+    position: absolute;
+    top: 68px;
+    left: 2px;
+    width: calc(100% - 4px);
+    height: 34px;
+    border: 0;
+    border-radius: 8px;
+    outline: none;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1.5px var(--b);
+    color: var(--text);
+    font-size: 19px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.editor .wheels .wheel-none {
+    align-self: stretch;
+    margin-left: 4px;
+    padding: 0 10px;
+    border-radius: 10px;
+    color: var(--soft);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.editor .wheels .wheel-none:hover {
+    background: var(--b-soft);
+    color: var(--b-deep);
 }

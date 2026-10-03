@@ -1,11 +1,14 @@
-@* Примерная длительность: «− 30 мин +», шаг 15 минут; можно ввести число минут или крутить колесом.
-   Пусто — «без». От часа справа подсказка «≈1,5 ч». *@
+@* Примерная длительность «1 ч 30 мин» — барабан часы (0–12) | минуты (0–59, шаг 1); «без» — не задана.
+   0 ч 0 мин — тоже «без». Пустое поле при открытии получает 30 минут. *@
 
-<Stepper Value="Value" ValueChanged="ValueChanged" Min="1" Max="MaxMinutes" Step="15" AllowEmpty="true"
-         EmptyText="без" Unit="мин" Label="Длительность, минут" Hint="HintFor" />
+<WheelField Text="@(Value is { } minutes ? Format(minutes) : "без")" IsEmpty="Value is null"
+            Hours="Math.Min(MaxHours, _shown / 60)" Minutes="_shown % 60" MaxHours="MaxHours" Units="true" Label="Длительность"
+            Changed="v => SetAsync(v.Hours * 60 + v.Minutes)" OnOpenEmpty="() => SetAsync(DefaultMinutes)"
+            OnClear="ClearAsync" />
 
 @code {
-    private const int MaxMinutes = 24 * 60;
+    private const int MaxHours = 12;
+    private const int DefaultMinutes = 30;
 
     [Parameter]
     public int? Value { get; set; }
@@ -13,6 +16,36 @@
     [Parameter]
     public EventCallback<int?> ValueChanged { get; set; }
 
-    private static string? HintFor(int? minutes) =>
-        minutes is >= 60 ? "≈" + RuDates.Duration(minutes.Value) : null;
+    // Что стоит на барабане: при 0 ч 0 мин значение «без», а барабан остаётся на нуле
+    private int _shown = DefaultMinutes;
+
+    protected override void OnParametersSet()
+    {
+        if (Value is { } minutes)
+        {
+            _shown = minutes;
+        }
+    }
+
+    private Task ClearAsync()
+    {
+        _shown = DefaultMinutes;
+        return SetAsync(null);
+    }
+
+    /// <summary>«1 ч 30 мин», «2 ч», «45 мин».</summary>
+    public static string Format(int minutes) => (minutes / 60, minutes % 60) switch
+    {
+        (0, var m) => $"{m} мин",
+        (var h, 0) => $"{h} ч",
+        var (h, m) => $"{h} ч {m} мин",
+    };
+
+    private async Task SetAsync(int? minutes)
+    {
+        _shown = minutes ?? _shown;
+        var value = minutes is > 0 ? minutes : null;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
 }

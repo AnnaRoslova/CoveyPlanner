@@ -19,7 +19,7 @@ const MUST_PASS_AA = ['obsidian'];
 const LIGHT = ['lotus', 'peony', 'platinum'];
 // Второстепенный текст: «+ …» и «свернуть всё», счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
 const SECONDARY = ['.add', '.others-h', '.other .d', '.other .sep', '.other.done', '.fold', '.n', '.cnt', '.progress', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
-  '.load', '.rocks', '.goal-days', '.unit', '.step', '.saved', '.nothing', '.first-category'].join(', ');
+  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category'].join(', ');
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -186,6 +186,26 @@ for (const theme of THEMES) {
     await shot('goal');
     windows.push(['окно цели', await audit(theme, 'goal', '.editor')]);
     await escape();
+  });
+  await check(`${theme}: окно дела — список ролей`, async () => {
+    await clickItem('.day', 'Созвон с заказчиком');
+    await page.waitForSelector('.editor[aria-label="Дело"]');
+    await page.click('.editor .tag-add'); await page.waitForSelector('.editor .popover'); await sleep(300);
+    await shot('roles');
+    windows.push(['список ролей', await audit(theme, 'roles', '.editor .popover')]);
+    await escape(); await escape();
+  });
+  await check(`${theme}: окно цели — повтор, дни, барабан времени`, async () => {
+    await clickItem('.role', 'Бег');
+    await page.waitForSelector('.editor[aria-label="Цель недели"]');
+    await page.click('.editor .repeat-row .select-field'); await page.waitForSelector('.editor .popover');
+    await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === 'будни').click());
+    await sleep(300);
+    windows.push(['повтор и дни', await audit(theme, 'goal-days', '.editor')]);
+    await page.click('.editor .wheel-field[aria-label="Время"]'); await page.waitForSelector('.editor .popover'); await sleep(300);
+    await shot('wheel');
+    windows.push(['барабан', await audit(theme, 'wheel', '.editor .popover')]);
+    await escape(); await escape();
   });
   await check(`${theme}: окно роли`, async () => {
     await page.evaluate(() => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === 'Семья').querySelector('.menu').click());

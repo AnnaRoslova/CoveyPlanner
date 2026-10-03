@@ -33,33 +33,9 @@
 
     <div class="field">
         <div class="label">Роль</div>
-        @if (SelectedGoals.Count > 0)
-        {
-            @* Роли дела — роли всех его целей *@
-            <div class="from-goal">
-                @foreach (var role in State.OrderedRoles.Where(r => SelectedGoals.Any(g => g.RoleId == r.Id)))
-                {
-                    <span class="goal-role" style="--c: @role.Color"><span class="dot"></span>@role.Name</span>
-                }
-                <span class="hint">· от целей</span>
-            </div>
-        }
-        else
-        {
-            @* Роли — множественный выбор: чип включает и выключает роль; «без роли» снимает все *@
-            <div class="chips" role="group" aria-label="Роли">
-                <button type="button" class="chip @(_roleIds.Count == 0 ? "on" : "")" aria-pressed="@(_roleIds.Count == 0 ? "true" : "false")"
-                        @onclick="() => _roleIds.Clear()">без роли</button>
-                @foreach (var role in State.OrderedRoles)
-                {
-                    var on = _roleIds.Contains(role.Id);
-                    <button type="button" class="chip @(on ? "on" : "")" style="--c: @role.Color" aria-pressed="@(on ? "true" : "false")"
-                            @onclick="() => ToggleRole(role.Id)">
-                        <span class="dot"></span>@role.Name
-                    </button>
-                }
-            </div>
-        }
+        @* Роли — множественный выбор; у занятия — роли его целей, здесь только видны *@
+        <RolePicker Roles="State.OrderedRoles" Value="RoleIds" ValueChanged="SetRoles"
+                    Locked="SelectedGoals.Count > 0" LockedHint="от целей" />
     </div>
 
     @* Цели недели, в которые засчитывается дело: можно несколько; сняли чип — дело больше не засчитывается в эту цель *@
@@ -117,15 +93,7 @@
                     <button type="button" class="as-goal" @onclick="() => _time = timeGoal.StartTime">как у цели</button>
                 }
             </div>
-            <div class="time">
-                <input type="time" @bind="_time" />
-                @if (_time is not null)
-                {
-                    <button type="button" class="clear" title="Без времени" @onclick="() => _time = null">
-                        <Icon Name="x" Size="11" />
-                    </button>
-                }
-            </div>
+            <TimePicker @bind-Value="_time" />
         </div>
 
         <div class="field">
@@ -246,12 +214,14 @@
         }
     }
 
-    private void ToggleRole(int roleId)
+    /// <summary>Роли, которые видны в окне: у занятия — роли его целей.</summary>
+    private IReadOnlyCollection<int> RoleIds =>
+        SelectedGoals.Count > 0 ? SelectedGoals.Select(g => g.RoleId).ToHashSet() : _roleIds;
+
+    private void SetRoles(IReadOnlyList<int> roleIds)
     {
-        if (!_roleIds.Remove(roleId))
-        {
-            _roleIds.Add(roleId);
-        }
+        _roleIds.Clear();
+        _roleIds.UnionWith(roleIds);
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)

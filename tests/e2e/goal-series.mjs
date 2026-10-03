@@ -177,24 +177,33 @@ await check('разовую цель удаляют без вопроса', asyn
 // Занятия цели по дням показанной недели: индексы дней (0 — Пн), где есть дело с этим названием
 const sessionDays = title => page.evaluate(t => [...document.querySelectorAll('.day')]
   .map((d, i) => [...d.querySelectorAll('.item .title')].some(e => e.textContent.trim() === t) ? i : -1).filter(i => i >= 0), title);
-const dayChips = () => page.$$eval('.editor .chips.days .chip', cs => cs.filter(c => c.classList.contains('on')).map(c => c.textContent.trim()));
+// «Повтор» — выпадающий список, под ним 7 кружков дней (подписи П В С …, полные названия — в aria-label)
+const repeat = () => page.$eval('.editor .repeat-row .select-label', e => e.textContent.trim());
+const dayDots = () => page.$$eval('.editor .day-dot.on', ds => ds.map(d => d.getAttribute('aria-label')));
+async function chooseRepeat(label) {
+  await page.click('.editor .repeat-row .select-field'); await settle();
+  await clickText('.editor .popover .option', label);
+}
 async function chooseDays(...names) {
-  for (const n of names) await clickText('.editor .chips.days .chip', n);
+  for (const n of names) { await page.click(`.editor .day-dot[aria-label="${n}"]`); await settle(); }
 }
 
 await check('«по каким дням»: только у постоянной цели; по умолчанию «сам раскладываю»', async () => {
   await goWeek(0);
   await openGoal('Увидеться с Олей');
-  assert(JSON.stringify(await dayChips()) === '["сам раскладываю"]', `выбрано: ${await dayChips()}`);
+  assert(await repeat() === 'сам раскладываю', `повтор: ${await repeat()}`);
+  assert(!(await page.$('.editor .day-dots')), 'кружки дней видны при «сам раскладываю»');
   await page.click('.editor .switch-row'); await settle(); // выключили «каждую неделю»
-  assert(!(await page.$('.editor .chips.days')), 'дни видны у разовой цели');
+  assert(!(await page.$('.editor .repeat-row')), 'повтор виден у разовой цели');
   await page.keyboard.press('Escape'); await settle();
 });
 
 await check('дни Пн, Ср, Пт: «раз в неделю» = 3 (заблокировано), занятия встали в эти дни; на следующей неделе — тоже', async () => {
   await goWeek(0);
   await openGoal('Увидеться с Олей');
+  await chooseRepeat('свои дни');
   await chooseDays('Пн', 'Ср', 'Пт');
+  assert(await repeat() === 'свои дни', `повтор: ${await repeat()}`);
   assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '3', 'не 3');
   assert(!(await page.$('.editor .times-per-week .step')), 'степпер не заблокирован');
   await page.screenshot({ path: `${SHOTS}/goal-series-days.png` });
@@ -208,7 +217,8 @@ await check('сменить дни на Вт, Чт: лишние — в корз
   await goWeek(0);
   await openGoal('Увидеться с Олей');
   await chooseDays('Пн', 'Ср', 'Пт', 'Вт', 'Чт'); // сняли Пн, Ср, Пт и выбрали Вт, Чт
-  assert(JSON.stringify(await dayChips()) === '["Вт","Чт"]', `выбрано: ${await dayChips()}`);
+  assert(JSON.stringify(await dayDots()) === '["Вт","Чт"]', `выбрано: ${await dayDots()}`);
+  assert(await repeat() === 'свои дни', `повтор: ${await repeat()}`);
   await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(1500);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[1,3]', `после смены: ${await sessionDays('Увидеться с Олей')}`);
   const t = await toast();
@@ -219,12 +229,22 @@ await check('сменить дни на Вт, Чт: лишние — в корз
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,1,2,3,4]', `после «Вернуть»: ${await sessionDays('Увидеться с Олей')}`);
 });
 
-await check('«каждый день» — 7 раз в неделю', async () => {
+await check('«каждый день» — 7 раз в неделю; «будни», «выходные»; кружок руками — «свои дни»', async () => {
   await goWeek(0);
   await openGoal('Бег');
-  await clickText('.editor .chips.days .chip', 'каждый день');
+  await chooseRepeat('каждый день');
   assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '7', 'не 7');
-  assert((await dayChips()).length === 8, `выбрано: ${await dayChips()}`); // «каждый день» и все 7 дней
+  assert((await dayDots()).length === 7, `выбрано: ${await dayDots()}`);
+  await chooseRepeat('будни');
+  assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '5', 'будни — не 5');
+  assert(JSON.stringify(await dayDots()) === '["Пн","Вт","Ср","Чт","Пт"]', `будни: ${await dayDots()}`);
+  await chooseRepeat('выходные');
+  assert(JSON.stringify(await dayDots()) === '["Сб","Вс"]', `выходные: ${await dayDots()}`);
+  await chooseDays('Пт'); // ручное переключение — «свои дни»
+  assert(await repeat() === 'свои дни', `после кружка: ${await repeat()}`);
+  assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '3', 'Пт, Сб, Вс — не 3');
+  await chooseRepeat('сам раскладываю');
+  assert(!(await page.$('.editor .day-dots')), 'кружки остались');
   await page.keyboard.press('Escape'); await settle();
 });
 
