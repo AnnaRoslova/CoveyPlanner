@@ -13,13 +13,13 @@ public class GoalSeriesApiTests : ApiTestBase
         PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(roleId, Week(week), title, recurring));
 
     private async Task<List<string>> TitlesAsync(int week, int roleId) =>
-        (await GetWeekAsync(Week(week))).Goals.Where(g => g.RoleId == roleId).OrderBy(g => g.SortOrder).Select(g => g.Title).ToList();
+        (await GetWeekAsync(Week(week))).Goals.Where(g => g.HasRole(roleId)).OrderBy(g => g.SortOrderIn(roleId)).Select(g => g.Title).ToList();
 
     private async Task<WeeklyGoalDto> GoalAsync(int week, string title) =>
         (await GetWeekAsync(Week(week))).Goals.Single(g => g.Title == title);
 
     private static UpdateGoalRequest FormOf(WeeklyGoalDto g) =>
-        new(g.Title, g.RoleId, g.TimesPerWeek, g.StartTime, g.Quadrant, g.Notes, g.DurationMinutes);
+        new(g.Title, g.RoleIds, g.TimesPerWeek, g.StartTime, g.Quadrant, g.Notes, g.DurationMinutes);
 
     private Task<GoalUpdateResultDto> UpdateAsync(WeeklyGoalDto goal, Func<UpdateGoalRequest, UpdateGoalRequest> change) =>
         PutAsync<GoalUpdateResultDto>($"/api/goals/{goal.Id}", change(FormOf(goal)));
@@ -52,7 +52,7 @@ public class GoalSeriesApiTests : ApiTestBase
         var second = await GoalAsync(1, "Планёрка");
         foreach (var later in new[] { second, third })
         {
-            Assert.Equal((2, new TimeOnly(9, 30), 30, "Zoom", 2, work.Id), (later.TimesPerWeek, later.StartTime!.Value, later.DurationMinutes!.Value, later.Notes!, later.Quadrant!.Value, later.RoleId));
+            Assert.Equal((2, new TimeOnly(9, 30), 30, "Zoom", 2, work.Id), (later.TimesPerWeek, later.StartTime!.Value, later.DurationMinutes!.Value, later.Notes!, later.Quadrant!.Value, later.RoleIds.Single()));
             Assert.Empty(later.Sessions);
             Assert.True(later.IsRecurring);
         }
@@ -124,14 +124,14 @@ public class GoalSeriesApiTests : ApiTestBase
         await CreateGoalAsync(body.Id, "Бег", week: -1);
         await GetWeekAsync(Week(2));
 
-        await UpdateAsync(await GoalAsync(0, "Бег"), f => f with { Title = "Бег 5 км", TimesPerWeek = 3, RoleId = mind.Id });
+        await UpdateAsync(await GoalAsync(0, "Бег"), f => f with { Title = "Бег 5 км", TimesPerWeek = 3, RoleIds = [mind.Id] });
 
         var before = await GoalAsync(-1, "Бег");
-        Assert.Equal((1, body.Id), (before.TimesPerWeek, before.RoleId));
+        Assert.Equal((1, body.Id), (before.TimesPerWeek, before.RoleIds.Single()));
         foreach (var w in new[] { 0, 1, 2, 3 })
         {
             var g = await GoalAsync(w, "Бег 5 км");
-            Assert.Equal((3, mind.Id), (g.TimesPerWeek, g.RoleId));
+            Assert.Equal((3, mind.Id), (g.TimesPerWeek, g.RoleIds.Single()));
         }
     }
 

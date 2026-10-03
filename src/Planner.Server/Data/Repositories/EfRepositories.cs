@@ -83,17 +83,17 @@ public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
         Goals.FirstOrDefaultAsync(g => g.Id == id, ct);
 
     public Task<List<WeeklyGoal>> GetForWeekAsync(DateOnly weekStart, CancellationToken ct = default) =>
-        Goals.Where(g => g.WeekStart == weekStart)
-            .OrderBy(g => g.RoleId).ThenBy(g => g.SortOrder)
-            .ToListAsync(ct);
+        Goals.Where(g => g.WeekStart == weekStart).OrderBy(g => g.Id).ToListAsync(ct);
 
-    public Task<List<WeeklyGoal>> GetForRoleAsync(int roleId, DateOnly weekStart, CancellationToken ct = default) =>
-        Goals.Where(g => g.RoleId == roleId && g.WeekStart == weekStart)
-            .OrderBy(g => g.SortOrder)
-            .ToListAsync(ct);
+    public async Task<List<WeeklyGoal>> GetForRoleAsync(int roleId, DateOnly weekStart, CancellationToken ct = default)
+    {
+        // Место цели — у её роли (владеемая запись), сортируем уже в памяти
+        var found = await Goals.Where(g => g.WeekStart == weekStart && g.Roles.Any(r => r.RoleId == roleId)).ToListAsync(ct);
+        return found.OrderBy(g => g.RoleLink(roleId)!.SortOrder).ToList();
+    }
 
     public Task<List<WeeklyGoal>> GetAllForRoleAsync(int roleId, CancellationToken ct = default) =>
-        Goals.Where(g => g.RoleId == roleId).ToListAsync(ct);
+        Goals.Where(g => g.Roles.Any(r => r.RoleId == roleId)).ToListAsync(ct);
 
     public Task<List<WeeklyGoal>> GetInSeriesAsync(int seriesId, DateOnly fromWeek, CancellationToken ct = default) =>
         Goals.Where(g => g.SeriesId == seriesId && g.WeekStart >= fromWeek).OrderBy(g => g.WeekStart).ToListAsync(ct);
@@ -111,5 +111,10 @@ public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
     public Task<List<GoalSeries>> GetRecurringAsync(CancellationToken ct = default) =>
         db.GoalSeries.Where(s => s.IsRecurring).ToListAsync(ct);
 
+    public Task<List<GoalSeries>> GetWithRoleAsync(int roleId, CancellationToken ct = default) =>
+        db.GoalSeries.Where(s => s.Roles.Any(r => r.RoleId == roleId)).ToListAsync(ct);
+
     public void Add(GoalSeries series) => db.GoalSeries.Add(series);
+
+    public void Remove(GoalSeries series) => db.GoalSeries.Remove(series);
 }

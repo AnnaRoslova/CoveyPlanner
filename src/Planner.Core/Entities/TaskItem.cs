@@ -29,26 +29,23 @@ public class TaskItem : ISortable
     /// <summary>Категория ленты. null — в ленте это «неразобранное»; в плане — дело создано сразу там (или категорию удалили).</summary>
     public int? CategoryId { get; private set; }
 
-    /// <summary>Роли дела (может быть несколько). У занятия целей — роли всех связанных целей.</summary>
+    /// <summary>Роли дела (может быть несколько). У занятия цели — роли цели.</summary>
     public IReadOnlyCollection<TaskRole> Roles => _roles;
 
     /// <summary>Id ролей по возрастанию.</summary>
     public IReadOnlyList<int> RoleIds => _roles.Select(r => r.RoleId).Order().ToList();
 
-    /// <summary>
-    /// Цели недели, в которые засчитывается дело («камень»; таблица TaskGoals). Может быть несколько:
-    /// «Прогулка в парке» — и «10к шагов», и «Побыть на природе». Первая по порядку — главная.
-    /// </summary>
+    /// <summary>Связь с целью недели (таблица TaskGoals; у дела — не больше одной).</summary>
     public IReadOnlyCollection<TaskGoal> GoalLinks => _goalLinks;
 
-    /// <summary>Id связанных целей по порядку связей (первая — главная).</summary>
-    public IReadOnlyList<int> GoalIds => _goalLinks.OrderBy(l => l.Position).Select(l => l.GoalId).ToList();
+    /// <summary>Связь с целью, занятием которой является дело («камень»); null — обычное дело.</summary>
+    public TaskGoal? GoalLink => _goalLinks.FirstOrDefault();
 
-    /// <summary>Дело — занятие хотя бы одной цели («камень»).</summary>
+    /// <summary>Id цели дела; null — дело не «камень».</summary>
+    public int? GoalId => GoalLink?.GoalId;
+
+    /// <summary>Дело — занятие цели («камень»).</summary>
     public bool IsSession => _goalLinks.Count > 0;
-
-    /// <summary>Связь с главной целью: от неё у дела шаблон и квадрант.</summary>
-    public TaskGoal? PrimaryGoalLink => _goalLinks.MinBy(l => l.Position);
 
     public Quadrant? Quadrant { get; set; }
 
@@ -114,14 +111,12 @@ public class TaskItem : ISortable
         }
     }
 
-    internal int NextGoalPosition => _goalLinks.Count == 0 ? 0 : _goalLinks.Max(l => l.Position) + 1;
-
     internal void AddGoalLink(TaskGoal link) => _goalLinks.Add(link);
 
     internal void RemoveGoalLink(TaskGoal link) => _goalLinks.Remove(link);
 
-    /// <summary>Отвязать от всех целей: дело вернули в ленту.</summary>
-    public void DetachFromGoals()
+    /// <summary>Отвязать от цели (дело вернули в ленту или оно стало занятием другой цели).</summary>
+    public void DetachFromGoal()
     {
         foreach (var link in _goalLinks.ToList())
         {
@@ -134,23 +129,6 @@ public class TaskItem : ISortable
                 _goalLinks.Remove(link); // цель не загружена — EF удалит связь как «осиротевшую»
             }
         }
-    }
-
-    /// <summary>
-    /// Роли — роли всех связанных целей, квадрант — от первой по порядку цели, у которой он задан.
-    /// false — не все цели связей загружены (тогда ничего не меняется).
-    /// </summary>
-    public bool RefreshFromGoals()
-    {
-        var goals = _goalLinks.OrderBy(l => l.Position).Select(l => l.Goal).ToList();
-        if (goals.Count == 0 || goals.Any(g => g is null))
-        {
-            return false;
-        }
-
-        SetRoles(goals.Select(g => g.RoleId));
-        Quadrant = goals.Select(g => g.Quadrant).FirstOrDefault(q => q is not null);
-        return true;
     }
 
     public void Rename(string title) =>

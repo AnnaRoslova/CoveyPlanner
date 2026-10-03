@@ -17,13 +17,18 @@ namespace Planner.Core.Entities;
 /// </summary>
 public class GoalSeries
 {
+    private readonly List<SeriesRole> _roles = [];
+
     private GoalSeries()
     {
     }
 
     public int Id { get; private set; }
 
-    public int RoleId { get; private set; }
+    /// <summary>Роли целей серии (часть шаблона).</summary>
+    public IReadOnlyCollection<SeriesRole> Roles => _roles;
+
+    public IReadOnlyList<int> RoleIds => _roles.Select(r => r.RoleId).Order().ToList();
 
     // Шаблон целей серии (как у WeeklyGoal)
 
@@ -75,10 +80,12 @@ public class GoalSeries
     /// </summary>
     public bool RepeatsAfter(DateOnly week) => IsRecurring && (LastWeek is null || LastWeek > week);
 
-    /// <summary>Шаблон серии — из цели (её поменяли в окне или перенесли к другой роли).</summary>
+    /// <summary>Шаблон серии — из цели (её поменяли в окне или поменяли её роли).</summary>
     public void CopyTemplateFrom(WeeklyGoal goal)
     {
-        RoleId = goal.RoleId;
+        var roleIds = goal.RoleIds;
+        _roles.RemoveAll(r => !roleIds.Contains(r.RoleId));
+        _roles.AddRange(roleIds.Where(id => _roles.All(r => r.RoleId != id)).Select(id => new SeriesRole(id)));
         Title = goal.Title;
         TimesPerWeek = goal.TimesPerWeek;
         StartTime = goal.StartTime;
@@ -116,6 +123,13 @@ public class GoalSeries
         }
 
         return weeks;
+    }
+
+    /// <summary>Убрать роль из шаблона (роль удалили). false — ролей не осталось: серию нужно удалить.</summary>
+    public bool RemoveRole(int roleId)
+    {
+        _roles.RemoveAll(r => r.RoleId == roleId);
+        return _roles.Count > 0;
     }
 
     /// <summary>Серия заканчивается на неделе <paramref name="week"/> (её цель остаётся, следующих не будет).</summary>

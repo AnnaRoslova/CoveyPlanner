@@ -77,10 +77,10 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         WeekDays.SelectMany(TasksOn).Where(t => t.RoleIds.Contains(roleId) && !IsRock(t.Id)).ToList();
 
     public IEnumerable<WeeklyGoalDto> GoalsFor(int roleId) =>
-        Goals.Where(g => g.RoleId == roleId).OrderBy(g => g.SortOrder);
+        Goals.Where(g => g.HasRole(roleId)).OrderBy(g => g.SortOrderIn(roleId));
 
     /// <summary>Дело — занятие цели недели, «большой камень».</summary>
-    public bool IsRock(int taskId) => GoalsOfTask(taskId).Count > 0;
+    public bool IsRock(int taskId) => GoalOfTask(taskId) is not null;
 
     public int RocksDone => Goals.Count(g => g.IsDone);
 

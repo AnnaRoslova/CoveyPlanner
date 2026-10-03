@@ -1,22 +1,23 @@
 using Planner.Core.Enums;
 using Planner.Core.Errors;
-using Planner.Core.Sorting;
 using Planner.Core.Time;
 
 namespace Planner.Core.Entities;
 
 /// <summary>
 /// Цель роли на неделю («большой камень»), которую нужно сделать <see cref="TimesPerWeek"/> раз.
-/// Каждое выполнение — занятие: обычное дело с GoalId. Занятие появляется, когда цель перетаскивают
-/// в день, или цель создаётся из дела ленты (тогда это дело — занятие без дня).
-/// Цель выполнена, когда отмечено нужное число занятий.
+/// Каждое выполнение — занятие: обычное дело, связанное с целью (TaskGoals; у дела — не больше одной цели).
+/// Занятие появляется, когда цель перетаскивают в день, или цель создаётся из дела ленты (тогда это дело — занятие без дня).
+/// Цель выполнена, когда отмечено нужное число занятий. У цели может быть несколько ролей — в левой панели
+/// она видна под каждой (это одна и та же цель с общим прогрессом); роли занятий — роли цели.
 /// </summary>
-public class WeeklyGoal : ISortable
+public class WeeklyGoal
 {
     public const int MinTimesPerWeek = 1;
     public const int MaxTimesPerWeek = 7;
 
     private readonly List<TaskGoal> _links = [];
+    private readonly List<GoalRole> _roles = [];
 
     private WeeklyGoal()
     {
@@ -24,7 +25,16 @@ public class WeeklyGoal : ISortable
 
     public int Id { get; private set; }
 
-    public int RoleId { get; private set; }
+    /// <summary>Роли цели (хотя бы одна); у каждой — своё место цели в её списке.</summary>
+    public IReadOnlyCollection<GoalRole> Roles => _roles;
+
+    /// <summary>Id ролей по возрастанию.</summary>
+    public IReadOnlyList<int> RoleIds => _roles.Select(r => r.RoleId).Order().ToList();
+
+    public bool HasRole(int roleId) => _roles.Any(r => r.RoleId == roleId);
+
+    /// <summary>Место цели в списке роли; null — у цели нет этой роли.</summary>
+    public GoalRole? RoleLink(int roleId) => _roles.FirstOrDefault(r => r.RoleId == roleId);
 
     /// <summary>Понедельник недели.</summary>
     public DateOnly WeekStart { get; private set; }
@@ -53,8 +63,6 @@ public class WeeklyGoal : ISortable
     /// Если дни выбраны, «раз в неделю» равно их числу.
     /// </summary>
     public Weekdays? Days { get; private set; }
-
-    public int SortOrder { get; set; }
 
     /// <summary>Серия: та же цель на других неделях (постоянная — «каждую неделю»). null — разовая цель.</summary>
     public int? SeriesId { get; private set; }
@@ -109,25 +117,29 @@ public class WeeklyGoal : ISortable
     public TaskItem? UnscheduledSession =>
         ActiveSessions.FirstOrDefault(t => t.State == TaskState.Planned && t.PlannedDate is null);
 
-    public static WeeklyGoal Create(int roleId, DateOnly weekStart, string title)
+    public static WeeklyGoal Create(int roleId, DateOnly weekStart, string title) =>
+        Create([roleId], weekStart, title);
+
+    public static WeeklyGoal Create(IEnumerable<int> roleIds, DateOnly weekStart, string title)
     {
         if (!Week.IsWeekStart(weekStart))
         {
             throw new DomainException("Неделя должна начинаться с понедельника.");
         }
 
-        return new WeeklyGoal
+        var goal = new WeeklyGoal
         {
-            RoleId = roleId,
             WeekStart = weekStart,
             Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название цели"),
         };
+        goal.SetRoleIds(roleIds);
+        return goal;
     }
 
     /// <summary>Цель постоянной серии на неделю: всё — из шаблона серии, занятий нет.</summary>
     public static WeeklyGoal FromSeries(GoalSeries series, DateOnly weekStart)
     {
-        var goal = Create(series.RoleId, weekStart, series.Title);
+        var goal = Create(series.RoleIds, weekStart, series.Title);
         goal.TimesPerWeek = series.TimesPerWeek;
         goal.StartTime = series.StartTime;
         goal.Quadrant = series.Quadrant;
@@ -140,12 +152,12 @@ public class WeeklyGoal : ISortable
     }
 
     /// <summary>
-    /// Та же цель на другой неделе — для занятия, которое туда перенесли: шаблон этой цели, но 1 раз в неделю
+    /// Та же цель на другой неделе — для занятия, которое туда перенесли: шаблон и роли этой цели, но 1 раз в неделю
     /// и без повтора; цель входит в ту же серию.
     /// </summary>
     public WeeklyGoal CopyForWeek(DateOnly weekStart)
     {
-        var goal = Create(RoleId, weekStart, Title);
+        var goal = Create(RoleIds, weekStart, Title);
         goal.StartTime = StartTime;
         goal.Quadrant = Quadrant;
         goal.Notes = Notes;
@@ -176,14 +188,9 @@ public class WeeklyGoal : ISortable
         DurationMinutes = TextRules.Duration(durationMinutes);
 
         var lostTime = new List<TaskItem>();
-        foreach (var session in Sessions.Where(IsPrimaryFor))
+        foreach (var session in Sessions)
         {
-            // Квадрант — от главной цели, а если у неё нет — от следующей связанной (так же при связывании)
-            if (!session.RefreshFromGoals())
-            {
-                session.Quadrant = Quadrant;
-            }
-
+            session.Quadrant = Quadrant;
             if (session.State != TaskState.Planned)
             {
                 continue; // выполненные — история, в корзине — не трогаем
@@ -218,7 +225,7 @@ public class WeeklyGoal : ISortable
         return lostTime;
     }
 
-    /// <summary>Шаблон берётся из дела, из которого сделана цель (всё, кроме роли — она у цели своя).</summary>
+    /// <summary>Шаблон берётся из дела, из которого сделана цель (всё, кроме ролей — они у цели свои).</summary>
     public void CopyTemplateFrom(TaskItem task) =>
         UpdateTemplate(task.Title, task.StartTime, task.Quadrant, task.Notes, task.DurationMinutes);
 
@@ -243,29 +250,69 @@ public class WeeklyGoal : ISortable
     }
 
     /// <summary>
-    /// Перенести к другой роли; занятия переходят вместе с целью (роли занятия — роли всех его целей;
-    /// у дела нескольких целей их должен подгрузить сервис — иначе роль просто заменяется).
+    /// Задать роли цели (хотя бы одна). Уже стоящие роли сохраняют своё место в списке;
+    /// возвращает новые — их нужно поставить в список роли (см. GoalOrdering). Роли занятий — роли цели.
     /// </summary>
-    public void MoveToRole(int roleId)
+    public IReadOnlyList<GoalRole> SetRoleIds(IEnumerable<int> roleIds)
     {
-        var oldRoleId = RoleId;
-        RoleId = roleId;
+        var wanted = roleIds.Distinct().ToList();
+        if (wanted.Count == 0)
+        {
+            throw new DomainException(NoRolesMessage);
+        }
+
+        _roles.RemoveAll(r => !wanted.Contains(r.RoleId));
+        var added = wanted.Where(id => !HasRole(id)).Select(id => new GoalRole(id)).ToList();
+        _roles.AddRange(added);
+        RefreshSessionRoles();
+        return added;
+    }
+
+    public const string NoRolesMessage = "У цели должна быть хотя бы одна роль.";
+
+    /// <summary>Добавить роль (уже есть — ничего не меняется). Возвращает место цели в этой роли.</summary>
+    public GoalRole AddRole(int roleId)
+    {
+        if (RoleLink(roleId) is { } existing)
+        {
+            return existing;
+        }
+
+        var link = new GoalRole(roleId);
+        _roles.Add(link);
+        RefreshSessionRoles();
+        return link;
+    }
+
+    /// <summary>Убрать роль; последнюю убрать нельзя.</summary>
+    public void RemoveRole(int roleId)
+    {
+        if (RoleLink(roleId) is not { } link)
+        {
+            return;
+        }
+
+        if (_roles.Count == 1)
+        {
+            throw new DomainException(NoRolesMessage);
+        }
+
+        _roles.Remove(link);
+        RefreshSessionRoles();
+    }
+
+    /// <summary>Роли занятий — роли цели.</summary>
+    private void RefreshSessionRoles()
+    {
         foreach (var session in Sessions)
         {
-            if (!session.RefreshFromGoals())
-            {
-                session.SetRoles(session.RoleIds.Where(id => id != oldRoleId).Append(roleId));
-            }
+            session.SetRoles(RoleIds);
         }
     }
 
-    /// <summary>Эта цель — главная у дела (от неё шаблон и квадрант).</summary>
-    public bool IsPrimaryFor(TaskItem task) =>
-        task.PrimaryGoalLink is { } primary && (primary.Goal == this || (Id != 0 && primary.GoalId == Id));
-
     /// <summary>
-    /// Засчитать дело в эту цель (связь TaskGoals; через навигацию EF проставит Id и для ещё не сохранённой цели).
-    /// Первая связь дела — главная: роль и квадрант от этой цели; следующая — роли всех целей.
+    /// Сделать дело занятием этой цели (связь TaskGoals; через навигацию EF проставит Id и для ещё не сохранённой цели).
+    /// У дела — не больше одной цели: занятие другой цели переходит к этой. Роли и квадрант — от цели.
     /// </summary>
     public void AddSession(TaskItem task)
     {
@@ -274,21 +321,15 @@ public class WeeklyGoal : ISortable
             return;
         }
 
-        var link = new TaskGoal(task, this, task.NextGoalPosition);
+        task.DetachFromGoal();
+        var link = new TaskGoal(task, this);
         _links.Add(link);
         task.AddGoalLink(link);
-        if (task.GoalLinks.Count == 1)
-        {
-            task.SetRoles([RoleId]);
-            task.Quadrant = Quadrant;
-        }
-        else if (!task.RefreshFromGoals())
-        {
-            task.SetRoles(task.RoleIds.Append(RoleId));
-        }
+        task.SetRoles(RoleIds);
+        task.Quadrant = Quadrant;
     }
 
-    /// <summary>Перестать засчитывать дело в эту цель (дело остаётся; роли — от оставшихся целей, если они загружены).</summary>
+    /// <summary>Перестать считать дело занятием этой цели (дело остаётся, его роли — тоже).</summary>
     public void RemoveSession(TaskItem task)
     {
         if (_links.FirstOrDefault(l => l.Task == task) is not { } link)
@@ -298,6 +339,5 @@ public class WeeklyGoal : ISortable
 
         _links.Remove(link);
         task.RemoveGoalLink(link);
-        task.RefreshFromGoals();
     }
 }

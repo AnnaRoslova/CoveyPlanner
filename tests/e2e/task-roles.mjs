@@ -114,7 +114,7 @@ await check('занятие цели: роль одна, от цели, выбр
   await settle();
   assert(!(await page.$('.editor .tag-add')) && !(await page.$('.editor .tag-x')), 'у занятия можно выбирать роли');
   assert((await chipsOn()).length === 1, `роли: ${await chipsOn()}`);
-  assert(await page.$eval('.editor .tags .hint', e => e.textContent.trim()) === '· от целей', 'нет «от целей»');
+  assert(await page.$eval('.editor .tags .hint', e => e.textContent.trim()) === '· от цели', 'нет «от цели»');
   await page.keyboard.press('Escape'); await settle();
 });
 

@@ -20,10 +20,8 @@ public partial class PlannerState
             return false;
         }
 
-        var siblings = GoalsFor(roleId).ToList();
-        var temp = new WeeklyGoalDto(NextTempId(), roleId, WeekStart, title, TimesPerWeek: 1,
-            StartTime: null, Quadrant: null, Notes: null, DurationMinutes: null,
-            SortOrder: siblings.Count == 0 ? 0 : siblings.Max(g => g.SortOrder) + 1,
+        var temp = new WeeklyGoalDto(NextTempId(), [new GoalRoleDto(roleId, NextGoalOrder(roleId))], WeekStart, title,
+            TimesPerWeek: 1, StartTime: null, Quadrant: null, Notes: null, DurationMinutes: null,
             Sessions: [], IsRecurring: FindRole(roleId)?.IsSharpenSaw ?? false); // как решит сервер
         Goals.Add(temp);
 
@@ -33,7 +31,7 @@ public partial class PlannerState
             var index = Goals.FindIndex(g => g.Id == temp.Id);
             if (index >= 0)
             {
-                Goals[index] = saved with { SortOrder = temp.SortOrder };
+                Goals[index] = saved with { Roles = temp.Roles };
             }
         });
 
@@ -56,26 +54,26 @@ public partial class PlannerState
             return;
         }
 
-        // Другая роль — цель встаёт в конец её списка (так же делает сервер)
-        var sortOrder = form.RoleId == goal.RoleId
-            ? goal.SortOrder
-            : GoalsFor(form.RoleId).Select(g => g.SortOrder).DefaultIfEmpty(-1).Max() + 1;
+        // Новые роли — цель встаёт в конец их списков, в прежних остаётся на месте (так же делает сервер)
+        var roles = form.RoleIds.Distinct()
+            .Select(id => goal.Roles.FirstOrDefault(r => r.RoleId == id) ?? new GoalRoleDto(id, NextGoalOrder(id)))
+            .OrderBy(r => r.RoleId).ToList();
         ReplaceGoal(goal with
         {
             Title = form.Title.Trim(),
-            RoleId = form.RoleId,
+            Roles = roles,
             TimesPerWeek = form.TimesPerWeek,
             StartTime = form.StartTime,
             Quadrant = form.Quadrant,
             Notes = string.IsNullOrWhiteSpace(form.Notes) ? null : form.Notes.Trim(),
             DurationMinutes = form.DurationMinutes,
-            SortOrder = sortOrder,
             IsRecurring = form.IsRecurring ?? goal.IsRecurring,
             AllowSeveralPerDay = form.AllowSeveralPerDay ?? goal.AllowSeveralPerDay,
             Days = form.Days is { } d ? d == 0 ? null : d : goal.Days,
         });
 
         // Дни поменялись — занятия разложил сервер (добавил и убрал в корзину) — потом перечитываем
+        SetSessionRoles(goal, form.RoleIds);
         var daysChanged = form.Days is { } newDays && (newDays == 0 ? null : newDays) != goal.Days;
         IReadOnlyList<int> removed = [];
         var ok = await SaveAsync(async () =>
@@ -235,34 +233,40 @@ public partial class PlannerState
 
     // ---------- Перетаскивание целей ----------
 
-    /// <summary>Цель → другое место в своей роли или в другой роли (занятия цели получают эту роль).</summary>
-    public async Task MoveGoalAsync(int goalId, int roleId, int index)
+    /// <summary>
+    /// Цель перетащили в список роли <paramref name="roleId"/> на позицию <paramref name="index"/>. Из той же роли — порядок.
+    /// Из другой роли (<paramref name="fromRoleId"/>): обычный перенос — роль-источник заменяется новой;
+    /// <paramref name="addRole"/> (с Shift) — роль добавляется, остальные остаются. Роли занятий — роли цели.
+    /// </summary>
+    public async Task MoveGoalAsync(int goalId, int roleId, int index, int? fromRoleId = null, bool addRole = false)
     {
         if (goalId < 0 || FindGoal(goalId) is not { } goal || FindRole(roleId) is null)
         {
             return;
         }
 
+        // Те же правила, что у сервера
+        var from = fromRoleId ?? (goal.Roles.Count == 1 ? goal.Roles[0].RoleId : roleId);
+        var roleIds = goal.RoleIds.Append(roleId)
+            .Where(id => addRole || from == roleId || id != from)
+            .Distinct().Order().ToList();
         var siblings = GoalsFor(roleId).Where(g => g.Id != goalId).ToList();
         index = Math.Clamp(index, 0, siblings.Count);
-        if (goal.RoleId == roleId && GoalsFor(roleId).ToList().FindIndex(g => g.Id == goalId) == index)
+        var rolesChanged = !roleIds.SequenceEqual(goal.RoleIds.Order());
+        if (!rolesChanged && GoalsFor(roleId).ToList().FindIndex(g => g.Id == goalId) == index)
         {
             return; // бросили туда же
         }
 
-        siblings.Insert(index, goal with { RoleId = roleId });
+        var moved = goal with { Roles = [.. goal.Roles.Where(r => roleIds.Contains(r.RoleId))] };
+        siblings.Insert(index, moved);
         for (var i = 0; i < siblings.Count; i++)
         {
-            ReplaceGoal(siblings[i] with { SortOrder = i });
+            ReplaceGoal(WithPlace(siblings[i], roleId, i));
         }
 
-        // Роли занятий — роли всех их целей: прежняя роль этой цели заменяется новой (так же решает сервер)
-        foreach (var task in SessionTasks(goal))
-        {
-            _tasks[task.Id] = task with { RoleIds = [.. GoalsOfTask(task.Id).Select(g => g.RoleId).Distinct().Order()] };
-        }
-
-        await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index)));
+        SetSessionRoles(goal, roleIds);
+        await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index, from, addRole)));
     }
 
     /// <summary>
@@ -291,17 +295,17 @@ public partial class PlannerState
         {
             State = task.State == TaskStateDto.Someday ? TaskStateDto.Planned : task.State,
             RoleIds = [roleId],
-            GoalIds = [tempGoalId],
+            GoalId = tempGoalId,
         };
         // Шаблон цели — из дела (так же делает сервер)
-        var temp = new WeeklyGoalDto(tempGoalId, roleId, WeekStart, task.Title, TimesPerWeek: 1,
+        var temp = new WeeklyGoalDto(tempGoalId, [new GoalRoleDto(roleId, 0)], WeekStart, task.Title, TimesPerWeek: 1,
             task.StartTime, task.Quadrant, task.Notes, task.DurationMinutes,
-            SortOrder: 0, Sessions: [ToSession(session)], IsRecurring: FindRole(roleId)?.IsSharpenSaw ?? false);
+            Sessions: [ToSession(session)], IsRecurring: FindRole(roleId)?.IsSharpenSaw ?? false);
         siblings.Insert(index, temp);
         Goals.Add(temp);
         for (var i = 0; i < siblings.Count; i++)
         {
-            ReplaceGoal(siblings[i] with { SortOrder = i });
+            ReplaceGoal(WithPlace(siblings[i], roleId, i));
         }
 
         _tasks[taskId] = session;
@@ -370,8 +374,8 @@ public partial class PlannerState
 
         var unscheduled = goal.Sessions.FirstOrDefault(s => s.PlannedDate is null && !s.IsDone);
         var task = unscheduled is not null && FindTask(unscheduled.TaskId) is { } shown
-            ? shown with { GoalIds = [] }
-            : new TaskDto(unscheduled?.TaskId ?? NextTempId(), goal.Title, null, categoryId, [goal.RoleId], [], null,
+            ? shown with { GoalId = null }
+            : new TaskDto(unscheduled?.TaskId ?? NextTempId(), goal.Title, null, categoryId, goal.RoleIds, null, null,
                 TaskStateDto.Someday, null, null, null, 0, null);
 
         PlaceInFeedLocally(task, categoryId, index);
@@ -390,8 +394,8 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Удалить роль вместе с её целями (на всех неделях); занятия — как при удалении цели,
-    /// занятия без дня возвращаются в ленту (без своей категории — в «неразобранное»).
+    /// Удалить роль. Цели, у которых она единственная, удаляются (на всех неделях); занятия — как при удалении цели,
+    /// занятия без дня возвращаются в ленту (без своей категории — в «неразобранное»). У целей с другими ролями роль просто убирается.
     /// С «Вернуть»; после удаления на сервере — перечитываем всё (цели других недель, лента).
     /// </summary>
     public async Task DeleteRoleAsync(int roleId)
@@ -406,7 +410,14 @@ public partial class PlannerState
             Roles.RemoveAll(r => r.Id == roleId);
             foreach (var goal in GoalsFor(roleId).ToList())
             {
-                RemoveGoalLocally(goal);
+                if (goal.Roles.Count > 1)
+                {
+                    ReplaceGoal(goal with { Roles = [.. goal.Roles.Where(r => r.RoleId != roleId)] });
+                }
+                else
+                {
+                    RemoveGoalLocally(goal);
+                }
             }
 
             foreach (var task in _tasks.Values.Where(t => t.RoleIds.Contains(roleId)).ToList())
@@ -426,7 +437,7 @@ public partial class PlannerState
 
     /// <summary>Новое занятие по шаблону цели (время — когда встанет в день, так же делает сервер).</summary>
     private static TaskDto NewSessionTask(WeeklyGoalDto goal, int id) =>
-        new(id, goal.Title, goal.Notes, null, [goal.RoleId], [goal.Id], goal.Quadrant, TaskStateDto.Planned,
+        new(id, goal.Title, goal.Notes, null, goal.RoleIds, goal.Id, goal.Quadrant, TaskStateDto.Planned,
             null, goal.StartTime, goal.DurationMinutes, 0, null);
 
     private static GoalSessionDto ToSession(TaskDto task) =>
@@ -438,8 +449,7 @@ public partial class PlannerState
     /// </summary>
     private void SyncSession(TaskDto task)
     {
-        // Общее дело — в каждой своей цели
-        foreach (var goal in GoalsOfTask(task.Id))
+        if (GoalOfTask(task.Id) is { } goal)
         {
             var sessions = goal.Sessions.Where(s => s.TaskId != task.Id).ToList();
             if (task.State is TaskStateDto.Planned or TaskStateDto.Done)
@@ -472,7 +482,27 @@ public partial class PlannerState
         var index = Goals.FindIndex(g => g.Id == tempId);
         if (index >= 0)
         {
-            Goals[index] = saved with { SortOrder = Goals[index].SortOrder };
+            Goals[index] = saved with { Roles = Goals[index].Roles };
+        }
+    }
+
+    /// <summary>Цель на месте <paramref name="sortOrder"/> в списке роли (роль добавляется, если её не было).</summary>
+    private static WeeklyGoalDto WithPlace(WeeklyGoalDto goal, int roleId, int sortOrder) => goal with
+    {
+        Roles = [.. goal.Roles.Where(r => r.RoleId != roleId).Append(new GoalRoleDto(roleId, sortOrder)).OrderBy(r => r.RoleId)],
+    };
+
+    /// <summary>Место в конце списка роли.</summary>
+    private int NextGoalOrder(int roleId) =>
+        GoalsFor(roleId).Select(g => g.SortOrderIn(roleId)).DefaultIfEmpty(-1).Max() + 1;
+
+    /// <summary>Роли занятий — роли цели (так же решает сервер).</summary>
+    private void SetSessionRoles(WeeklyGoalDto goal, IEnumerable<int> roleIds)
+    {
+        List<int> ordered = [.. roleIds.Distinct().Order()];
+        foreach (var task in SessionTasks(goal))
+        {
+            _tasks[task.Id] = task with { RoleIds = ordered };
         }
     }
 

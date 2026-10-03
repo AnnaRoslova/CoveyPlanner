@@ -48,10 +48,10 @@ public sealed record UpdateRoleRequest(string? Name, string? Color);
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title, bool? IsRecurring = null);
 
 /// <summary>Окно цели целиком. null у необязательных полей — «не задано»; IsRecurring / AllowSeveralPerDay = null — «каждую неделю» / «можно несколько раз в день» не менять.
-/// Days — дни (маска, как в WeeklyGoalDto): null — не менять, 0 — «сам раскладываю».</summary>
+/// Days — дни (маска, как в WeeklyGoalDto): null — не менять, 0 — «сам раскладываю». RoleIds — роли цели (хотя бы одна).</summary>
 public sealed record UpdateGoalRequest(
     string Title,
-    int RoleId,
+    IReadOnlyList<int> RoleIds,
     int TimesPerWeek,
     TimeOnly? StartTime,
     int? Quadrant,
@@ -64,12 +64,17 @@ public sealed record UpdateGoalRequest(
 /// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
 public sealed record ToggleGoalRequest(DateOnly Today);
 
-public sealed record MoveGoalRequest(int RoleId, int Index);
+/// <summary>
+/// Цель перетащили в список роли RoleId на позицию Index. FromRoleId — из-под какой роли тащили;
+/// AddRole = false — перенос (роль-источник заменяется), true (с Shift) — роль добавляется к остальным.
+/// </summary>
+public sealed record MoveGoalRequest(int RoleId, int Index, int? FromRoleId = null, bool AddRole = false);
+
 
 public sealed record GoalFromTaskRequest(int TaskId, int RoleId, DateOnly WeekStart, int Index);
 
 /// <summary>CategoryId = null — в «неразобранное».</summary>
 public sealed record GoalToSomedayRequest(int? CategoryId, int Index);
 
-/// <summary>В какие цели недели засчитывается дело (порядок новых связей; пусто — ни в какие).</summary>
-public sealed record SetTaskGoalsRequest(IReadOnlyList<int> GoalIds);
+/// <summary>Занятием какой цели недели сделать дело (null — отвязать от цели).</summary>
+public sealed record SetTaskGoalRequest(int? GoalId);

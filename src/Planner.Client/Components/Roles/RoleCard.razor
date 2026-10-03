@@ -32,7 +32,7 @@
                  OnClick="() => OpenGoal(goal.Id)"
                  DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id"
                  DropZone="@(goal.Id > 0 ? DragDropService.GoalZone : null)" DropKey="@goal.Id.ToString()"
-                 DropAccept="@DragDropService.GoalAccepts" DropHint="засчитать и в эту цель">
+                 DropAccept="@DragDropService.GoalAccepts" DropHint="сделать занятием этой цели">
             <Actions>
                 @if (goal.Id > 0)
                 {

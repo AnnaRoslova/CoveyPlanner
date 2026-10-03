@@ -22,7 +22,9 @@
 // Автопрокрутка у края прокручиваемой области — после короткой задержки (не при пролёте мимо края).
 // Призрак записи, линия вставки и подсветка зоны — отдельные элементы в <body>,
 // DOM, которым управляет Blazor, не трогаем (кроме класса drag-source у исходной записи).
-// Результат: .NET-метод OnDrop({ kind, id, zone, key, index }).
+// Результат: .NET-метод OnDrop({ kind, id, zone, key, index, from, shift }): from — ключ зоны, откуда тащили
+// (у цели — роль, под которой она показана), shift — при сбросе был зажат Shift (цель → роль: добавить роль,
+// а не заменить; пока Shift зажат над другой ролью, у призрака подпись «+ роль»).
 
 const DRAG_THRESHOLD = 8;      // px — сдвиг мыши, после которого это уже перетаскивание
 const TOUCH_DELAY = 300;       // мс — долгое нажатие пальцем
@@ -47,7 +49,11 @@ export function init(dotnetRef) {
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', () => cancel());
-    window.addEventListener('keydown', e => { if (e.key === 'Escape' && drag) cancel(); });
+    window.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && drag) cancel();
+        if (e.key === 'Shift' && drag) setShift(true);
+    });
+    window.addEventListener('keyup', e => { if (e.key === 'Shift' && drag) setShift(false); });
     window.addEventListener('blur', () => cancel());
     // Во время перетаскивания пальцем не даём странице прокручиваться
     document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
@@ -105,10 +111,12 @@ function onPointerMove(e) {
 
     if (drag && e.pointerId === drag.pointerId) {
         e.preventDefault();
+        drag.shift = e.shiftKey;
         drag.x = e.clientX;
         drag.y = e.clientY;
         moveGhost();
         updateTarget();
+        updateAddHint();
     }
 }
 
@@ -122,11 +130,12 @@ function onPointerUp(e) {
     }
     if (!drag || e.pointerId !== drag.pointerId) return;
 
-    const { kind, id, target, flipped } = drag;
+    const { kind, id, target, flipped, from } = drag;
+    const shift = e.shiftKey;
     finish();
 
     if (target) {
-        dotnet?.invokeMethodAsync('OnDrop', { kind, id, zone: target.zone, key: target.key, index: target.index });
+        dotnet?.invokeMethodAsync('OnDrop', { kind, id, zone: target.zone, key: target.key, index: target.index, from, shift });
     } else if (flipped) {
         dotnet?.invokeMethodAsync('OnFlipCancel'); // листали, но бросили мимо — неделя возвращается
     }
@@ -157,6 +166,8 @@ function start(x, y) {
         el, pointerId, ghost, line, zoneBox,
         kind: el.dataset.drag,
         id: Number(el.dataset.id),
+        from: ownZone(el)?.dataset.key ?? null,
+        shift: false,
         offsetX: startX - rect.left,
         offsetY: startY - rect.top,
         height: rect.height,
@@ -250,6 +261,18 @@ function updateTarget() {
 // призрака пересёк середину соседа (глаз следит за призраком, а не за указателем; в узком дне записи
 // бывают в 2–3 строки, и по центру призрака пришлось бы тащить на целую высоту записи).
 // Из другой зоны — по указателю.
+// Shift над другой ролью — цель добавит эту роль, а не перейдёт к ней: подпись «+ роль» у призрака
+function setShift(on) {
+    drag.shift = on;
+    updateAddHint();
+}
+
+function updateAddHint() {
+    const t = drag.target;
+    const adds = drag.shift && drag.kind === 'goal' && t?.zone === 'role' && t.key !== drag.from;
+    drag.ghost.classList.toggle('adds-role', !!adds);
+}
+
 function probeY(zone) {
     if (ownZone(drag.el) !== zone) return drag.y;
     const src = drag.el.getBoundingClientRect();
@@ -402,7 +425,7 @@ function elementUnder(x, y) {
     return document.elementsFromPoint(x, y).find(el => !el.closest('[data-flip-overlay]')) ?? null;
 }
 
-// Зона с data-drop-middle (строка цели: «засчитать и в эту цель») принимает только серединой: у верхнего и нижнего края
+// Зона с data-drop-middle (строка цели: «сделать занятием этой цели») принимает только серединой: у верхнего и нижнего края
 // (по 30% высоты) сброс проходит к внешней зоне — например, новая цель между строками
 function atEdge(zone) {
     if (!zone.hasAttribute('data-drop-middle')) return false;

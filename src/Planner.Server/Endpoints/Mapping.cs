@@ -14,7 +14,7 @@ public static class Mapping
         t.Notes,
         t.CategoryId,
         t.RoleIds,
-        t.GoalIds,
+        t.GoalId,
         (int?)t.Quadrant,
         (TaskStateDto)t.State,
         t.PlannedDate,
@@ -30,7 +30,7 @@ public static class Mapping
 
     public static WeeklyGoalDto ToDto(this WeeklyGoal g) => new(
         g.Id,
-        g.RoleId,
+        g.Roles.OrderBy(r => r.RoleId).Select(r => new GoalRoleDto(r.RoleId, r.SortOrder)).ToList(),
         g.WeekStart,
         g.Title,
         g.TimesPerWeek,
@@ -38,7 +38,6 @@ public static class Mapping
         (int?)g.Quadrant,
         g.Notes,
         g.DurationMinutes,
-        g.SortOrder,
         g.ActiveSessions
             .OrderBy(t => t.PlannedDate ?? DateOnly.MaxValue).ThenBy(t => t.Id)
             .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done))

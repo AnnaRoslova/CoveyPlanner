@@ -77,9 +77,6 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int?>("Quadrant")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<TimeOnly?>("StartTime")
                         .HasColumnType("TEXT");
 
@@ -94,8 +91,6 @@ namespace Planner.Server.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("IsRecurring");
-
-                    b.HasIndex("RoleId");
 
                     b.ToTable("GoalSeries");
                 });
@@ -233,13 +228,7 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int?>("Quadrant")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int?>("SeriesId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
                     b.Property<TimeOnly?>("StartTime")
@@ -258,23 +247,41 @@ namespace Planner.Server.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("WeekStart");
 
                     b.HasIndex("SeriesId", "WeekStart")
                         .IsUnique();
-
-                    b.HasIndex("WeekStart", "RoleId", "SortOrder");
 
                     b.ToTable("WeeklyGoals");
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.GoalSeries", b =>
                 {
-                    b.HasOne("Planner.Core.Entities.Role", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.OwnsMany("Planner.Core.Entities.SeriesRole", "Roles", b1 =>
+                        {
+                            b1.Property<int>("SeriesId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("RoleId")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("SeriesId", "RoleId");
+
+                            b1.HasIndex("RoleId");
+
+                            b1.ToTable("GoalSeriesRoles", (string)null);
+
+                            b1.HasOne("Planner.Core.Entities.Role", null)
+                                .WithMany()
+                                .HasForeignKey("RoleId")
+                                .OnDelete(DeleteBehavior.Cascade)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("SeriesId");
+                        });
+
+                    b.Navigation("Roles");
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.TaskGoal", b =>
@@ -332,16 +339,39 @@ namespace Planner.Server.Data.Migrations
 
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>
                 {
-                    b.HasOne("Planner.Core.Entities.Role", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Planner.Core.Entities.GoalSeries", "Series")
                         .WithMany()
                         .HasForeignKey("SeriesId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.OwnsMany("Planner.Core.Entities.GoalRole", "Roles", b1 =>
+                        {
+                            b1.Property<int>("GoalId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("RoleId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("SortOrder")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("GoalId", "RoleId");
+
+                            b1.HasIndex("RoleId");
+
+                            b1.ToTable("GoalRoles", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("GoalId");
+
+                            b1.HasOne("Planner.Core.Entities.Role", null)
+                                .WithMany()
+                                .HasForeignKey("RoleId")
+                                .OnDelete(DeleteBehavior.Cascade)
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Roles");
 
                     b.Navigation("Series");
                 });

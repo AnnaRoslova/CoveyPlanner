@@ -269,7 +269,43 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal([1, 2], goal.Sessions.Select(t => t.Id).Order());
         Assert.Equal(1, goal.DoneCount);
         var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
-        Assert.Equal([[1], [1], []], tasks.Select(t => t.GoalIds.ToArray()));
+        Assert.Equal([1, 1, null], tasks.Select(t => t.GoalId));
+    }
+
+    [Fact]
+    public async Task GoalRoles_RoleAndPlaceMoveToGoalRoles_SecondGoalLinksDropped()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("TaskGoals");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES
+                (1, 'Тело', '#9fd3bd', 0, 'Body'), (2, 'Дух', '#c9b8ec', 2, 'Spirit');
+            INSERT INTO GoalSeries (Id, RoleId, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, GeneratedThrough)
+                VALUES (1, 2, 'Природа', 1, 0, 1, '2026-09-28', '2026-09-28');
+            INSERT INTO WeeklyGoals (Id, RoleId, WeekStart, Title, TimesPerWeek, SortOrder, AllowSeveralPerDay, SeriesId) VALUES
+                (1, 1, '2026-09-28', '10к шагов', 5, 0, 0, NULL),
+                (2, 1, '2026-09-28', 'Бег', 3, 1, 0, NULL),
+                (3, 2, '2026-09-28', 'Природа', 1, 0, 0, 1);
+            INSERT INTO Tasks (Id, Title, State, PlannedDate, SortOrder, CreatedAt) VALUES
+                (1, 'Прогулка в парке', 'Planned', '2026-09-28', 0, '2026-09-28 10:00:00'),
+                (2, 'Бег', 'Done', '2026-09-29', 0, '2026-09-28 10:00:00');
+            INSERT INTO TaskGoals (TaskId, GoalId, Position) VALUES (1, 1, 0), (1, 3, 1), (2, 2, 0);
+            INSERT INTO TaskRoles (TaskId, RoleId) VALUES (1, 1), (1, 2), (2, 1);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var goals = await db.WeeklyGoals.OrderBy(g => g.Id).ToListAsync();
+        Assert.Equal([[1], [1], [2]], goals.Select(g => g.RoleIds.ToArray()));
+        Assert.Equal([0, 1, 0], goals.Select(g => g.Roles.Single().SortOrder));
+        Assert.Equal([2], (await db.GoalSeries.SingleAsync()).RoleIds);
+
+        // «Прогулка» была и в «Природе» — осталась занятием только главной цели, роль — её
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
+        Assert.Equal([1, 2], tasks.Select(t => t.GoalId));
+        Assert.Equal([[1], [1]], tasks.Select(t => t.RoleIds.ToArray()));
+        Assert.Equal(2, await db.Set<Planner.Core.Entities.TaskGoal>().CountAsync());
     }
 
     public void Dispose()

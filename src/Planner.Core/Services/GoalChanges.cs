@@ -4,13 +4,13 @@ using Planner.Core.Enums;
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Всё, что меняется в окне цели. null у необязательных полей — «не задано»;
+/// Всё, что меняется в окне цели (RoleIds — роли цели, хотя бы одна). null у необязательных полей — «не задано»;
 /// IsRecurring — «каждую неделю», AllowSeveralPerDay — «можно несколько раз в день» (null — не менять);
 /// Days — по каким дням (null — не менять, Weekdays.None — «сам раскладываю»).
 /// </summary>
 public sealed record GoalChanges(
     string Title,
-    int RoleId,
+    IReadOnlyList<int> RoleIds,
     int TimesPerWeek,
     TimeOnly? StartTime,
     Quadrant? Quadrant,

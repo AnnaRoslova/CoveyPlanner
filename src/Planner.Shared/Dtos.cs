@@ -23,9 +23,9 @@ public enum SawDimensionDto
 }
 
 /// <summary>
-/// Дело. RoleIds — роли дела (может быть несколько, у занятия цели — одна, роль цели);
+/// Дело. RoleIds — роли дела (может быть несколько; у занятия цели — роли цели);
 /// Quadrant — 1..4 или null; StartTime — необязательная метка времени;
-/// DurationMinutes — необязательная примерная длительность. GoalIds — цели, в которые засчитывается дело (первая — главная; пусто — не «камень»).
+/// DurationMinutes — необязательная примерная длительность. GoalId — цель, занятием которой является дело (null — не «камень»).
 /// </summary>
 public sealed record TaskDto(
     int Id,
@@ -33,19 +33,14 @@ public sealed record TaskDto(
     string? Notes,
     int? CategoryId,
     IReadOnlyList<int> RoleIds,
-    IReadOnlyList<int> GoalIds,
+    int? GoalId,
     int? Quadrant,
     TaskStateDto State,
     DateOnly? PlannedDate,
     TimeOnly? StartTime,
     int? DurationMinutes,
     int SortOrder,
-    DateTime? TrashedAt)
-{
-    /// <summary>Главная цель дела (от неё шаблон и квадрант); null — дело не засчитывается ни в одну цель.</summary>
-    [JsonIgnore]
-    public int? PrimaryGoalId => GoalIds.Count > 0 ? GoalIds[0] : null;
-}
+    DateTime? TrashedAt);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -58,16 +53,19 @@ public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, S
 /// <summary>Занятие цели: дело-«камень». PlannedDate = null — занятие без дня.</summary>
 public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDone);
 
+/// <summary>Роль цели и место цели в списке этой роли.</summary>
+public sealed record GoalRoleDto(int RoleId, int SortOrder);
+
 /// <summary>
 /// Цель недели, которую нужно сделать TimesPerWeek раз, — шаблон занятий: новые занятия берут
 /// StartTime, Quadrant, Notes, DurationMinutes. Sessions — её занятия (без корзины), по дням;
-/// прогресс и «выполнено» считаются по ним. IsRecurring — «каждую неделю»: цель появится и на следующей неделе;
+/// прогресс и «выполнено» считаются по ним. Roles — роли цели (хотя бы одна): цель видна под каждой, в каждой — на своём месте. IsRecurring — «каждую неделю»: цель появится и на следующей неделе;
 /// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
 /// Days — дни, по которым занятия встают сами (битовая маска: Пн = 1, Вт = 2, … Вс = 64; 127 — каждый день); null — «сам раскладываю».
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
-    int RoleId,
+    IReadOnlyList<GoalRoleDto> Roles,
     DateOnly WeekStart,
     string Title,
     int TimesPerWeek,
@@ -75,7 +73,6 @@ public sealed record WeeklyGoalDto(
     int? Quadrant,
     string? Notes,
     int? DurationMinutes,
-    int SortOrder,
     IReadOnlyList<GoalSessionDto> Sessions,
     bool IsRecurring = false,
     bool AllowSeveralPerDay = false,
@@ -86,6 +83,14 @@ public sealed record WeeklyGoalDto(
 
     [JsonIgnore]
     public bool IsDone => DoneCount >= TimesPerWeek;
+
+    [JsonIgnore]
+    public IReadOnlyList<int> RoleIds => Roles.Select(r => r.RoleId).ToList();
+
+    public bool HasRole(int roleId) => Roles.Any(r => r.RoleId == roleId);
+
+    /// <summary>Место цели в списке роли (нет роли — в конце).</summary>
+    public int SortOrderIn(int roleId) => Roles.FirstOrDefault(r => r.RoleId == roleId)?.SortOrder ?? int.MaxValue;
 }
 
 /// <summary>Всё, что не зависит от недели: роли, лента, палитра.</summary>
@@ -110,7 +115,7 @@ public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskD
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
 
 /// <summary>
-/// После «засчитать дело в цели»: дело, затронутые цели (с новым прогрессом) и занятия, которые дело заменило
-/// («одно занятие цели в день»; они в корзине — для «Вернуть»).
+/// После «сделать дело занятием цели»: дело, затронутые цели — прежняя и новая (с новым прогрессом) — и занятия,
+/// которые дело заменило («одно занятие цели в день»; они в корзине — для «Вернуть»).
 /// </summary>
-public sealed record TaskGoalsResultDto(TaskDto Task, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<int> ReplacedTaskIds);
+public sealed record TaskGoalResultDto(TaskDto Task, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<int> ReplacedTaskIds);

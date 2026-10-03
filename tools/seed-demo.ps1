@@ -62,7 +62,7 @@ function Goal([string]$Role, [string]$Title) { Api POST 'goals' @{ roleId = $rol
 function Schedule($Goal, [int]$Day) { (Api POST "goals/$($Goal.id)/schedule" @{ kind = 'day'; date = (Day $Day); index = 99 }).task }
 
 $run = Goal 'Тело' 'Бег'
-Api PUT "goals/$($run.id)" @{ title = 'Бег'; roleId = $roles['Тело']; timesPerWeek = 3; durationMinutes = 30; notes = 'Парк, лёгкий темп' } | Out-Null
+Api PUT "goals/$($run.id)" @{ title = 'Бег'; roleIds = @($roles['Тело']); timesPerWeek = 3; durationMinutes = 30; notes = 'Парк, лёгкий темп' } | Out-Null
 Goal 'Ум' '100 страниц' | Out-Null
 Goal 'Общение и эмоции' 'Увидеться с Олей' | Out-Null
 $dentist = Goal 'Я сама' 'Записаться к стоматологу'

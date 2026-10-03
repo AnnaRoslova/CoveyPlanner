@@ -426,3 +426,22 @@ mark.hit {
 .loading-progress-text::after {
     content: var(--blazor-load-percentage-text, "Загрузка");
 }
+
+/* Цель тащат с зажатым Shift над другой ролью — роль добавится, а не заменит прежнюю */
+.drag-ghost.adds-role::after {
+    content: "+ роль";
+    position: absolute;
+    top: -9px;
+    right: 6px;
+    padding: 0 7px;
+    border-radius: 20px;
+    background: var(--b-deep);
+    color: var(--surface);
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 17px;
+}
+
+.drag-ghost.adds-role {
+    opacity: 0.95;
+}

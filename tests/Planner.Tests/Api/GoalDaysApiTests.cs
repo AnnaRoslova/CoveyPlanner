@@ -18,7 +18,7 @@ public class GoalDaysApiTests : ApiTestBase
 
     private Task<GoalUpdateResultDto> SetDaysAsync(WeeklyGoalDto g, int days, int times = 1, TimeOnly? time = null, int? duration = null) =>
         PutAsync<GoalUpdateResultDto>($"/api/goals/{g.Id}",
-            new UpdateGoalRequest(g.Title, g.RoleId, times, time, g.Quadrant, g.Notes, duration, Days: days));
+            new UpdateGoalRequest(g.Title, g.RoleIds, times, time, g.Quadrant, g.Notes, duration, Days: days));
 
     private async Task<WeeklyGoalDto> GoalOnAsync(int week, int goalId) =>
         (await GetWeekAsync(Week(week))).Goals.Single(g => g.Id == goalId || week != 0);
@@ -55,7 +55,7 @@ public class GoalDaysApiTests : ApiTestBase
         var days = await SessionDaysAsync(1, "Скакалка");
         Assert.Equal(Enumerable.Range(0, 7).Select(i => Week(1).AddDays(i)), days);
         Assert.All((await GetWeekAsync(Week(1))).Tasks.Where(t => t.Title == "Скакалка"),
-            t => Assert.Equal((new TimeOnly(21, 0), 10, next.Id), (t.StartTime!.Value, t.DurationMinutes!.Value, t.PrimaryGoalId!.Value)));
+            t => Assert.Equal((new TimeOnly(21, 0), 10, next.Id), (t.StartTime!.Value, t.DurationMinutes!.Value, t.GoalId!.Value)));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class GoalDaysApiTests : ApiTestBase
 
         var moved = await MoveTaskAsync(wednesday.Id, new DayTargetDto(Monday.AddDays(3), 0));
 
-        Assert.Equal(goal.Id, moved.PrimaryGoalId);
+        Assert.Equal(goal.Id, moved.GoalId);
         Assert.Equal(Mon | Wed, (await GetWeekAsync()).Goals.Single(g => g.Id == goal.Id).Days);
         Assert.Equal([Week(1), Week(1).AddDays(2)], await SessionDaysAsync(1, "Скакалка"));
     }
@@ -116,7 +116,7 @@ public class GoalDaysApiTests : ApiTestBase
 
         var g = await GoalOnAsync(0, goal.Id);
         var result = await PutAsync<GoalUpdateResultDto>($"/api/goals/{g.Id}",
-            new UpdateGoalRequest("Скакалка 100", g.RoleId, g.TimesPerWeek, null, null, null, null));
+            new UpdateGoalRequest("Скакалка 100", g.RoleIds, g.TimesPerWeek, null, null, null, null));
 
         Assert.Equal(Mon | Tue, result.Goal.Days);
         Assert.Equal(2, (await SessionDaysAsync(0, "Скакалка 100")).Count);

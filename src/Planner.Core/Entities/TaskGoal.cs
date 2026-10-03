@@ -2,8 +2,7 @@ namespace Planner.Core.Entities;
 
 /// <summary>
 /// Связь дела с целью недели (таблица TaskGoals): дело — занятие этой цели и засчитывается в её прогресс.
-/// Одно дело может засчитываться в несколько целей; первая по <see cref="Position"/> — «главная»:
-/// от неё у дела шаблон (название, время, длительность, заметки) и квадрант.
+/// У дела — не больше одной цели (<see cref="Position"/> всегда 0; колонка осталась от времени, когда целей могло быть несколько).
 /// Создаётся и снимается только через <see cref="WeeklyGoal.AddSession"/> / <see cref="WeeklyGoal.RemoveSession"/>.
 /// </summary>
 public class TaskGoal
@@ -13,18 +12,16 @@ public class TaskGoal
     {
     }
 
-    internal TaskGoal(TaskItem task, WeeklyGoal goal, int position)
+    internal TaskGoal(TaskItem task, WeeklyGoal goal)
     {
         Task = task;
         Goal = goal;
-        Position = position;
     }
 
     public int TaskId { get; private set; }
 
     public int GoalId { get; private set; }
 
-    /// <summary>Порядок связей у дела: 0 — главная цель.</summary>
     public int Position { get; private set; }
 
     public TaskItem Task { get; private set; } = null!;

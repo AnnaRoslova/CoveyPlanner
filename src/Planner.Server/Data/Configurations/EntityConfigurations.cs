@@ -31,11 +31,11 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Navigation(t => t.Roles).HasField("_roles");
         builder.Ignore(t => t.RoleIds);
 
-        // Цели дела (TaskGoals) всегда загружаются вместе с делом — по ним видно, «камень» ли это
+        // Цель дела (TaskGoals) всегда загружается вместе с делом — по ней видно, «камень» ли это
         builder.Navigation(t => t.GoalLinks).AutoInclude();
-        builder.Ignore(t => t.GoalIds);
+        builder.Ignore(t => t.GoalLink);
+        builder.Ignore(t => t.GoalId);
         builder.Ignore(t => t.IsSession);
-        builder.Ignore(t => t.PrimaryGoalLink);
 
         builder.HasIndex(t => new { t.State, t.CategoryId, t.SortOrder });
         builder.HasIndex(t => new { t.State, t.PlannedDate });
@@ -71,15 +71,27 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         builder.Property(g => g.Quadrant).HasConversion<int?>();
         builder.Property(g => g.Days).HasConversion<int?>(); // набор дней — битовая маска
 
-        builder.HasOne<Role>().WithMany().HasForeignKey(g => g.RoleId).OnDelete(DeleteBehavior.Cascade);
+        // Роли цели — таблица GoalRoles (GoalId, RoleId, SortOrder — место цели в списке роли);
+        // удалили цель или роль — строка удаляется (что делать с целью без ролей, решает RoleService)
+        builder.OwnsMany(g => g.Roles, roles =>
+        {
+            roles.ToTable("GoalRoles");
+            roles.WithOwner().HasForeignKey("GoalId");
+            roles.HasKey("GoalId", nameof(GoalRole.RoleId));
+            roles.HasOne<Role>().WithMany().HasForeignKey(r => r.RoleId).OnDelete(DeleteBehavior.Cascade);
+            roles.HasIndex(r => r.RoleId);
+        });
+        builder.Navigation(g => g.Roles).HasField("_roles");
+        builder.Ignore(g => g.RoleIds);
+
         // Занятия цели — дела, связанные с ней через TaskGoals (см. TaskGoalConfiguration)
         builder.Ignore(g => g.Sessions);
         builder.Ignore(g => g.ActiveSessions);
         builder.Ignore(g => g.UnscheduledSession);
 
-        builder.HasIndex(g => new { g.WeekStart, g.RoleId, g.SortOrder });
+        builder.HasIndex(g => g.WeekStart);
 
-        // Серия: удалили серию (вместе с ролью) — цели остаются разовыми; на неделе у серии одна цель
+        // Серия: удалили серию (у неё не осталось ролей) — цели остаются разовыми; на неделе у серии одна цель
         builder.HasOne(g => g.Series).WithMany().HasForeignKey(g => g.SeriesId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(g => new { g.SeriesId, g.WeekStart }).IsUnique();
     }
@@ -94,13 +106,23 @@ public class GoalSeriesConfiguration : IEntityTypeConfiguration<GoalSeries>
         builder.Property(s => s.Quadrant).HasConversion<int?>();
         builder.Property(s => s.Days).HasConversion<int?>();
 
-        builder.HasOne<Role>().WithMany().HasForeignKey(s => s.RoleId).OnDelete(DeleteBehavior.Cascade);
+        // Роли шаблона серии — таблица GoalSeriesRoles (SeriesId, RoleId)
+        builder.OwnsMany(s => s.Roles, roles =>
+        {
+            roles.ToTable("GoalSeriesRoles");
+            roles.WithOwner().HasForeignKey("SeriesId");
+            roles.HasKey("SeriesId", nameof(SeriesRole.RoleId));
+            roles.HasOne<Role>().WithMany().HasForeignKey(r => r.RoleId).OnDelete(DeleteBehavior.Cascade);
+            roles.HasIndex(r => r.RoleId);
+        });
+        builder.Navigation(s => s.Roles).HasField("_roles");
+        builder.Ignore(s => s.RoleIds);
         builder.HasIndex(s => s.IsRecurring);
     }
 }
 
 /// <summary>
-/// Связь дела с целью (TaskGoals): одно дело может засчитываться в несколько целей.
+/// Связь дела с целью (TaskGoals): у дела — не больше одной цели.
 /// Удалили дело или цель — связь удаляется, само дело остаётся.
 /// </summary>
 public class TaskGoalConfiguration : IEntityTypeConfiguration<TaskGoal>

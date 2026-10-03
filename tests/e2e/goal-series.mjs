@@ -116,7 +116,7 @@ async function serverGoals(offset, role) {
     const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const board = await (await fetch('/api/board')).json();
     const roleId = board.roles.find(r => r.name === role).id;
-    return (await (await fetch(`/api/week/${week}`)).json()).goals.filter(g => g.roleId === roleId).map(g => g.title);
+    return (await (await fetch(`/api/week/${week}`)).json()).goals.filter(g => g.roles.some(r => r.roleId === roleId)).map(g => g.title);
   }, monday, offset, role);
 }
 

@@ -59,9 +59,10 @@ public interface IGoalRepository
 
     Task<List<WeeklyGoal>> GetForWeekAsync(DateOnly weekStart, CancellationToken ct = default);
 
+    /// <summary>Цели, у которых есть роль <paramref name="roleId"/>, на неделю — по их месту в этой роли.</summary>
     Task<List<WeeklyGoal>> GetForRoleAsync(int roleId, DateOnly weekStart, CancellationToken ct = default);
 
-    /// <summary>Цели роли за все недели (для удаления роли).</summary>
+    /// <summary>Цели с этой ролью за все недели (для удаления роли).</summary>
     Task<List<WeeklyGoal>> GetAllForRoleAsync(int roleId, CancellationToken ct = default);
 
     /// <summary>Цели серии с недели <paramref name="fromWeek"/> включительно, по неделям.</summary>
@@ -81,7 +82,12 @@ public interface IGoalSeriesRepository
     /// <summary>Постоянные серии, у которых могут появиться новые недели.</summary>
     Task<List<GoalSeries>> GetRecurringAsync(CancellationToken ct = default);
 
+    /// <summary>Серии, в шаблоне которых есть роль (для удаления роли).</summary>
+    Task<List<GoalSeries>> GetWithRoleAsync(int roleId, CancellationToken ct = default);
+
     void Add(GoalSeries series);
+
+    void Remove(GoalSeries series);
 }
 
 /// <summary>Сохранение всех изменений одной транзакцией.</summary>

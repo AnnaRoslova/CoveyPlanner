@@ -1,5 +1,5 @@
 @* Роли в окне: выбранные — маленькие чипы «● Тело ×», кнопка «+» открывает список всех ролей
-   (точка, название, галочка у выбранных; можно несколько). Locked — роли заданы не здесь («от цели»):
+   (точка, название, галочка у выбранных; можно несколько; Required — хотя бы одна). Locked — роли заданы не здесь («от цели»):
    только чипы, без «+» и «×». Стили — css/editor.css. *@
 
 <div class="tags" role="group" aria-label="@Label">
@@ -8,7 +8,7 @@
         var id = role.Id;
         <span class="tag" style="--c: @role.Color">
             <span class="dot"></span><span class="tag-name">@role.Name</span>
-            @if (!Locked)
+            @if (!Locked && !(Required && Selected.Count == 1))
             {
                 <button type="button" class="tag-x" title="Убрать" aria-label="Убрать роль «@role.Name»" @onclick="() => RemoveAsync(id)">
                     <Icon Name="x" Size="10" />
@@ -66,6 +66,10 @@
     [Parameter]
     public bool Locked { get; set; }
 
+    /// <summary>Хотя бы одна роль: последнюю снять нельзя (у неё нет «×», в списке она не снимается).</summary>
+    [Parameter]
+    public bool Required { get; set; }
+
     /// <summary>Подпись после чипов, когда роли не выбираются («от цели»).</summary>
     [Parameter]
     public string? LockedHint { get; set; }
@@ -77,6 +81,11 @@
 
     private Task ToggleAsync(int roleId)
     {
+        if (Required && Value.Count == 1 && Value.Contains(roleId))
+        {
+            return Task.CompletedTask; // последняя роль остаётся
+        }
+
         List<int> next = Value.Contains(roleId) ? [.. Value.Where(id => id != roleId)] : [.. Value, roleId];
         Value = next;
         return ValueChanged.InvokeAsync(next);

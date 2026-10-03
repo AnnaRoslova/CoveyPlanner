@@ -2,7 +2,6 @@ using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 using Planner.Core.Enums;
 using Planner.Core.Errors;
-using Planner.Core.Sorting;
 using Planner.Core.Time;
 
 namespace Planner.Core.Services;
@@ -20,6 +19,7 @@ public class GoalService(
     GoalSessions sessions,
     TaskPlacer placer,
     GoalRemover remover,
+    GoalOrdering ordering,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -34,8 +34,7 @@ public class GoalService(
     {
         var role = await GetRoleAsync(roleId, ct);
         var goal = WeeklyGoal.Create(roleId, weekStart, title);
-        var siblings = await goals.GetForRoleAsync(roleId, weekStart, ct);
-        SortOrdering.Place(siblings, goal, int.MaxValue);
+        await ordering.PlaceAsync(goal, roleId, int.MaxValue, ct: ct);
         goals.Add(goal);
         if (recurring ?? role.IsSharpenSaw)
         {
@@ -47,14 +46,13 @@ public class GoalService(
     }
 
     /// <summary>
-    /// Сохранить окно цели: название, роль, «раз в неделю» и шаблон занятий (время, квадрант, заметки,
+    /// Сохранить окно цели: название, роли, «раз в неделю» и шаблон занятий (время, квадрант, заметки,
     /// длительность). Изменения шаблона расходятся по занятиям — см. <see cref="WeeklyGoal.UpdateTemplate"/>.
-    /// Новая роль — цель встаёт в конец её списка, занятия получают эту роль.
+    /// Новая роль — цель встаёт в конец её списка; роли занятий — роли цели.
     /// </summary>
     public async Task<GoalUpdate> UpdateAsync(int id, GoalChanges changes, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        await LoadSessionGoalsAsync(goal, ct);
         if (changes.Quadrant is { } q && !Enum.IsDefined(q))
         {
             throw new DomainException("Квадрант должен быть от 1 до 4.");
@@ -79,12 +77,14 @@ public class GoalService(
             await placer.MoveToEndOfDayAsync(session, ct);
         }
 
-        if (changes.RoleId != goal.RoleId)
+        if (!changes.RoleIds.Distinct().Order().SequenceEqual(goal.RoleIds))
         {
-            await GetRoleAsync(changes.RoleId, ct);
-            var siblings = await goals.GetForRoleAsync(changes.RoleId, goal.WeekStart, ct);
-            goal.MoveToRole(changes.RoleId);
-            SortOrdering.Place(siblings, goal, int.MaxValue);
+            foreach (var roleId in changes.RoleIds)
+            {
+                await GetRoleAsync(roleId, ct);
+            }
+
+            await ordering.PlaceAtEndAsync(goal, goal.SetRoleIds(changes.RoleIds), ct: ct);
         }
 
         // Дни поменялись — занятия этой недели раскладываются по новым дням (с этой недели и дальше)
@@ -148,7 +148,6 @@ public class GoalService(
         foreach (var later in await LaterInSeriesAsync(goal, ct))
         {
             var laterDays = later.Days;
-            await LoadSessionGoalsAsync(later, ct);
             later.SetDays(goal.Days);
             later.SetTimesPerWeek(goal.TimesPerWeek);
             later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
@@ -158,12 +157,7 @@ public class GoalService(
                 await placer.MoveToEndOfDayAsync(session, ct);
             }
 
-            if (later.RoleId != goal.RoleId)
-            {
-                var siblings = await goals.GetForRoleAsync(goal.RoleId, later.WeekStart, ct);
-                later.MoveToRole(goal.RoleId);
-                SortOrdering.Place(siblings, later, int.MaxValue);
-            }
+            await ordering.PlaceAtEndAsync(later, later.SetRoleIds(goal.RoleIds), ct: ct);
 
             if (later.Days != laterDays)
             {
@@ -209,11 +203,8 @@ public class GoalService(
         }
         else
         {
-            // Сначала занятия только этой цели; общее с другими целями дело — лишь если своих открытых нет
             var open = goal.ActiveSessions.Where(t => t.State == TaskState.Planned).ToList();
-            session = Nearest(open.Where(t => t.GoalLinks.Count == 1).ToList(), today)
-                ?? Nearest(open.Where(t => t.GoalLinks.Count > 1).ToList(), today)
-                ?? sessions.Create(goal);
+            session = Nearest(open, today) ?? sessions.Create(goal);
 
             // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
             if (session.PlannedDate is null && isCurrentWeek)
@@ -256,20 +247,27 @@ public class GoalService(
     }
 
     /// <summary>
-    /// Переставить цель внутри роли или перенести к другой роли (та же неделя).
-    /// Постоянная цель переходит к другой роли и на следующих неделях.
+    /// Перетаскивание цели в список роли <paramref name="roleId"/> на позицию <paramref name="index"/> (та же неделя).
+    /// Из той же роли — просто порядок. Из другой роли (<paramref name="fromRoleId"/>): <paramref name="addRole"/> = false —
+    /// перенос, роль-источник заменяется новой; true (с Shift) — роль добавляется, остальные остаются.
+    /// Постоянная цель меняет роли и на следующих неделях.
     /// </summary>
-    public async Task<WeeklyGoal> MoveAsync(int id, int roleId, int index, CancellationToken ct = default)
+    public async Task<WeeklyGoal> MoveAsync(
+        int id, int roleId, int index, int? fromRoleId = null, bool addRole = false, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
         await GetRoleAsync(roleId, ct);
-        await LoadSessionGoalsAsync(goal, ct);
 
-        var otherRole = goal.RoleId != roleId;
-        var siblings = await goals.GetForRoleAsync(roleId, goal.WeekStart, ct);
-        goal.MoveToRole(roleId);
-        SortOrdering.Place(siblings, goal, index);
-        if (otherRole && goal.RepeatsAfterThisWeek)
+        var rolesBefore = goal.RoleIds;
+        goal.AddRole(roleId);
+        var from = fromRoleId ?? (rolesBefore.Count == 1 ? rolesBefore[0] : roleId);
+        if (!addRole && from != roleId && goal.HasRole(from))
+        {
+            goal.RemoveRole(from);
+        }
+
+        await ordering.PlaceAsync(goal, roleId, index, ct: ct);
+        if (!goal.RoleIds.SequenceEqual(rolesBefore) && goal.RepeatsAfterThisWeek)
         {
             await SpreadToLaterWeeksAsync(goal, null, ct);
         }
@@ -326,8 +324,7 @@ public class GoalService(
 
         goal.AddSession(task);
 
-        var siblings = await goals.GetForRoleAsync(roleId, weekStart, ct);
-        SortOrdering.Place(siblings, goal, index);
+        await ordering.PlaceAsync(goal, roleId, index, ct: ct);
         goals.Add(goal);
         if (role.IsSharpenSaw)
         {
@@ -346,12 +343,11 @@ public class GoalService(
     {
         var goal = await GetAsync(id, ct);
 
-        // Занятие без дня, засчитанное и в другие цели, остаётся им — в ленту встаёт новое дело
-        var task = goal.UnscheduledSession is { GoalLinks.Count: 1 } own ? own : null;
+        var task = goal.UnscheduledSession;
         if (task is null)
         {
             task = TaskItem.CreateSomeday(goal.Title, categoryId, Now);
-            task.SetRoles([goal.RoleId]);
+            task.SetRoles(goal.RoleIds);
             tasks.Add(task);
         }
         else
@@ -373,15 +369,6 @@ public class GoalService(
             .OrderBy(t => t.PlannedDate).ThenBy(t => t.StartTime ?? TimeOnly.MaxValue).ThenBy(t => t.SortOrder)
             .FirstOrDefault()
         ?? open.FirstOrDefault(t => t.PlannedDate is null);
-
-    /// <summary>Подгрузить все цели дел этой цели — чтобы роли и квадрант общих дел пересчитались от всех их целей.</summary>
-    private async Task LoadSessionGoalsAsync(WeeklyGoal goal, CancellationToken ct)
-    {
-        foreach (var session in goal.Sessions.Where(s => s.GoalLinks.Count > 1))
-        {
-            await sessions.LoadGoalsOfAsync(session, ct);
-        }
-    }
 
     private async Task<WeeklyGoal> GetAsync(int id, CancellationToken ct) =>
         await goals.FindAsync(id, ct) ?? throw new NotFoundException("Цель", id);

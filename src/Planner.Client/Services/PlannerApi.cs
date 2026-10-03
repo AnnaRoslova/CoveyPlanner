@@ -32,9 +32,9 @@ public class PlannerApi(HttpClient http)
     public Task<TaskDto> MoveTaskAsync(int id, TaskTargetDto target) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/tasks/{id}/move", target);
 
-    /// <summary>В какие цели засчитывается дело; в ответе — затронутые цели и заменённые занятия.</summary>
-    public Task<TaskGoalsResultDto> SetTaskGoalsAsync(int id, IReadOnlyList<int> goalIds) =>
-        SendAsync<TaskGoalsResultDto>(HttpMethod.Put, $"api/tasks/{id}/goals", new SetTaskGoalsRequest(goalIds));
+    /// <summary>Занятием какой цели сделать дело (null — отвязать); в ответе — затронутые цели и заменённые занятия.</summary>
+    public Task<TaskGoalResultDto> SetTaskGoalAsync(int id, int? goalId) =>
+        SendAsync<TaskGoalResultDto>(HttpMethod.Put, $"api/tasks/{id}/goal", new SetTaskGoalRequest(goalId));
 
     public Task<TaskDto> SetTaskDoneAsync(int id, bool isDone) =>
         SendAsync<TaskDto>(HttpMethod.Put, $"api/tasks/{id}/done", new SetDoneRequest(isDone));

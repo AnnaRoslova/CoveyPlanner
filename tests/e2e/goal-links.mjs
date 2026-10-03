@@ -1,6 +1,6 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// Одно дело — несколько целей: «Прогулка в парке» в Пн засчитывается и в «10к шагов» (Тело), и в «Побыть на природе» (Дух).
-// Связать: перетаскиванием дела на строку цели (подсветка «засчитать и в эту цель») и в окне дела — «засчитывается в цели».
+// Дело → занятие цели (у дела одна цель): перетаскивание дела на строку цели (подсветка «сделать занятием этой цели»);
+// было занятием другой цели — переходит. В окне дела выбора целей нет.
 // «Одно занятие цели в день»: другое невыполненное занятие заменяется (в корзину, «Вернуть»), выполненное — отказ.
 import puppeteer from 'puppeteer-core';
 
@@ -82,7 +82,7 @@ await api('POST', 'goals', { roleId: roleId('Тело'), weekStart: iso(monday),
 await api('POST', 'goals', { roleId: roleId('Дух'), weekStart: iso(monday), title: 'Побыть на природе' });
 await load();
 
-await check('«Прогулка в парке» в Пн → на строку «10к шагов»: подсветка «засчитать и в эту цель», у цели +1', async () => {
+await check('«Прогулка в парке» в Пн → на строку «10к шагов»: подсветка «сделать занятием этой цели», у цели +1', async () => {
   await addToDay(0, 'Прогулка в парке');
   let lit = null;
   await dragOnGoal(0, 'Прогулка в парке', '10к шагов', {
@@ -91,33 +91,29 @@ await check('«Прогулка в парке» в Пн → на строку «
       await page.screenshot({ path: `${SHOTS}/goal-links-hover.png` });
     },
   });
-  assert(lit === 'засчитать и в эту цель', `подсветка: ${lit}`);
+  assert(lit === 'сделать занятием этой цели', `подсветка: ${lit}`);
   assert(await goalDays('10к шагов') === 'Пн', `у цели: ${await goalDays('10к шагов')}`);
   const rows = await dayRows(0, 'Прогулка в парке');
   assert(rows.length === 1 && rows[0].rock, `в Пн: ${JSON.stringify(rows)}`);
 });
 
-await check('в окне дела «засчитывается в цели» — добавить «Природу»: у обеих +1, одна запись, две точки ролей, роли «от целей»', async () => {
+await check('в окне дела нет «засчитывается в цели»; роль — «от цели», без выбора', async () => {
   await page.evaluate(js => eval(js).querySelector('.title').click(), dayItemJs(0, 'Прогулка в парке')); await settle();
-  const on = await page.$$eval('.editor [aria-label="Цели"] .chip.on', cs => cs.map(c => c.textContent.trim()));
-  assert(JSON.stringify(on) === '["10к шагов"]', `выбрано: ${on}`);
-  await clickText('.editor [aria-label="Цели"] .chip', 'Побыть на природе');
-  assert((await page.$eval('.editor .field .from-goal', e => e.textContent)).includes('от целей'), 'роли не «от целей»');
-  await page.screenshot({ path: `${SHOTS}/goal-links-editor.png` });
-  await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(1200);
-  assert(await goalDays('10к шагов') === 'Пн' && await goalDays('Побыть на природе') === 'Пн', 'не у обеих целей');
-  const rows = await dayRows(0, 'Прогулка в парке');
-  assert(rows.length === 1 && rows[0].rock && rows[0].dots === 2, `в Пн: ${JSON.stringify(rows)}`);
-  await load();
-  assert((await dayRows(0, 'Прогулка в парке'))[0].dots === 2, 'после перезагрузки');
+  const labels = await page.$$eval('.editor .label', ls => ls.map(l => l.textContent.trim()));
+  assert(!labels.some(l => /цел/i.test(l)), `поля: ${labels}`);
+  assert(!(await page.$('.editor .tag-add')), 'роль можно выбирать');
+  assert((await page.$eval('.editor .tags .hint', e => e.textContent)).includes('от цели'), 'нет «от цели»');
+  await page.keyboard.press('Escape'); await settle();
 });
 
-await check('отметка «выполнено» общая: засчитывается в обе цели', async () => {
-  await page.evaluate(js => eval(js).querySelector('.ck-hit').click(), dayItemJs(0, 'Прогулка в парке')); await sleep(900);
-  const done = await page.evaluate(() => [...document.querySelectorAll('.role .item')]
-    .filter(i => ['10к шагов', 'Побыть на природе'].includes(i.querySelector('.title').textContent.trim()))
-    .map(i => i.classList.contains('done')));
-  assert(JSON.stringify(done) === '[true,true]', `выполнены: ${done}`);
+await check('то же дело → на строку «Побыть на природе»: переходит к ней, у «10к шагов» его больше нет', async () => {
+  await dragOnGoal(0, 'Прогулка в парке', 'Побыть на природе');
+  assert(await goalDays('Побыть на природе') === 'Пн', `у «Природы»: ${await goalDays('Побыть на природе')}`);
+  assert(!(await goalDays('10к шагов')), `у «10к шагов»: ${await goalDays('10к шагов')}`);
+  const rows = await dayRows(0, 'Прогулка в парке');
+  assert(rows.length === 1 && rows[0].rock && rows[0].dots === 0, `в Пн: ${JSON.stringify(rows)}`); // роль одна — «Дух»
+  await load();
+  assert(await goalDays('Побыть на природе') === 'Пн' && !(await goalDays('10к шагов')), 'после перезагрузки');
 });
 
 await check('у цели уже есть невыполненное занятие в этот день — оно заменяется (в корзину), «Вернуть» возвращает', async () => {
@@ -139,18 +135,6 @@ await check('выполненное занятие в этот день — св
   await dragOnGoal(1, 'Пробежка у реки', 'Бег');
   assert(!(await dayRows(1, 'Пробежка у реки'))[0].rock, 'связалось');
   assert((await toast()) === 'уже есть в этот день', `плашка: ${await toast()}`);
-});
-
-await check('удалить одну из целей — общее дело остаётся в другой (не в корзине)', async () => {
-  const row = (await page.evaluateHandle(goalRowJs('10к шагов'))).asElement();
-  await row.hover();
-  await (await row.$('.row-action[title="Удалить цель"]')).click(); await settle();
-  if (await page.$('.confirm-delete')) await clickText('.confirm-delete .btn', 'Только на этой неделе');
-  await page.click('.nav[title="Следующая неделя"]'); await sleep(900); // листание отправляет удаление на сервер
-  await page.click('.today-b'); await sleep(900);
-  const rows = await dayRows(0, 'Прогулка в парке');
-  assert(rows.length === 1 && rows[0].rock && rows[0].dots === 0, `в Пн: ${JSON.stringify(rows)}`); // одна роль — без точек
-  assert(await goalDays('Побыть на природе') === 'Пн', 'у «Природы» пропало');
 });
 
 await check('в консоли нет ошибок', async () => {

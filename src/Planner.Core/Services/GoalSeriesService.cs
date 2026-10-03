@@ -1,6 +1,5 @@
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
-using Planner.Core.Sorting;
 
 namespace Planner.Core.Services;
 
@@ -10,7 +9,7 @@ namespace Planner.Core.Services;
 /// Сам не сохраняет изменения, кроме <see cref="EnsureWeeksAsync"/>.
 /// </summary>
 public class GoalSeriesService(
-    IGoalSeriesRepository series, IGoalRepository goals, GoalSessions sessions, IUnitOfWork unitOfWork)
+    IGoalSeriesRepository series, IGoalRepository goals, GoalSessions sessions, GoalOrdering ordering, IUnitOfWork unitOfWork)
 {
     // Цели, созданные в этом запросе и ещё не сохранённые: запросы к базе их не видят
     private readonly List<WeeklyGoal> _pending = [];
@@ -84,14 +83,11 @@ public class GoalSeriesService(
         _pending.FirstOrDefault(g => g.Series == owner && g.WeekStart == week)
         ?? (owner.Id == 0 ? null : await goals.FindInSeriesAsync(owner.Id, week, ct));
 
+    /// <summary>Новая цель — в конец списка каждой своей роли.</summary>
     private async Task AddToEndOfRoleAsync(WeeklyGoal goal, CancellationToken ct)
     {
         // Соседи — и сохранённые, и только что созданные здесь же (у них ещё нет Id)
-        var siblings = (await goals.GetForRoleAsync(goal.RoleId, goal.WeekStart, ct))
-            .Concat(_pending.Where(g => g.RoleId == goal.RoleId && g.WeekStart == goal.WeekStart))
-            .OrderBy(g => g.SortOrder)
-            .ToList();
-        SortOrdering.Place(siblings, goal, int.MaxValue);
+        await ordering.PlaceAtEndAsync(goal, goal.Roles, _pending, ct);
         goals.Add(goal);
         _pending.Add(goal);
     }

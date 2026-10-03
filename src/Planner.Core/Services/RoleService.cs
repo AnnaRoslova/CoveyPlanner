@@ -9,6 +9,7 @@ namespace Planner.Core.Services;
 public class RoleService(
     IRoleRepository roles,
     IGoalRepository goals,
+    IGoalSeriesRepository series,
     GoalRemover remover,
     IUnitOfWork unitOfWork)
 {
@@ -49,9 +50,10 @@ public class RoleService(
     }
 
     /// <summary>
-    /// Удалить роль вместе с её целями; занятия целей — как при удалении цели (<see cref="GoalRemover"/>).
-    /// Занятия без дня возвращаются в ленту (без своей категории — в «неразобранное»);
-    /// у остальных дел роль просто сбрасывается (на уровне БД).
+    /// Удалить роль. Цели, у которых это единственная роль, удаляются; занятия — как при удалении цели
+    /// (<see cref="GoalRemover"/>: занятия без дня — в ленту, в свою категорию или в «неразобранное»).
+    /// У целей с другими ролями роль просто убирается (вместе с ролью их занятий); так же в шаблонах серий —
+    /// серия без ролей удаляется (её цели остаются разовыми). У остальных дел роль сбрасывается (на уровне БД).
     /// </summary>
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
@@ -60,7 +62,22 @@ public class RoleService(
 
         foreach (var goal in await goals.GetAllForRoleAsync(id, ct))
         {
-            await remover.RemoveAsync(goal, ct);
+            if (goal.RoleIds.Count > 1)
+            {
+                goal.RemoveRole(id);
+            }
+            else
+            {
+                await remover.RemoveAsync(goal, ct);
+            }
+        }
+
+        foreach (var withRole in await series.GetWithRoleAsync(id, ct))
+        {
+            if (!withRole.RemoveRole(id))
+            {
+                series.Remove(withRole);
+            }
         }
 
         roles.Remove(role);

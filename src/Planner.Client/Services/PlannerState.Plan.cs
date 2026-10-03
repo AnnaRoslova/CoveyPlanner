@@ -7,12 +7,8 @@ public partial class PlannerState
 {
     public TaskDto? FindTask(int taskId) => _tasks.GetValueOrDefault(taskId);
 
-    /// <summary>Главная цель дела (от неё шаблон и квадрант) — если она на показанной неделе.</summary>
-    public WeeklyGoalDto? GoalOfTask(int taskId) => FindTask(taskId)?.PrimaryGoalId is { } goalId ? FindGoal(goalId) : null;
-
-    /// <summary>Цели показанной недели, в которые засчитывается дело (по порядку связей; первая — главная).</summary>
-    public IReadOnlyList<WeeklyGoalDto> GoalsOfTask(int taskId) =>
-        FindTask(taskId)?.GoalIds.Select(FindGoal).OfType<WeeklyGoalDto>().ToList() ?? [];
+    /// <summary>Цель, занятием которой является дело, — если она на показанной неделе.</summary>
+    public WeeklyGoalDto? GoalOfTask(int taskId) => FindTask(taskId)?.GoalId is { } goalId ? FindGoal(goalId) : null;
 
     /// <summary>«+ дело» внизу дня: в конец дел без времени. false — не сохранилось.</summary>
     public async Task<bool> CreateDayTaskAsync(string title, DateOnly date)
@@ -23,7 +19,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, null, [], [], null, TaskStateDto.Planned, date, null, null,
+        var temp = new TaskDto(NextTempId(), title, null, null, [], null, null, TaskStateDto.Planned, date, null, null,
             SortOrder: NextUntimedOrder(date), TrashedAt: null);
         _tasks[temp.Id] = temp;
 
@@ -75,16 +71,16 @@ public partial class PlannerState
         // В другой день этой недели, где у цели уже есть занятие, — нельзя (если не разрешено несколько в день);
         // на другой неделе то же проверит сервер
         if (task.PlannedDate != date
-            && GoalsOfTask(taskId).Where(g => !g.AllowSeveralPerDay && g.WeekStart == RuDates.WeekStartOf(date))
-                .SelectMany(g => g.Sessions).FirstOrDefault(s => s.PlannedDate == date && s.TaskId != taskId) is { } taken)
+            && GoalOfTask(taskId) is { AllowSeveralPerDay: false } dayGoal && dayGoal.WeekStart == RuDates.WeekStartOf(date)
+            && dayGoal.Sessions.FirstOrDefault(s => s.PlannedDate == date && s.TaskId != taskId) is { } taken)
         {
             RefuseDayTaken(taken.TaskId);
             return false;
         }
 
-        // Занятие целей на другую неделю: там оно станет занятием тех же целей (их решает сервер) — потом перечитываем
-        var otherWeekRock = task.GoalIds.Any(goalId =>
-            FindGoal(goalId) is not { } goal || goal.WeekStart != RuDates.WeekStartOf(date));
+        // Занятие на другую неделю: там оно станет занятием той же цели (её решает сервер) — потом перечитываем
+        var otherWeekRock = task.GoalId is { } rockGoalId
+            && (FindGoal(rockGoalId) is not { } rockGoal || rockGoal.WeekStart != RuDates.WeekStartOf(date));
 
         PlaceInDayLocally(task, date, index);
         if (otherWeekRock)
@@ -187,11 +183,11 @@ public partial class PlannerState
             return;
         }
 
-        // У занятия целей роли — роли всех его целей, квадрант — от первой цели, где он задан (так же решает сервер)
-        if (GoalsOfTask(taskId) is { Count: > 0 } goals)
+        // У занятия роли и квадрант — от цели (так же решает сервер)
+        if (GoalOfTask(taskId) is { } goal)
         {
-            roleIds = [.. goals.Select(g => g.RoleId).Distinct()];
-            quadrant = goals.Select(g => g.Quadrant).FirstOrDefault(q => q is not null);
+            roleIds = goal.RoleIds;
+            quadrant = goal.Quadrant;
         }
 
         title = title.Trim();

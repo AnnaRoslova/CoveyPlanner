@@ -6,29 +6,25 @@ using Planner.Core.Time;
 
 namespace Planner.Core.Services;
 
-/// <summary>Результат «засчитать дело в цели»: дело, затронутые цели и занятия, которые дело заменило (они в корзине).</summary>
-public sealed record TaskGoalsUpdate(TaskItem Task, IReadOnlyList<WeeklyGoal> Goals, IReadOnlyList<TaskItem> Replaced);
+/// <summary>Результат «сделать дело занятием цели»: дело, затронутые цели (прежняя и новая) и занятия, которые дело заменило (они в корзине).</summary>
+public sealed record TaskGoalUpdate(TaskItem Task, IReadOnlyList<WeeklyGoal> Goals, IReadOnlyList<TaskItem> Replaced);
 
-/// <summary>
-/// В какие цели недели засчитывается дело (одно дело — несколько целей: «Прогулка в парке» — и «10к шагов», и «Природа»).
-/// Связывают перетаскиванием дела на строку цели и в окне дела.
-/// </summary>
+/// <summary>Чьё занятие дело: перетаскивание дела на строку цели делает его занятием этой цели (у дела — одна цель).</summary>
 public class TaskGoalService(
     ITaskRepository tasks,
     IGoalRepository goals,
-    GoalSessions sessions,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
     /// <summary>
-    /// Задать набор целей дела (порядок — порядок новых связей; уже связанные сохраняют место, первая — главная).
-    /// Цели — той же недели, что и дело. Мысль из ленты становится занятием без дня; отвязали последнюю цель
-    /// у занятия без дня — оно возвращается в ленту.
+    /// Сделать дело занятием цели <paramref name="goalId"/> (null — отвязать). Было занятием другой цели — переходит к этой
+    /// (у прежней прогресс уменьшается). Цель — той же недели, что и дело. Мысль из ленты становится занятием без дня;
+    /// отвязали занятие без дня — оно возвращается в ленту.
     /// «Одно занятие цели в день» (если у цели не разрешено несколько): другое невыполненное занятие цели в тот же день
-    /// заменяется этим делом (уходит в корзину), выполненное — связь не создаётся («Уже есть в этот день.»).
+    /// заменяется этим делом (уходит в корзину), выполненное — дело не привязывается («Уже есть в этот день.»).
     /// </summary>
-    public async Task<TaskGoalsUpdate> SetGoalsAsync(int taskId, IReadOnlyList<int> goalIds, CancellationToken ct = default)
+    public async Task<TaskGoalUpdate> SetGoalAsync(int taskId, int? goalId, CancellationToken ct = default)
     {
         var task = await tasks.FindAsync(taskId, ct) ?? throw new NotFoundException("Дело", taskId);
         if (task.State == TaskState.Trashed)
@@ -36,67 +32,56 @@ public class TaskGoalService(
             throw new DomainException("Дело в корзине.");
         }
 
-        var current = await sessions.LoadGoalsOfAsync(task, ct);
-        var wanted = new List<WeeklyGoal>();
-        foreach (var goalId in goalIds.Distinct())
+        // Прежняя цель загружается — тогда связь с ней снимается через неё саму (и её прогресс виден в ответе)
+        var old = task.GoalId is { } oldId ? await goals.FindAsync(oldId, ct) : null;
+        var goal = goalId is { } id ? await goals.FindAsync(id, ct) ?? throw new NotFoundException("Цель", id) : null;
+        if (goal == old)
         {
-            wanted.Add(current.FirstOrDefault(g => g.Id == goalId)
-                       ?? await goals.FindAsync(goalId, ct)
-                       ?? throw new NotFoundException("Цель", goalId));
+            return new TaskGoalUpdate(task, goal is null ? [] : [goal], []);
         }
 
-        var week = task.PlannedDate is { } date ? Week.StartOf(date) : wanted.FirstOrDefault()?.WeekStart;
-        if (wanted.Any(g => g.WeekStart != week))
-        {
-            throw new DomainException("Засчитать можно только в цели той же недели, что и дело.");
-        }
-
-        // Сначала проверяем все новые цели, потом меняем: отказ не должен оставить половину связей
-        var added = wanted.Where(g => !current.Contains(g)).ToList();
         var replaced = new List<TaskItem>();
-        foreach (var goal in added)
+        if (goal is not null)
         {
-            if (task.PlannedDate is not { } day || goal.AllowSeveralPerDay)
+            if (task.PlannedDate is { } date && Week.StartOf(date) != goal.WeekStart)
             {
-                continue;
+                throw new DomainException("Занятием можно сделать только дело той же недели, что и цель.");
             }
 
-            var others = goal.ActiveSessions.Where(t => t.PlannedDate == day && t != task).ToList();
-            if (others.Any(t => t.State == TaskState.Done))
+            if (task.PlannedDate is { } day && !goal.AllowSeveralPerDay)
             {
-                throw new DomainException(WeeklyGoal.DayTakenMessage);
+                var others = goal.ActiveSessions.Where(t => t.PlannedDate == day && t != task).ToList();
+                if (others.Any(t => t.State == TaskState.Done))
+                {
+                    throw new DomainException(WeeklyGoal.DayTakenMessage);
+                }
+
+                replaced.AddRange(others);
             }
 
-            replaced.AddRange(others.Where(t => !replaced.Contains(t)));
-        }
+            var now = clock.GetUtcNow().UtcDateTime;
+            foreach (var other in replaced)
+            {
+                other.Trash(now); // в корзине занятие остаётся связанным с целью, но не считается
+            }
 
-        var now = clock.GetUtcNow().UtcDateTime;
-        foreach (var old in replaced)
-        {
-            old.Trash(now); // в корзине занятие остаётся связанным с целями, но не считается
-        }
+            if (task.State == TaskState.Someday)
+            {
+                task.PlanForWeek(); // мысль из ленты — занятие без дня
+            }
 
-        foreach (var goal in current.Where(g => !wanted.Contains(g)))
-        {
-            goal.RemoveSession(task);
+            goal.AddSession(task); // от прежней цели дело отвязывается само
         }
-
-        if (task.State == TaskState.Someday && added.Count > 0)
+        else
         {
-            task.PlanForWeek(); // мысль из ленты — занятие без дня
-        }
-
-        foreach (var goal in added)
-        {
-            goal.AddSession(task);
-        }
-
-        if (!task.IsSession && task.State == TaskState.Planned && task.PlannedDate is null)
-        {
-            await placer.ReturnToSomedayAsync(task, ct); // занятие без дня без целей нигде не видно — в ленту
+            task.DetachFromGoal();
+            if (task.State == TaskState.Planned && task.PlannedDate is null)
+            {
+                await placer.ReturnToSomedayAsync(task, ct); // занятие без дня без цели нигде не видно — в ленту
+            }
         }
 
         await unitOfWork.SaveChangesAsync(ct);
-        return new TaskGoalsUpdate(task, current.Union(wanted).ToList(), replaced);
+        return new TaskGoalUpdate(task, new[] { old, goal }.OfType<WeeklyGoal>().ToList(), replaced);
     }
 }

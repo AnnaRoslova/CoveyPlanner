@@ -19,7 +19,7 @@ public static class GoalEndpoints
 
         goals.MapPut("/{id:int}", async (int id, UpdateGoalRequest request, GoalService service, CancellationToken ct) =>
             (await service.UpdateAsync(id, new GoalChanges(
-                request.Title, request.RoleId, request.TimesPerWeek, request.StartTime,
+                request.Title, request.RoleIds, request.TimesPerWeek, request.StartTime,
                 request.Quadrant.ToQuadrant(), request.Notes, request.DurationMinutes, request.IsRecurring,
                 request.AllowSeveralPerDay, (Weekdays?)request.Days), ct))
             .ToUpdateResultDto());
@@ -37,9 +37,9 @@ public static class GoalEndpoints
             return Results.NoContent();
         });
 
-        // Переставить внутри роли или перенести к другой роли
+        // Переставить внутри роли, перенести к другой роли или (с Shift) добавить роль
         goals.MapPost("/{id:int}/move", async (int id, MoveGoalRequest request, GoalService service, CancellationToken ct) =>
-            (await service.MoveAsync(id, request.RoleId, request.Index, ct)).ToDto());
+            (await service.MoveAsync(id, request.RoleId, request.Index, request.FromRoleId, request.AddRole, ct)).ToDto());
 
         // Цель → день: новое занятие
         goals.MapPost("/{id:int}/schedule", async (int id, TaskTargetDto target, GoalService service, CancellationToken ct) =>

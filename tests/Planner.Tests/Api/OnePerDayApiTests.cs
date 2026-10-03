@@ -11,7 +11,7 @@ public class OnePerDayApiTests : ApiTestBase
         var role = (await GetBoardAsync()).Roles.First(r => !r.IsSharpenSaw);
         var goal = await PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(role.Id, Monday, title));
         return (await PutAsync<GoalUpdateResultDto>($"/api/goals/{goal.Id}",
-            new UpdateGoalRequest(title, role.Id, 3, null, null, null, null, AllowSeveralPerDay: several))).Goal;
+            new UpdateGoalRequest(title, [role.Id], 3, null, null, null, null, AllowSeveralPerDay: several))).Goal;
     }
 
     private Task<HttpResponseMessage> ScheduleAsync(int goalId, DateOnly date) =>
@@ -91,7 +91,7 @@ public class OnePerDayApiTests : ApiTestBase
         await GetWeekAsync(Monday.AddDays(7));
 
         await PutAsync<GoalUpdateResultDto>($"/api/goals/{goal.Id}",
-            new UpdateGoalRequest("Чтение", role.Id, 2, null, null, null, null, AllowSeveralPerDay: true));
+            new UpdateGoalRequest("Чтение", [role.Id], 2, null, null, null, null, AllowSeveralPerDay: true));
 
         Assert.True((await GetWeekAsync(Monday.AddDays(7))).Goals.Single().AllowSeveralPerDay);
         Assert.True((await GetWeekAsync(Monday.AddDays(14))).Goals.Single().AllowSeveralPerDay);
