@@ -26,6 +26,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string RoleZone = "role";       // цели одной роли
     public const string RolesZone = "roles";     // список пользовательских ролей
     public const string TrashZone = "trash";     // значок корзины внизу ленты
+    public const string GoalZone = "goal";       // строка цели: засчитать дело и в эту цель
 
     /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
     public const string UnsortedKey = "unsorted";
@@ -41,6 +42,9 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
 
     /// <summary>Список ролей: только роли (порядок).</summary>
     public const string RolesAccepts = RoleItem;
+
+    /// <summary>Строка цели: дела из дней и из ленты — засчитать и в эту цель.</summary>
+    public const string GoalAccepts = SomedayItem + " " + DayItem;
 
     /// <summary>Стрелки недели: листают во время перетаскивания дела из ленты или из дня (цели привязаны к своей неделе).</summary>
     public const string FlipAccepts = SomedayItem + " " + DayItem;
@@ -138,6 +142,11 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
             case { Kind: SomedayItem or DayItem, Zone: DayZone }
                 when DateOnly.TryParseExact(drop.Key, "yyyy-MM-dd", out var date):
                 await state.MoveTaskToDayAsync(drop.Id, date, drop.Index);
+                break;
+
+            // Лента или день → строка цели: дело засчитывается и в эту цель
+            case { Kind: SomedayItem or DayItem, Zone: GoalZone } when int.TryParse(drop.Key, out var goalId):
+                await state.LinkTaskToGoalAsync(drop.Id, goalId);
                 break;
 
             // Лента или день → роль: дело становится целью недели

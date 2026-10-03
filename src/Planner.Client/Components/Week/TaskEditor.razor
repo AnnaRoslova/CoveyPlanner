@@ -1,7 +1,7 @@
 @* Окно редактирования дела: название, роли (можно несколько), дата (другой день, другая неделя или «без даты» — в ленту),
    время, квадрант, длительность, заметки; «в корзину».
-   У занятия цели роль и квадрант задаются у цели (здесь только видны), а время, длительность
-   и заметки могут быть «своими» — тогда метка «своё» и кнопка «как у цели».
+   «Засчитывается в цели» — цели недели (можно несколько). У занятия целей роли и квадрант — от целей (здесь только видны),
+   а время, длительность и заметки могут быть «своими» относительно главной цели — метка «своё» и кнопка «как у цели».
    Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
 @inject PlannerState State
 
@@ -11,7 +11,15 @@
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
-    @if (Goal is { } goal)
+    @if (SelectedGoals.Count > 1)
+    {
+        <div class="rock-note">
+            <span class="pill-rock">камень</span>
+            засчитывается в @SelectedGoals.Count @(SelectedGoals.Count < 5 ? "цели" : "целей"):
+            @string.Join(", ", SelectedGoals.Select(g => $"«{g.Title}»"))
+        </div>
+    }
+    else if (Goal is { } goal)
     {
         <div class="rock-note">
             <span class="pill-rock">камень</span>
@@ -25,11 +33,15 @@
 
     <div class="field">
         <div class="label">Роль</div>
-        @if (Goal is { } roleGoal)
+        @if (SelectedGoals.Count > 0)
         {
-            <div class="from-goal" style="--c: @State.FindRole(roleGoal.RoleId)?.Color">
-                <span class="dot"></span>@State.FindRole(roleGoal.RoleId)?.Name
-                <span class="hint">· задаётся у цели</span>
+            @* Роли дела — роли всех его целей *@
+            <div class="from-goal">
+                @foreach (var role in State.OrderedRoles.Where(r => SelectedGoals.Any(g => g.RoleId == r.Id)))
+                {
+                    <span class="goal-role" style="--c: @role.Color"><span class="dot"></span>@role.Name</span>
+                }
+                <span class="hint">· от целей</span>
             </div>
         }
         else
@@ -44,6 +56,29 @@
                     <button type="button" class="chip @(on ? "on" : "")" style="--c: @role.Color" aria-pressed="@(on ? "true" : "false")"
                             @onclick="() => ToggleRole(role.Id)">
                         <span class="dot"></span>@role.Name
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    @* Цели недели, в которые засчитывается дело: можно несколько; сняли чип — дело больше не засчитывается в эту цель *@
+    <div class="field">
+        <div class="label">Засчитывается в цели</div>
+        @if (WeekGoals.Count == 0)
+        {
+            <div class="date-hint">на этой неделе целей нет</div>
+        }
+        else
+        {
+            <div class="chips" role="group" aria-label="Цели">
+                @foreach (var weekGoal in WeekGoals)
+                {
+                    var goalId = weekGoal.Id;
+                    var on = _goalIds.Contains(goalId);
+                    <button type="button" class="chip @(on ? "on" : "")" style="--c: @State.FindRole(weekGoal.RoleId)?.Color"
+                            aria-pressed="@(on ? "true" : "false")" @onclick="() => ToggleGoal(goalId)">
+                        <span class="dot"></span>@weekGoal.Title
                     </button>
                 }
             </div>
@@ -95,11 +130,11 @@
 
         <div class="field">
             <div class="label">Квадрант</div>
-            @if (Goal is { } quadGoal)
+            @if (SelectedGoals.Count > 0)
             {
                 <div class="from-goal">
-                    @(quadGoal.Quadrant is { } gq ? QuadrantPicker.Roman(gq) : "—")
-                    <span class="hint">· задаётся у цели</span>
+                    @(Quadrant is { } gq ? QuadrantPicker.Roman(gq) : "—")
+                    <span class="hint">· от целей</span>
                 </div>
             }
             else
@@ -160,10 +195,27 @@
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    private WeeklyGoalDto? Goal => State.GoalOfTask(EditedTask.Id);
+    private readonly List<int> _goalIds = [];
+
+    /// <summary>Выбранные цели по порядку (первая — главная: от неё шаблон).</summary>
+    private List<WeeklyGoalDto> SelectedGoals => _goalIds.Select(State.FindGoal).OfType<WeeklyGoalDto>().ToList();
+
+    /// <summary>Главная цель дела (от неё «своё / как у цели»).</summary>
+    private WeeklyGoalDto? Goal => SelectedGoals.FirstOrDefault();
+
+    /// <summary>Цели показанной недели — в порядке ролей, как в левой панели.</summary>
+    private List<WeeklyGoalDto> WeekGoals => State.OrderedRoles.SelectMany(r => State.GoalsFor(r.Id)).Where(g => g.Id > 0).ToList();
+
+    private void ToggleGoal(int goalId)
+    {
+        if (!_goalIds.Remove(goalId))
+        {
+            _goalIds.Add(goalId);
+        }
+    }
 
     /// <summary>Квадрант, который будет у дела: у занятия — всегда цели.</summary>
-    private int? Quadrant => Goal is { } goal ? goal.Quadrant : _quadrant;
+    private int? Quadrant => SelectedGoals.Count > 0 ? SelectedGoals.Select(g => g.Quadrant).FirstOrDefault(q => q is not null) : _quadrant;
 
     // «Своё» — значение занятия отличается от цели (так же считает сервер)
     private bool OwnTime(WeeklyGoalDto goal) => EditedTask.PlannedDate is not null && _time != goal.StartTime;
@@ -179,6 +231,7 @@
         _title = EditedTask.Title;
         _notes = EditedTask.Notes;
         _roleIds.UnionWith(EditedTask.RoleIds);
+        _goalIds.AddRange(EditedTask.GoalIds);
         _time = EditedTask.StartTime;
         _quadrant = EditedTask.Quadrant;
         _duration = EditedTask.DurationMinutes;
@@ -231,6 +284,10 @@
         var task = EditedTask;
         await OnClose.InvokeAsync();
         await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
+        if (_goalIds.Count != task.GoalIds.Count || !_goalIds.All(task.GoalIds.Contains))
+        {
+            await State.SetTaskGoalsAsync(task.Id, [.. _goalIds]);
+        }
         if (_date != task.PlannedDate)
         {
             await State.MoveTaskToDateAsync(task.Id, _date);

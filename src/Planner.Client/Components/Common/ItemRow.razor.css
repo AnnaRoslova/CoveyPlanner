@@ -226,3 +226,28 @@
         box-shadow: inset 0 0 0 2px transparent;
     }
 }
+
+/* Цель под перетаскиваемым делом: «засчитать и в эту цель» (класс ставит js/dnd.js) */
+.item[data-drop-hint] {
+    position: relative;
+}
+
+.item.drop-hover {
+    background: var(--a-soft);
+    box-shadow: inset 0 0 0 2px var(--a-deep);
+}
+
+.item.drop-hover::after {
+    content: attr(data-drop-hint);
+    position: absolute;
+    right: 6px;
+    bottom: -9px;
+    z-index: 2;
+    padding: 1px 8px;
+    border-radius: 20px;
+    background: var(--a-deep);
+    color: var(--surface);
+    font-size: 10.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}

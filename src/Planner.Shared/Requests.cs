@@ -70,3 +70,6 @@ public sealed record GoalFromTaskRequest(int TaskId, int RoleId, DateOnly WeekSt
 
 /// <summary>CategoryId = null — в «неразобранное».</summary>
 public sealed record GoalToSomedayRequest(int? CategoryId, int Index);
+
+/// <summary>В какие цели недели засчитывается дело (порядок новых связей; пусто — ни в какие).</summary>
+public sealed record SetTaskGoalsRequest(IReadOnlyList<int> GoalIds);

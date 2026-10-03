@@ -43,6 +43,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<TaskPlacer>();
         services.AddScoped<GoalRemover>();
         services.AddScoped<GoalSessions>();
+        services.AddScoped<TaskGoalService>();
         services.AddScoped<GoalSeriesService>();
         services.AddScoped<TaskService>();
         services.AddScoped<CategoryService>();

@@ -16,7 +16,7 @@ public class WeeklyGoal : ISortable
     public const int MinTimesPerWeek = 1;
     public const int MaxTimesPerWeek = 7;
 
-    private readonly List<TaskItem> _sessions = [];
+    private readonly List<TaskGoal> _links = [];
 
     private WeeklyGoal()
     {
@@ -65,10 +65,13 @@ public class WeeklyGoal : ISortable
     public bool RepeatsAfterThisWeek => Series?.RepeatsAfter(WeekStart) ?? false;
 
     /// <summary>Все занятия цели, включая те, что в корзине. Репозиторий подгружает их вместе с целью.</summary>
-    public IReadOnlyList<TaskItem> Sessions => _sessions;
+    public IReadOnlyList<TaskItem> Sessions => _links.Select(l => l.Task).ToList();
+
+    /// <summary>Связи с делами-занятиями (таблица TaskGoals).</summary>
+    public IReadOnlyCollection<TaskGoal> Links => _links;
 
     /// <summary>Занятия, которые считаются: без корзины.</summary>
-    public IEnumerable<TaskItem> ActiveSessions => _sessions.Where(t => t.State != TaskState.Trashed);
+    public IEnumerable<TaskItem> ActiveSessions => Sessions.Where(t => t.State != TaskState.Trashed);
 
     public int DoneCount => ActiveSessions.Count(t => t.State == TaskState.Done);
 
@@ -173,9 +176,14 @@ public class WeeklyGoal : ISortable
         DurationMinutes = TextRules.Duration(durationMinutes);
 
         var lostTime = new List<TaskItem>();
-        foreach (var session in _sessions)
+        foreach (var session in Sessions.Where(IsPrimaryFor))
         {
-            session.Quadrant = Quadrant;
+            // Квадрант — от главной цели, а если у неё нет — от следующей связанной (так же при связывании)
+            if (!session.RefreshFromGoals())
+            {
+                session.Quadrant = Quadrant;
+            }
+
             if (session.State != TaskState.Planned)
             {
                 continue; // выполненные — история, в корзине — не трогаем
@@ -234,36 +242,62 @@ public class WeeklyGoal : ISortable
         TimesPerWeek = Days is { } days ? days.Count() : times;
     }
 
-    /// <summary>Перенести к другой роли; занятия переходят вместе с целью.</summary>
+    /// <summary>
+    /// Перенести к другой роли; занятия переходят вместе с целью (роли занятия — роли всех его целей;
+    /// у дела нескольких целей их должен подгрузить сервис — иначе роль просто заменяется).
+    /// </summary>
     public void MoveToRole(int roleId)
     {
+        var oldRoleId = RoleId;
         RoleId = roleId;
-        foreach (var session in _sessions)
+        foreach (var session in Sessions)
         {
-            session.SetRoles([roleId]);
+            if (!session.RefreshFromGoals())
+            {
+                session.SetRoles(session.RoleIds.Where(id => id != oldRoleId).Append(roleId));
+            }
         }
     }
 
-    /// <summary>Сделать дело занятием цели. Через навигацию EF проставит GoalId и для ещё не сохранённой цели.</summary>
+    /// <summary>Эта цель — главная у дела (от неё шаблон и квадрант).</summary>
+    public bool IsPrimaryFor(TaskItem task) =>
+        task.PrimaryGoalLink is { } primary && (primary.Goal == this || (Id != 0 && primary.GoalId == Id));
+
+    /// <summary>
+    /// Засчитать дело в эту цель (связь TaskGoals; через навигацию EF проставит Id и для ещё не сохранённой цели).
+    /// Первая связь дела — главная: роль и квадрант от этой цели; следующая — роли всех целей.
+    /// </summary>
     public void AddSession(TaskItem task)
     {
-        if (task.GoalId is not null && task.GoalId != Id)
+        if (_links.Any(l => l.Task == task))
         {
-            throw new DomainException("Это дело уже связано с другой целью.");
+            return;
         }
 
-        task.SetRoles([RoleId]); // у занятия ровно одна роль — роль цели
-        task.Quadrant = Quadrant;
-        if (!_sessions.Contains(task))
+        var link = new TaskGoal(task, this, task.NextGoalPosition);
+        _links.Add(link);
+        task.AddGoalLink(link);
+        if (task.GoalLinks.Count == 1)
         {
-            _sessions.Add(task);
+            task.SetRoles([RoleId]);
+            task.Quadrant = Quadrant;
+        }
+        else if (!task.RefreshFromGoals())
+        {
+            task.SetRoles(task.RoleIds.Append(RoleId));
         }
     }
 
-    /// <summary>Отвязать занятие (дело остаётся как есть).</summary>
+    /// <summary>Перестать засчитывать дело в эту цель (дело остаётся; роли — от оставшихся целей, если они загружены).</summary>
     public void RemoveSession(TaskItem task)
     {
-        _sessions.Remove(task);
-        task.DetachFromGoal();
+        if (_links.FirstOrDefault(l => l.Task == task) is not { } link)
+        {
+            return;
+        }
+
+        _links.Remove(link);
+        task.RemoveGoalLink(link);
+        task.RefreshFromGoals();
     }
 }

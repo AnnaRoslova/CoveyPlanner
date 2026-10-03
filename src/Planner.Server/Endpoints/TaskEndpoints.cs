@@ -26,6 +26,14 @@ public static class TaskEndpoints
         tasks.MapPost("/{id:int}/move", async (int id, TaskTargetDto target, TaskService service, CancellationToken ct) =>
             (await service.MoveAsync(id, target.ToCore(), ct)).ToDto());
 
+        // В какие цели засчитывается дело (одно дело — несколько целей); заменённые занятия — в корзину
+        tasks.MapPut("/{id:int}/goals", async (int id, SetTaskGoalsRequest request, TaskGoalService service, CancellationToken ct) =>
+        {
+            var update = await service.SetGoalsAsync(id, request.GoalIds, ct);
+            return new TaskGoalsResultDto(
+                update.Task.ToDto(), update.Goals.Select(g => g.ToDto()).ToList(), update.Replaced.Select(t => t.Id).ToList());
+        });
+
         tasks.MapPut("/{id:int}/done", async (int id, SetDoneRequest request, TaskService service, CancellationToken ct) =>
             (await service.SetDoneAsync(id, request.IsDone, ct)).ToDto());
 

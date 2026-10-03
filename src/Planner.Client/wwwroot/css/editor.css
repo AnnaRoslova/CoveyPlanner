@@ -462,3 +462,11 @@
     min-width: 34px;
     justify-content: center;
 }
+
+/* Роли от целей — несколько, каждая со своей точкой */
+.editor .from-goal .goal-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+}

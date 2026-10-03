@@ -76,7 +76,8 @@ public class EfRoleRepository(PlannerDbContext db) : IRoleRepository
 
 public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
 {
-    private IQueryable<WeeklyGoal> Goals => db.WeeklyGoals.Include(g => g.Sessions).Include(g => g.Series);
+    private IQueryable<WeeklyGoal> Goals =>
+        db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).Include(g => g.Series);
 
     public Task<WeeklyGoal?> FindAsync(int id, CancellationToken ct = default) =>
         Goals.FirstOrDefaultAsync(g => g.Id == id, ct);

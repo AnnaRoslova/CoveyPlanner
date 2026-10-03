@@ -25,7 +25,7 @@ public enum SawDimensionDto
 /// <summary>
 /// Дело. RoleIds — роли дела (может быть несколько, у занятия цели — одна, роль цели);
 /// Quadrant — 1..4 или null; StartTime — необязательная метка времени;
-/// DurationMinutes — необязательная примерная длительность. GoalId — дело — занятие этой цели.
+/// DurationMinutes — необязательная примерная длительность. GoalIds — цели, в которые засчитывается дело (первая — главная; пусто — не «камень»).
 /// </summary>
 public sealed record TaskDto(
     int Id,
@@ -33,14 +33,19 @@ public sealed record TaskDto(
     string? Notes,
     int? CategoryId,
     IReadOnlyList<int> RoleIds,
-    int? GoalId,
+    IReadOnlyList<int> GoalIds,
     int? Quadrant,
     TaskStateDto State,
     DateOnly? PlannedDate,
     TimeOnly? StartTime,
     int? DurationMinutes,
     int SortOrder,
-    DateTime? TrashedAt);
+    DateTime? TrashedAt)
+{
+    /// <summary>Главная цель дела (от неё шаблон и квадрант); null — дело не засчитывается ни в одну цель.</summary>
+    [JsonIgnore]
+    public int? PrimaryGoalId => GoalIds.Count > 0 ? GoalIds[0] : null;
+}
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -103,3 +108,9 @@ public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskD
 
 /// <summary>Результат операции с целью: сама цель и занятие, которое поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
+
+/// <summary>
+/// После «засчитать дело в цели»: дело, затронутые цели (с новым прогрессом) и занятия, которые дело заменило
+/// («одно занятие цели в день»; они в корзине — для «Вернуть»).
+/// </summary>
+public sealed record TaskGoalsResultDto(TaskDto Task, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<int> ReplacedTaskIds);

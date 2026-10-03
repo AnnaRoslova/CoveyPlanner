@@ -14,7 +14,7 @@ public static class Mapping
         t.Notes,
         t.CategoryId,
         t.RoleIds,
-        t.GoalId,
+        t.GoalIds,
         (int?)t.Quadrant,
         (TaskStateDto)t.State,
         t.PlannedDate,

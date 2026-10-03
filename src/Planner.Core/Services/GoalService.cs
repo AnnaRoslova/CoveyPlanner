@@ -54,6 +54,7 @@ public class GoalService(
     public async Task<GoalUpdate> UpdateAsync(int id, GoalChanges changes, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
+        await LoadSessionGoalsAsync(goal, ct);
         if (changes.Quadrant is { } q && !Enum.IsDefined(q))
         {
             throw new DomainException("Квадрант должен быть от 1 до 4.");
@@ -147,6 +148,7 @@ public class GoalService(
         foreach (var later in await LaterInSeriesAsync(goal, ct))
         {
             var laterDays = later.Days;
+            await LoadSessionGoalsAsync(later, ct);
             later.SetDays(goal.Days);
             later.SetTimesPerWeek(goal.TimesPerWeek);
             later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
@@ -207,12 +209,10 @@ public class GoalService(
         }
         else
         {
+            // Сначала занятия только этой цели; общее с другими целями дело — лишь если своих открытых нет
             var open = goal.ActiveSessions.Where(t => t.State == TaskState.Planned).ToList();
-            session = open.FirstOrDefault(t => t.PlannedDate == today)
-                ?? open.Where(t => t.PlannedDate is not null)
-                    .OrderBy(t => t.PlannedDate).ThenBy(t => t.StartTime ?? TimeOnly.MaxValue).ThenBy(t => t.SortOrder)
-                    .FirstOrDefault()
-                ?? goal.UnscheduledSession
+            session = Nearest(open.Where(t => t.GoalLinks.Count == 1).ToList(), today)
+                ?? Nearest(open.Where(t => t.GoalLinks.Count > 1).ToList(), today)
                 ?? sessions.Create(goal);
 
             // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
@@ -263,6 +263,7 @@ public class GoalService(
     {
         var goal = await GetAsync(id, ct);
         await GetRoleAsync(roleId, ct);
+        await LoadSessionGoalsAsync(goal, ct);
 
         var otherRole = goal.RoleId != roleId;
         var siblings = await goals.GetForRoleAsync(roleId, goal.WeekStart, ct);
@@ -311,7 +312,7 @@ public class GoalService(
             throw new DomainException("Дело в корзине.");
         }
 
-        if (task.GoalId is not null)
+        if (task.IsSession)
         {
             throw new DomainException("Это дело уже связано с целью.");
         }
@@ -344,7 +345,9 @@ public class GoalService(
     public async Task<TaskItem> MoveToSomedayAsync(int id, int? categoryId, int index, CancellationToken ct = default)
     {
         var goal = await GetAsync(id, ct);
-        var task = goal.UnscheduledSession;
+
+        // Занятие без дня, засчитанное и в другие цели, остаётся им — в ленту встаёт новое дело
+        var task = goal.UnscheduledSession is { GoalLinks.Count: 1 } own ? own : null;
         if (task is null)
         {
             task = TaskItem.CreateSomeday(goal.Title, categoryId, Now);
@@ -361,6 +364,23 @@ public class GoalService(
 
         await unitOfWork.SaveChangesAsync(ct);
         return task;
+    }
+
+    /// <summary>Ближайшее открытое занятие: сегодняшнее, иначе самое раннее по дню и времени, иначе без дня.</summary>
+    private static TaskItem? Nearest(List<TaskItem> open, DateOnly today) =>
+        open.FirstOrDefault(t => t.PlannedDate == today)
+        ?? open.Where(t => t.PlannedDate is not null)
+            .OrderBy(t => t.PlannedDate).ThenBy(t => t.StartTime ?? TimeOnly.MaxValue).ThenBy(t => t.SortOrder)
+            .FirstOrDefault()
+        ?? open.FirstOrDefault(t => t.PlannedDate is null);
+
+    /// <summary>Подгрузить все цели дел этой цели — чтобы роли и квадрант общих дел пересчитались от всех их целей.</summary>
+    private async Task LoadSessionGoalsAsync(WeeklyGoal goal, CancellationToken ct)
+    {
+        foreach (var session in goal.Sessions.Where(s => s.GoalLinks.Count > 1))
+        {
+            await sessions.LoadGoalsOfAsync(session, ct);
+        }
     }
 
     private async Task<WeeklyGoal> GetAsync(int id, CancellationToken ct) =>

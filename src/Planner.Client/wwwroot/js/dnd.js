@@ -4,6 +4,7 @@
 //   что тащим:   data-drag="<вид>" data-id="<Id>"            — например, data-drag="someday"
 //   куда бросаем: data-drop="<зона>" data-key="<ключ>" data-accept="<виды через пробел>"
 //                 data-drop-index="0" — зона-«мишень» с фиксированной позицией (заголовок категории)
+//                 data-drop-middle — зона принимает только серединой (у краёв — внешняя зона)
 //                 data-drop-hover — зона подсвечивается сама (класс drop-hover, например корзина), без общей рамки
 //                 data-fixed-sort — в зоне есть записи со своим местом (data-fixed: дела со временем в дне);
 //                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
@@ -187,7 +188,7 @@ function updateTarget() {
     // внутри списка ролей), поэтому, если ближайшая не принимает, ищем выше
     const hit = elementUnder(drag.x, drag.y);
     let zone = hit?.closest('[data-drop]');
-    while (zone && !accepts(zone)) zone = zone.parentElement?.closest('[data-drop]');
+    while (zone && (!accepts(zone) || atEdge(zone))) zone = zone.parentElement?.closest('[data-drop]');
 
     setHoverZone(zone?.hasAttribute('data-drop-hover') ? zone : null);
     if (!zone) {
@@ -263,6 +264,7 @@ function setHoverZone(zone) {
     if (drag.hoverZone === zone) return;
     drag.hoverZone?.classList.remove('drop-hover');
     zone?.classList.add('drop-hover');
+    drag.ghost.classList.toggle('over-target', !!zone); // призрак бледнеет — подсветку и подпись под ним видно
     drag.hoverZone = zone;
 }
 
@@ -398,4 +400,13 @@ function finish() {
 // бросить дело у края понедельника можно, а неделя листается, только если задержаться над краем
 function elementUnder(x, y) {
     return document.elementsFromPoint(x, y).find(el => !el.closest('[data-flip-overlay]')) ?? null;
+}
+
+// Зона с data-drop-middle (строка цели: «засчитать и в эту цель») принимает только серединой: у верхнего и нижнего края
+// (по 30% высоты) сброс проходит к внешней зоне — например, новая цель между строками
+function atEdge(zone) {
+    if (!zone.hasAttribute('data-drop-middle')) return false;
+    const r = zone.getBoundingClientRect();
+    const edge = r.height * 0.3;
+    return drag.y < r.top + edge || drag.y > r.bottom - edge;
 }

@@ -102,11 +102,11 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var friday = await ScheduleAsync(goal.Id, Monday.AddDays(4));
 
         Assert.NotEqual(thursday.Task!.Id, friday.Task!.Id);
-        Assert.Equal(goal.Id, friday.Task.GoalId);
+        Assert.Equal(goal.Id, friday.Task.PrimaryGoalId);
         Assert.Equal([role.Id], friday.Task.RoleIds);
         Assert.Null(friday.Task.CategoryId);
         Assert.Equal([Monday.AddDays(3), Monday.AddDays(4)], friday.Goal.Sessions.Select(s => s.PlannedDate));
-        Assert.Equal(2, (await GetWeekAsync()).Tasks.Count(t => t.GoalId == goal.Id));
+        Assert.Equal(2, (await GetWeekAsync()).Tasks.Count(t => t.PrimaryGoalId == goal.Id));
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         var back = Assert.Single((await GetBoardAsync()).SomedayTasks);
         Assert.Equal(task.Id, back.Id);
         Assert.Equal(home.Id, back.CategoryId);
-        Assert.Null(back.GoalId);
+        Assert.Null(back.PrimaryGoalId);
     }
 
     /// <summary>Цель из дела ленты (дело — занятие без дня), потом удалили категорию этого дела.</summary>
@@ -289,7 +289,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         Assert.Empty(week.Goals);
         var kept = Assert.Single(week.Tasks);
         Assert.Equal(done.Id, kept.Id);
-        Assert.Null(kept.GoalId);
+        Assert.Null(kept.PrimaryGoalId);
         Assert.Contains(await GetAsync<List<TaskDto>>("/api/trash"), t => t.Id == open.Id);
     }
 
@@ -381,7 +381,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
 
         var moved = await MoveTaskAsync(scheduled.Task!.Id, new SomedayTargetDto(ideas.Id, 0));
 
-        Assert.Null(moved.GoalId);
+        Assert.Null(moved.PrimaryGoalId);
         var week = await GetWeekAsync();
         Assert.Empty(week.Goals.Single().Sessions);
         Assert.Empty(week.Tasks);

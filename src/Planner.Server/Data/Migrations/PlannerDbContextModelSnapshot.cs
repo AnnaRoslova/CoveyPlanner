@@ -131,6 +131,24 @@ namespace Planner.Server.Data.Migrations
                     b.ToTable("Roles");
                 });
 
+            modelBuilder.Entity("Planner.Core.Entities.TaskGoal", b =>
+                {
+                    b.Property<int>("TaskId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GoalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("TaskId", "GoalId");
+
+                    b.HasIndex("GoalId");
+
+                    b.ToTable("TaskGoals", (string)null);
+                });
+
             modelBuilder.Entity("Planner.Core.Entities.TaskItem", b =>
                 {
                     b.Property<int>("Id")
@@ -147,9 +165,6 @@ namespace Planner.Server.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("DurationMinutes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("GoalId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
@@ -188,8 +203,6 @@ namespace Planner.Server.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
-
-                    b.HasIndex("GoalId");
 
                     b.HasIndex("State", "PlannedDate");
 
@@ -264,16 +277,30 @@ namespace Planner.Server.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Planner.Core.Entities.TaskGoal", b =>
+                {
+                    b.HasOne("Planner.Core.Entities.WeeklyGoal", "Goal")
+                        .WithMany("Links")
+                        .HasForeignKey("GoalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Planner.Core.Entities.TaskItem", "Task")
+                        .WithMany("GoalLinks")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Goal");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("Planner.Core.Entities.TaskItem", b =>
                 {
                     b.HasOne("Planner.Core.Entities.Category", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Planner.Core.Entities.WeeklyGoal", null)
-                        .WithMany("Sessions")
-                        .HasForeignKey("GoalId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.OwnsMany("Planner.Core.Entities.TaskRole", "Roles", b1 =>
@@ -319,9 +346,14 @@ namespace Planner.Server.Data.Migrations
                     b.Navigation("Series");
                 });
 
+            modelBuilder.Entity("Planner.Core.Entities.TaskItem", b =>
+                {
+                    b.Navigation("GoalLinks");
+                });
+
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>
                 {
-                    b.Navigation("Sessions");
+                    b.Navigation("Links");
                 });
 #pragma warning restore 612, 618
         }

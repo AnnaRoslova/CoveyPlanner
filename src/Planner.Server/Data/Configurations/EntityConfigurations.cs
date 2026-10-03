@@ -31,6 +31,12 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Navigation(t => t.Roles).HasField("_roles");
         builder.Ignore(t => t.RoleIds);
 
+        // Цели дела (TaskGoals) всегда загружаются вместе с делом — по ним видно, «камень» ли это
+        builder.Navigation(t => t.GoalLinks).AutoInclude();
+        builder.Ignore(t => t.GoalIds);
+        builder.Ignore(t => t.IsSession);
+        builder.Ignore(t => t.PrimaryGoalLink);
+
         builder.HasIndex(t => new { t.State, t.CategoryId, t.SortOrder });
         builder.HasIndex(t => new { t.State, t.PlannedDate });
     }
@@ -66,9 +72,8 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         builder.Property(g => g.Days).HasConversion<int?>(); // набор дней — битовая маска
 
         builder.HasOne<Role>().WithMany().HasForeignKey(g => g.RoleId).OnDelete(DeleteBehavior.Cascade);
-        // Занятия цели — обычные дела; удалили цель — у дел ссылка обнуляется
-        builder.HasMany(g => g.Sessions).WithOne().HasForeignKey(t => t.GoalId).OnDelete(DeleteBehavior.SetNull);
-        builder.Navigation(g => g.Sessions).HasField("_sessions");
+        // Занятия цели — дела, связанные с ней через TaskGoals (см. TaskGoalConfiguration)
+        builder.Ignore(g => g.Sessions);
         builder.Ignore(g => g.ActiveSessions);
         builder.Ignore(g => g.UnscheduledSession);
 
@@ -91,5 +96,20 @@ public class GoalSeriesConfiguration : IEntityTypeConfiguration<GoalSeries>
 
         builder.HasOne<Role>().WithMany().HasForeignKey(s => s.RoleId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(s => s.IsRecurring);
+    }
+}
+
+/// <summary>
+/// Связь дела с целью (TaskGoals): одно дело может засчитываться в несколько целей.
+/// Удалили дело или цель — связь удаляется, само дело остаётся.
+/// </summary>
+public class TaskGoalConfiguration : IEntityTypeConfiguration<TaskGoal>
+{
+    public void Configure(EntityTypeBuilder<TaskGoal> builder)
+    {
+        builder.ToTable("TaskGoals");
+        builder.HasKey(l => new { l.TaskId, l.GoalId });
+        builder.HasOne(l => l.Task).WithMany(t => t.GoalLinks).HasForeignKey(l => l.TaskId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(l => l.Goal).WithMany(g => g.Links).HasForeignKey(l => l.GoalId).OnDelete(DeleteBehavior.Cascade);
     }
 }

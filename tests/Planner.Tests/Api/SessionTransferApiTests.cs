@@ -46,7 +46,7 @@ public class SessionTransferApiTests : ApiTestBase
         await MoveTaskAsync(second.Id, new DayTargetDto(Week(1).AddDays(4), 0));
 
         var copy = Assert.Single(await GoalsAsync(1, "Бег"));
-        Assert.Equal(copy.Id, moved.GoalId);
+        Assert.Equal(copy.Id, moved.PrimaryGoalId);
         Assert.Equal((1, new TimeOnly(7, 30), 2, "парк", 30, false),
             (copy.TimesPerWeek, copy.StartTime!.Value, copy.Quadrant!.Value, copy.Notes!, copy.DurationMinutes!.Value, copy.IsRecurring));
         Assert.Equal(2, copy.Sessions.Count); // второе занятие — в ту же цель, а не в новую
@@ -67,7 +67,7 @@ public class SessionTransferApiTests : ApiTestBase
         var moved = await MoveTaskAsync(session.Id, new DayTargetDto(Week(1).AddDays(2), 0));
 
         var next = Assert.Single(await GoalsAsync(1, "Бассейн"));
-        Assert.Equal(next.Id, moved.GoalId);
+        Assert.Equal(next.Id, moved.PrimaryGoalId);
         Assert.True(next.IsRecurring);
         Assert.Equal([session.Id], next.Sessions.Select(s => s.TaskId));
         Assert.Empty(Assert.Single(await GoalsAsync(0, "Бассейн")).Sessions);
@@ -85,7 +85,7 @@ public class SessionTransferApiTests : ApiTestBase
         var moved = await MoveTaskAsync(session.Id, new DayTargetDto(Week(1), 0));
 
         var created = Assert.Single(await GoalsAsync(1, "Бассейн"));
-        Assert.Equal(created.Id, moved.GoalId);
+        Assert.Equal(created.Id, moved.PrimaryGoalId);
         Assert.Equal(1, created.TimesPerWeek);
     }
 
@@ -98,7 +98,7 @@ public class SessionTransferApiTests : ApiTestBase
 
         var moved = await MoveTaskAsync(session.Id, new DayTargetDto(Monday.AddDays(4), 0));
 
-        Assert.Equal(goal.Id, moved.GoalId);
+        Assert.Equal(goal.Id, moved.PrimaryGoalId);
         Assert.Empty(await GoalsAsync(1, "Отчёт"));
     }
 }

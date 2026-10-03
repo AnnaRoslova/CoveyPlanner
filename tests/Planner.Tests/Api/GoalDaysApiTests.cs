@@ -55,7 +55,7 @@ public class GoalDaysApiTests : ApiTestBase
         var days = await SessionDaysAsync(1, "Скакалка");
         Assert.Equal(Enumerable.Range(0, 7).Select(i => Week(1).AddDays(i)), days);
         Assert.All((await GetWeekAsync(Week(1))).Tasks.Where(t => t.Title == "Скакалка"),
-            t => Assert.Equal((new TimeOnly(21, 0), 10, next.Id), (t.StartTime!.Value, t.DurationMinutes!.Value, t.GoalId!.Value)));
+            t => Assert.Equal((new TimeOnly(21, 0), 10, next.Id), (t.StartTime!.Value, t.DurationMinutes!.Value, t.PrimaryGoalId!.Value)));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class GoalDaysApiTests : ApiTestBase
 
         var moved = await MoveTaskAsync(wednesday.Id, new DayTargetDto(Monday.AddDays(3), 0));
 
-        Assert.Equal(goal.Id, moved.GoalId);
+        Assert.Equal(goal.Id, moved.PrimaryGoalId);
         Assert.Equal(Mon | Wed, (await GetWeekAsync()).Goals.Single(g => g.Id == goal.Id).Days);
         Assert.Equal([Week(1), Week(1).AddDays(2)], await SessionDaysAsync(1, "Скакалка"));
     }

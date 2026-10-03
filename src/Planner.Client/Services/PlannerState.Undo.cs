@@ -116,13 +116,23 @@ public partial class PlannerState
         Goals.RemoveAll(g => g.Id == goal.Id);
         foreach (var task in SessionTasks(goal))
         {
-            if (task.State == TaskStateDto.Done)
+            if (task.GoalIds.Count > 1)
             {
-                _tasks[task.Id] = task with { GoalId = null }; // выполненное остаётся обычным делом
+                // Дело засчитано и в другие цели — просто перестаёт засчитываться в эту
+                var left = task.GoalIds.Where(id => id != goal.Id).ToList();
+                _tasks[task.Id] = task with
+                {
+                    GoalIds = left,
+                    RoleIds = [.. left.Select(FindGoal).OfType<WeeklyGoalDto>().Select(g => g.RoleId).Distinct().Order()],
+                };
+            }
+            else if (task.State == TaskStateDto.Done)
+            {
+                _tasks[task.Id] = task with { GoalIds = [] }; // выполненное остаётся обычным делом
             }
             else if (task.PlannedDate is null)
             {
-                PlaceInFeedLocally(task with { GoalId = null }, IsFeedPlace(task.CategoryId) ? task.CategoryId : null, 0);
+                PlaceInFeedLocally(task with { GoalIds = [] }, IsFeedPlace(task.CategoryId) ? task.CategoryId : null, 0);
             }
             else
             {

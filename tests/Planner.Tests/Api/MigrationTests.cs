@@ -139,7 +139,7 @@ public sealed class MigrationTests : IDisposable
 
         await db.Database.MigrateAsync();
 
-        var goals = await db.WeeklyGoals.Include(g => g.Sessions).OrderBy(g => g.Id).ToListAsync();
+        var goals = await db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).OrderBy(g => g.Id).ToListAsync();
         Assert.All(goals, g => Assert.Equal(1, g.TimesPerWeek));
         Assert.Equal([1], goals[0].Sessions.Select(t => t.Id));
         Assert.True(goals[0].IsDone);
@@ -245,6 +245,31 @@ public sealed class MigrationTests : IDisposable
 
         var goals = await db.WeeklyGoals.OrderBy(g => g.Id).ToListAsync();
         Assert.Equal([training.Id, training.Id, series[2].Id, null, course.Id, null], goals.Select(g => g.SeriesId));
+    }
+
+    [Fact]
+    public async Task TaskGoals_GoalIdBecomesLink_NothingLost()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("GoalDays");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Тело', '#9fd3bd', 0, 'Body');
+            INSERT INTO WeeklyGoals (Id, RoleId, WeekStart, Title, TimesPerWeek, SortOrder, AllowSeveralPerDay)
+                VALUES (1, 1, '2026-09-28', 'Бег', 3, 0, 0);
+            INSERT INTO Tasks (Id, Title, GoalId, State, PlannedDate, SortOrder, CreatedAt) VALUES
+                (1, 'Бег', 1, 'Done', '2026-09-28', 0, '2026-09-28 10:00:00'),
+                (2, 'Бег', 1, 'Planned', NULL, 0, '2026-09-28 10:00:00'),
+                (3, 'Обычное дело', NULL, 'Planned', '2026-09-29', 0, '2026-09-28 10:00:00');
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var goal = await db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).SingleAsync();
+        Assert.Equal([1, 2], goal.Sessions.Select(t => t.Id).Order());
+        Assert.Equal(1, goal.DoneCount);
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
+        Assert.Equal([[1], [1], []], tasks.Select(t => t.GoalIds.ToArray()));
     }
 
     public void Dispose()

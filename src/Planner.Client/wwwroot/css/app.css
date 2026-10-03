@@ -297,8 +297,9 @@ body.dragging .unsorted.empty {
     will-change: transform;
 }
 
-/* Над стрелкой недели (листание) — призрак бледнеет, чтобы было видно, как стрелка «заряжается» */
-.drag-ghost.over-flip {
+/* Над стрелкой или краем недели (листание), над целью или корзиной — призрак бледнеет, чтобы было видно подсветку */
+.drag-ghost.over-flip,
+.drag-ghost.over-target {
     opacity: 0.35;
     transition: opacity 0.15s;
 }

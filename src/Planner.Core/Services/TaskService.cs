@@ -10,7 +10,7 @@ namespace Planner.Core.Services;
 public class TaskService(
     ITaskRepository tasks,
     IRoleRepository roles,
-    IGoalRepository goals,
+    GoalSessions sessions,
     GoalSeriesService series,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
@@ -32,17 +32,20 @@ public class TaskService(
 
     /// <summary>
     /// Изменить дело из окна редактирования. startTime / durationMinutes = null — убрать; roleIds пусто — без ролей.
-    /// У занятия цели роль и квадрант всегда от цели — присланные значения не применяются.
+    /// У занятия целей роли и квадрант всегда от целей — присланные значения не применяются.
     /// </summary>
     public async Task<TaskItem> UpdateAsync(
         int id, string title, string? notes, IReadOnlyCollection<int> roleIds, Quadrant? quadrant, TimeOnly? startTime,
         int? durationMinutes, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
-        if (task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } goal)
+        // У занятия целей роли — роли всех его целей, квадрант — от главной (так же решает клиент)
+        if (task.IsSession)
         {
-            roleIds = [goal.RoleId];
-            quadrant = goal.Quadrant;
+            await sessions.LoadGoalsOfAsync(task, ct);
+            task.RefreshFromGoals();
+            roleIds = task.RoleIds;
+            quadrant = task.Quadrant;
         }
 
         foreach (var roleId in roleIds.Distinct())
@@ -85,18 +88,24 @@ public class TaskService(
     {
         var task = await GetAsync(id, ct);
 
-        // Занятие цели в день: цель на неделе того дня (эта же или та же на другой неделе); в день, где у неё
-        // уже есть занятие, нельзя (если у цели не разрешено несколько в день) — проверяем до того, как что-то сдвинуть
-        WeeklyGoal? goal = null, targetGoal = null;
-        if (target is DayTarget day && task.GoalId is { } goalId && await goals.FindAsync(goalId, ct) is { } found)
+        // Занятие целей в день: каждая его цель — на неделе того дня (эта же или та же на другой неделе); в день, где
+        // у какой-то из них уже есть занятие, нельзя (если не разрешено несколько в день) — проверяем, пока ничего не сдвинули
+        var transfers = new List<(WeeklyGoal From, WeeklyGoal To)>();
+        if (target is DayTarget day && task.IsSession)
         {
-            goal = found;
-            targetGoal = goal.WeekStart == Week.StartOf(day.Date)
-                ? goal
-                : await series.GoalForWeekAsync(goal, Week.StartOf(day.Date), ct);
-            if (task.PlannedDate != day.Date) // порядок внутри своего дня — можно и у старых дублей
+            var week = Week.StartOf(day.Date);
+            foreach (var goal in await sessions.LoadGoalsOfAsync(task, ct))
             {
-                targetGoal.EnsureDayIsFree(day.Date, except: task);
+                var to = goal.WeekStart == week ? goal : await series.GoalForWeekAsync(goal, week, ct);
+                if (task.PlannedDate != day.Date) // порядок внутри своего дня — можно и у старых дублей
+                {
+                    to.EnsureDayIsFree(day.Date, except: task);
+                }
+
+                if (to != goal)
+                {
+                    transfers.Add((goal, to));
+                }
             }
         }
 
@@ -104,12 +113,14 @@ public class TaskService(
 
         if (target is SomedayTarget)
         {
-            task.DetachFromGoal();
+            task.DetachFromGoals();
         }
-        else if (goal is not null && targetGoal is not null && targetGoal != goal)
+
+        // На другую неделю — каждая связь переходит к той же цели той недели (порядок связей сохраняется)
+        foreach (var (from, to) in transfers)
         {
-            goal.RemoveSession(task);
-            targetGoal.AddSession(task);
+            from.RemoveSession(task);
+            to.AddSession(task);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -157,7 +168,7 @@ public class TaskService(
         {
             await placer.MoveToEndOfDayAsync(task, ct);
         }
-        else if (task.GoalId is null)
+        else if (!task.IsSession)
         {
             await placer.ReturnToSomedayAsync(task, ct);
         }

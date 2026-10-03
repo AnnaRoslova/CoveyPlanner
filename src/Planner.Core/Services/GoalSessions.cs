@@ -9,9 +9,27 @@ namespace Planner.Core.Services;
 /// Занятия целей: новое занятие по шаблону цели, постановка в день и раскладка по дням постоянной цели
 /// (<see cref="WeeklyGoal.Days"/>). Общий помощник для сервисов целей и серий. Сам не сохраняет изменения.
 /// </summary>
-public class GoalSessions(ITaskRepository tasks, TaskPlacer placer, TimeProvider clock)
+public class GoalSessions(ITaskRepository tasks, IGoalRepository goals, TaskPlacer placer, TimeProvider clock)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
+
+    /// <summary>
+    /// Цели дела по порядку связей (первая — главная). Загруженные цели связи видят — после этого у дела
+    /// можно пересчитать роли и квадрант (<see cref="TaskItem.RefreshFromGoals"/>).
+    /// </summary>
+    public async Task<List<WeeklyGoal>> LoadGoalsOfAsync(TaskItem task, CancellationToken ct = default)
+    {
+        var loaded = new List<WeeklyGoal>();
+        foreach (var goalId in task.GoalIds.Where(id => id != 0))
+        {
+            if (await goals.FindAsync(goalId, ct) is { } goal)
+            {
+                loaded.Add(goal);
+            }
+        }
+
+        return loaded;
+    }
 
     /// <summary>Новое занятие по шаблону цели (без дня).</summary>
     public TaskItem Create(WeeklyGoal goal)

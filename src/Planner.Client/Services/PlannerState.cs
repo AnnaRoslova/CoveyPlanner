@@ -80,7 +80,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         Goals.Where(g => g.RoleId == roleId).OrderBy(g => g.SortOrder);
 
     /// <summary>Дело — занятие цели недели, «большой камень».</summary>
-    public bool IsRock(int taskId) => GoalOfTask(taskId) is not null;
+    public bool IsRock(int taskId) => GoalsOfTask(taskId).Count > 0;
 
     public int RocksDone => Goals.Count(g => g.IsDone);
 

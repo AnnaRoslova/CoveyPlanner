@@ -120,7 +120,7 @@ public partial class PlannerState
             return false;
         }
 
-        var temp = new TaskDto(NextTempId(), title, null, categoryId, [], null, null, TaskStateDto.Someday, null, null, null,
+        var temp = new TaskDto(NextTempId(), title, null, categoryId, [], [], null, TaskStateDto.Someday, null, null, null,
             SortOrder: atEnd ? int.MaxValue : int.MinValue, TrashedAt: null);
         _tasks[temp.Id] = temp;
         RenumberSomeday(categoryId);
@@ -167,10 +167,10 @@ public partial class PlannerState
         }
 
         PlaceInFeedLocally(task, categoryId, index);
-        if (task.GoalId is not null)
+        if (task.GoalIds.Count > 0)
         {
-            // Сервер тоже разрывает связь с целью при возврате в ленту
-            _tasks[taskId] = _tasks[taskId] with { GoalId = null };
+            // Сервер тоже разрывает связи с целями при возврате в ленту
+            _tasks[taskId] = _tasks[taskId] with { GoalIds = [] };
             RemoveSession(taskId);
         }
 
@@ -255,7 +255,7 @@ public partial class PlannerState
         }
 
         TrashCount = Math.Max(0, TrashCount - 1);
-        if (restored.GoalId is not null)
+        if (restored.GoalIds.Count > 0)
         {
             await ReloadAsync(); // занятие цели снова считается — прогресс цели берём с сервера
         }
