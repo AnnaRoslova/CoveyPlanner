@@ -49,6 +49,13 @@
         try
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/popover.js");
+            if (_disposed)
+            {
+                await _module.DisposeAsync();
+                _module = null;
+                return; // окошко закрыли, пока загружался скрипт: его элементов уже нет
+            }
+
             _self = DotNetObjectReference.Create(this);
             _id = await _module.InvokeAsync<int>("open", _popup, Anchor, _self);
             if (_disposed)

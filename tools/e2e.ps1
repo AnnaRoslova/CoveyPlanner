@@ -7,7 +7,7 @@
 #   $env:PLANNER_BROWSER = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 #
 # Для каждого сценария — чистая временная база и свой сервер на порту 5071
-# (демо на 5070 и ваша основная база не затрагиваются). Снимки при ошибках — в tests/e2e/out.
+# (демо на 5070 и ваша основная база не затрагиваются). Снимки при ошибках и полный вывод сценариев (<имя>.log) — в tests/e2e/out.
 param(
     [string]$Only = '',
     [switch]$NoBuild,
@@ -47,25 +47,38 @@ if (-not $NoBuild) {
 }
 New-Item -ItemType Directory -Force $out | Out-Null
 
+function Test-Ping {
+    try { Invoke-WebRequest "$url/api/ping" -UseBasicParsing -TimeoutSec 2 | Out-Null; return $true } catch { return $false }
+}
+
 $scripts = Get-ChildItem $e2e -Filter '*.mjs' | Where-Object { $_.BaseName -like "*$Only*" } | Sort-Object Name
 $failed = 0
 $summary = @()
 
 foreach ($script in $scripts) {
-    # У каждого сценария своя чистая база (файл прежней мог быть ещё занят только что остановленным сервером)
-    $db = Join-Path $env:TEMP "planner-e2e-$($script.BaseName).db"
-    Remove-Item "$db*" -Force -ErrorAction SilentlyContinue
+    # Порт должен освободиться: если прежний сервер ещё не вышел, на ping ответил бы он — с чужой базой
+    for ($i = 0; $i -lt 20 -and (Test-Ping); $i++) { Start-Sleep -Milliseconds 500 }
+    if (Test-Ping) {
+        Get-CimInstance Win32_Process -Filter "Name = 'Planner.Server.exe'" |
+            Where-Object { $_.CommandLine -match 'planner-e2e-' } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 1
+        if (Test-Ping) { throw "Порт $port занят другим сервером — остановите его (демо, dotnet run?)" }
+    }
+
+    # У каждого запуска своя чистая база (своё имя: файл прежней мог быть ещё занят только что остановленным сервером)
+    $db = Join-Path $env:TEMP "planner-e2e-$($script.BaseName)-$(Get-Random).db"
     $env:ASPNETCORE_ENVIRONMENT = $environment
     $env:ASPNETCORE_URLS = $url
     $server = Start-Process $exe -ArgumentList "--Storage:DatabasePath=`"$db`" --Storage:DailyBackup=false" `
         -WorkingDirectory $workDir -WindowStyle Hidden -PassThru
     try {
         $ready = $false
-        for ($i = 0; $i -lt 60 -and -not $ready; $i++) {
+        for ($i = 0; $i -lt 60 -and -not $ready -and -not $server.HasExited; $i++) {
             Start-Sleep -Milliseconds 500
-            try { Invoke-WebRequest "$url/api/ping" -UseBasicParsing -TimeoutSec 2 | Out-Null; $ready = $true } catch { }
+            $ready = Test-Ping
         }
-        if (-not $ready) { throw "Сервер не запустился для $($script.Name)" }
+        if (-not $ready -or $server.HasExited) { throw "Сервер не запустился для $($script.Name)" }
 
         if ((Get-Content $script.FullName -TotalCount 1) -match '@seed') {
             & (Join-Path $PSScriptRoot 'seed-demo.ps1') -BaseUrl $url *> $null
@@ -77,6 +90,7 @@ foreach ($script in $scripts) {
         $ErrorActionPreference = 'Continue'
         $lines = node $script.Name $out 2>&1 | ForEach-Object { "$_" }
         $exitCode = $LASTEXITCODE
+        $lines | Set-Content (Join-Path $out "$($script.BaseName).log") -Encoding utf8 # весь вывод — для разбора падений
         $ErrorActionPreference = 'Stop'
         Pop-Location
 

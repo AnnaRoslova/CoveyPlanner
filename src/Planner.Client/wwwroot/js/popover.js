@@ -9,6 +9,10 @@ const MARGIN = 8;
 const opened = new Map();
 
 export function open(popup, anchor, dotnet) {
+    if (!popup?.isConnected || !anchor?.isConnected) {
+        return 0; // окошко или его кнопку уже убрали
+    }
+
     const id = register(popup, dotnet, anchor);
     const place = () => placeNear(popup, anchor);
     const onKey = e => moveFocus(popup, e);

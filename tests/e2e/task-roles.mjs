@@ -118,6 +118,14 @@ await check('занятие цели: роль одна, от цели, выбр
   await page.keyboard.press('Escape'); await settle();
 });
 
+await check('список ролей открыли и сразу закрыли — дальше Esc и клики без ошибок', async () => {
+  await openEditor();
+  for (let i = 0; i < 10; i++) await page.click('.editor .tag-add'); // открыть и сразу закрыть, раньше чем загрузится скрипт списка
+  await settle();
+  await page.click('.editor .title-input'); await page.keyboard.press('Escape'); await settle();
+  assert(!(await page.$('.editor')), 'Esc не закрыл окно');
+});
+
 await check('в консоли нет ошибок', async () => {
   assert(consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 600));
 });

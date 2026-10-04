@@ -54,9 +54,18 @@ const zoneEl = z => z.day !== undefined
 // Зону — в середину видимой части панели (иначе у края сработает автопрокрутка)
 const reveal = z => page.evaluate(`${zoneEl(z)}.scrollIntoView({ block: 'center' })`).then(() => sleep(150));
 const titlesIn = z => page.evaluate(`(() => { const titleOf = ${titleOf}; return [...${zoneEl(z)}.querySelectorAll('.item')].map(titleOf); })()`);
-const rectOf = (z, title) => page.evaluate(`(() => { const titleOf = ${titleOf};
+// Рамка записи; запись ищется до 5 с — после перезагрузки она может появиться не сразу
+const rectNow = (z, title) => page.evaluate(`(() => { const titleOf = ${titleOf};
   const it = [...${zoneEl(z)}.querySelectorAll('.item')].find(i => titleOf(i) === ${JSON.stringify(title)});
   if (!it) return null; const r = it.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, bottom: r.bottom }; })()`);
+async function rectOf(z, title) {
+  for (let i = 0; i < 50; i++) {
+    const r = await rectNow(z, title);
+    if (r) return r;
+    await sleep(100);
+  }
+  throw new Error(`нет «${title}» в ${JSON.stringify(z)}`);
+}
 const zoneRect = z => page.evaluate(`(() => { const r = ${zoneEl(z)}.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, bottom: r.bottom }; })()`);
 const headRect = z => page.evaluate(`(() => { const h = ${zoneEl(z)}.querySelector('.day-h'); const r = h.getBoundingClientRect(); return { x: r.x, y: r.y, h: r.height, bottom: r.bottom }; })()`);
 

@@ -19,13 +19,13 @@ function install() {
         for (const layer of [...layers]) {
             const inside = node => node instanceof Node
                 && (layer.element.contains(node) || (layer.anchor?.contains(node) ?? false));
-            if (layer.element.isConnected && !inside(e.target) && !inside(downTarget)) {
+            if (layer.element?.isConnected && !inside(e.target) && !inside(downTarget)) {
                 layer.dotnet.invokeMethodAsync('Dismiss', true);
             }
         }
     }, true);
     document.addEventListener('keydown', e => {
-        const top = layers.findLast(l => l.element.isConnected);
+        const top = layers.findLast(l => l.element?.isConnected);
         if (e.key === 'Escape' && top && !e.target.closest?.('[data-esc-local]')) {
             top.dotnet.invokeMethodAsync('Dismiss', false);
         }
