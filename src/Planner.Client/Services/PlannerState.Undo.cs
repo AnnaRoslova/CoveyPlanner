@@ -91,7 +91,7 @@ public partial class PlannerState
     }
 
     private Snapshot TakeSnapshot() =>
-        new(new Dictionary<int, TaskDto>(_tasks), [.. Roles], [.. Categories], [.. Goals], TrashCount);
+        new(new Dictionary<int, TaskDto>(_tasks), [.. Roles], [.. Categories], [.. Goals], TrashCount, [.. Habits], [.. Vacations]);
 
     private void RestoreSnapshot(Snapshot snapshot)
     {
@@ -105,6 +105,8 @@ public partial class PlannerState
         Categories = [.. snapshot.Categories];
         Goals = [.. snapshot.Goals];
         TrashCount = snapshot.TrashCount;
+        Habits = [.. snapshot.Habits];
+        Vacations = [.. snapshot.Vacations];
     }
 
     /// <summary>
@@ -137,7 +139,8 @@ public partial class PlannerState
         $"Удалено «{(title.Length > 40 ? title[..40].TrimEnd() + "…" : title)}»";
 
     private sealed record Snapshot(
-        Dictionary<int, TaskDto> Tasks, List<RoleDto> Roles, List<CategoryDto> Categories, List<WeeklyGoalDto> Goals, int TrashCount);
+        Dictionary<int, TaskDto> Tasks, List<RoleDto> Roles, List<CategoryDto> Categories, List<WeeklyGoalDto> Goals, int TrashCount,
+        List<HabitDto> Habits, List<VacationDto> Vacations);
 
     private sealed record PendingDelete(Snapshot Before, Func<Task> Commit, bool ReloadAfter)
     {

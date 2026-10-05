@@ -798,13 +798,3 @@
 .editor .emoji-btn.empty {
     opacity: 0.6;
 }
-
-/* «Удалить копилку?» — вопрос прямо в окне */
-.editor .confirm-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 8px;
-    color: var(--text);
-    font-size: 13px;
-}

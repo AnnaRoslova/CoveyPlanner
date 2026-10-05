@@ -60,8 +60,8 @@ public sealed record HabitMonth(DateOnly Month, PeriodResult Result);
 /// <param name="FullJars">Полных банок на полке.</param>
 /// <param name="InJar">Скрепок в текущей банке.</param>
 /// <param name="ThisWeek">Скрепок на текущей неделе.</param>
-/// <param name="WeekStreak">🔥 Серия недель: засчитанных недель с начала серии (текущая не входит — итог после воскресенья).</param>
-/// <param name="WeekPaused">⚠ Пауза: последняя завершённая неделя (не считая каникул) — первый пропуск.</param>
+/// <param name="WeekStreak">🔥 Серия недель: засчитанных недель с начала серии; текущая входит, как только норма в ней выполнена.</param>
+/// <param name="WeekPaused">⚠ Пауза: последняя завершённая неделя (не считая каникул) — первый пропуск, а норма текущей ещё не выполнена.</param>
 /// <param name="MonthStreak">🌙 Серия месяцев.</param>
 /// <param name="MonthPaused">⚠ Пауза серии месяцев: последний завершённый месяц не засчитан (первый раз).</param>
 /// <param name="Weeks">Последние недели (до <see cref="HabitStatsCalculator.WeeksShown"/>), последняя — текущая.</param>

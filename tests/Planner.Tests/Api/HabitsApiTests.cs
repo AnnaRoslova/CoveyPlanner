@@ -215,6 +215,9 @@ public class HabitsApiTests : ApiTestBase
         await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today, [habit.Id]));
         var shared = await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today, [habit.Id, other.Id]));
 
+        // Активную копилку удалить нельзя — только из архива
+        Assert.Equal(HttpStatusCode.BadRequest, (await Client.DeleteAsync($"/api/habits/{habit.Id}")).StatusCode);
+        await PutAsync<HabitDto>($"/api/habits/{habit.Id}", new SaveHabitRequest(habit.Name, habit.Emoji, habit.Color, habit.WeeklyNorm, IsArchived: true));
         (await Client.DeleteAsync($"/api/habits/{habit.Id}")).EnsureSuccessStatusCode();
 
         var week = await GetWeekAsync(Today);

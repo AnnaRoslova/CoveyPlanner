@@ -82,7 +82,7 @@ public class HabitStatsCalculatorTests
 
         Assert.Equal(12, stats.Total);
         Assert.Equal("___NC", Marks(stats, 5)); // первая неделя копилки без нормы — не пропуск
-        Assert.Equal(0, stats.WeekStreak);
+        Assert.Equal(1, stats.WeekStreak); // текущая (вторая) неделя с нормой — уже в серии
         Assert.False(stats.WeekPaused);
     }
 
@@ -110,13 +110,68 @@ public class HabitStatsCalculatorTests
     }
 
     [Fact]
-    public void CurrentWeek_AlreadyDone_StillNotInStreakUntilSundayEnds()
+    public void CurrentWeek_NormMet_CountsImmediately_StillInProgress()
     {
         var stats = Run("333 4");
 
-        Assert.Equal(3, stats.WeekStreak);
+        Assert.Equal(4, stats.WeekStreak); // награда сразу, не дожидаясь воскресенья
         Assert.Equal(4, stats.ThisWeek);
         Assert.Equal(PeriodResult.Current, stats.Weeks[^1].Result);
+    }
+
+    [Fact]
+    public void CurrentWeek_NormMet_ClearsPauseImmediately()
+    {
+        var stats = Run("33 0 3");
+
+        Assert.Equal("DDPC", Marks(stats, 4)); // прошлая неделя — по-прежнему пауза в ленте
+        Assert.Equal(3, stats.WeekStreak);
+        Assert.False(stats.WeekPaused);
+    }
+
+    [Fact]
+    public void CurrentWeek_NormNotYetMet_PauseStays()
+    {
+        var stats = Run("33 0 2");
+
+        Assert.Equal(2, stats.WeekStreak);
+        Assert.True(stats.WeekPaused);
+    }
+
+    [Fact]
+    public void CurrentWeek_NormMet_AfterBreak_StartsNewStreak()
+    {
+        var stats = Run("33 00 3");
+
+        Assert.Equal("DDMMC", Marks(stats, 5));
+        Assert.Equal(1, stats.WeekStreak);
+        Assert.False(stats.WeekPaused);
+    }
+
+    [Fact]
+    public void CurrentWeek_Vacation_NotCountedEvenWithNorm()
+    {
+        var stats = Run("33 0 3", vacations: [new(ThisWeek, ThisWeek.AddDays(6))]);
+
+        Assert.Equal(2, stats.WeekStreak);
+        Assert.True(stats.WeekPaused);
+    }
+
+    [Fact]
+    public void NewHabit_FirstWeekNormMet_StreakOneAtOnce()
+    {
+        var stats = Run("3");
+
+        Assert.Equal(1, stats.WeekStreak);
+    }
+
+    [Fact]
+    public void CurrentWeekDone_MonthStillCountedOnlyAfterItEnds()
+    {
+        var stats = Run("3333|3 3");
+
+        Assert.Equal("DC", MonthMarks(stats, 2));
+        Assert.Equal(1, stats.MonthStreak);
     }
 
     [Fact]

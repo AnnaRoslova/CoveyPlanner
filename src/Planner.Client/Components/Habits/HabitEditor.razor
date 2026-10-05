@@ -1,5 +1,5 @@
 @* Окно копилки: название, иконка, цвет (палитра ролей), норма в неделю, сколько скрепок в банке, стартовое число;
-   у существующей — «в архив» / «из архива» и «удалить» (с вопросом в окне). Открывается с экрана «Копилки»
+   у существующей — «в архив» / «из архива»; копилку из архива можно «удалить» (плашка «Удалено … · Вернуть»). Открывается с экрана «Копилки»
    и из строки «🫙 В копилку» в окне цели или дела (Nested — поверх того окна). Enter в названии — сохранить, Esc — отмена.
    Стили — css/editor.css. *@
 @inject PlannerState State
@@ -43,28 +43,21 @@
         <div class="date-hint">сколько скрепок уже было до копилки — идут только в общий счёт</div>
     </div>
 
-    @if (_confirmDelete)
-    {
-        <div class="confirm-line">
-            <span>Удалить копилку «@Habit!.Name»? Дела и цели останутся, а счёт пропадёт.</span>
-            <button type="button" class="btn danger" @onclick="DeleteAsync">Удалить</button>
-            <button type="button" class="btn quiet" @onclick="() => _confirmDelete = false">Отмена</button>
-        </div>
-    }
-    else
-    {
-        <div class="buttons">
-            @if (Habit is not null)
-            {
-                <button type="button" class="btn danger trash" @onclick="() => _confirmDelete = true">удалить</button>
-                <button type="button" class="btn quiet" @onclick="ToggleArchiveAsync">@(Habit.IsArchived ? "из архива" : "в архив")</button>
-            }
-            <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
-            <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="SaveAsync">
-                @(Habit is null ? "Создать" : "Сохранить")
-            </button>
-        </div>
-    }
+    <div class="buttons">
+        @* Удалить можно только копилку из архива (с «Вернуть»); у активной — только «в архив» *@
+        @if (Habit is { IsArchived: true })
+        {
+            <button type="button" class="btn danger trash" @onclick="DeleteAsync">удалить</button>
+        }
+        @if (Habit is not null)
+        {
+            <button type="button" class="btn quiet" @onclick="ToggleArchiveAsync">@(Habit.IsArchived ? "из архива" : "в архив")</button>
+        }
+        <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
+        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="SaveAsync">
+            @(Habit is null ? "Создать" : "Сохранить")
+        </button>
+    </div>
 </div>
 
 @code {
@@ -76,7 +69,6 @@
     private int _jarSize = 30;
     private int _startCount;
     private bool _showEmojis;
-    private bool _confirmDelete;
 
     /// <summary>Правка копилки; null — новая.</summary>
     [Parameter]

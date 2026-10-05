@@ -19,6 +19,8 @@ public partial class PlannerState
     /// <summary>Перечитать копилки (скрепки считаются на сервере по делам).</summary>
     public async Task RefreshHabitsAsync()
     {
+        // Отложенное удаление — сначала на сервер, иначе перечитанное вернуло бы удалённое на экран (как в ReloadAsync)
+        await CommitPendingDeleteAsync(reload: false);
         try
         {
             ApplyHabits(await api.GetHabitsAsync(RuDates.Today));
@@ -76,8 +78,24 @@ public partial class PlannerState
         NotifyChanged();
     }
 
-    /// <summary>Удалить копилку: дела и цели остаются, без копилки. Спрашивает окно копилки (без «Вернуть» — счёт не восстановить).</summary>
+    /// <summary>
+    /// Удалить копилку из архива — с плашкой «Удалено «…» · Вернуть»: на экране сразу, на сервер — через 6 секунд
+    /// (см. <see cref="DeleteWithUndoAsync"/>). «Вернуть» — копилка целиком: привязки, стартовое число, каникулы.
+    /// После удаления дела и цели остаются без копилки, каникулы только этой копилки исчезают — перечитываем.
+    /// </summary>
     public async Task DeleteHabitAsync(int habitId)
+    {
+        if (FindHabit(habitId) is not { IsArchived: true } habit)
+        {
+            return;
+        }
+
+        await DeleteWithUndoAsync(Deleted(habit.Name), () => RemoveHabitLocally(habitId),
+            () => api.DeleteHabitAsync(habitId), reloadAfter: true);
+    }
+
+    /// <summary>Как удаление копилки выглядит сразу (так же решает сервер).</summary>
+    private void RemoveHabitLocally(int habitId)
     {
         Habits.RemoveAll(h => h.Id == habitId);
         foreach (var goal in Goals.Where(g => g.HabitId == habitId).ToList())
@@ -90,10 +108,10 @@ public partial class PlannerState
             _tasks[task.Id] = task with { HabitId = null };
         }
 
-        if (await SaveAsync(() => api.DeleteHabitAsync(habitId)))
-        {
-            await RefreshHabitsAsync(); // каникулы только этой копилки удалились
-        }
+        Vacations = Vacations
+            .Where(v => !v.HabitIds.SequenceEqual([habitId]))
+            .Select(v => v with { HabitIds = [.. v.HabitIds.Where(id => id != habitId)] })
+            .ToList();
     }
 
     /// <summary>«+1 сегодня»: выполненное дело копилки в конец сегодняшнего дня и подсказка «📎 +1».</summary>

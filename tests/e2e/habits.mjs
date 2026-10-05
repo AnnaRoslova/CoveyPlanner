@@ -1,6 +1,6 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1): цели «Бег» (Тело, 3 раза), «100 страниц» (Ум); копилки «Тренировки», «Чтение»
-// Копилки привычек: экран 🫙, новая копилка, привязка цели → отметка занятия → счёт, пилюля и подсказка «📎 +1»;
-// снятая отметка; «+1 сегодня»; новая копилка из окна цели; копилка у дела; каникулы. В конце — история «задним числом»
+// Копилки привычек: экран 🫙, новая копилка, привязка цели → отметка занятия → счёт, пилюля и подсказка «📎 +1»; норма недели — сразу в серии;
+// снятая отметка; «+1 сегодня»; новая копилка из окна цели; копилка у дела; каникулы; архив и удаление с «Вернуть». В конце — история «задним числом»
 // и снимки экрана «Копилки» в нескольких темах (out/habits-<тема>.png).
 import puppeteer from 'puppeteer-core';
 import { makeHabitHistory } from './lib/habits-history.mjs';
@@ -155,6 +155,19 @@ await check('«+1 сегодня»: счёт 2, подсказка, в сего�
   assert(done === true, `дело в дне: ${done}`);
 });
 
+await check('норма этой недели выполнена — неделя сразу в серии: «🔥 1 нед. подряд», пилюля «🫙 3 · 🔥1»', async () => {
+  assert(await pillOf('Бег') === '🫙 2', `до нормы: ${await pillOf('Бег')}`); // в процессе — серии ещё нет
+  await openScreen();
+  await page.evaluate(() => document.querySelector('.jar-card[aria-label="Копилка «Тренировки»"] .plus-one').click());
+  await sleep(400);
+  assert((await toastText())?.includes('неделя 3 из 3 ✓'), `подсказка: ${await toastText()}`);
+  await settle();
+  const chip = await page.$eval('.jar-card[aria-label="Копилка «Тренировки»"] .jar-info .chip', e => e.textContent.replace(/\s+/g, ' ').trim());
+  assert(chip === '🔥 1 нед. подряд', `серия: ${chip}`);
+  await escape();
+  assert(await pillOf('Бег') === '🫙 3 · 🔥1', `пилюля: ${await pillOf('Бег')}`);
+});
+
 await check('окно цели «100 страниц»: «+ новая копилка…» — окно поверх, название и норма из цели; после «Создать» она выбрана', async () => {
   await openGoal('100 страниц');
   await chooseHabit('+ новая копилка…');
@@ -226,6 +239,57 @@ await check('копилка в архиве: нет в выборе «В коп�
   await escape(); await escape();
 });
 
+const openHabitEditor = async name => {
+  await page.evaluate(n => [...document.querySelector(`.jar-card[aria-label="Копилка «${n}»"]`).querySelectorAll('.btn')].find(b => b.textContent.trim() === 'настроить').click(), name);
+  await page.waitForSelector('.editor[aria-label="Копилка"]'); await sleep(200);
+};
+const editorButtons = () => page.$$eval('.editor[aria-label="Копилка"] .btn', bs => bs.map(b => b.textContent.trim()));
+const serverHabit = name => page.evaluate(async n => (await (await fetch('/api/habits')).json()).habits.find(h => h.name === n) ?? null, name);
+const showArchived = async () => {
+  if (!(await page.$('.archived-h[aria-expanded="true"]'))) { await page.click('.archived-h'); await sleep(300); }
+};
+
+await check('удалить можно только копилку из архива: у активной — только «в архив»', async () => {
+  await openScreen();
+  await openHabitEditor('100 страниц');
+  const active = await editorButtons();
+  assert(active.includes('в архив') && !active.includes('удалить'), JSON.stringify(active));
+  await clickIn('.editor[aria-label="Копилка"] .btn', 'в архив'); await settle();
+  await showArchived();
+  await openHabitEditor('100 страниц');
+  const archived = await editorButtons();
+  assert(archived.includes('удалить') && archived.includes('из архива'), JSON.stringify(archived));
+  await escape();
+});
+
+await check('удаление — плашка «Удалено «100 страниц» · Вернуть»; «Вернуть» — копилка целиком, с привязкой цели', async () => {
+  await openHabitEditor('100 страниц');
+  await clickIn('.editor[aria-label="Копилка"] .btn', 'удалить'); await sleep(300);
+  assert(!(await page.$('.jar-card[aria-label="Копилка «100 страниц»"]')), 'карточка не исчезла');
+  const toast = await toastText();
+  assert(toast?.includes('Удалено «100 страниц»') && toast.includes('Вернуть'), `плашка: ${toast}`);
+  await escape();
+  assert(await pillOf('100 страниц') === null, 'у цели осталась пилюля удалённой копилки');
+  await page.click('.toast .action'); await settle();
+  assert(await pillOf('100 страниц') === '🫙 0', `после «Вернуть»: ${await pillOf('100 страниц')}`);
+  await sleep(6500); // срок плашки вышел — на сервер ничего не ушло
+  const habit = await serverHabit('100 страниц');
+  assert(habit?.isArchived, `на сервере: ${JSON.stringify(habit)}`);
+});
+
+await check('без «Вернуть» — через 6 с удалена на сервере; цель осталась без копилки', async () => {
+  await openScreen();
+  await showArchived();
+  await openHabitEditor('100 страниц');
+  await clickIn('.editor[aria-label="Копилка"] .btn', 'удалить'); await sleep(300);
+  assert(await serverHabit('100 страниц'), 'удалилась на сервере сразу, а не через 6 с');
+  await sleep(6800);
+  assert(await serverHabit('100 страниц') === null, 'на сервере копилка осталась');
+  await escape();
+  await load();
+  assert(await pillOf('100 страниц') === null, 'у цели пилюля');
+});
+
 // История «задним числом» и снимки экрана в темах
 await check('история копилок: серия, пауза, каникулы — как в макете', async () => {
   await makeHabitHistory(BASE, process.env.PLANNER_DB);
@@ -233,7 +297,7 @@ await check('история копилок: серия, пауза, канику
   await openScreen();
   const chips = name => page.$$eval(`.jar-card[aria-label="Копилка «${name}»"] .jar-info .chip`, cs => cs.map(c => c.textContent.replace(/\s+/g, ' ').trim()));
   const training = await chips('Тренировки');
-  assert(training[0] === '🔥 13 нед. подряд', JSON.stringify(training));
+  assert(training[0] === '🔥 14 нед. подряд', JSON.stringify(training)); // 13 прошлых + эта (норма уже выполнена)
   const meditation = await chips('Медитация');
   assert(meditation[0].startsWith('⚠ пауза · 🔥 9'), JSON.stringify(meditation));
   assert(await page.$('.jar-card[aria-label="Копилка «Медитация»"] .hint.warn'), 'нет подсказки «не пропускай дважды»');
@@ -241,7 +305,7 @@ await check('история копилок: серия, пауза, канику
   assert(reading.filter(c => c === 'vac').length === 2, JSON.stringify(reading));
   assert((await page.$$eval('.jar-card[aria-label="Копилка «Чтение»"] .pip.extra', p => p.length)) === 1, 'нет розовой точки сверх нормы');
   await escape();
-  assert((await pillOf('Бег'))?.endsWith(' · 🔥13'), `пилюля: ${await pillOf('Бег')}`);
+  assert((await pillOf('Бег'))?.endsWith(' · 🔥14'), `пилюля: ${await pillOf('Бег')}`);
 });
 
 for (const theme of ['lotus', 'peony', 'platinum', 'obsidian']) {

@@ -69,12 +69,17 @@ public class HabitService(
     }
 
     /// <summary>
-    /// Удалить копилку. Дела и цели остаются, просто без копилки (связь обнуляет база); каникулы только этой копилки
-    /// удаляются, у общих она убирается из списка.
+    /// Удалить копилку — только из архива (активную сначала отправляют в архив). Дела и цели остаются, просто без копилки
+    /// (связь обнуляет база); каникулы только этой копилки удаляются, у общих она убирается из списка.
+    /// «Вернуть» — на клиенте: удаление уходит на сервер через несколько секунд.
     /// </summary>
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var habit = await FindAsync(id, ct);
+        if (!habit.IsArchived)
+        {
+            throw new DomainException("Удалить можно только копилку из архива.");
+        }
         foreach (var vacation in await vacations.GetAllAsync(ct))
         {
             if (!vacation.RemoveHabit(id))
