@@ -48,7 +48,7 @@
                 }
             </span>
         }
-        @if (TimeLabel is not null || DurationLabel is not null || IsRock)
+        @if (TimeLabel is not null || DurationLabel is not null || IsRock || Badge is not null)
         {
             <div class="pills">
                 @if (TimeLabel is not null)
@@ -63,6 +63,7 @@
                 {
                     <span class="pill rock">камень</span>
                 }
+                @Badge
             </div>
         }
         @if (Days is { Count: > 0 })
@@ -118,6 +119,10 @@
     /// <summary>Пилюля «камень» (розовая) — дело связано с целью недели.</summary>
     [Parameter]
     public bool IsRock { get; set; }
+
+    /// <summary>Своя пилюля после остальных (у цели — «🫙 102 · 🔥13» её копилки).</summary>
+    [Parameter]
+    public RenderFragment? Badge { get; set; }
 
     /// <summary>Пилюля длительности «~30 мин».</summary>
     [Parameter]

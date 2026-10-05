@@ -97,6 +97,20 @@
         <DurationPicker @bind-Value="_duration" />
     </div>
 
+    @* Копилка: выполненное дело — скрепка в ней. У занятия — как у цели, но может быть своя *@
+    <div class="field">
+        <div class="label-row">
+            <span class="label">🫙 В копилку</span>
+            @if (Goal is { } habitGoal && _habitId != habitGoal.HabitId)
+            {
+                <span class="own">своё</span>
+                <button type="button" class="as-goal" @onclick="() => _habitId = habitGoal.HabitId">как у цели</button>
+            }
+        </div>
+        <HabitField @bind-Value="_habitId" NewName="@_title" NewNorm="@(Goal?.TimesPerWeek ?? 3)"
+                    NewColor="@State.RolesOf(EditedTask).FirstOrDefault()?.Color" />
+    </div>
+
     <div class="field">
         <div class="label-row">
             <span class="label">Заметки</span>
@@ -125,6 +139,7 @@
     private int? _quadrant;
     private int? _duration;
     private DateOnly? _date;
+    private int? _habitId;
 
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;
@@ -156,6 +171,7 @@
         _quadrant = EditedTask.Quadrant;
         _duration = EditedTask.DurationMinutes;
         _date = EditedTask.PlannedDate;
+        _habitId = EditedTask.HabitId;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -204,7 +220,7 @@
 
         var task = EditedTask;
         await OnClose.InvokeAsync();
-        await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
+        await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration, _habitId ?? 0);
         if (_date != task.PlannedDate)
         {
             await State.MoveTaskToDateAsync(task.Id, _date);

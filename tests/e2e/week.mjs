@@ -199,7 +199,12 @@ await check('«в корзину» из окна; в корзине видно, 
   assert(!(await titles(0)).includes('Новое дело'), 'не удалилось');
   await page.click('.trash'); await sleep(600);
   const rows = await page.$$eval('.trash-popup .row', rs => rs.map(r => r.textContent));
-  assert(rows.some(r => r.includes('Новое дело') && r.includes('из плана: Пн, 28 сентября')), `корзина: ${rows}`);
+  // Понедельник текущей недели («Пн, 5 октября») — сценарий идёт на текущей неделе
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDay() + 6) % 7);
+  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  const from = `из плана: Пн, ${monday.getDate()} ${months[monday.getMonth()]}`;
+  assert(rows.some(r => r.includes('Новое дело') && r.includes(from)), `корзина: ${rows}`);
   await page.click('.trash-popup .row-action.positive'); await sleep(600);
   assert((await titles(0)).includes('Новое дело'), 'не вернулось в день');
   await page.click('.backdrop'); await settle();

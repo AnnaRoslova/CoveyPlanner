@@ -23,6 +23,12 @@ public sealed class WindowHost
     /// <summary>Постоянная цель, про которую спрашиваем: удалить только на этой неделе или с этой недели и дальше.</summary>
     public int? DeleteGoalId { get; private set; }
 
+    /// <summary>Экран «Копилки» (кнопка 🫙 в шапке недели или пилюля у цели).</summary>
+    public bool HabitsOpen { get; private set; }
+
+    /// <summary>Копилка, к которой экран «Копилки» прокручивается и которую подсвечивает (клик по пилюле у цели).</summary>
+    public int? FocusHabitId { get; private set; }
+
     public event Action? Changed;
 
     public void OpenGoal(int goalId) => Open(goalId: goalId);
@@ -36,6 +42,8 @@ public sealed class WindowHost
     public void OpenTask(int taskId) => Open(taskId: taskId);
 
     public void AskDeleteGoal(int goalId) => Open(deleteGoalId: goalId);
+
+    public void OpenHabits(int? focusHabitId = null) => Open(habits: true, focusHabitId: focusHabitId);
 
     /// <summary>Удалить цель: постоянную — сначала спросить (только эта неделя или с этой недели и дальше), разовую — сразу.</summary>
     public Task DeleteGoalAsync(PlannerState state, int goalId)
@@ -52,8 +60,10 @@ public sealed class WindowHost
     public void Close() => Open();
 
     private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
-        int? deleteGoalId = null)
+        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null)
     {
+        HabitsOpen = habits;
+        FocusHabitId = focusHabitId;
         GoalId = goalId;
         RoleId = roleId;
         IsNewRole = newRole;

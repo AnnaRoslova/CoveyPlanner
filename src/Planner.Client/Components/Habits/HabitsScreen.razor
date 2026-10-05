@@ -1,0 +1,134 @@
+@* Экран «Копилки» (кнопка 🫙 в шапке недели или пилюля у цели — тогда её копилка прокручена в вид и подсвечена).
+   Карточки копилок, «🏖 Каникулы», «+ копилка», легенда квадратиков, копилки в архиве. Esc или клик мимо — закрыть.
+   Образец — docs/habits-mockup.html. *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+<div class="habits-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="habits" role="dialog" aria-label="Копилки" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="habits-h">
+        <h2>🫙 Копилки</h2>
+        <div class="tools">
+            <button type="button" class="btn vac-b" @onclick="() => _vacations = true">🏖 Каникулы</button>
+            <button type="button" class="btn pink add-habit" @onclick="() => _editor = Editor.New">+ копилка</button>
+            <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+        </div>
+    </header>
+
+    @if (!Active.Any())
+    {
+        <p class="empty">
+            Копилок пока нет. Скрепка — выполненное дело, привязанное к копилке: привяжите цель в её окне
+            («🫙 В копилку») или нажмите «+ копилка».
+        </p>
+    }
+
+    <div class="grid">
+        @foreach (var habit in Active)
+        {
+            var id = habit.Id;
+            <HabitCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId"
+                       OnPlusOne="() => State.PlusOneAsync(id)" OnEdit="() => Edit(id)" />
+        }
+    </div>
+
+    @if (Active.Any())
+    {
+        <div class="legend">
+            <span><i class="w done"></i>неделя засчитана</span>
+            <span><i class="w warn"></i>первый пропуск (⚠ пауза)</span>
+            <span><i class="w miss"></i>второй пропуск подряд — серия прервана</span>
+            <span><i class="w vac"></i>каникулы</span>
+            <span><i class="w now"></i>текущая неделя (в процессе)</span>
+        </div>
+    }
+
+    @if (Archived.Count > 0)
+    {
+        <button type="button" class="archived-h" aria-expanded="@(_showArchived ? "true" : "false")" @onclick="() => _showArchived = !_showArchived">
+            в архиве: @Archived.Count <span class="chev @(_showArchived ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
+        </button>
+        @if (_showArchived)
+        {
+            <div class="grid">
+                @foreach (var habit in Archived)
+                {
+                    var id = habit.Id;
+                    <HabitCard @key="id" Habit="habit" OnEdit="() => Edit(id)" />
+                }
+            </div>
+        }
+    }
+</section>
+
+@if (_editor == Editor.New)
+{
+    <HabitEditor Nested="true" OnClose="CloseEditor" />
+}
+else if (_editor == Editor.Existing && State.FindHabit(_editedId) is { } edited)
+{
+    <HabitEditor @key="_editedId" Nested="true" Habit="edited" OnClose="CloseEditor" />
+}
+
+@if (_vacations)
+{
+    <VacationsDialog OnClose="CloseVacations" />
+}
+
+@code {
+    private enum Editor { None, New, Existing }
+
+    private ElementReference _root;
+    private Editor _editor;
+    private int _editedId;
+    private bool _vacations;
+    private bool _showArchived;
+    private bool _refocus;
+
+    private IEnumerable<HabitDto> Active => State.ActiveHabits;
+
+    private List<HabitDto> Archived => State.Habits.Where(h => h.IsArchived).OrderBy(h => h.SortOrder).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.RefreshHabitsAsync(); // счёт мог поменяться (дела в корзине, новый день)
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Фокус на экран — чтобы Esc закрывал его сразу (копилка из пилюли сама забирает фокус)
+        if ((firstRender && Windows.FocusHabitId is null) || _refocus)
+        {
+            _refocus = false;
+            await _root.FocusAsync();
+        }
+    }
+
+    private void Edit(int habitId)
+    {
+        _editedId = habitId;
+        _editor = Editor.Existing;
+    }
+
+    // Окно поверх закрылось — фокус снова на экране, чтобы Esc закрывал уже его
+    private void CloseEditor()
+    {
+        _editor = Editor.None;
+        _refocus = true;
+    }
+
+    private void CloseVacations()
+    {
+        _vacations = false;
+        _refocus = true;
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

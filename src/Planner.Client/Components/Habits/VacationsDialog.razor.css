@@ -1,0 +1,59 @@
+.vac-title {
+    font-family: var(--font-title);
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.vac-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.vac-row input {
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    font-weight: 600;
+}
+
+.vac-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vac-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    border-radius: 8px;
+    background: var(--vac-soft);
+    color: var(--vac-ink);
+    font-size: 13px;
+}
+
+.vac-list li.past {
+    background: transparent;
+    color: var(--soft);
+}
+
+.when {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.for {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

@@ -16,6 +16,21 @@ public static class RuDates
     private static readonly string[] MonthsShort =
         ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
+    private static readonly string[] MonthsNominative =
+        ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
+
+    private static readonly string[] MonthsShortNominative =
+        ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
+    /// <summary>«июнь».</summary>
+    public static string Month(DateOnly date) => MonthsNominative[date.Month - 1];
+
+    /// <summary>«май», «окт» — подпись месяца в полосе месяцев.</summary>
+    public static string MonthShort(DateOnly date) => MonthsShortNominative[date.Month - 1];
+
+    /// <summary>«12 окт».</summary>
+    public static string DayMonthShort(DateOnly date) => $"{date.Day} {MonthsShort[date.Month - 1]}";
+
     /// <summary>«Пн 12 окт».</summary>
     public static string ShortDate(DateOnly date) => $"{ShortDay(date)} {date.Day} {MonthsShort[date.Month - 1]}";
 

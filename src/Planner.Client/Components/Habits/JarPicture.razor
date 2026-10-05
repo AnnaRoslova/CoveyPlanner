@@ -1,0 +1,37 @@
+@* Банка со скрепками: уровень заполнения — цветом копилки, внутри несколько 📎. Контуры и крышка — из переменных темы
+   (JarPicture.razor.css). *@
+
+<svg class="jar-svg" viewBox="0 0 74 92" width="74" height="92" aria-hidden="true">
+    <defs>
+        <clipPath id="@_clipId">
+            <path d="@Body" />
+        </clipPath>
+    </defs>
+    <rect class="jar-fill" x="0" y="@(88 - Level)" width="74" height="@Level" fill="@Color" clip-path="url(#@_clipId)" />
+    @((MarkupString)ClipsMarkup)
+    <path class="jar-glass" d="@Body" />
+    <rect class="jar-lid" x="16" y="10" width="42" height="12" rx="4" />
+    <path class="jar-shine" d="M20 40 Q18 52 20 64" />
+</svg>
+
+@code {
+    private const string Body = "M14 22 Q10 26 10 34 L10 80 Q10 88 18 88 L56 88 Q64 88 64 80 L64 34 Q64 26 60 22 Z";
+
+    // У каждой банки на странице — своя маска
+    private readonly string _clipId = $"jar-{Guid.NewGuid():N}";
+
+    /// <summary>Заполнение текущей банки: 0..1.</summary>
+    [Parameter]
+    public double Fill { get; set; }
+
+    [Parameter]
+    public string Color { get; set; } = "";
+
+    private int Level => (int)Math.Round(Math.Clamp(Fill, 0, 1) * 66);
+
+    private int Clips => Math.Min(9, (int)Math.Round(Math.Clamp(Fill, 0, 1) * 12));
+
+    // SVG-тег text в Razor занят (<text> — служебный), поэтому скрепки — готовой разметкой
+    private string ClipsMarkup => string.Concat(Enumerable.Range(0, Clips).Select(i =>
+        $"<text x=\"{16 + i % 3 * 16}\" y=\"{84 - i / 3 * 16}\" font-size=\"11\" clip-path=\"url(#{_clipId})\">📎</text>"));
+}

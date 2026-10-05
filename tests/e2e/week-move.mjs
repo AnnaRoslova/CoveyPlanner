@@ -147,9 +147,10 @@ await check('перетаскивание: задержать над «›» —
   await sleep(300);
   assert(await page.$('.nav.flip-armed'), 'стрелка не «заряжается»');
   await sleep(700);
+  // Сразу уходим со стрелки (до снимка): держать дольше ~1,2 с — перелистнёт ещё раз
+  await page.mouse.move(next.x + 30, next.y + 200); await sleep(200);
   await page.screenshot({ path: `${SHOTS}/week-move-flip.png` });
   assert(await weekTitle() !== before, 'неделя не перелистнулась');
-  await page.mouse.move(next.x + 30, next.y + 200); await sleep(200); // ушли со стрелки, чтобы не листать дальше
   const after = await weekTitle();
   const mon = center(await boxOf(`document.querySelectorAll('.day')[0]`));
   await moveSmooth({ x: next.x + 30, y: next.y + 200 }, mon);

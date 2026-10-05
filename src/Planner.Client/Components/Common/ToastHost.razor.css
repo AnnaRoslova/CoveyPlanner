@@ -36,3 +36,41 @@
 .action:hover {
     color: var(--b-deep);
 }
+
+/* «📎 +1 в «Тренировки»»: скрепка падает и чуть подпрыгивает */
+.clip-toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 13.5px;
+    white-space: nowrap;
+}
+
+.clip {
+    display: inline-block;
+    animation: clip-drop 0.9s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+@keyframes clip-drop {
+    0% {
+        opacity: 0;
+        transform: translateY(-14px) rotate(-25deg);
+    }
+
+    55% {
+        opacity: 1;
+        transform: translateY(2px) rotate(8deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .clip {
+        animation: none;
+    }
+}

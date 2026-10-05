@@ -121,6 +121,12 @@
     --shadow-edge: 0 -1px 2px rgba(0, 0, 0, 0.4);
     --today-bg: #3a3c42d9;  /* сегодня — светлее остальных и серебристая обводка */
     --today-ring: #d6d9deb3;
+    --warn: #8f7d3d;
+    --warn-soft: #39331f;
+    --warn-ink: #f0dc98;
+    --vac: #5d6492;
+    --vac-soft: #2b2e42;
+    --vac-ink: #c3caf4;
     color-scheme: dark;
 }
 

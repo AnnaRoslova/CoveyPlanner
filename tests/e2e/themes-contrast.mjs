@@ -7,6 +7,7 @@
 // выполненные дела, подсказки и плейсхолдеры) — не ниже 3:1.
 // Снимки — в out/cmp-<тема>-<окно>.png и out/mock-<тема>.png, отчёт о контрасте — out/contrast.json.
 import puppeteer from 'puppeteer-core';
+import { makeHabitHistory } from './lib/habits-history.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +20,7 @@ const MUST_PASS_AA = ['obsidian'];
 const LIGHT = ['lotus', 'peony', 'platinum'];
 // Второстепенный текст: «+ …» и «свернуть всё», счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
 const SECONDARY = ['.add', '.others-h', '.other .d', '.other .sep', '.other.done', '.fold', '.n', '.cnt', '.progress', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
-  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category'].join(', ');
+  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category', '.strip-label', '.m.before', '.legend'].join(', ');
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -135,6 +136,9 @@ async function setTheme(key) {
   await sleep(600);
 }
 
+// Копилки с историей (пауза, каникулы) — для снимка и замера экрана «Копилки»
+await makeHabitHistory(BASE, process.env.PLANNER_DB);
+
 // В корзине должно что-то лежать — для снимка
 await page.goto(BASE, { waitUntil: 'networkidle0' });
 await page.evaluate(async () => {
@@ -220,6 +224,14 @@ for (const theme of THEMES) {
     await shot('trash');
     windows.push(['корзина', await audit(theme, 'trash', '.trash-popup')]);
     await escape();
+  });
+  await check(`${theme}: экран «Копилки»`, async () => {
+    await page.click('.jar-b'); await page.waitForSelector('.habits .jar-card'); await sleep(500);
+    await shot('habits');
+    windows.push(['копилки', await audit(theme, 'habits', '.habits')]);
+    await page.click('.habits .btn.vac-b'); await page.waitForSelector('.editor[aria-label="Каникулы"]'); await sleep(300);
+    windows.push(['каникулы', await audit(theme, 'vacations', '.editor[aria-label="Каникулы"]')]);
+    await escape(); await escape();
   });
   await check(`${theme}: меню тем`, async () => {
     await page.click('.palette-b'); await page.waitForSelector('.themes'); await sleep(300);

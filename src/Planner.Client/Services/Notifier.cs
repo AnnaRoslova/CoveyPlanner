@@ -14,6 +14,9 @@ public class Notifier
 
     public bool IsError { get; private set; }
 
+    /// <summary>Подсказка «📎 +1 в копилку» — со скрепкой, которая падает в банку.</summary>
+    public bool IsClip { get; private set; }
+
     /// <summary>Надпись на кнопке-действии; null — кнопки нет.</summary>
     public string? ActionLabel { get; private set; }
 
@@ -28,6 +31,11 @@ public class Notifier
     public void Error(string message) => Show(message, isError: true);
 
     public void Info(string message) => Show(message, isError: false);
+
+    /// <summary>Скрепка легла в копилку: «+1 в «Тренировки» · 103 · неделя 3 из 3 ✓» — на пару секунд.</summary>
+    public void Clip(string message) => Show(message, isError: false, duration: ClipDuration, isClip: true);
+
+    public static readonly TimeSpan ClipDuration = TimeSpan.FromSeconds(2.5);
 
     /// <summary>Сообщение с кнопкой. Возвращает номер сообщения — чтобы потом убрать именно его.</summary>
     public int WithAction(string message, string actionLabel, Func<Task> action, TimeSpan duration) =>
@@ -56,10 +64,12 @@ public class Notifier
         }
     }
 
-    private int Show(string message, bool isError, string? actionLabel = null, Func<Task>? action = null, TimeSpan? duration = null)
+    private int Show(string message, bool isError, string? actionLabel = null, Func<Task>? action = null, TimeSpan? duration = null,
+        bool isClip = false)
     {
         Message = message;
         IsError = isError;
+        IsClip = isClip;
         ActionLabel = actionLabel;
         _action = action;
         Duration = duration ?? DefaultDuration;

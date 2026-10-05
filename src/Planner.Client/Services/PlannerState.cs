@@ -130,8 +130,10 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         {
             var boardTask = api.GetBoardAsync();
             var weekTask = api.GetWeekAsync(WeekStart);
+            var habitsTask = api.GetHabitsAsync(RuDates.Today);
             ApplyBoard(await boardTask);
             ApplyWeek(await weekTask);
+            ApplyHabits(await habitsTask);
             IsLoaded = true;
             LoadError = null;
         }
@@ -179,6 +181,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     /// </summary>
     public async Task OnTodayChangedAsync(DateOnly previous, DateOnly today)
     {
+        _ = RefreshHabitsAsync(); // новая неделя или месяц — у копилок новые итоги
         var wasCurrentWeek = WeekStart == RuDates.WeekStartOf(previous);
         if (wasCurrentWeek && RuDates.WeekStartOf(today) != WeekStart)
         {
@@ -262,8 +265,10 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         {
             var boardTask = api.GetBoardAsync();
             var weekTask = api.GetWeekAsync(WeekStart);
+            var habitsTask = api.GetHabitsAsync(RuDates.Today);
             ApplyBoard(await boardTask);
             ApplyWeek(await weekTask);
+            ApplyHabits(await habitsTask);
         }
         catch (ApiException ex)
         {

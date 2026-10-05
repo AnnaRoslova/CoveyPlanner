@@ -6,7 +6,12 @@
 @if (Notifier.Message is { } message)
 {
     var version = Notifier.Version;
-    <div class="toast @(Notifier.IsError ? "error" : "")" role="status" @onclick="() => Notifier.Dismiss(version)">
+    <div class="toast @(Notifier.IsError ? "error" : "") @(Notifier.IsClip ? "clip-toast" : "")" role="status" @onclick="() => Notifier.Dismiss(version)">
+        @if (Notifier.IsClip)
+        {
+            @* @key — у каждой подсказки анимация заново *@
+            <span @key="version" class="clip" aria-hidden="true">📎</span>
+        }
         <span>@message</span>
         @if (Notifier.ActionLabel is { } label)
         {

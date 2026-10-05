@@ -47,6 +47,10 @@
     {
         <GoalDeleteDialog @key="deleteGoalId" Goal="doomed" OnClose="Windows.Close" />
     }
+    else if (Windows.HabitsOpen)
+    {
+        <HabitsScreen />
+    }
 }
 else if (State.LoadError is not null)
 {

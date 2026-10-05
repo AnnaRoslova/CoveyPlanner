@@ -162,3 +162,24 @@
     color: var(--faint);
     text-decoration: line-through;
 }
+
+/* Пилюля копилки у цели: «🫙 102 · 🔥13»; клик — экран «Копилки» на этой копилке */
+.jar-pill {
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 17px;
+    white-space: nowrap;
+}
+
+.jar-pill:hover {
+    box-shadow: inset 0 0 0 1px var(--b);
+}
+
+.jar-pill.warn {
+    background: var(--warn-soft);
+    color: var(--warn-ink);
+}

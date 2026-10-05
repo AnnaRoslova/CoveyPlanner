@@ -93,4 +93,8 @@ DayTask 'Ужин с семьёй' 4 '19:00' 'Семья' | Out-Null
 Schedule $park 5 | Out-Null
 DayTask 'Кофе с Олей' 5 $null 'Общение и эмоции' | Out-Null
 
+# Копилки привычек (к целям не привязаны — привязку проверяют сценарии e2e): «Чтение» — со стартовым числом
+Api POST 'habits' @{ name = 'Тренировки'; emoji = '💪'; color = '#9fd3bd'; weeklyNorm = 3; jarSize = 30; startCount = 0 } | Out-Null
+Api POST 'habits' @{ name = 'Чтение'; emoji = '📚'; color = '#a9cde8'; weeklyNorm = 4; jarSize = 30; startCount = 41 } | Out-Null
+
 Write-Host 'Демо-данные добавлены.'

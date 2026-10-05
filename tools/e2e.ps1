@@ -85,6 +85,7 @@ foreach ($script in $scripts) {
         }
 
         $env:PLANNER_URL = "$url/"
+        $env:PLANNER_DB = $db # временная база сценария (копилки «задним числом» для снимков)
         Push-Location $e2e
         # Сообщения node в stderr — не повод обрывать весь прогон
         $ErrorActionPreference = 'Continue'

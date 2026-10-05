@@ -145,3 +145,19 @@ body[data-drag-kind="day"] .flip-zone {
         background: color-mix(in srgb, var(--a) 50%, transparent);
     }
 }
+
+/* 🫙 — экран «Копилки» (рядом с палитрой тем) */
+.jar-b {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin-left: 10px;
+    border-radius: 50%;
+    font-size: 15px;
+}
+
+.jar-b:hover {
+    background: var(--b-soft);
+}

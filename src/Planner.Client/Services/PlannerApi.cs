@@ -111,6 +111,28 @@ public class PlannerApi(HttpClient http)
     public Task<TaskDto> MoveGoalToSomedayAsync(int id, GoalToSomedayRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/goals/{id}/to-someday", request);
 
+    // Копилки привычек и каникулы
+
+    /// <summary>Все копилки со статистикой на день <paramref name="today"/> и каникулы. Только чтение — недели не создаются.</summary>
+    public Task<HabitsDto> GetHabitsAsync(DateOnly today) => GetAsync<HabitsDto>($"api/habits?today={Format(today)}");
+
+    public Task<HabitDto> CreateHabitAsync(SaveHabitRequest request) =>
+        SendAsync<HabitDto>(HttpMethod.Post, "api/habits", request);
+
+    public Task<HabitDto> UpdateHabitAsync(int id, SaveHabitRequest request, DateOnly today) =>
+        SendAsync<HabitDto>(HttpMethod.Put, $"api/habits/{id}?today={Format(today)}", request);
+
+    public Task DeleteHabitAsync(int id) => SendAsync(HttpMethod.Delete, $"api/habits/{id}");
+
+    /// <summary>«+1 сегодня»: выполненное дело копилки в конец сегодняшнего дня.</summary>
+    public Task<PlusOneResultDto> PlusOneAsync(int id, DateOnly today) =>
+        SendAsync<PlusOneResultDto>(HttpMethod.Post, $"api/habits/{id}/plus-one", new PlusOneRequest(today));
+
+    public Task<VacationDto> CreateVacationAsync(CreateVacationRequest request) =>
+        SendAsync<VacationDto>(HttpMethod.Post, "api/vacations", request);
+
+    public Task DeleteVacationAsync(int id) => SendAsync(HttpMethod.Delete, $"api/vacations/{id}");
+
     private static string CategoryQuery(int? categoryId) => categoryId is { } id ? $"?categoryId={id}" : "";
 
     private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

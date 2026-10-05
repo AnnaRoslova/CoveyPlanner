@@ -70,6 +70,7 @@ public partial class PlannerState
             IsRecurring = form.IsRecurring ?? goal.IsRecurring,
             AllowSeveralPerDay = form.AllowSeveralPerDay ?? goal.AllowSeveralPerDay,
             Days = form.Days is { } d ? d == 0 ? null : d : goal.Days,
+            HabitId = form.HabitId is { } h ? h == 0 ? null : h : goal.HabitId,
         });
 
         // Дни поменялись — занятия разложил сервер (добавил и убрал в корзину) — потом перечитываем
@@ -91,6 +92,10 @@ public partial class PlannerState
         if (ok && daysChanged)
         {
             await ReloadAsync();
+        }
+        else if (ok && FindGoal(goalId)?.HabitId != goal.HabitId)
+        {
+            await RefreshHabitsAsync(); // скрепки занятий переехали в другую копилку
         }
 
         if (ok && removed.Count > 0)
@@ -135,10 +140,12 @@ public partial class PlannerState
             return;
         }
 
-        await SaveAsync(async () =>
+        TaskDto? changed = null;
+        var ok = await SaveAsync(async () =>
         {
             var result = await api.ToggleGoalAsync(goalId, new ToggleGoalRequest(RuDates.Today));
             ReplaceGoal(result.Goal);
+            changed = result.Task;
             if (result.Task is { } session)
             {
                 if (session.PlannedDate is { } date && WeekDays.Contains(date))
@@ -151,6 +158,11 @@ public partial class PlannerState
                 }
             }
         });
+
+        if (ok && changed?.HabitId is { } habitId)
+        {
+            await AfterHabitTaskToggledAsync(habitId, changed.State == TaskStateDto.Done, changed.PlannedDate ?? goal.WeekStart);
+        }
     }
 
     /// <summary>

@@ -764,3 +764,47 @@
     background: var(--b-soft);
     color: var(--b-deep);
 }
+
+/* Окно поверх другого окна или экрана «Копилки»: копилка из окна цели, окно копилки, каникулы */
+.editor-backdrop.nested {
+    z-index: 43;
+}
+
+.editor.nested {
+    z-index: 44;
+}
+
+/* Окно копилки: иконка рядом с названием */
+.editor .habit-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor .emoji-btn {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 18px;
+}
+
+.editor .emoji-btn:hover {
+    background: var(--b-soft);
+}
+
+.editor .emoji-btn.empty {
+    opacity: 0.6;
+}
+
+/* «Удалить копилку?» — вопрос прямо в окне */
+.editor .confirm-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    color: var(--text);
+    font-size: 13px;
+}

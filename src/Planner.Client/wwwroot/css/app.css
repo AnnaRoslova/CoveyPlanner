@@ -19,6 +19,14 @@
     --b-soft: #e8f6f2;
     --b-deep: #327b6e;   /* ≥ 4.5:1 — бирюзовый текст */
 
+    /* Копилки: ⚠ пауза — сливочный лимон, 🏖 каникулы — барвинок (тёмные темы задают свои) */
+    --warn: #f3e3a6;
+    --warn-soft: #fbf3d6;
+    --warn-ink: #75601e;  /* ≥ 4.5:1 на --warn-soft */
+    --vac: #c9cff0;
+    --vac-soft: #eef0fb;
+    --vac-ink: #4f5a96;   /* ≥ 4.5:1 на --vac-soft */
+
     /* Поверхности. Темы (css/themes.css) меняют эти значения и палитру выше */
     --page-bg: linear-gradient(165deg, var(--sky0) 0%, var(--sky1) 30%, var(--sky2) 62%, var(--sky3) 100%);
     --surface: #fff;     /* поля ввода, всплывающие окна, чипы */
@@ -230,6 +238,17 @@ textarea:focus-visible {
 
 .btn.danger:hover {
     background: color-mix(in srgb, var(--a) 35%, var(--surface));
+}
+
+/* Розовый акцент: «+ копилка», «+1 сегодня» */
+.btn.pink {
+    background: var(--a-soft);
+    box-shadow: inset 0 0 0 1.5px var(--a);
+    color: var(--a-ink);
+}
+
+.btn.pink:hover {
+    background: color-mix(in srgb, var(--a) 45%, var(--surface));
 }
 
 /* Маленькая круглая кнопка-иконка справа в записи (удалить, вернуть…) */

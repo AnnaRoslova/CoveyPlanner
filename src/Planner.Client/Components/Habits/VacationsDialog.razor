@@ -1,0 +1,105 @@
+@* «🏖 Каникулы»: новые каникулы (с — по, все копилки или выбранные) и список прежних с удалением.
+   Неделя, в которую попало ≥ 4 дней каникул, не засчитывается и не пропуск — серия замирает.
+   Стили — css/editor.css и VacationsDialog.razor.css. *@
+@inject PlannerState State
+
+<div class="editor-backdrop nested" @onclick="OnClose"></div>
+
+<div @ref="_root" class="editor nested vacations" role="dialog" aria-label="Каникулы" tabindex="-1" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="true">
+    <div class="vac-title">🏖 Каникулы</div>
+
+    <div class="vac-row">
+        <span>с</span>
+        <input type="date" aria-label="С" @bind="_from" />
+        <span>по</span>
+        <input type="date" aria-label="По" @bind="_to" />
+    </div>
+
+    <div class="field">
+        <div class="label">Для копилок</div>
+        <div class="chips">
+            <button type="button" class="chip @(_habitIds.Count == 0 ? "on" : "")" @onclick="() => _habitIds.Clear()">все копилки</button>
+            @foreach (var habit in State.ActiveHabits)
+            {
+                var id = habit.Id;
+                <button type="button" class="chip @(_habitIds.Contains(id) ? "on" : "")" style="--c: @habit.Color"
+                        @onclick="() => Toggle(id)">@habit.Emoji @habit.Name</button>
+            }
+        </div>
+    </div>
+
+    <div class="date-hint">
+        Неделя, в которую попало 4 дня каникул или больше, не засчитывается и не считается пропуском — серия замирает.
+        Скрепки, поставленные в каникулы, всё равно идут в общий счёт.
+    </div>
+
+    <div class="buttons">
+        <button type="button" class="btn quiet" @onclick="OnClose">Закрыть</button>
+        <button type="button" class="btn pink" disabled="@(_to < _from)" @onclick="SaveAsync">Сохранить</button>
+    </div>
+
+    @if (State.Vacations.Count > 0)
+    {
+        <div class="field">
+            <div class="label">Были и будут</div>
+            <ul class="vac-list">
+                @foreach (var vacation in State.Vacations)
+                {
+                    var id = vacation.Id;
+                    <li class="@(vacation.To < RuDates.Today ? "past" : "")">
+                        <span class="when">@RuDates.DayMonthShort(vacation.From) — @RuDates.DayMonthShort(vacation.To)@(vacation.To.Year != RuDates.Today.Year ? $" {vacation.To.Year}" : "")</span>
+                        <span class="for">@ForWhom(vacation)</span>
+                        <button type="button" class="row-action" title="Удалить каникулы" aria-label="Удалить каникулы"
+                                @onclick="() => State.DeleteVacationAsync(id)"><Icon Name="x" Size="12" /></button>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference _root;
+    private DateOnly _from = RuDates.Today;
+    private DateOnly _to = RuDates.Today.AddDays(6);
+    private readonly HashSet<int> _habitIds = [];
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync(); // Esc — сразу этому окну, а не экрану под ним
+        }
+    }
+
+    private void Toggle(int habitId)
+    {
+        if (!_habitIds.Remove(habitId))
+        {
+            _habitIds.Add(habitId);
+        }
+    }
+
+    private string ForWhom(VacationDto vacation) => vacation.HabitIds.Count == 0
+        ? "все копилки"
+        : string.Join(", ", vacation.HabitIds.Select(id => State.FindHabit(id)?.Name).OfType<string>());
+
+    private async Task SaveAsync()
+    {
+        if (await State.CreateVacationAsync(_from, _to, [.. _habitIds]))
+        {
+            _habitIds.Clear();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}
