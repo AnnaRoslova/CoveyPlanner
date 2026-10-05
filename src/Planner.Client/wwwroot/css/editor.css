@@ -798,3 +798,86 @@
 .editor .emoji-btn.empty {
     opacity: 0.6;
 }
+
+/* Шаги дела (StepsList): квадратик, название (клик — переименовать), × при наведении, «+ шаг» */
+.editor .steps,
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.steps .step {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 26px;
+    padding: 1px 4px;
+    border-radius: 8px;
+}
+
+.steps .step:hover {
+    background: var(--b-soft);
+}
+
+.steps .step-ck {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--b);
+    border-radius: 4px;
+    background: var(--surface);
+}
+
+.steps .step-ck.on {
+    border-color: var(--b);
+    background: var(--b);
+}
+
+.steps .step-title {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    color: var(--text);
+    font-size: 13px;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.steps .step.done .step-title {
+    color: var(--faint);
+    text-decoration: line-through;
+}
+
+.steps .step-edit {
+    flex: 1;
+    min-width: 0;
+}
+
+.steps .step .row-action {
+    opacity: 0;
+}
+
+.steps .step:hover .row-action,
+.steps .step .row-action:focus-visible {
+    opacity: 1;
+}
+
+.steps .step-new {
+    margin-top: 2px;
+    padding: 4px 6px 4px 25px;
+    border: 0;
+    border-radius: 8px;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+}
+
+.steps .step-new:focus {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--b) 60%, var(--surface));
+}
+
+.steps .step-new::placeholder {
+    color: var(--faint);
+}

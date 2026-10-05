@@ -19,7 +19,7 @@
         <div class="label">Для копилок</div>
         <div class="chips">
             <button type="button" class="chip @(_habitIds.Count == 0 ? "on" : "")" @onclick="() => _habitIds.Clear()">все копилки</button>
-            @foreach (var habit in State.ActiveHabits)
+            @foreach (var habit in State.ActiveHabits.Where(h => !h.IsCollection))
             {
                 var id = habit.Id;
                 <button type="button" class="chip @(_habitIds.Contains(id) ? "on" : "")" style="--c: @habit.Color"

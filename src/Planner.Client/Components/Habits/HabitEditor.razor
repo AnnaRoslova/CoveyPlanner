@@ -1,6 +1,7 @@
-@* Окно копилки: название, иконка, цвет (палитра ролей), норма в неделю, сколько скрепок в банке, стартовое число;
-   у существующей — «в архив» / «из архива»; копилку из архива можно «удалить» (плашка «Удалено … · Вернуть»). Открывается с экрана «Копилки»
-   и из строки «🫙 В копилку» в окне цели или дела (Nested — поверх того окна). Enter в названии — сохранить, Esc — отмена.
+@* Окно копилки: вид (привычка / коллекция), название, иконка, цвет (палитра ролей); у привычки — норма в неделю и сколько скрепок
+   в банке, у коллекции — цель на год и категории ленты (выполненное дело из них само попадает в коллекцию); стартовое число.
+   У существующей — «в архив» / «из архива»; копилку из архива можно «удалить» (плашка «Удалено … · Вернуть»). Открывается с экрана
+   «Копилки» и из строки «🫙 В копилку» в окне цели или дела (Nested — поверх того окна). Enter в названии — сохранить, Esc — отмена.
    Стили — css/editor.css. *@
 @inject PlannerState State
 
@@ -19,28 +20,79 @@
         <EmojiPicker Selected="@_emoji" OnPick="PickEmoji" />
     }
 
-    <div class="rock-note">скрепка — выполненное дело, привязанное к копилке (через цель или напрямую)</div>
+    @* Вид: привычка (норма, серии) или коллекция (полка, цель на год, категории ленты); смена вида историю не трогает *@
+    <div class="segments kind" role="radiogroup" aria-label="Вид копилки">
+        <button type="button" role="radio" class="@(_kind == HabitKindDto.Habit ? "on" : "")" aria-checked="@(_kind == HabitKindDto.Habit ? "true" : "false")"
+                @onclick="() => _kind = HabitKindDto.Habit">привычка</button>
+        <button type="button" role="radio" class="@(_kind == HabitKindDto.Collection ? "on" : "")" aria-checked="@(_kind == HabitKindDto.Collection ? "true" : "false")"
+                @onclick="() => _kind = HabitKindDto.Collection">коллекция</button>
+    </div>
+    <div class="rock-note">
+        @if (_kind == HabitKindDto.Collection)
+        {
+            <text>книги, проекты, поездки: запись — выполненное дело (вручную, от цели или из категории ленты)</text>
+        }
+        else
+        {
+            <text>скрепка — выполненное дело, привязанное к копилке (через цель или напрямую)</text>
+        }
+    </div>
 
     <div class="field">
         <div class="label">Цвет</div>
         <ColorSwatches Selected="@_color" SelectedChanged="c => _color = c" />
     </div>
 
-    <div class="row">
+    @if (_kind == HabitKindDto.Collection)
+    {
         <div class="field">
-            <div class="label">Норма в неделю</div>
-            <Stepper Value="_norm" ValueChanged="v => _norm = v ?? 1" Min="1" Max="50" Label="Норма в неделю" Unit="раз" />
+            <div class="label">Цель на год</div>
+            <Stepper Value="_yearGoal" ValueChanged="v => _yearGoal = v" Min="1" Max="10000" AllowEmpty="true" EmptyText="без цели"
+                     Label="Цель на год" Unit="@($"в {RuDates.Today.Year}")" />
         </div>
+
+        @* Категории ленты: выполненное дело из них (и вынутое из них в план) само попадает в коллекцию *@
         <div class="field">
-            <div class="label">В банке</div>
-            <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
+            <div class="label">Категории ленты</div>
+            <div class="chips" role="group" aria-label="Категории ленты">
+                @foreach (var category in State.OrderedCategories)
+                {
+                    var id = category.Id;
+                    var on = _categoryIds.Contains(id);
+                    var elsewhere = State.CollectionOfCategory(id) is { } owner && owner.Id != Habit?.Id ? owner : null;
+                    <button type="button" class="chip @(on ? "on" : "")" aria-pressed="@(on ? "true" : "false")"
+                            title="@(elsewhere is null ? null : $"сейчас — в «{elsewhere.Name}»; выберете — перейдёт сюда")"
+                            @onclick="() => ToggleCategory(id)">@category.Emoji @category.Name</button>
+                }
+            </div>
+            @if (State.Categories.Count == 0)
+            {
+                <div class="date-hint">в ленте пока нет категорий</div>
+            }
+            else
+            {
+                <div class="date-hint">выполненное дело из этих категорий само попадает сюда (если у него не выбрана другая копилка)</div>
+            }
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="field">
+                <div class="label">Норма в неделю</div>
+                <Stepper Value="_norm" ValueChanged="v => _norm = v ?? 1" Min="1" Max="50" Label="Норма в неделю" Unit="раз" />
+            </div>
+            <div class="field">
+                <div class="label">В банке</div>
+                <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
+            </div>
+        </div>
+    }
 
     <div class="field">
         <div class="label">Стартовое число</div>
         <Stepper Value="_startCount" ValueChanged="v => _startCount = v ?? 0" Min="0" Max="1000000" Label="Стартовое число" />
-        <div class="date-hint">сколько скрепок уже было до копилки — идут только в общий счёт</div>
+        <div class="date-hint">сколько @(_kind == HabitKindDto.Collection ? "записей" : "скрепок") уже было до копилки — идут только в общий счёт</div>
     </div>
 
     <div class="buttons">
@@ -68,6 +120,9 @@
     private int _norm = 3;
     private int _jarSize = 30;
     private int _startCount;
+    private HabitKindDto _kind;
+    private int? _yearGoal;
+    private readonly HashSet<int> _categoryIds = [];
     private bool _showEmojis;
 
     /// <summary>Правка копилки; null — новая.</summary>
@@ -85,6 +140,10 @@
     /// <summary>Для новой: цвет (например, первой роли цели); null — следующий цвет палитры.</summary>
     [Parameter]
     public string? DefaultColor { get; set; }
+
+    /// <summary>Для новой: вид (с экрана «Копилки» — по выбору в окне).</summary>
+    [Parameter]
+    public HabitKindDto DefaultKind { get; set; }
 
     /// <summary>Окно поверх другого окна (цели, дела).</summary>
     [Parameter]
@@ -107,11 +166,15 @@
             _norm = habit.WeeklyNorm;
             _jarSize = habit.JarSize;
             _startCount = habit.StartCount;
+            _kind = habit.Kind;
+            _yearGoal = habit.YearGoal;
+            _categoryIds.UnionWith(habit.CategoryIds ?? []);
         }
         else
         {
             _name = DefaultName?.Trim() ?? "";
             _norm = Math.Clamp(DefaultNorm, 1, 50);
+            _kind = DefaultKind;
             _color = DefaultColor ?? (State.RolePalette.Count > 0 ? State.RolePalette[State.Habits.Count % State.RolePalette.Count] : null);
         }
     }
@@ -147,7 +210,16 @@
     }
 
     private SaveHabitRequest Form(bool? archived = null) =>
-        new(_name.Trim(), _emoji.Length == 0 ? null : _emoji, _color, _norm, _jarSize, _startCount, archived);
+        new(_name.Trim(), _emoji.Length == 0 ? null : _emoji, _color, _norm, _jarSize, _startCount, archived,
+            _kind, _kind == HabitKindDto.Collection ? _yearGoal : Habit?.YearGoal, [.. _categoryIds]);
+
+    private void ToggleCategory(int categoryId)
+    {
+        if (!_categoryIds.Remove(categoryId))
+        {
+            _categoryIds.Add(categoryId);
+        }
+    }
 
     private async Task SaveAsync()
     {

@@ -28,12 +28,19 @@
         @foreach (var habit in Active)
         {
             var id = habit.Id;
-            <HabitCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId"
-                       OnPlusOne="() => State.PlusOneAsync(id)" OnEdit="() => Edit(id)" />
+            @if (habit.IsCollection)
+            {
+                <CollectionCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId" OnEdit="() => Edit(id)" />
+            }
+            else
+            {
+                <HabitCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId"
+                           OnPlusOne="() => State.PlusOneAsync(id)" OnEdit="() => Edit(id)" />
+            }
         }
     </div>
 
-    @if (Active.Any())
+    @if (Active.Any(h => !h.IsCollection))
     {
         <div class="legend">
             <span><i class="w done"></i>неделя засчитана</span>
@@ -55,7 +62,14 @@
                 @foreach (var habit in Archived)
                 {
                     var id = habit.Id;
-                    <HabitCard @key="id" Habit="habit" OnEdit="() => Edit(id)" />
+                    @if (habit.IsCollection)
+                    {
+                        <CollectionCard @key="id" Habit="habit" OnEdit="() => Edit(id)" />
+                    }
+                    else
+                    {
+                        <HabitCard @key="id" Habit="habit" OnEdit="() => Edit(id)" />
+                    }
                 }
             </div>
         }

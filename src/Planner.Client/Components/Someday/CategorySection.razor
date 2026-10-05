@@ -21,6 +21,11 @@ else
             <span class="emoji">@Category.Emoji</span>
         }
         <span class="name">@Category.Name</span>
+        @if (State.CollectionOfCategory(Category.Id) is { } collection)
+        {
+            @* Выполненные дела этой категории сами попадают в коллекцию *@
+            <span class="cat-jar" title="выполненные дела — в коллекцию «@collection.Name»" aria-label="в коллекцию «@collection.Name»">🫙</span>
+        }
         <button type="button" class="menu" title="Изменить категорию"
                 @onclick="() => _editingCategory = true" @onclick:stopPropagation="true">
             <Icon Name="more" Size="14" />

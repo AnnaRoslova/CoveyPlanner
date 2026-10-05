@@ -16,6 +16,13 @@ public partial class PlannerState
 
     public HabitDto? FindHabit(int? habitId) => habitId is { } id ? Habits.FirstOrDefault(h => h.Id == id) : null;
 
+    /// <summary>Коллекция, к которой привязана категория ленты (у категории — не больше одной); null — ни к какой.</summary>
+    public HabitDto? CollectionOfCategory(int? categoryId) =>
+        categoryId is { } id ? Habits.FirstOrDefault(h => h.IsCollection && h.CategoryIds?.Contains(id) == true) : null;
+
+    /// <summary>Чья скрепка дело (так же решает сервер): копилка, выбранная вручную, иначе коллекция его категории.</summary>
+    public int? HabitIdOf(TaskDto task) => task.HabitId ?? CollectionOfCategory(task.CategoryId)?.Id;
+
     /// <summary>Перечитать копилки (скрепки считаются на сервере по делам).</summary>
     public async Task RefreshHabitsAsync()
     {
@@ -47,7 +54,7 @@ public partial class PlannerState
             await CommitPendingDeleteAsync();
             var habit = await api.CreateHabitAsync(request);
             Habits.Add(habit);
-            NotifyChanged();
+            await RefreshHabitsAsync(); // категории могли уйти от другой коллекции
             return habit;
         }
         catch (ApiException ex)
@@ -69,6 +76,8 @@ public partial class PlannerState
             {
                 Habits[index] = saved;
             }
+
+            await RefreshHabitsAsync(); // смена вида или категорий меняет счёт и других коллекций
         }
         catch (ApiException ex)
         {
@@ -127,7 +136,7 @@ public partial class PlannerState
             }
 
             ReplaceHabit(result.Habit);
-            notifier.Clip(ClipMessage(result.Habit, result.Task.PlannedDate));
+            notifier.Clip(ClipMessage(result.Habit, result.Task.PlannedDate), ClipIcon(result.Habit));
         }
         catch (ApiException ex)
         {
@@ -172,12 +181,24 @@ public partial class PlannerState
         await RefreshHabitsAsync();
         if (isDone && FindHabit(habitId) is { } habit)
         {
-            notifier.Clip(ClipMessage(habit, date));
+            notifier.Clip(ClipMessage(habit, date), ClipIcon(habit));
         }
     }
 
+    /// <summary>Что падает в подсказке: у коллекции — её значок («📚»), у привычки — скрепка.</summary>
+    private static string ClipIcon(HabitDto habit) => habit.IsCollection ? habit.Emoji ?? "🫙" : "📎";
+
+    /// <summary>Привычка: «+1 в «Тренировки» · 103 · неделя 3 из 3 ✓»; коллекция: «+1 в «Книги» · 10 из 24 в 2026».</summary>
     private static string ClipMessage(HabitDto habit, DateOnly? date)
     {
+        if (habit is { IsCollection: true, Collection: { } collection })
+        {
+            var year = RuDates.Today.Year;
+            return collection.YearGoal is { } goal
+                ? $"+1 в «{habit.Name}» · {collection.ThisYear} из {goal} в {year}"
+                : $"+1 в «{habit.Name}» · {collection.ThisYear} в {year}";
+        }
+
         var message = $"+1 в «{habit.Name}» · {habit.Stats.Total}";
         if (date is { } day && habit.Stats.Weeks.FirstOrDefault(w => w.WeekStart == RuDates.WeekStartOf(day)) is { } week)
         {

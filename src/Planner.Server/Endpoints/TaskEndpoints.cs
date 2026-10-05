@@ -17,6 +17,10 @@ public static class TaskEndpoints
             return Results.Created($"/api/tasks/{task.Id}", task.ToDto());
         });
 
+        // Одно дело (например, запись коллекции на другой неделе — открыть его окно)
+        tasks.MapGet("/{id:int}", async (int id, ITaskRepository repository, CancellationToken ct) =>
+            await repository.FindAsync(id, ct) is { } task ? Results.Ok(task.ToDto()) : Results.NotFound());
+
         tasks.MapPut("/{id:int}", async (int id, UpdateTaskRequest request, TaskService service, CancellationToken ct) =>
             (await service.UpdateAsync(
                 id, request.Title, request.Notes, request.RoleIds ?? [], request.Quadrant.ToQuadrant(), request.StartTime,

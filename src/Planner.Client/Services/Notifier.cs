@@ -14,8 +14,11 @@ public class Notifier
 
     public bool IsError { get; private set; }
 
-    /// <summary>Подсказка «📎 +1 в копилку» — со скрепкой, которая падает в банку.</summary>
+    /// <summary>Подсказка «📎 +1 в копилку» — со скрепкой (или значком коллекции), которая падает в банку.</summary>
     public bool IsClip { get; private set; }
+
+    /// <summary>Что падает в подсказке «+1»: 📎 у привычки, значок коллекции («📚») у коллекции.</summary>
+    public string ClipIcon { get; private set; } = "📎";
 
     /// <summary>Надпись на кнопке-действии; null — кнопки нет.</summary>
     public string? ActionLabel { get; private set; }
@@ -33,7 +36,11 @@ public class Notifier
     public void Info(string message) => Show(message, isError: false);
 
     /// <summary>Скрепка легла в копилку: «+1 в «Тренировки» · 103 · неделя 3 из 3 ✓» — на пару секунд.</summary>
-    public void Clip(string message) => Show(message, isError: false, duration: ClipDuration, isClip: true);
+    public void Clip(string message, string icon = "📎")
+    {
+        ClipIcon = icon;
+        Show(message, isError: false, duration: ClipDuration, isClip: true);
+    }
 
     public static readonly TimeSpan ClipDuration = TimeSpan.FromSeconds(2.5);
 

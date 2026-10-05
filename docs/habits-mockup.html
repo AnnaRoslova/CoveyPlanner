@@ -88,6 +88,22 @@ h1,h2,h3{font-family:Lora,serif;font-weight:600;margin:0}
 .rules ul{margin:0;padding-left:18px}
 .vac-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
 .date{border:1px solid #d9e9e4;border-radius:10px;padding:5px 10px;background:#fff;font-weight:600}
+/* Коллекция: полка с корешками вместо банки */
+.shelf-box{flex:0 0 132px;display:flex;flex-direction:column}
+.spines{display:flex;align-items:flex-end;gap:2px;min-height:56px;padding:0 4px}
+.spine{width:8px;border-radius:2px 2px 1px 1px;background:var(--c);box-shadow:inset -1.5px 0 0 rgba(255,255,255,.35)}
+.plank{height:5px;border-radius:3px;background:#b5d3cc}
+.more-spines{margin-top:3px;font-size:11px;color:var(--muted);text-align:right}
+.goal-bar{display:block;height:6px;border-radius:3px;background:var(--b-soft);overflow:hidden;margin-top:4px}
+.goal-bar i{display:block;height:100%;background:var(--c);border-radius:3px}
+.entries{list-style:none;margin:12px 0 0;padding:0;font-size:13px}
+.entries li{padding:3px 6px;border-radius:8px}
+.entries li:hover{background:var(--b-soft)}
+.entries .row{display:flex;gap:6px;align-items:baseline}
+.entries .t{flex:1}
+.entries .d{color:var(--muted);font-size:12px}
+.entries .sub{color:var(--muted);font-size:11.5px;padding-left:16px}
+.entries .steps{padding:2px 0 2px 16px;color:var(--muted);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -136,6 +152,65 @@ h1,h2,h3{font-family:Lora,serif;font-weight:600;margin:0}
     </div>
   </div>
 
+  <div class="section-title">коллекция (книги, проекты, поездки)</div>
+  <div class="two">
+    <div class="jar-card" style="--c:#8fb4e3">
+      <div class="jar-top">
+        <div class="shelf-box">
+          <div class="spines">
+            <span class="spine" style="height:44px"></span><span class="spine" style="height:38px"></span><span class="spine" style="height:50px"></span>
+            <span class="spine" style="height:41px"></span><span class="spine" style="height:47px"></span><span class="spine" style="height:36px"></span>
+            <span class="spine" style="height:49px"></span><span class="spine" style="height:43px"></span><span class="spine" style="height:39px"></span>
+            <span class="spine" style="height:46px"></span><span class="spine" style="height:52px"></span><span class="spine" style="height:40px"></span>
+          </div>
+          <div class="plank"></div>
+          <div class="more-spines">ещё 15</div>
+        </div>
+        <div class="jar-info">
+          <div class="jar-name"><span class="dot" style="background:var(--c)"></span>📚 Книги</div>
+          <div class="total">27 <small>за всё время</small></div>
+          <div style="font-size:13px;margin-top:6px"><b style="color:var(--b-deep)">9</b> из 12 в 2026</div>
+          <span class="goal-bar"><i style="width:75%"></i></span>
+          <div class="shelf" style="margin-top:6px">2025: 18 · 2026: 9</div>
+          <div class="shelf">из ленты: 📖 Хочу прочитать</div>
+        </div>
+      </div>
+      <ul class="entries">
+        <li><div class="row"><span class="t">«Дюна»</span><span class="d">3 окт</span></div></li>
+        <li><div class="row"><span class="t">«Мастер и Маргарита»</span><span class="d">21 сен</span></div></li>
+        <li><div class="row"><span class="t">«Атомные привычки»</span><span class="d">2 сен</span></div></li>
+      </ul>
+      <div class="card-actions"><button class="btn ghost">настроить</button></div>
+    </div>
+    <div class="jar-card" style="--c:#b9d3b0">
+      <div class="jar-top">
+        <div class="shelf-box">
+          <div class="spines"><span class="spine" style="height:42px"></span><span class="spine" style="height:48px"></span><span class="spine" style="height:37px"></span></div>
+          <div class="plank"></div>
+        </div>
+        <div class="jar-info">
+          <div class="jar-name"><span class="dot" style="background:var(--c)"></span>🛠 Проекты</div>
+          <div class="total">3 <small>за всё время</small></div>
+          <div style="font-size:13px;margin-top:6px"><b style="color:var(--b-deep)">3</b> из 6 в 2026</div>
+          <span class="goal-bar"><i style="width:50%"></i></span>
+          <div class="shelf" style="margin-top:6px">2026: 3</div>
+        </div>
+      </div>
+      <ul class="entries">
+        <li><div class="row"><span>▾</span><span class="t">Сарай</span><span class="d">30 сен</span></div><div class="sub">14 шагов · 5 недель</div>
+          <div class="steps">☑ Фундамент<br>☑ Стены из бруса<br>☑ Крыша<br>… ещё 11</div></li>
+        <li><div class="row"><span>›</span><span class="t">Фотокнига за лето</span><span class="d">12 сен</span></div><div class="sub">3 шага · за 1 день</div></li>
+        <li><div class="row"><span class="t">Полка в прихожей</span><span class="d">5 авг</span></div></li>
+      </ul>
+      <div class="card-actions"><button class="btn ghost">настроить</button></div>
+    </div>
+  </div>
+  <p class="note">Коллекция — без нормы, серий, пауз, каникул и «+1 сегодня». Запись — выполненное дело: вручную («🫙 В копилку» в окне дела), от цели
+    или из привязанной категории ленты (дело из неё — и вынутое в план — само попадает сюда; ручная привязка к другой копилке важнее;
+    шаги дела не считаются). Корешки — последние ~20 записей, остальное «ещё N». Клик по записи с шагами раскрывает шаги (только просмотр),
+    клик по названию — окно дела. Подсказка в момент галочки: <b>📚 +1 в «Книги» · 10 из 24 в 2026</b>. У привязанной категории в ленте — маленькая 🫙,
+    в её настройках — «→ 📚 Книги».</p>
+
   <div class="section-title">каникулы</div>
   <div class="panel">
     <div class="vac-row">
@@ -173,6 +248,8 @@ h1,h2,h3{font-family:Lora,serif;font-weight:600;margin:0}
       <li>Один незасчитанный месяц — ⚠, второй подряд — серия месяцев прервана.</li>
       <li>Текущий месяц — «в процессе».</li>
     </ul>
+    <h3>Коллекция</h3>
+    <ul><li>Вид копилки — «привычка» или «коллекция»; меняется в настройках, история не теряется.</li><li>Нет нормы, серий и каникул. Счёт за всё время не обнуляется + разбивка по годам завершения; необязательная цель на год.</li><li>Привязка: вручную, от цели или по категории ленты (категория — не больше чем у одной копилки). Ручная важнее категории. Шаги не считаются.</li><li>Длительность проекта — от первого отмеченного шага до завершения дела, включительно (в тот же день — «за 1 день»).</li></ul>
     <h3>Недели до создания копилки</h3>
     <ul><li>Не считаются. Первая неделя копилки засчитывается, только если норма в ней выполнена (не выполнена — не пропуск).</li></ul>
   </div>

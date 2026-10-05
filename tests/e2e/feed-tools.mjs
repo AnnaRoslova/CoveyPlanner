@@ -86,7 +86,7 @@ await check('дело ленты: окно — название, подробн�
   await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
   assert(await page.$(editor), 'окно не открылось');
   const labels = await page.$$eval(`${editor} .label`, ls => ls.map(l => l.textContent.trim()));
-  assert(JSON.stringify(labels) === '["Подробно","Категория"]', `поля: ${labels}`);
+  assert(JSON.stringify(labels) === '["Подробно","Категория","Шаги"]', `поля: ${labels}`); // шаги — дело-чеклист
   await page.type(`${editor} textarea`, 'Базилик, мята, розмарин');
   await chooseCategory('Дом');
   await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();

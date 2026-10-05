@@ -100,17 +100,19 @@
 
     /// <summary>Пилюля копилки у привязанной цели; клик — экран «Копилки» на этой копилке. null — копилки нет.</summary>
     private RenderFragment? JarBadge(WeeklyGoalDto goal) => State.FindHabit(goal.HabitId) is not { } habit ? null :
-        @<button type="button" class="jar-pill @(habit.Stats.WeekPaused ? "warn" : "")" title="@JarTitle(habit)"
+        @<button type="button" class="jar-pill @(habit is { IsCollection: false, Stats.WeekPaused: true } ? "warn" : "")" title="@JarTitle(habit)"
                  @onclick="() => Windows.OpenHabits(habit.Id)" @onclick:stopPropagation="true">@JarLabel(habit)</button>;
 
-    /// <summary>Пилюля копилки цели: «🫙 102 · 🔥13», при паузе — «🫙 41 · ⚠»; серии нет — только счёт.</summary>
+    /// <summary>Пилюля копилки цели: «🫙 102 · 🔥13», при паузе — «🫙 41 · ⚠»; серии нет — только счёт; коллекция — «📚 9».</summary>
     private static string JarLabel(HabitDto habit) =>
+        habit.IsCollection ? $"{habit.Emoji ?? "🫙"} {habit.Collection?.Total ?? habit.StartCount}" :
         habit.Stats.WeekPaused ? $"🫙 {habit.Stats.Total} · ⚠"
         : habit.Stats.WeekStreak > 0 ? $"🫙 {habit.Stats.Total} · 🔥{habit.Stats.WeekStreak}"
         : $"🫙 {habit.Stats.Total}";
 
-    private static string JarTitle(HabitDto habit) =>
-        $"Копилка «{habit.Name}»: {habit.Stats.Total} · эта неделя {habit.Stats.ThisWeek} из {habit.WeeklyNorm}"
+    private static string JarTitle(HabitDto habit) => habit.IsCollection
+        ? $"Коллекция «{habit.Name}»: {habit.Collection?.Total} · в этом году {habit.Collection?.ThisYear}"
+        : $"Копилка «{habit.Name}»: {habit.Stats.Total} · эта неделя {habit.Stats.ThisWeek} из {habit.WeeklyNorm}"
         + (habit.Stats.WeekPaused ? " · ⚠ пауза — не пропускай дважды" : $" · 🔥 {habit.Stats.WeekStreak} нед. подряд");
 
     /// <summary>«2/5» — только у цели на несколько раз в неделю.</summary>

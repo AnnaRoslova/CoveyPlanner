@@ -109,3 +109,10 @@
 .cat-b ::deep .item:hover {
     background: var(--b-soft);
 }
+
+/* Категория привязана к коллекции — маленькая банка у названия */
+.cat-jar {
+    flex: none;
+    font-size: 11px;
+    opacity: 0.8;
+}

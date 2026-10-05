@@ -26,6 +26,8 @@ public class PlannerApi(HttpClient http)
     public Task<TaskDto> CreateTaskAsync(string title, TaskTargetDto target) =>
         SendAsync<TaskDto>(HttpMethod.Post, "api/tasks", new CreateTaskRequest(title, target));
 
+    public Task<TaskDto> GetTaskAsync(int id) => GetAsync<TaskDto>($"api/tasks/{id}");
+
     public Task<TaskDto> UpdateTaskAsync(int id, UpdateTaskRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Put, $"api/tasks/{id}", request);
 
@@ -110,6 +112,21 @@ public class PlannerApi(HttpClient http)
 
     public Task<TaskDto> MoveGoalToSomedayAsync(int id, GoalToSomedayRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/goals/{id}/to-someday", request);
+
+    // Шаги дела
+
+    public Task<List<StepDto>> GetStepsAsync(int taskId) => GetAsync<List<StepDto>>($"api/tasks/{taskId}/steps");
+
+    public Task<StepDto> AddStepAsync(int taskId, string title) =>
+        SendAsync<StepDto>(HttpMethod.Post, $"api/tasks/{taskId}/steps", new StepRequest(title));
+
+    public Task<StepDto> RenameStepAsync(int stepId, string title) =>
+        SendAsync<StepDto>(HttpMethod.Put, $"api/steps/{stepId}", new StepRequest(title));
+
+    public Task<StepDto> SetStepDoneAsync(int stepId, bool isDone) =>
+        SendAsync<StepDto>(HttpMethod.Put, $"api/steps/{stepId}/done", new SetDoneRequest(isDone));
+
+    public Task DeleteStepAsync(int stepId) => SendAsync(HttpMethod.Delete, $"api/steps/{stepId}");
 
     // Копилки привычек и каникулы
 

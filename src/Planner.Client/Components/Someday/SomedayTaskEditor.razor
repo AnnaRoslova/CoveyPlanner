@@ -19,6 +19,21 @@
         <ChoiceField Items="CategoryChoices" @bind-Value="_categoryId" Label="Категория" />
     </div>
 
+    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить» *@
+    @if (EditedTask.Id > 0)
+    {
+        <div class="field">
+            <div class="label-row">
+                <span class="label">Шаги</span>
+                @if (_stepCount.Total > 0)
+                {
+                    <span class="hint">@_stepCount.Done из @_stepCount.Total</span>
+                }
+            </div>
+            <StepsList TaskId="EditedTask.Id" OnCountChanged="c => _stepCount = c" />
+        </div>
+    }
+
     <div class="buttons">
         <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
@@ -27,6 +42,7 @@
 </div>
 
 @code {
+    private (int Done, int Total) _stepCount;
     private ElementReference _titleInput;
     private string _title = "";
     private string? _notes;

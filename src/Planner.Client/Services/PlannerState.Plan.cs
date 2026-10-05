@@ -171,7 +171,7 @@ public partial class PlannerState
 
         _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
         SyncSession(_tasks[taskId]);
-        if (await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone)) && task.HabitId is { } habitId)
+        if (await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone)) && HabitIdOf(task) is { } habitId)
         {
             await AfterHabitTaskToggledAsync(habitId, isDone, task.PlannedDate);
         }
