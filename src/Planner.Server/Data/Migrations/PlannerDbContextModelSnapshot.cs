@@ -124,6 +124,11 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int>("JarSize")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -140,6 +145,9 @@ namespace Planner.Server.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("WeeklyNorm")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("YearGoal")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -221,6 +229,9 @@ namespace Planner.Server.Data.Migrations
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateOnly?>("PlannedDate")
                         .HasColumnType("TEXT");
 
@@ -256,6 +267,8 @@ namespace Planner.Server.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("ParentId");
 
                     b.HasIndex("HabitId", "State");
 
@@ -371,6 +384,36 @@ namespace Planner.Server.Data.Migrations
                     b.Navigation("Roles");
                 });
 
+            modelBuilder.Entity("Planner.Core.Entities.Habit", b =>
+                {
+                    b.OwnsMany("Planner.Core.Entities.HabitCategory", "Categories", b1 =>
+                        {
+                            b1.Property<int>("HabitId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<int>("CategoryId")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("HabitId", "CategoryId");
+
+                            b1.HasIndex("CategoryId")
+                                .IsUnique();
+
+                            b1.ToTable("HabitCategories", (string)null);
+
+                            b1.HasOne("Planner.Core.Entities.Category", null)
+                                .WithMany()
+                                .HasForeignKey("CategoryId")
+                                .OnDelete(DeleteBehavior.Cascade)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("HabitId");
+                        });
+
+                    b.Navigation("Categories");
+                });
+
             modelBuilder.Entity("Planner.Core.Entities.TaskGoal", b =>
                 {
                     b.HasOne("Planner.Core.Entities.WeeklyGoal", "Goal")
@@ -401,6 +444,11 @@ namespace Planner.Server.Data.Migrations
                         .WithMany()
                         .HasForeignKey("HabitId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Planner.Core.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.OwnsMany("Planner.Core.Entities.TaskRole", "Roles", b1 =>
                         {

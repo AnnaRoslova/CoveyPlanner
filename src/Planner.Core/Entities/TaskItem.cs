@@ -60,6 +60,14 @@ public class TaskItem : ISortable
     /// </summary>
     public double? Quantity { get; private set; }
 
+    /// <summary>
+    /// Дело, шагом которого является это (дело-чеклист, один уровень). Шаг виден только в окне своего дела:
+    /// без дня, категории, ролей, цели и копилки; в днях, ленте и корзине его нет. null — обычное дело.
+    /// </summary>
+    public int? ParentId { get; private set; }
+
+    public bool IsStep => ParentId is not null;
+
     public TaskState State { get; private set; }
 
     /// <summary>Состояние до попадания в корзину — для возврата.</summary>
@@ -107,6 +115,28 @@ public class TaskItem : ISortable
         State = TaskState.Planned,
         CreatedAt = now,
     };
+
+    /// <summary>Новый шаг дела <paramref name="parent"/> (в конце его списка — порядок задаёт вызывающий).</summary>
+    public static TaskItem CreateStep(TaskItem parent, string title, DateTime now)
+    {
+        if (parent.IsStep)
+        {
+            throw new DomainException("У шага не бывает своих шагов.");
+        }
+
+        if (parent.State == TaskState.Trashed)
+        {
+            throw new DomainException("Дело в корзине — сначала верните его.");
+        }
+
+        return new TaskItem
+        {
+            Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название шага"),
+            ParentId = parent.Id,
+            State = TaskState.Planned, // шаг «в работе», пока не отмечен
+            CreatedAt = now,
+        };
+    }
 
     /// <summary>
     /// Задать роли дела (повторы не считаются). Уже стоящие роли остаются теми же записями —

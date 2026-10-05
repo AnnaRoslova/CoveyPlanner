@@ -12,34 +12,37 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
         db.Tasks.FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public Task<List<TaskItem>> GetSomedayAsync(CancellationToken ct = default) =>
-        db.Tasks.Where(t => t.State == TaskState.Someday)
+        db.Tasks.Where(t => t.State == TaskState.Someday && t.ParentId == null)
             .OrderBy(t => t.CategoryId).ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
     public Task<List<TaskItem>> GetSomedayInCategoryAsync(int? categoryId, CancellationToken ct = default) =>
-        db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId == categoryId)
+        db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId == categoryId && t.ParentId == null)
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
 
     public Task<List<TaskItem>> GetUntimedOnDayAsync(DateOnly date, CancellationToken ct = default) =>
         db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
-                            && t.PlannedDate == date && t.StartTime == null)
+                            && t.PlannedDate == date && t.StartTime == null && t.ParentId == null)
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
 
     /// <summary>Порядок как на экране: сначала дела со временем (по времени), затем без времени (по SortOrder).</summary>
     public Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
         db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
-                            && t.PlannedDate >= from && t.PlannedDate <= to)
+                            && t.PlannedDate >= from && t.PlannedDate <= to && t.ParentId == null)
             .OrderBy(t => t.PlannedDate)
             .ThenBy(t => t.StartTime == null).ThenBy(t => t.StartTime)
             .ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
     public Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default) =>
-        db.Tasks.Where(t => t.State == TaskState.Trashed)
+        db.Tasks.Where(t => t.State == TaskState.Trashed && t.ParentId == null)
             .OrderByDescending(t => t.TrashedAt)
             .ToListAsync(ct);
+
+    public Task<List<TaskItem>> GetStepsAsync(int parentId, CancellationToken ct = default) =>
+        db.Tasks.Where(t => t.ParentId == parentId).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToListAsync(ct);
 
     public void Add(TaskItem task) => db.Tasks.Add(task);
 
@@ -128,15 +131,25 @@ public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
     public Task<List<Habit>> GetAllAsync(CancellationToken ct = default) =>
         db.Habits.OrderBy(h => h.SortOrder).ThenBy(h => h.Id).ToListAsync(ct);
 
-    /// <summary>Один запрос: выполненные дела с копилкой; неделя цели — подзапросом по TaskGoals (для занятий без дня).</summary>
-    public Task<List<HabitClipSource>> GetClipsAsync(CancellationToken ct = default) =>
+    /// <summary>
+    /// Один запрос: выполненные дела с копилкой или из категорий коллекций; неделя цели (для занятий без дня),
+    /// число шагов и первый отмеченный шаг — подзапросами.
+    /// </summary>
+    public Task<List<HabitClipSource>> GetClipsAsync(IReadOnlyCollection<int> collectionCategoryIds, CancellationToken ct = default) =>
         db.Tasks.AsNoTracking()
-            .Where(t => t.HabitId != null && t.State == TaskState.Done)
+            .Where(t => t.State == TaskState.Done
+                        && (t.HabitId != null || (t.CategoryId != null && collectionCategoryIds.Contains(t.CategoryId.Value))))
             .Select(t => new HabitClipSource(
-                t.HabitId!.Value,
+                t.Id,
+                t.Title,
+                t.ParentId,
+                t.HabitId,
+                t.CategoryId,
                 t.PlannedDate,
                 t.GoalLinks.Select(l => (DateOnly?)l.Goal.WeekStart).FirstOrDefault(),
-                t.CompletedAt))
+                t.CompletedAt,
+                db.Tasks.Count(s => s.ParentId == t.Id),
+                db.Tasks.Where(s => s.ParentId == t.Id && s.State == TaskState.Done).Min(s => s.CompletedAt)))
             .ToListAsync(ct);
 
     public void Add(Habit habit) => db.Habits.Add(habit);

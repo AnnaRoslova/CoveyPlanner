@@ -1,3 +1,4 @@
+using Planner.Core.Enums;
 using Planner.Core.Errors;
 using Planner.Core.Sorting;
 
@@ -8,9 +9,16 @@ namespace Planner.Core.Entities;
 /// (через цель или серию — занятия наследуют копилку — или напрямую). Число скрепок не хранится, а считается:
 /// <see cref="StartCount"/> + выполненные дела. Полная банка (<see cref="JarSize"/> скрепок) уезжает на полку.
 /// Серии недель и месяцев считает <see cref="Habits.HabitStatsCalculator"/>.
+/// Вид <see cref="HabitKind.Collection"/> — коллекция (книги, проекты): без нормы и серий, с полкой записей и целью на год
+/// (<see cref="Habits.CollectionStatsCalculator"/>); к ней можно привязать категории ленты (<see cref="Categories"/>).
+/// Вид можно сменить — скрепки те же, просто по-другому показываются.
 /// </summary>
 public class Habit : ISortable
 {
+    public const int MaxYearGoal = 10_000;
+
+    private readonly List<HabitCategory> _categories = [];
+
     public const int DefaultJarSize = 30;
     public const int MinWeeklyNorm = 1;
     public const int MaxWeeklyNorm = 50;
@@ -79,4 +87,41 @@ public class Habit : ISortable
     }
 
     public void SetArchived(bool archived) => IsArchived = archived;
+
+    /// <summary>Привычка или коллекция.</summary>
+    public HabitKind Kind { get; private set; } = HabitKind.Habit;
+
+    public bool IsCollection => Kind == HabitKind.Collection;
+
+    /// <summary>Цель коллекции на год («12 в 2026»); null — без цели.</summary>
+    public int? YearGoal { get; private set; }
+
+    /// <summary>
+    /// Категории ленты коллекции (таблица HabitCategories): выполненное дело, происходящее из них, само попадает в коллекцию.
+    /// Действуют, только пока копилка — коллекция (сменили вид на привычку — привязка хранится, но не работает).
+    /// </summary>
+    public IReadOnlyCollection<HabitCategory> Categories => _categories;
+
+    public IReadOnlyList<int> CategoryIds => _categories.Select(c => c.CategoryId).Order().ToList();
+
+    public void SetKind(HabitKind kind) =>
+        Kind = Enum.IsDefined(kind) ? kind : throw new DomainException("Неизвестный вид копилки.");
+
+    public void SetYearGoal(int? goal) => YearGoal = goal switch
+    {
+        null => null,
+        >= 1 and <= MaxYearGoal => goal,
+        _ => throw new DomainException($"Цель на год — от 1 до {MaxYearGoal}."),
+    };
+
+    /// <summary>Задать категории (повторы не считаются); уже стоящие остаются теми же записями.</summary>
+    public void SetCategories(IEnumerable<int> categoryIds)
+    {
+        var wanted = categoryIds.ToHashSet();
+        _categories.RemoveAll(c => !wanted.Contains(c.CategoryId));
+        _categories.AddRange(wanted.Where(id => _categories.All(c => c.CategoryId != id)).Select(id => new HabitCategory(id)));
+    }
+
+    /// <summary>Отдать категорию другой коллекции: у категории — не больше одной копилки.</summary>
+    public void RemoveCategory(int categoryId) => _categories.RemoveAll(c => c.CategoryId == categoryId);
 }

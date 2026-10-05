@@ -53,6 +53,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<RoleService>();
         services.AddScoped<GoalService>();
         services.AddScoped<HabitService>();
+        services.AddScoped<StepService>();
 
         return services;
     }

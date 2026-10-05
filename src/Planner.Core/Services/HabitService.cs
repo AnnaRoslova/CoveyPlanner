@@ -1,25 +1,38 @@
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
+using Planner.Core.Enums;
 using Planner.Core.Errors;
 using Planner.Core.Habits;
 
 namespace Planner.Core.Services;
 
-/// <summary>Поля окна копилки. Color = null — следующий цвет палитры.</summary>
+/// <summary>
+/// Поля окна копилки. Color = null — следующий цвет палитры. Kind — привычка или коллекция; YearGoal — цель коллекции на год;
+/// CategoryIds — категории ленты коллекции (null — не менять).
+/// </summary>
 public sealed record HabitFields(
-    string Name, string? Emoji, string? Color, int WeeklyNorm, int JarSize = Habit.DefaultJarSize, int StartCount = 0);
+    string Name,
+    string? Emoji,
+    string? Color,
+    int WeeklyNorm,
+    int JarSize = Habit.DefaultJarSize,
+    int StartCount = 0,
+    HabitKind Kind = HabitKind.Habit,
+    int? YearGoal = null,
+    IReadOnlyList<int>? CategoryIds = null);
 
-/// <summary>Копилка и её посчитанная статистика.</summary>
-public sealed record HabitOverview(Habit Habit, HabitStats Stats);
+/// <summary>Копилка и её посчитанная статистика: серии (для привычки) и полка (для коллекции) — считаются обе, вид решает, что показать.</summary>
+public sealed record HabitOverview(Habit Habit, HabitStats Stats, CollectionStats Collection);
 
 /// <summary>
-/// Копилки привычек и каникулы: создать, изменить, «+1 сегодня», статистика. Скрепки не хранятся —
-/// считаются по выполненным делам одним запросом (<see cref="IHabitRepository.GetClipsAsync"/>).
+/// Копилки (привычки и коллекции) и каникулы: создать, изменить, «+1 сегодня», статистика. Скрепки не хранятся —
+/// считаются по выполненным делам одним запросом (<see cref="IHabitRepository.GetClipsAsync"/>); чья скрепка — <see cref="HabitAttribution"/>.
 /// </summary>
 public class HabitService(
     IHabitRepository habits,
     IVacationRepository vacations,
     ITaskRepository tasks,
+    ICategoryRepository categories,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
@@ -33,10 +46,30 @@ public class HabitService(
     public async Task<IReadOnlyList<HabitOverview>> GetOverviewAsync(DateOnly today, CancellationToken ct = default)
     {
         var all = await habits.GetAllAsync(ct);
-        var clips = (await habits.GetClipsAsync(ct)).ToLookup(c => c.HabitId, c => c.Day(clock.LocalTimeZone));
+        var collectionOfCategory = CollectionOfCategory(all);
+        var zone = clock.LocalTimeZone;
+        var clips = (await habits.GetClipsAsync([.. collectionOfCategory.Keys], ct))
+            .Select(c => (Clip: c, HabitId: HabitAttribution.HabitOf(c, collectionOfCategory)))
+            .Where(c => c.HabitId is not null)
+            .ToLookup(c => c.HabitId!.Value, c => c.Clip);
         var allVacations = await vacations.GetAllAsync(ct);
-        return all.Select(h => new HabitOverview(h, Calculate(h, [.. clips[h.Id]], allVacations, today))).ToList();
+
+        return all.Select(h =>
+        {
+            var own = clips[h.Id].ToList();
+            var items = own.Select(c => new CollectionItem(c.TaskId, c.Title, c.CompletedOn(zone), c.StepCount, c.FirstStepOn(zone))).ToList();
+            return new HabitOverview(h,
+                Calculate(h, [.. own.Select(c => c.Day(zone))], allVacations, today),
+                CollectionStatsCalculator.Calculate(items, h.StartCount, h.YearGoal, today));
+        }).ToList();
     }
+
+    /// <summary>Категория ленты → коллекция (только копилки вида «коллекция»; у категории — не больше одной).</summary>
+    public static IReadOnlyDictionary<int, int> CollectionOfCategory(IEnumerable<Habit> all) =>
+        all.Where(h => h.IsCollection)
+            .SelectMany(h => h.CategoryIds.Select(categoryId => (categoryId, h.Id)))
+            .GroupBy(x => x.categoryId)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
     /// <summary>Одна копилка со статистикой.</summary>
     public async Task<HabitOverview> GetAsync(int id, DateOnly today, CancellationToken ct = default) =>
@@ -48,17 +81,19 @@ public class HabitService(
         var all = await habits.GetAllAsync(ct);
         var habit = Habit.Create(fields.Name, fields.Emoji, fields.Color ?? RolePalette.ForIndex(all.Count),
             fields.WeeklyNorm, fields.JarSize, fields.StartCount, Now);
+        await ApplyCollectionFieldsAsync(habit, fields, all, ct);
         habit.SortOrder = all.Count == 0 ? 0 : all.Max(h => h.SortOrder) + 1;
         habits.Add(habit);
         await unitOfWork.SaveChangesAsync(ct);
         return habit;
     }
 
-    /// <summary>Сохранить окно копилки; <paramref name="isArchived"/> = null — архив не менять.</summary>
+    /// <summary>Сохранить окно копилки; <paramref name="isArchived"/> = null — архив не менять. Смена вида историю не трогает.</summary>
     public async Task<Habit> UpdateAsync(int id, HabitFields fields, bool? isArchived = null, CancellationToken ct = default)
     {
         var habit = await FindAsync(id, ct);
         habit.Update(fields.Name, fields.Emoji, fields.Color ?? habit.Color, fields.WeeklyNorm, fields.JarSize, fields.StartCount);
+        await ApplyCollectionFieldsAsync(habit, fields, await habits.GetAllAsync(ct), ct);
         if (isArchived is { } archived)
         {
             habit.SetArchived(archived);
@@ -66,6 +101,34 @@ public class HabitService(
 
         await unitOfWork.SaveChangesAsync(ct);
         return habit;
+    }
+
+    /// <summary>
+    /// Вид, цель года и категории ленты. Категория — не больше чем у одной копилки: выбранная здесь уходит от прежней.
+    /// </summary>
+    private async Task ApplyCollectionFieldsAsync(Habit habit, HabitFields fields, IEnumerable<Habit> all, CancellationToken ct)
+    {
+        habit.SetKind(fields.Kind);
+        habit.SetYearGoal(fields.YearGoal);
+        if (fields.CategoryIds is not { } categoryIds)
+        {
+            return;
+        }
+
+        foreach (var categoryId in categoryIds.Distinct())
+        {
+            if (await categories.FindAsync(categoryId, ct) is null)
+            {
+                throw new NotFoundException("Категория", categoryId);
+            }
+
+            foreach (var other in all.Where(h => h != habit))
+            {
+                other.RemoveCategory(categoryId);
+            }
+        }
+
+        habit.SetCategories(categoryIds);
     }
 
     /// <summary>
@@ -99,6 +162,11 @@ public class HabitService(
         if (habit.IsArchived)
         {
             throw new DomainException("Копилка в архиве.");
+        }
+
+        if (habit.IsCollection)
+        {
+            throw new DomainException("У коллекции нет «+1 сегодня» — скрепка в ней только выполненное дело.");
         }
 
         var task = TaskItem.CreatePlanned(habit.Name, Now);

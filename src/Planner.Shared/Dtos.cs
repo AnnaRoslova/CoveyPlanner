@@ -162,7 +162,10 @@ public sealed record HabitStatsDto(
     int ThisYear,
     DateOnly? VacationUntil);
 
-/// <summary>Копилка привычки и её статистика. Unit — единица количества (на будущее, пока null).</summary>
+/// <summary>
+/// Копилка и её статистика. Kind — привычка или коллекция (вид решает, что показать: Stats — серии привычки, Collection — полка);
+/// YearGoal — цель коллекции на год; CategoryIds — категории ленты коллекции. Unit — единица количества (на будущее, пока null).
+/// </summary>
 public sealed record HabitDto(
     int Id,
     string Name,
@@ -174,7 +177,15 @@ public sealed record HabitDto(
     int SortOrder,
     bool IsArchived,
     string? Unit,
-    HabitStatsDto Stats);
+    HabitStatsDto Stats,
+    HabitKindDto Kind = HabitKindDto.Habit,
+    int? YearGoal = null,
+    IReadOnlyList<int>? CategoryIds = null,
+    CollectionStatsDto? Collection = null)
+{
+    [JsonIgnore]
+    public bool IsCollection => Kind == HabitKindDto.Collection;
+}
 
 /// <summary>Каникулы с From по To включительно; HabitIds пусто — для всех копилок.</summary>
 public sealed record VacationDto(int Id, DateOnly From, DateOnly To, IReadOnlyList<int> HabitIds);
@@ -184,3 +195,22 @@ public sealed record HabitsDto(DateOnly Today, IReadOnlyList<HabitDto> Habits, I
 
 /// <summary>После «+1 сегодня»: новое выполненное дело и копилка с новым счётом.</summary>
 public sealed record PlusOneResultDto(TaskDto Task, HabitDto Habit);
+
+[JsonConverter(typeof(JsonStringEnumConverter<HabitKindDto>))]
+public enum HabitKindDto
+{
+    Habit,
+    Collection,
+}
+
+public sealed record CollectionYearDto(int Year, int Count);
+
+/// <summary>Запись коллекции: дело, день завершения; StepCount — шагов у дела, SpanDays — дней от первого отмеченного шага до завершения.</summary>
+public sealed record CollectionEntryDto(int TaskId, string Title, DateOnly CompletedOn, int StepCount, int? SpanDays);
+
+/// <summary>Коллекция: всего (со стартовым числом), в этом году, цель года, по годам, записи — свежие сверху.</summary>
+public sealed record CollectionStatsDto(
+    int Total, int ThisYear, int? YearGoal, IReadOnlyList<CollectionYearDto> Years, IReadOnlyList<CollectionEntryDto> Entries);
+
+/// <summary>Шаг дела (дело-чеклист): видно только в окне его дела.</summary>
+public sealed record StepDto(int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder);

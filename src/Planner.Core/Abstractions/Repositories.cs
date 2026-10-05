@@ -22,6 +22,9 @@ public interface ITaskRepository
     /// <summary>Все дела плана (Planned/Done) с датой в диапазоне включительно.</summary>
     Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
 
+    /// <summary>Шаги дела по порядку.</summary>
+    Task<List<TaskItem>> GetStepsAsync(int parentId, CancellationToken ct = default);
+
     /// <summary>Корзина, свежие сверху.</summary>
     Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default);
 
@@ -106,10 +109,10 @@ public interface IHabitRepository
     Task<List<Habit>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Скрепки всех копилок одним запросом: выполненные дела с копилкой (корзина не считается) и всё,
-    /// из чего складывается день скрепки.
+    /// Возможные скрепки одним запросом: выполненные дела (корзина не считается) с копилкой или из категорий
+    /// <paramref name="collectionCategoryIds"/> (привязанных к коллекциям), с числом шагов и первым отмеченным шагом.
     /// </summary>
-    Task<List<HabitClipSource>> GetClipsAsync(CancellationToken ct = default);
+    Task<List<HabitClipSource>> GetClipsAsync(IReadOnlyCollection<int> collectionCategoryIds, CancellationToken ct = default);
 
     void Add(Habit habit);
 

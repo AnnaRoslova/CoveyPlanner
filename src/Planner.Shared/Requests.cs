@@ -82,12 +82,27 @@ public sealed record GoalToSomedayRequest(int? CategoryId, int Index);
 /// <summary>Занятием какой цели недели сделать дело (null — отвязать от цели).</summary>
 public sealed record SetTaskGoalRequest(int? GoalId);
 
-/// <summary>Окно копилки (создать или изменить). Color = null — следующий цвет палитры; IsArchived = null — не менять.</summary>
+/// <summary>
+/// Окно копилки (создать или изменить). Color = null — следующий цвет палитры; IsArchived = null — не менять.
+/// Kind — привычка или коллекция; YearGoal — цель коллекции на год (null — без цели); CategoryIds — категории ленты коллекции (null — не менять).
+/// </summary>
 public sealed record SaveHabitRequest(
-    string Name, string? Emoji, string? Color, int WeeklyNorm, int JarSize = 30, int StartCount = 0, bool? IsArchived = null);
+    string Name,
+    string? Emoji,
+    string? Color,
+    int WeeklyNorm,
+    int JarSize = 30,
+    int StartCount = 0,
+    bool? IsArchived = null,
+    HabitKindDto Kind = HabitKindDto.Habit,
+    int? YearGoal = null,
+    IReadOnlyList<int>? CategoryIds = null);
 
 /// <summary>«+1 сегодня». Today — сегодняшняя дата у пользователя.</summary>
 public sealed record PlusOneRequest(DateOnly Today);
 
 /// <summary>Каникулы с From по To включительно; HabitIds пусто или null — для всех копилок.</summary>
 public sealed record CreateVacationRequest(DateOnly From, DateOnly To, IReadOnlyList<int>? HabitIds);
+
+/// <summary>Новый шаг (в конец) или новое название шага.</summary>
+public sealed record StepRequest(string Title);

@@ -43,6 +43,11 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.HasIndex(t => new { t.State, t.CategoryId, t.SortOrder });
         builder.HasIndex(t => new { t.State, t.PlannedDate });
         builder.HasIndex(t => new { t.HabitId, t.State });
+
+        // Шаги дела: удалили дело насовсем — шаги вместе с ним
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(t => t.ParentId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(t => t.ParentId);
+        builder.Ignore(t => t.IsStep);
     }
 }
 
@@ -152,6 +157,21 @@ public class HabitConfiguration : IEntityTypeConfiguration<Habit>
         builder.Property(h => h.Emoji).HasMaxLength(Category.EmojiMaxLength);
         builder.Property(h => h.Color).IsRequired().HasMaxLength(7);
         builder.Property(h => h.Unit).HasMaxLength(16);
+        builder.Property(h => h.Kind).HasConversion<string>().HasMaxLength(16);
+
+        // Категории ленты коллекции — таблица HabitCategories (HabitId, CategoryId); у категории — не больше одной копилки.
+        // Удалили категорию или копилку — строка удаляется
+        builder.OwnsMany(h => h.Categories, links =>
+        {
+            links.ToTable("HabitCategories");
+            links.WithOwner().HasForeignKey("HabitId");
+            links.HasKey("HabitId", nameof(HabitCategory.CategoryId));
+            links.HasOne<Category>().WithMany().HasForeignKey(c => c.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            links.HasIndex(c => c.CategoryId).IsUnique();
+        });
+        builder.Navigation(h => h.Categories).HasField("_categories");
+        builder.Ignore(h => h.CategoryIds);
+        builder.Ignore(h => h.IsCollection);
     }
 }
 

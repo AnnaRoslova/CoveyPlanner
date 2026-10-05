@@ -361,6 +361,36 @@ public sealed class MigrationTests : IDisposable
         Assert.Empty(await db.Habits.ToListAsync());
     }
 
+    [Fact]
+    public async Task Collections_OldHabitsBecomeHabitKind_TasksAndLinksKept()
+    {
+        await using var db = CreateContext();
+
+        // ParentId у Tasks SQLite добавляет пересборкой таблицы — роли, цели и копилки дел должны уцелеть
+        await db.GetService<IMigrator>().MigrateAsync("Habits");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Тело', '#9fd3bd', 0, 'Body');
+            INSERT INTO Habits (Id, Name, Color, WeeklyNorm, JarSize, StartCount, CreatedAt, SortOrder, IsArchived)
+                VALUES (1, 'Тренировки', '#9fd3bd', 3, 30, 5, '2026-09-28 10:00:00', 0, 0);
+            INSERT INTO WeeklyGoals (Id, WeekStart, Title, TimesPerWeek, AllowSeveralPerDay, HabitId) VALUES (1, '2026-09-28', 'Бег', 3, 0, 1);
+            INSERT INTO GoalRoles (GoalId, RoleId, SortOrder) VALUES (1, 1, 0);
+            INSERT INTO Tasks (Id, Title, State, PlannedDate, SortOrder, CreatedAt, CompletedAt, HabitId) VALUES
+                (1, 'Бег', 'Done', '2026-09-28', 0, '2026-09-28 10:00:00', '2026-09-28 11:00:00', 1);
+            INSERT INTO TaskGoals (TaskId, GoalId, Position) VALUES (1, 1, 0);
+            INSERT INTO TaskRoles (TaskId, RoleId) VALUES (1, 1);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var habit = await db.Habits.SingleAsync();
+        Assert.Equal((Planner.Core.Enums.HabitKind.Habit, (int?)null), (habit.Kind, habit.YearGoal));
+        Assert.Empty(habit.CategoryIds);
+        var task = await db.Tasks.SingleAsync();
+        Assert.Equal((1, 1, (int?)null), (task.HabitId!.Value, task.GoalId!.Value, task.ParentId));
+        Assert.Equal([1], task.RoleIds);
+        Assert.Equal(1, (await db.WeeklyGoals.SingleAsync()).HabitId);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

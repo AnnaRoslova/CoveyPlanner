@@ -69,7 +69,21 @@ public static class Mapping
         o.Habit.SortOrder,
         o.Habit.IsArchived,
         o.Habit.Unit,
-        o.Stats.ToDto());
+        o.Stats.ToDto(),
+        (HabitKindDto)o.Habit.Kind,
+        o.Habit.YearGoal,
+        o.Habit.CategoryIds,
+        o.Collection.ToDto());
+
+    public static CollectionStatsDto ToDto(this CollectionStats c) => new(
+        c.Total,
+        c.ThisYear,
+        c.YearGoal,
+        c.Years.Select(y => new CollectionYearDto(y.Year, y.Count)).ToList(),
+        c.Entries.Select(e => new CollectionEntryDto(e.TaskId, e.Title, e.CompletedOn, e.StepCount, e.SpanDays)).ToList());
+
+    public static StepDto ToStepDto(this TaskItem s) =>
+        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.SortOrder);
 
     public static HabitStatsDto ToDto(this HabitStats s) => new(
         s.Total,
@@ -90,7 +104,7 @@ public static class Mapping
     public static VacationDto ToDto(this Vacation v) => new(v.Id, v.From, v.To, v.HabitIds);
 
     public static HabitFields ToFields(this SaveHabitRequest r) =>
-        new(r.Name, r.Emoji, r.Color, r.WeeklyNorm, r.JarSize, r.StartCount);
+        new(r.Name, r.Emoji, r.Color, r.WeeklyNorm, r.JarSize, r.StartCount, (HabitKind)r.Kind, r.YearGoal, r.CategoryIds);
 
     public static TaskTarget ToCore(this TaskTargetDto target) => target switch
     {
