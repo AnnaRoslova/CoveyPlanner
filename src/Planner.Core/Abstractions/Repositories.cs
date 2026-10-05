@@ -1,4 +1,5 @@
 using Planner.Core.Entities;
+using Planner.Core.Habits;
 
 namespace Planner.Core.Abstractions;
 
@@ -94,4 +95,36 @@ public interface IGoalSeriesRepository
 public interface IUnitOfWork
 {
     Task SaveChangesAsync(CancellationToken ct = default);
+}
+
+/// <summary>Копилки привычек.</summary>
+public interface IHabitRepository
+{
+    Task<Habit?> FindAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Все копилки (и в архиве) по порядку.</summary>
+    Task<List<Habit>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Скрепки всех копилок одним запросом: выполненные дела с копилкой (корзина не считается) и всё,
+    /// из чего складывается день скрепки.
+    /// </summary>
+    Task<List<HabitClipSource>> GetClipsAsync(CancellationToken ct = default);
+
+    void Add(Habit habit);
+
+    void Remove(Habit habit);
+}
+
+/// <summary>Каникулы копилок.</summary>
+public interface IVacationRepository
+{
+    Task<Vacation?> FindAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Все каникулы, новые (по дате начала) сверху.</summary>
+    Task<List<Vacation>> GetAllAsync(CancellationToken ct = default);
+
+    void Add(Vacation vacation);
+
+    void Remove(Vacation vacation);
 }

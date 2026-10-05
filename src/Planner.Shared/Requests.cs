@@ -21,10 +21,11 @@ public sealed record CreateTaskRequest(string Title, TaskTargetDto Target);
 
 /// <summary>
 /// StartTime / DurationMinutes = null — без времени / длительности. RoleIds — роли дела (null или пусто — без ролей).
-/// У занятия цели роль и Quadrant берутся от цели.
+/// У занятия цели роль и Quadrant берутся от цели. HabitId — копилка: null — не менять, 0 — без копилки.
 /// </summary>
 public sealed record UpdateTaskRequest(
-    string Title, string? Notes, IReadOnlyList<int>? RoleIds, int? Quadrant, TimeOnly? StartTime, int? DurationMinutes);
+    string Title, string? Notes, IReadOnlyList<int>? RoleIds, int? Quadrant, TimeOnly? StartTime, int? DurationMinutes,
+    int? HabitId = null);
 
 public sealed record SetDoneRequest(bool IsDone);
 
@@ -48,7 +49,8 @@ public sealed record UpdateRoleRequest(string? Name, string? Color);
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title, bool? IsRecurring = null);
 
 /// <summary>Окно цели целиком. null у необязательных полей — «не задано»; IsRecurring / AllowSeveralPerDay = null — «каждую неделю» / «можно несколько раз в день» не менять.
-/// Days — дни (маска, как в WeeklyGoalDto): null — не менять, 0 — «сам раскладываю». RoleIds — роли цели (хотя бы одна).</summary>
+/// Days — дни (маска, как в WeeklyGoalDto): null — не менять, 0 — «сам раскладываю». RoleIds — роли цели (хотя бы одна).
+/// HabitId — копилка: null — не менять, 0 — без копилки.</summary>
 public sealed record UpdateGoalRequest(
     string Title,
     IReadOnlyList<int> RoleIds,
@@ -59,7 +61,8 @@ public sealed record UpdateGoalRequest(
     int? DurationMinutes,
     bool? IsRecurring = null,
     bool? AllowSeveralPerDay = null,
-    int? Days = null);
+    int? Days = null,
+    int? HabitId = null);
 
 /// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
 public sealed record ToggleGoalRequest(DateOnly Today);
@@ -78,3 +81,13 @@ public sealed record GoalToSomedayRequest(int? CategoryId, int Index);
 
 /// <summary>Занятием какой цели недели сделать дело (null — отвязать от цели).</summary>
 public sealed record SetTaskGoalRequest(int? GoalId);
+
+/// <summary>Окно копилки (создать или изменить). Color = null — следующий цвет палитры; IsArchived = null — не менять.</summary>
+public sealed record SaveHabitRequest(
+    string Name, string? Emoji, string? Color, int WeeklyNorm, int JarSize = 30, int StartCount = 0, bool? IsArchived = null);
+
+/// <summary>«+1 сегодня». Today — сегодняшняя дата у пользователя.</summary>
+public sealed record PlusOneRequest(DateOnly Today);
+
+/// <summary>Каникулы с From по To включительно; HabitIds пусто или null — для всех копилок.</summary>
+public sealed record CreateVacationRequest(DateOnly From, DateOnly To, IReadOnlyList<int>? HabitIds);

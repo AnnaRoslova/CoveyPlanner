@@ -20,7 +20,7 @@ public static class TaskEndpoints
         tasks.MapPut("/{id:int}", async (int id, UpdateTaskRequest request, TaskService service, CancellationToken ct) =>
             (await service.UpdateAsync(
                 id, request.Title, request.Notes, request.RoleIds ?? [], request.Quadrant.ToQuadrant(), request.StartTime,
-                request.DurationMinutes, ct))
+                request.DurationMinutes, request.HabitId, ct))
             .ToDto());
 
         tasks.MapPost("/{id:int}/move", async (int id, TaskTargetDto target, TaskService service, CancellationToken ct) =>

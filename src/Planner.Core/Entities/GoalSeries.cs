@@ -44,6 +44,9 @@ public class GoalSeries
 
     public int? DurationMinutes { get; private set; }
 
+    /// <summary>Копилка привычки целей серии.</summary>
+    public int? HabitId { get; private set; }
+
     /// <summary>Можно ли несколько занятий в один день.</summary>
     public bool AllowSeveralPerDay { get; private set; }
 
@@ -94,6 +97,7 @@ public class GoalSeries
         DurationMinutes = goal.DurationMinutes;
         AllowSeveralPerDay = goal.AllowSeveralPerDay;
         Days = goal.Days;
+        HabitId = goal.HabitId;
     }
 
     /// <summary>

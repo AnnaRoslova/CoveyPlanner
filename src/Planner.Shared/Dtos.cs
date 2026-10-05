@@ -40,7 +40,8 @@ public sealed record TaskDto(
     TimeOnly? StartTime,
     int? DurationMinutes,
     int SortOrder,
-    DateTime? TrashedAt);
+    DateTime? TrashedAt,
+    int? HabitId = null);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -76,7 +77,8 @@ public sealed record WeeklyGoalDto(
     IReadOnlyList<GoalSessionDto> Sessions,
     bool IsRecurring = false,
     bool AllowSeveralPerDay = false,
-    int? Days = null)
+    int? Days = null,
+    int? HabitId = null)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
@@ -119,3 +121,66 @@ public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
 /// которые дело заменило («одно занятие цели в день»; они в корзине — для «Вернуть»).
 /// </summary>
 public sealed record TaskGoalResultDto(TaskDto Task, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<int> ReplacedTaskIds);
+
+/// <summary>Итог недели или месяца копилки (см. Planner.Core.Habits.PeriodResult).</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<PeriodResultDto>))]
+public enum PeriodResultDto
+{
+    BeforeStart,
+    Done,
+    Neutral,
+    Paused,
+    Missed,
+    Vacation,
+    Current,
+}
+
+/// <summary>Неделя копилки: понедельник, сколько скрепок, итог.</summary>
+public sealed record HabitWeekDto(DateOnly WeekStart, int Count, PeriodResultDto Result);
+
+/// <summary>Месяц копилки (первое число) и итог.</summary>
+public sealed record HabitMonthDto(DateOnly Month, PeriodResultDto Result);
+
+/// <summary>
+/// Посчитанное: всего скрепок, полные банки и сколько в текущей, эта неделя, 🔥 серия недель (WeekPaused — ⚠ пауза),
+/// 🌙 серия месяцев, последние 26 недель и 7 месяцев (последние — текущие), в среднем за неделю, за месяц и год;
+/// VacationUntil — сегодня каникулы до этого дня.
+/// </summary>
+public sealed record HabitStatsDto(
+    int Total,
+    int FullJars,
+    int InJar,
+    int ThisWeek,
+    int WeekStreak,
+    bool WeekPaused,
+    int MonthStreak,
+    bool MonthPaused,
+    IReadOnlyList<HabitWeekDto> Weeks,
+    IReadOnlyList<HabitMonthDto> Months,
+    double AveragePerWeek,
+    int ThisMonth,
+    int ThisYear,
+    DateOnly? VacationUntil);
+
+/// <summary>Копилка привычки и её статистика. Unit — единица количества (на будущее, пока null).</summary>
+public sealed record HabitDto(
+    int Id,
+    string Name,
+    string? Emoji,
+    string Color,
+    int WeeklyNorm,
+    int JarSize,
+    int StartCount,
+    int SortOrder,
+    bool IsArchived,
+    string? Unit,
+    HabitStatsDto Stats);
+
+/// <summary>Каникулы с From по To включительно; HabitIds пусто — для всех копилок.</summary>
+public sealed record VacationDto(int Id, DateOnly From, DateOnly To, IReadOnlyList<int> HabitIds);
+
+/// <summary>Экран «Копилки»: все копилки (и в архиве) со статистикой на день Today и все каникулы.</summary>
+public sealed record HabitsDto(DateOnly Today, IReadOnlyList<HabitDto> Habits, IReadOnlyList<VacationDto> Vacations);
+
+/// <summary>После «+1 сегодня»: новое выполненное дело и копилка с новым счётом.</summary>
+public sealed record PlusOneResultDto(TaskDto Task, HabitDto Habit);

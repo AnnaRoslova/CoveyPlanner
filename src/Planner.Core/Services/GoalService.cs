@@ -16,6 +16,7 @@ public class GoalService(
     IRoleRepository roles,
     ITaskRepository tasks,
     IGoalSeriesRepository series,
+    IHabitRepository habits,
     GoalSessions sessions,
     TaskPlacer placer,
     GoalRemover remover,
@@ -75,6 +76,12 @@ public class GoalService(
         foreach (var session in lostTime)
         {
             await placer.MoveToEndOfDayAsync(session, ct);
+        }
+
+        // Копилка — часть шаблона: занятия с копилкой «как у цели» (и выполненные) переходят в новую
+        if (changes.HabitId is { } habitId)
+        {
+            goal.SetHabit(await habits.ResolveLinkAsync(habitId, ct));
         }
 
         if (!changes.RoleIds.Distinct().Order().SequenceEqual(goal.RoleIds))
@@ -151,6 +158,7 @@ public class GoalService(
             later.SetDays(goal.Days);
             later.SetTimesPerWeek(goal.TimesPerWeek);
             later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
+            later.SetHabit(goal.HabitId);
             var lostTime = later.UpdateTemplate(goal.Title, goal.StartTime, goal.Quadrant, goal.Notes, goal.DurationMinutes);
             foreach (var session in lostTime)
             {

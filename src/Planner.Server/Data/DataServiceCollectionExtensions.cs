@@ -35,6 +35,8 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<IRoleRepository, EfRoleRepository>();
         services.AddScoped<IGoalRepository, EfGoalRepository>();
         services.AddScoped<IGoalSeriesRepository, EfGoalSeriesRepository>();
+        services.AddScoped<IHabitRepository, EfHabitRepository>();
+        services.AddScoped<IVacationRepository, EfVacationRepository>();
 
         services.AddScoped(sp => ResolveBackupOptions(sp.GetRequiredService<IConfiguration>()));
         services.AddScoped<BackupService>();
@@ -50,6 +52,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<CategoryService>();
         services.AddScoped<RoleService>();
         services.AddScoped<GoalService>();
+        services.AddScoped<HabitService>();
 
         return services;
     }

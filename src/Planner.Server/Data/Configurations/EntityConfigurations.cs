@@ -37,8 +37,12 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Ignore(t => t.GoalId);
         builder.Ignore(t => t.IsSession);
 
+        // Копилка: удалили её — дело остаётся, просто без копилки. Скрепки считаются по (HabitId, State)
+        builder.HasOne<Habit>().WithMany().HasForeignKey(t => t.HabitId).OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(t => new { t.State, t.CategoryId, t.SortOrder });
         builder.HasIndex(t => new { t.State, t.PlannedDate });
+        builder.HasIndex(t => new { t.HabitId, t.State });
     }
 }
 
@@ -91,6 +95,9 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
 
         builder.HasIndex(g => g.WeekStart);
 
+        // Копилка цели: удалили её — цель остаётся без копилки
+        builder.HasOne<Habit>().WithMany().HasForeignKey(g => g.HabitId).OnDelete(DeleteBehavior.SetNull);
+
         // Серия: удалили серию (у неё не осталось ролей) — цели остаются разовыми; на неделе у серии одна цель
         builder.HasOne(g => g.Series).WithMany().HasForeignKey(g => g.SeriesId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(g => new { g.SeriesId, g.WeekStart }).IsUnique();
@@ -118,6 +125,7 @@ public class GoalSeriesConfiguration : IEntityTypeConfiguration<GoalSeries>
         builder.Navigation(s => s.Roles).HasField("_roles");
         builder.Ignore(s => s.RoleIds);
         builder.HasIndex(s => s.IsRecurring);
+        builder.HasOne<Habit>().WithMany().HasForeignKey(s => s.HabitId).OnDelete(DeleteBehavior.SetNull);
     }
 }
 
@@ -133,5 +141,35 @@ public class TaskGoalConfiguration : IEntityTypeConfiguration<TaskGoal>
         builder.HasKey(l => new { l.TaskId, l.GoalId });
         builder.HasOne(l => l.Task).WithMany(t => t.GoalLinks).HasForeignKey(l => l.TaskId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(l => l.Goal).WithMany(g => g.Links).HasForeignKey(l => l.GoalId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class HabitConfiguration : IEntityTypeConfiguration<Habit>
+{
+    public void Configure(EntityTypeBuilder<Habit> builder)
+    {
+        builder.Property(h => h.Name).IsRequired().HasMaxLength(TextRules.NameMaxLength);
+        builder.Property(h => h.Emoji).HasMaxLength(Category.EmojiMaxLength);
+        builder.Property(h => h.Color).IsRequired().HasMaxLength(7);
+        builder.Property(h => h.Unit).HasMaxLength(16);
+    }
+}
+
+public class VacationConfiguration : IEntityTypeConfiguration<Vacation>
+{
+    public void Configure(EntityTypeBuilder<Vacation> builder)
+    {
+        // Копилки каникул — таблица VacationHabits (VacationId, HabitId); пусто — каникулы для всех копилок.
+        // Удалили копилку — строка удаляется (каникулы только этой копилки удаляет HabitService)
+        builder.OwnsMany(v => v.Habits, habits =>
+        {
+            habits.ToTable("VacationHabits");
+            habits.WithOwner().HasForeignKey("VacationId");
+            habits.HasKey("VacationId", nameof(VacationHabit.HabitId));
+            habits.HasOne<Habit>().WithMany().HasForeignKey(h => h.HabitId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Navigation(v => v.Habits).HasField("_habits");
+        builder.Ignore(v => v.HabitIds);
+        builder.Ignore(v => v.Range);
     }
 }

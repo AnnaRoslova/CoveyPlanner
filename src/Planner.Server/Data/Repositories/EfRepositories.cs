@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 using Planner.Core.Enums;
+using Planner.Core.Habits;
 
 namespace Planner.Server.Data.Repositories;
 
@@ -117,4 +118,41 @@ public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
     public void Add(GoalSeries series) => db.GoalSeries.Add(series);
 
     public void Remove(GoalSeries series) => db.GoalSeries.Remove(series);
+}
+
+public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
+{
+    public Task<Habit?> FindAsync(int id, CancellationToken ct = default) =>
+        db.Habits.FirstOrDefaultAsync(h => h.Id == id, ct);
+
+    public Task<List<Habit>> GetAllAsync(CancellationToken ct = default) =>
+        db.Habits.OrderBy(h => h.SortOrder).ThenBy(h => h.Id).ToListAsync(ct);
+
+    /// <summary>Один запрос: выполненные дела с копилкой; неделя цели — подзапросом по TaskGoals (для занятий без дня).</summary>
+    public Task<List<HabitClipSource>> GetClipsAsync(CancellationToken ct = default) =>
+        db.Tasks.AsNoTracking()
+            .Where(t => t.HabitId != null && t.State == TaskState.Done)
+            .Select(t => new HabitClipSource(
+                t.HabitId!.Value,
+                t.PlannedDate,
+                t.GoalLinks.Select(l => (DateOnly?)l.Goal.WeekStart).FirstOrDefault(),
+                t.CompletedAt))
+            .ToListAsync(ct);
+
+    public void Add(Habit habit) => db.Habits.Add(habit);
+
+    public void Remove(Habit habit) => db.Habits.Remove(habit);
+}
+
+public class EfVacationRepository(PlannerDbContext db) : IVacationRepository
+{
+    public Task<Vacation?> FindAsync(int id, CancellationToken ct = default) =>
+        db.Vacations.FirstOrDefaultAsync(v => v.Id == id, ct);
+
+    public Task<List<Vacation>> GetAllAsync(CancellationToken ct = default) =>
+        db.Vacations.OrderByDescending(v => v.From).ThenByDescending(v => v.Id).ToListAsync(ct);
+
+    public void Add(Vacation vacation) => db.Vacations.Add(vacation);
+
+    public void Remove(Vacation vacation) => db.Vacations.Remove(vacation);
 }

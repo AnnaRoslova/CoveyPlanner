@@ -39,6 +39,7 @@ api.MapTaskEndpoints();
 api.MapCategoryEndpoints();
 api.MapRoleEndpoints();
 api.MapGoalEndpoints();
+api.MapHabitEndpoints();
 api.MapBackupEndpoints();
 
 // Неизвестные /api/... — 404, а не index.html

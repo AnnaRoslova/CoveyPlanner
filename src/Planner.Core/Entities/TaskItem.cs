@@ -49,6 +49,17 @@ public class TaskItem : ISortable
 
     public Quadrant? Quadrant { get; set; }
 
+    /// <summary>
+    /// Копилка привычки: выполненное дело — скрепка в ней. Занятие цели берёт копилку цели (см. <see cref="WeeklyGoal.SetHabit"/>).
+    /// </summary>
+    public int? HabitId { get; private set; }
+
+    /// <summary>
+    /// Количество для копилки (минуты, километры — <see cref="Habit.Unit"/>) — на будущее; пока не используется:
+    /// дело — одна скрепка.
+    /// </summary>
+    public double? Quantity { get; private set; }
+
     public TaskState State { get; private set; }
 
     /// <summary>Состояние до попадания в корзину — для возврата.</summary>
@@ -136,6 +147,9 @@ public class TaskItem : ISortable
 
     public void SetNotes(string? notes) =>
         Notes = TextRules.Optional(notes, TextRules.NotesMaxLength, "Заметки");
+
+    /// <summary>Положить дело в копилку (null — ни в какую).</summary>
+    public void SetHabit(int? habitId) => HabitId = habitId;
 
     public void SetDuration(int? minutes) => DurationMinutes = TextRules.Duration(minutes);
 

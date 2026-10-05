@@ -308,6 +308,59 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal(2, await db.Set<Planner.Core.Entities.TaskGoal>().CountAsync());
     }
 
+    [Fact]
+    public async Task Habits_TablesRebuilt_LinksAndRolesKept()
+    {
+        await using var db = CreateContext();
+
+        // Внешние ключи на копилку SQLite добавляет пересборкой Tasks, WeeklyGoals и GoalSeries —
+        // строки связанных таблиц (с каскадным удалением) должны уцелеть
+        await db.GetService<IMigrator>().MigrateAsync("GoalRoles");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Тело', '#9fd3bd', 0, 'Body'), (2, 'Ум', '#a9cde8', 1, 'Mind');
+            INSERT INTO GoalSeries (Id, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, GeneratedThrough)
+                VALUES (1, 'Бег', 3, 0, 1, '2026-09-28', '2026-09-28');
+            INSERT INTO GoalSeriesRoles (SeriesId, RoleId) VALUES (1, 1), (1, 2);
+            INSERT INTO WeeklyGoals (Id, WeekStart, Title, TimesPerWeek, AllowSeveralPerDay, SeriesId)
+                VALUES (1, '2026-09-28', 'Бег', 3, 0, 1);
+            INSERT INTO GoalRoles (GoalId, RoleId, SortOrder) VALUES (1, 1, 0), (1, 2, 3);
+            INSERT INTO Tasks (Id, Title, State, PlannedDate, SortOrder, CreatedAt, CompletedAt) VALUES
+                (1, 'Бег', 'Done', '2026-09-28', 0, '2026-09-28 10:00:00', '2026-09-28 11:00:00'),
+                (2, 'Книга', 'Someday', NULL, 0, '2026-09-28 10:00:00', NULL);
+            INSERT INTO TaskGoals (TaskId, GoalId, Position) VALUES (1, 1, 0);
+            INSERT INTO TaskRoles (TaskId, RoleId) VALUES (1, 1), (1, 2), (2, 2);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        async Task<long> Count(string table)
+        {
+            var connection = db.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM {table}";
+            return (long)(await command.ExecuteScalarAsync())!;
+        }
+
+        long[] expected = [2, 1, 1, 1, 2, 2, 3];
+        var counts = new List<long>();
+        foreach (var table in new[] { "Tasks", "WeeklyGoals", "GoalSeries", "TaskGoals", "GoalRoles", "GoalSeriesRoles", "TaskRoles" })
+        {
+            counts.Add(await Count(table));
+        }
+
+        Assert.Equal(expected, counts);
+        var goal = await db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).SingleAsync();
+        Assert.Equal(1, goal.DoneCount);
+        Assert.Null(goal.HabitId);
+        Assert.All(await db.Tasks.ToListAsync(), t => Assert.Null(t.HabitId));
+        Assert.Empty(await db.Habits.ToListAsync());
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
