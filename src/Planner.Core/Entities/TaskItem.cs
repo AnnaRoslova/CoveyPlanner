@@ -57,6 +57,21 @@ public class TaskItem : ISortable
 
     public bool IsStep => ParentId is not null;
 
+    /// <summary>Место шага в списке шагов родителя (у шага в дне <see cref="SortOrder"/> — его место в дне).</summary>
+    public int? StepOrder { get; set; }
+
+    /// <summary>
+    /// Дело хоть раз лежало в ленте (создано там или возвращено туда). Выполненные такие дела — в «Выполненном»;
+    /// дела, созданные прямо в неделе, — нет. Не сбрасывается.
+    /// </summary>
+    public bool IsFromSomeday { get; private set; }
+
+    /// <summary>
+    /// Серия, скрепкой которой дело остаётся после удаления своей цели (выполненное занятие удалённой цели).
+    /// null — обычное дело или занятие (у занятия серия — через цель).
+    /// </summary>
+    public int? ClipSeriesId { get; private set; }
+
     public TaskState State { get; private set; }
 
     /// <summary>Состояние до попадания в корзину — для возврата.</summary>
@@ -94,6 +109,7 @@ public class TaskItem : ISortable
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название дела"),
         CategoryId = categoryId,
         State = TaskState.Someday,
+        IsFromSomeday = true,
         CreatedAt = now,
     };
 
@@ -186,6 +202,7 @@ public class TaskItem : ISortable
     {
         EnsureNotTrashed();
         State = TaskState.Someday;
+        IsFromSomeday = true;
         CategoryId = categoryId;
         CompletedAt = null;
         PlannedDate = null;

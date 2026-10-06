@@ -40,18 +40,32 @@ public class HabitEntityTests
     }
 
     [Fact]
-    public void DeleteHabit_ResetsJarOnly_ResumingBringsHabitBack()
+    public void DeleteHabit_ResetsJarAndStopsCollecting_SeriesKept()
     {
         var series = RecurringSeries();
+        series.SetHabit(true);
         series.SetJar(7, 40);
         series.StopAfter(Monday);
 
         series.DeleteHabit();
-        Assert.Equal((true, 30, 0), (series.IsHabitDeleted, series.JarSize, series.StartCount));
+        Assert.Equal((false, 30, 0), (series.IsHabit, series.JarSize, series.StartCount));
         Assert.Equal("Бег", series.Title); // сама серия (шаблон цели) не тронута
 
+        // «Копить» решает окно цели, а не возобновление серии
         series.RecurFrom(Monday.AddDays(7));
-        Assert.False(series.IsHabitDeleted);
+        Assert.False(series.IsHabit);
+    }
+
+    [Fact]
+    public void SetHabit_Off_KeepsJar()
+    {
+        var series = RecurringSeries();
+        series.SetHabit(true);
+        series.SetJar(7, 40);
+
+        series.SetHabit(false);
+        series.SetHabit(true);
+        Assert.Equal((true, 40, 7), (series.IsHabit, series.JarSize, series.StartCount));
     }
 
     [Fact]

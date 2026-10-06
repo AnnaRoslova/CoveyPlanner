@@ -38,7 +38,7 @@ public class GoalService(
         goals.Add(goal);
         if (recurring ?? role.IsSharpenSaw)
         {
-            StartRecurringSeries(goal);
+            await StartRecurringSeriesAsync(goal, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -126,13 +126,14 @@ public class GoalService(
 
         if (goal.Series is null)
         {
-            StartRecurringSeries(goal);
+            await StartRecurringSeriesAsync(goal, ct);
             return;
         }
 
         if (!wasRecurring)
         {
             goal.Series.RecurFrom(goal.WeekStart);
+            goal.Series.SetHabit(await HabitByDefaultAsync(goal, ct));
         }
 
         await SpreadToLaterWeeksAsync(goal, removed, ct);
@@ -173,12 +174,30 @@ public class GoalService(
             ? await goals.GetInSeriesAsync(seriesId, goal.WeekStart.AddDays(Week.DaysInWeek), ct)
             : [];
 
-    /// <summary>Сделать цель постоянной: новая серия «каждую неделю» с её шаблоном, начиная с её недели.</summary>
-    private void StartRecurringSeries(WeeklyGoal goal)
+    /// <summary>
+    /// Сделать цель постоянной: новая серия «каждую неделю» с её шаблоном, начиная с её недели;
+    /// «🫙 копить» — по умолчанию (<see cref="HabitByDefaultAsync"/>).
+    /// </summary>
+    private async Task StartRecurringSeriesAsync(WeeklyGoal goal, CancellationToken ct)
     {
         var created = GoalSeries.StartFrom(goal, recurring: true);
+        created.SetHabit(await HabitByDefaultAsync(goal, ct));
         series.Add(created);
         goal.JoinSeries(created);
+    }
+
+    /// <summary>«🫙 копить» по умолчанию, когда цели включают «каждую неделю»: есть роль-измерение пилы — копить, иначе нет.</summary>
+    private async Task<bool> HabitByDefaultAsync(WeeklyGoal goal, CancellationToken ct)
+    {
+        foreach (var roleId in goal.RoleIds)
+        {
+            if (await roles.FindAsync(roleId, ct) is { IsSharpenSaw: true })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -328,7 +347,7 @@ public class GoalService(
         goals.Add(goal);
         if (role.IsSharpenSaw)
         {
-            StartRecurringSeries(goal);
+            await StartRecurringSeriesAsync(goal, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

@@ -50,7 +50,7 @@ public class HabitService(
         foreach (var habit in await series.GetRecurringAsync(ct))
         {
             var dimensions = sawRoles.Where(r => habit.RoleIds.Contains(r.Id)).ToList();
-            if (habit.IsHabitDeleted || dimensions.Count == 0)
+            if (!habit.IsHabit || dimensions.Count == 0)
             {
                 continue;
             }
@@ -174,11 +174,11 @@ public class HabitService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    /// <summary>Серия-привычка: постоянная, не удалённая как привычка, хотя бы с одним измерением пилы.</summary>
+    /// <summary>Серия-привычка: постоянная, «🫙 копить», хотя бы с одним измерением пилы (группа на экране).</summary>
     private async Task<GoalSeries> FindAsync(int id, CancellationToken ct)
     {
         var habit = await series.FindAsync(id, ct);
-        if (habit is { IsRecurring: true, IsHabitDeleted: false })
+        if (habit is { IsRecurring: true, IsHabit: true })
         {
             var sawRoleIds = (await roles.GetAllAsync(ct)).Where(r => r.IsSharpenSaw).Select(r => r.Id);
             if (habit.RoleIds.Intersect(sawRoleIds).Any())

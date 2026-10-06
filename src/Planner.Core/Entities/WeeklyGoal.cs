@@ -64,6 +64,9 @@ public class WeeklyGoal
     /// </summary>
     public Weekdays? Days { get; private set; }
 
+    /// <summary>Проект новых занятий: занятия, которые цель создаёт сама, становятся шагами этого дела. null — без проекта.</summary>
+    public int? ProjectId { get; private set; }
+
     /// <summary>Серия: та же цель на других неделях (постоянная — «каждую неделю»). null — разовая цель.</summary>
     public int? SeriesId { get; private set; }
 

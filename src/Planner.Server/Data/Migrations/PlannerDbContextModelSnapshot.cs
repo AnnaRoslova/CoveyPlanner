@@ -64,7 +64,7 @@ namespace Planner.Server.Data.Migrations
                     b.Property<DateOnly>("GeneratedThrough")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsHabitDeleted")
+                    b.Property<bool>("IsHabit")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsRecurring")
@@ -79,6 +79,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("Quadrant")
                         .HasColumnType("INTEGER");
@@ -100,6 +103,8 @@ namespace Planner.Server.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("IsRecurring");
+
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("GoalSeries");
                 });
@@ -162,6 +167,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int?>("CategoryId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("ClipSeriesId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("TEXT");
 
@@ -169,6 +177,9 @@ namespace Planner.Server.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("DurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsFromSomeday")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
@@ -199,6 +210,9 @@ namespace Planner.Server.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("StepOrder")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -211,11 +225,15 @@ namespace Planner.Server.Data.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("ClipSeriesId");
+
                     b.HasIndex("ParentId");
 
                     b.HasIndex("State", "PlannedDate");
 
                     b.HasIndex("State", "CategoryId", "SortOrder");
+
+                    b.HasIndex("State", "IsFromSomeday", "CompletedAt");
 
                     b.ToTable("Tasks", (string)null);
                 });
@@ -256,6 +274,9 @@ namespace Planner.Server.Data.Migrations
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("Quadrant")
                         .HasColumnType("INTEGER");
 
@@ -278,6 +299,8 @@ namespace Planner.Server.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ProjectId");
+
                     b.HasIndex("WeekStart");
 
                     b.HasIndex("SeriesId", "WeekStart")
@@ -288,6 +311,11 @@ namespace Planner.Server.Data.Migrations
 
             modelBuilder.Entity("Planner.Core.Entities.GoalSeries", b =>
                 {
+                    b.HasOne("Planner.Core.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.OwnsMany("Planner.Core.Entities.SeriesRole", "Roles", b1 =>
                         {
                             b1.Property<int>("SeriesId")
@@ -339,6 +367,11 @@ namespace Planner.Server.Data.Migrations
                     b.HasOne("Planner.Core.Entities.Category", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Planner.Core.Entities.GoalSeries", null)
+                        .WithMany()
+                        .HasForeignKey("ClipSeriesId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Planner.Core.Entities.TaskItem", null)
@@ -404,6 +437,11 @@ namespace Planner.Server.Data.Migrations
 
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>
                 {
+                    b.HasOne("Planner.Core.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Planner.Core.Entities.GoalSeries", "Series")
                         .WithMany()
                         .HasForeignKey("SeriesId")

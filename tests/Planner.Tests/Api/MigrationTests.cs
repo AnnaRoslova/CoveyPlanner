@@ -405,11 +405,49 @@ public sealed class MigrationTests : IDisposable
 
         // Серия — привычка с банкой по умолчанию; каникулы «для всех» остались, каникулы копилки — нет
         var series = await db.GoalSeries.SingleAsync();
-        Assert.Equal((30, 0, false), (series.JarSize, series.StartCount, series.IsHabitDeleted));
+        Assert.Equal((30, 0, true), (series.JarSize, series.StartCount, series.IsHabit));
         Assert.Equal(2, (await db.Vacations.SingleAsync()).Id);
         var goals = await db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).OrderBy(g => g.Id).ToListAsync();
         Assert.Equal([1, 1], goals.Select(g => g.DoneCount));
         Assert.Equal(5, (await db.Tasks.SingleAsync(t => t.Id == 4)).CategoryId);
+    }
+
+    [Fact]
+    public async Task TasksStepsDone_HabitFlag_FromSomeday_StepOrder()
+    {
+        await using var db = CreateContext();
+
+        // Как у Анны: постоянные серии пилы, выполненные дела из категорий в днях, мысли ленты, корзина; плюс крайние случаи
+        await db.GetService<IMigrator>().MigrateAsync("HabitsAreSeries");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Тело', '#9fd3bd', 0, 'Body'), (5, 'Работа', '#8fb4e3', 4, NULL);
+            INSERT INTO Categories (Id, Name, SortOrder, IsExpanded) VALUES (3, 'Планер', 0, 1);
+            INSERT INTO GoalSeries (Id, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, GeneratedThrough, JarSize, StartCount, IsHabitDeleted)
+                VALUES (1, 'Бег', 3, 0, 1, '2026-09-28', '2026-10-05', 30, 0, 0),
+                       (2, 'Йога', 2, 0, 1, '2026-09-28', '2026-10-05', 30, 0, 1),
+                       (3, 'Отчёт', 1, 0, 1, '2026-09-28', '2026-10-05', 30, 0, 0),
+                       (4, 'Прогулка', 1, 0, 0, '2026-09-28', '2026-09-28', 30, 0, 0);
+            INSERT INTO GoalSeriesRoles (SeriesId, RoleId) VALUES (1, 1), (2, 1), (3, 5), (4, 1);
+            INSERT INTO Tasks (Id, Title, State, PreviousState, PlannedDate, SortOrder, CreatedAt, CompletedAt, CategoryId, ParentId) VALUES
+                (1, 'Мысль', 'Someday', NULL, NULL, 0, '2026-10-01', NULL, 3, NULL),
+                (2, 'Неразобранное', 'Someday', NULL, NULL, 0, '2026-10-01', NULL, NULL, NULL),
+                (3, 'Сделано из ленты', 'Done', NULL, '2026-10-01', 0, '2026-10-01', '2026-10-01', 3, NULL),
+                (4, 'Дело недели', 'Done', NULL, '2026-10-01', 1, '2026-10-01', '2026-10-01', NULL, NULL),
+                (5, 'В корзине из ленты', 'Trashed', 'Someday', NULL, 0, '2026-10-01', NULL, NULL, NULL),
+                (6, 'В корзине из плана', 'Trashed', 'Planned', '2026-10-01', 0, '2026-10-01', NULL, NULL, NULL),
+                (7, 'Шаг', 'Planned', NULL, NULL, 3, '2026-10-01', NULL, NULL, 4);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var habits = await db.GoalSeries.OrderBy(s => s.Id).Select(s => s.IsHabit).ToListAsync();
+        Assert.Equal([true, false, false, false], habits);
+
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
+        Assert.Equal([1, 2, 3, 5], tasks.Where(t => t.IsFromSomeday).Select(t => t.Id));
+        Assert.Equal(3, tasks.Single(t => t.Id == 7).StepOrder);
+        Assert.All(tasks.Where(t => t.Id != 7), t => Assert.Null(t.StepOrder));
+        Assert.All(tasks, t => Assert.Null(t.ClipSeriesId));
     }
 
     private static async Task<long> CountAsync(PlannerDbContext db, string table)

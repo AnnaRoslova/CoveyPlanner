@@ -44,6 +44,13 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.HasOne<TaskItem>().WithMany().HasForeignKey(t => t.ParentId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(t => t.ParentId);
         builder.Ignore(t => t.IsStep);
+
+        // «Выполненное»: выполненные дела из ленты по дате отметки
+        builder.HasIndex(t => new { t.State, t.IsFromSomeday, t.CompletedAt });
+
+        // Скрепка удалённой цели помнит серию; удалили серию — ссылка обнуляется (скрепки уходят вместе с привычкой)
+        builder.HasOne<GoalSeries>().WithMany().HasForeignKey(t => t.ClipSeriesId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(t => t.ClipSeriesId);
     }
 }
 
@@ -99,6 +106,9 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         // Серия: удалили серию (у неё не осталось ролей) — цели остаются разовыми; на неделе у серии одна цель
         builder.HasOne(g => g.Series).WithMany().HasForeignKey(g => g.SeriesId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(g => new { g.SeriesId, g.WeekStart }).IsUnique();
+
+        // Проект новых занятий; удалили дело-проект насовсем — поле очищается
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(g => g.ProjectId).OnDelete(DeleteBehavior.SetNull);
     }
 }
 
@@ -123,6 +133,7 @@ public class GoalSeriesConfiguration : IEntityTypeConfiguration<GoalSeries>
         builder.Navigation(s => s.Roles).HasField("_roles");
         builder.Ignore(s => s.RoleIds);
         builder.HasIndex(s => s.IsRecurring);
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.SetNull);
         builder.Ignore(s => s.IsEnded);
         builder.Ignore(s => s.HasCustomJar);
     }
