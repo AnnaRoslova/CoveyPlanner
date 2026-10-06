@@ -183,11 +183,11 @@ public class TasksApiTests : ApiTestBase
         var someday = await CreateTaskAsync("Мысль", new SomedayTargetDto(ideas.Id, 0));
         var planned = await CreateInDayAsync("Дело");
 
-        var done = await PutAsync<TaskDto>($"/api/tasks/{planned.Id}/done", new SetDoneRequest(true));
+        var done = await SetTaskDoneAsync(planned.Id, true);
         Assert.Equal(TaskStateDto.Done, done.State);
 
         // D2: мысль отмечена прямо в ленте — из ленты уходит, категория сохраняется
-        var doneInFeed = await PutAsync<TaskDto>($"/api/tasks/{someday.Id}/done", new SetDoneRequest(true));
+        var doneInFeed = await SetTaskDoneAsync(someday.Id, true);
         Assert.Equal((TaskStateDto.Done, (DateOnly?)null, ideas.Id), (doneInFeed.State, doneInFeed.PlannedDate, doneInFeed.CategoryId));
         Assert.Empty((await GetBoardAsync()).SomedayTasks);
 

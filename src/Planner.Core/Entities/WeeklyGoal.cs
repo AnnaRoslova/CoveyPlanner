@@ -67,6 +67,9 @@ public class WeeklyGoal
     /// <summary>Проект новых занятий: занятия, которые цель создаёт сама, становятся шагами этого дела. null — без проекта.</summary>
     public int? ProjectId { get; private set; }
 
+    /// <summary>Дело-проект (репозиторий подгружает его вместе с целью).</summary>
+    public TaskItem? Project { get; private set; }
+
     /// <summary>Серия: та же цель на других неделях (постоянная — «каждую неделю»). null — разовая цель.</summary>
     public int? SeriesId { get; private set; }
 
@@ -106,7 +109,11 @@ public class WeeklyGoal
     public void SetAllowSeveralPerDay(bool allow) => AllowSeveralPerDay = allow;
 
     /// <summary>Проект новых занятий (null — без проекта). Уже существующие занятия не меняются.</summary>
-    public void SetProject(int? projectId) => ProjectId = projectId;
+    public void SetProject(TaskItem? project)
+    {
+        Project = project;
+        ProjectId = project?.Id;
+    }
 
     /// <summary>Выбрать дни (None или null — «сам раскладываю»). Выбраны — «раз в неделю» = их число.</summary>
     public void SetDays(Weekdays? days)
@@ -170,6 +177,7 @@ public class WeeklyGoal
         goal.Notes = Notes;
         goal.DurationMinutes = DurationMinutes;
         goal.AllowSeveralPerDay = AllowSeveralPerDay;
+        goal.Project = Project;
         goal.ProjectId = ProjectId;
         goal.Series = Series;
         return goal;

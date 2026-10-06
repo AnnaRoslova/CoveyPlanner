@@ -10,7 +10,7 @@ public class DoneArchiveApiTests : ApiTestBase
     private Task<List<DoneGroupDto>> DoneAsync() => GetAsync<List<DoneGroupDto>>("/api/done");
 
     private Task<TaskDto> SetDoneAsync(int id, bool isDone = true) =>
-        PutAsync<TaskDto>($"/api/tasks/{id}/done", new SetDoneRequest(isDone));
+        SetTaskDoneAsync(id, isDone);
 
     private Task<TaskDto> ThoughtAsync(string title, int? categoryId, int index = int.MaxValue) =>
         CreateTaskAsync(title, new SomedayTargetDto(categoryId, index));

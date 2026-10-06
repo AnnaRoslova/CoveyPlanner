@@ -163,7 +163,7 @@ public class GoalService(
             later.SetDays(goal.Days);
             later.SetTimesPerWeek(goal.TimesPerWeek);
             later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
-            later.SetProject(goal.ProjectId);
+            later.SetProject(goal.Project);
             var lostTime = later.UpdateTemplate(goal.Title, goal.StartTime, goal.Quadrant, goal.Notes, goal.DurationMinutes);
             foreach (var session in lostTime)
             {
@@ -202,7 +202,7 @@ public class GoalService(
     /// Проект новых занятий цели (P1, P9): дело без родителя, не в корзине и не занятие этой же цели. Выполненный можно —
     /// тогда новые занятия просто создаются без проекта (P3).
     /// </summary>
-    private async Task<int> GetProjectAsync(WeeklyGoal goal, int projectId, CancellationToken ct)
+    private async Task<TaskItem> GetProjectAsync(WeeklyGoal goal, int projectId, CancellationToken ct)
     {
         var project = await tasks.FindAsync(projectId, ct) ?? throw new NotFoundException("Дело", projectId);
         if (project.IsStep)
@@ -220,7 +220,7 @@ public class GoalService(
             throw new DomainException("Занятие этой цели не может быть её проектом.");
         }
 
-        return project.Id;
+        return project;
     }
 
     /// <summary>«🫙 копить» по умолчанию, когда цели включают «каждую неделю»: есть роль-измерение пилы — копить, иначе нет.</summary>

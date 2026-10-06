@@ -11,20 +11,19 @@ public static class TaskEndpoints
     {
         var tasks = api.MapGroup("/tasks");
 
-        tasks.MapPost("/", async (CreateTaskRequest request, TaskService service, CancellationToken ct) =>
+        tasks.MapPost("/", async (CreateTaskRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
         {
             var task = await service.CreateAsync(request.Title, request.Target.ToCore(), ct);
-            return Results.Created($"/api/tasks/{task.Id}", task.ToDto());
+            return Results.Created($"/api/tasks/{task.Id}", await views.ToDtoAsync(task, ct));
         });
 
-        tasks.MapPut("/{id:int}", async (int id, UpdateTaskRequest request, TaskService service, CancellationToken ct) =>
-            (await service.UpdateAsync(
+        tasks.MapPut("/{id:int}", async (int id, UpdateTaskRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.UpdateAsync(
                 id, request.Title, request.Notes, request.RoleIds ?? [], request.Quadrant.ToQuadrant(), request.StartTime,
-                request.DurationMinutes, ct))
-            .ToDto());
+                request.DurationMinutes, ct), ct));
 
-        tasks.MapPost("/{id:int}/move", async (int id, TaskTargetDto target, TaskService service, CancellationToken ct) =>
-            (await service.MoveAsync(id, target.ToCore(), ct)).ToDto());
+        tasks.MapPost("/{id:int}/move", async (int id, TaskTargetDto target, TaskService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.MoveAsync(id, target.ToCore(), ct), ct));
 
         // Занятием какой цели сделать дело (у дела — одна цель); заменённые занятия — в корзину
         tasks.MapPut("/{id:int}/goal", async (int id, SetTaskGoalRequest request, TaskGoalService service, CancellationToken ct) =>
@@ -34,12 +33,17 @@ public static class TaskEndpoints
                 update.Task.ToDto(), update.Goals.Select(g => g.ToDto()).ToList(), update.Replaced.Select(t => t.Id).ToList());
         });
 
-        tasks.MapPut("/{id:int}/done", async (int id, SetDoneRequest request, TaskService service, CancellationToken ct) =>
-            (await service.SetDoneAsync(id, request.IsDone, ct)).Task.ToDto());
+        // Отметить; отметили последний шаг — в ответе и родитель, отмеченный сам
+        tasks.MapPut("/{id:int}/done", async (int id, SetDoneRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
+        {
+            var done = await service.SetDoneAsync(id, request.IsDone, ct);
+            return new TaskDoneResultDto(
+                await views.ToDtoAsync(done.Task, ct), done.Parent is { } parent ? await views.ToDtoAsync(parent, ct) : null);
+        });
 
         // «Проект» в карточке: сделать дело шагом другого дела или убрать из проекта
-        tasks.MapPut("/{id:int}/parent", async (int id, SetParentRequest request, TaskService service, CancellationToken ct) =>
-            (await service.SetParentAsync(id, request.ParentId, ct)).ToDto());
+        tasks.MapPut("/{id:int}/parent", async (int id, SetParentRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.SetParentAsync(id, request.ParentId, ct), ct));
 
         // Удаление = в корзину
         tasks.MapDelete("/{id:int}", async (int id, TaskService service, CancellationToken ct) =>
@@ -50,12 +54,12 @@ public static class TaskEndpoints
 
         var trash = api.MapGroup("/trash");
 
-        trash.MapGet("/", async (ITaskRepository repository, CancellationToken ct) =>
-            (await repository.GetTrashedAsync(ct)).Select(t => t.ToDto()).ToList());
+        trash.MapGet("/", async (ITaskRepository repository, TaskViews views, CancellationToken ct) =>
+            await views.ToDtosAsync(await repository.GetTrashedAsync(ct), ct));
 
         // Дело ленты без своей категории возвращается в «неразобранное»
-        trash.MapPost("/{id:int}/restore", async (int id, TaskService service, CancellationToken ct) =>
-            (await service.RestoreAsync(id, ct)).ToDto());
+        trash.MapPost("/{id:int}/restore", async (int id, TaskService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.RestoreAsync(id, ct), ct));
 
         trash.MapDelete("/{id:int}", async (int id, TaskService service, CancellationToken ct) =>
         {

@@ -108,7 +108,7 @@ public class WeeklyGoalConfiguration : IEntityTypeConfiguration<WeeklyGoal>
         builder.HasIndex(g => new { g.SeriesId, g.WeekStart }).IsUnique();
 
         // Проект новых занятий; удалили дело-проект насовсем — поле очищается
-        builder.HasOne<TaskItem>().WithMany().HasForeignKey(g => g.ProjectId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(g => g.Project).WithMany().HasForeignKey(g => g.ProjectId).OnDelete(DeleteBehavior.SetNull);
     }
 }
 

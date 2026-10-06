@@ -87,7 +87,7 @@ public class RolesAndGoalsApiTests : ApiTestBase
         (await UpdateGoalAsync(goalId, f => f with { TimesPerWeek = times })).Goal;
 
     private Task<TaskDto> SetDoneAsync(int taskId) =>
-        PutAsync<TaskDto>($"/api/tasks/{taskId}/done", new SetDoneRequest(true));
+        SetTaskDoneAsync(taskId, true);
 
     private async Task<WeeklyGoalDto> GoalAsync(int goalId) => (await GetWeekAsync()).Goals.Single(g => g.Id == goalId);
 

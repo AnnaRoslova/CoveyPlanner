@@ -10,6 +10,9 @@ public interface ITaskRepository
 {
     Task<TaskItem?> FindAsync(int id, CancellationToken ct = default);
 
+    /// <summary>Дела по списку Id (порядок не задан).</summary>
+    Task<List<TaskItem>> FindManyAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default);
+
     /// <summary>Все дела ленты (для экрана «Когда-нибудь»).</summary>
     Task<List<TaskItem>> GetSomedayAsync(CancellationToken ct = default);
 

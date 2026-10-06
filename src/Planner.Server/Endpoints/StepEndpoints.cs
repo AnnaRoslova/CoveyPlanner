@@ -18,6 +18,13 @@ public static class StepEndpoints
             return Results.Created($"/api/steps/{step.Id}", step.ToStepDto());
         });
 
+        // Порядок шагов в списке родителя (все шаги, в нужном порядке)
+        api.MapPut("/tasks/{id:int}/steps/order", async (int id, ReorderRequest request, StepService service, CancellationToken ct) =>
+        {
+            await service.ReorderAsync(id, request.Ids, ct);
+            return Results.NoContent();
+        });
+
         var steps = api.MapGroup("/steps");
 
         steps.MapPut("/{id:int}", async (int id, StepRequest request, StepService service, CancellationToken ct) =>

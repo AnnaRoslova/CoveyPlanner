@@ -21,6 +21,7 @@ public static class BoardEndpoints
         IRoleRepository roles,
         ICategoryRepository categories,
         ITaskRepository tasks,
+        TaskViews views,
         CancellationToken ct)
     {
         var allRoles = await roles.GetAllAsync(ct);
@@ -34,7 +35,8 @@ public static class BoardEndpoints
             allRoles.Select(r => r.ToDto()).ToList(),
             allCategories.Select(c => c.ToDto()).ToList(),
             someday.Select(t => t.ToDto()).ToList(),
-            trashed.Count);
+            trashed.Count,
+            await views.StepsOfAsync(someday, ct));
     }
 
     /// <summary>Неделя по любой её дате (приводится к понедельнику).</summary>
@@ -43,6 +45,7 @@ public static class BoardEndpoints
         IGoalRepository goals,
         ITaskRepository tasks,
         GoalSeriesService series,
+        TaskViews views,
         CancellationToken ct)
     {
         var monday = Week.StartOf(weekStart);
@@ -64,9 +67,11 @@ public static class BoardEndpoints
         // (удаление цели или перенос её в ленту сразу показывают это дело в ленте)
         var unscheduled = weekGoals.SelectMany(g => g.ActiveSessions).Where(t => t.State == TaskState.Planned && t.PlannedDate is null);
 
+        var shown = weekTasks.Concat(unscheduled).ToList();
         return new WeekDto(
             monday,
             weekGoals.Select(g => g.ToDto()).ToList(),
-            weekTasks.Concat(unscheduled).Select(t => t.ToDto()).ToList());
+            await views.ToDtosAsync(shown, ct),
+            await views.StepsOfAsync(shown, ct));
     }
 }

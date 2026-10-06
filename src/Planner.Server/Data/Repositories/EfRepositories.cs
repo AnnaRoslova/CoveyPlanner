@@ -11,6 +11,9 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
     public Task<TaskItem?> FindAsync(int id, CancellationToken ct = default) =>
         db.Tasks.FirstOrDefaultAsync(t => t.Id == id, ct);
 
+    public Task<List<TaskItem>> FindManyAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default) =>
+        db.Tasks.Where(t => ids.Contains(t.Id)).ToListAsync(ct);
+
     public Task<List<TaskItem>> GetSomedayAsync(CancellationToken ct = default) =>
         db.Tasks.Where(t => t.State == TaskState.Someday && t.ParentId == null)
             .OrderBy(t => t.CategoryId).ThenBy(t => t.SortOrder)
@@ -97,7 +100,7 @@ public class EfRoleRepository(PlannerDbContext db) : IRoleRepository
 public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
 {
     private IQueryable<WeeklyGoal> Goals =>
-        db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).Include(g => g.Series);
+        db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).Include(g => g.Series).Include(g => g.Project);
 
     public Task<WeeklyGoal?> FindAsync(int id, CancellationToken ct = default) =>
         Goals.FirstOrDefaultAsync(g => g.Id == id, ct);

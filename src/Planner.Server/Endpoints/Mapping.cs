@@ -9,7 +9,8 @@ namespace Planner.Server.Endpoints;
 /// <summary>Преобразования сущностей Core ↔ контракты Shared.</summary>
 public static class Mapping
 {
-    public static TaskDto ToDto(this TaskItem t) => new(
+    /// <summary>Дело; <paramref name="parentTitle"/> — название проекта, если дело — шаг (см. <see cref="TaskViews"/>).</summary>
+    public static TaskDto ToDto(this TaskItem t, string? parentTitle = null) => new(
         t.Id,
         t.Title,
         t.Notes,
@@ -23,7 +24,10 @@ public static class Mapping
         t.DurationMinutes,
         t.SortOrder,
         t.TrashedAt,
-        t.ParentId);
+        t.ParentId,
+        parentTitle,
+        t.IsFromSomeday,
+        t.StepOrder);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 
@@ -48,7 +52,10 @@ public static class Mapping
         g.AllowSeveralPerDay,
         (int?)g.Days,
         g.SeriesId,
-        g.Series?.IsHabit ?? false);
+        g.Series?.IsHabit ?? false,
+        g.ProjectId,
+        g.Project?.Title,
+        g.Project is null || g.Project.State is TaskState.Someday or TaskState.Planned);
 
     /// <summary>Цель, её занятия, стоящие в днях (их поля могли поменяться по шаблону), и убранные при раскладке по дням.</summary>
     public static GoalUpdateResultDto ToUpdateResultDto(this GoalUpdate update) =>
@@ -74,7 +81,7 @@ public static class Mapping
         p is null ? null : new ProjectSummaryDto(p.StepsDone, p.StepsTotal, p.SessionsDone);
 
     public static StepDto ToStepDto(this TaskItem s) =>
-        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.StepOrder ?? s.SortOrder);
+        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.StepOrder ?? s.SortOrder, s.PlannedDate, s.GoalId);
 
     public static HabitStatsDto ToDto(this HabitStats s) => new(
         s.Total,

@@ -26,7 +26,8 @@ public enum SawDimensionDto
 /// Дело. RoleIds — роли дела (может быть несколько; у занятия цели — роли цели);
 /// Quadrant — 1..4 или null; StartTime — необязательная метка времени;
 /// DurationMinutes — необязательная примерная длительность. GoalId — цель, занятием которой является дело (null — не «камень»).
-/// ParentId — дело-проект, шагом которого является это (null — не шаг).
+/// ParentId / ParentTitle — дело-проект, шагом которого является это (null — не шаг); StepOrder — место в списке шагов.
+/// IsFromSomeday — дело хоть раз лежало в ленте (выполненное — в «Выполненном»).
 /// </summary>
 public sealed record TaskDto(
     int Id,
@@ -42,7 +43,10 @@ public sealed record TaskDto(
     int? DurationMinutes,
     int SortOrder,
     DateTime? TrashedAt,
-    int? ParentId = null);
+    int? ParentId = null,
+    string? ParentTitle = null,
+    bool IsFromSomeday = false,
+    int? StepOrder = null);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -65,6 +69,7 @@ public sealed record GoalRoleDto(int RoleId, int SortOrder);
 /// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
 /// Days — дни, по которым занятия встают сами (битовая маска: Пн = 1, Вт = 2, … Вс = 64; 127 — каждый день); null — «сам раскладываю».
 /// SeriesId — серия цели (та же цель на других неделях); IsHabit — «🫙 копить» серии: постоянная цель с ним — привычка с Id = SeriesId (см. HabitDto).
+/// ProjectId / ProjectTitle — проект новых занятий; ProjectIsOpen = false — проект выполнен или в корзине (новые занятия — без проекта).
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
@@ -81,7 +86,10 @@ public sealed record WeeklyGoalDto(
     bool AllowSeveralPerDay = false,
     int? Days = null,
     int? SeriesId = null,
-    bool IsHabit = false)
+    bool IsHabit = false,
+    int? ProjectId = null,
+    string? ProjectTitle = null,
+    bool ProjectIsOpen = true)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
@@ -109,10 +117,15 @@ public sealed record BoardDto(
     IReadOnlyList<RoleDto> Roles,
     IReadOnlyList<CategoryDto> Categories,
     IReadOnlyList<TaskDto> SomedayTasks,
-    int TrashCount);
+    int TrashCount,
+    IReadOnlyList<TaskDto>? Steps = null);
 
-/// <summary>Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).</summary>
-public sealed record WeekDto(DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks);
+/// <summary>
+/// Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).
+/// Steps — шаги проектов, видимых на неделе (для раскрытия «▸» и «☑ N/M»; без корзины).
+/// </summary>
+public sealed record WeekDto(
+    DateOnly WeekStart, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<TaskDto> Tasks, IReadOnlyList<TaskDto>? Steps = null);
 
 /// <summary>
 /// Цель после сохранения окна и её занятия в днях (у них могли поменяться поля по шаблону);
@@ -194,8 +207,9 @@ public sealed record HabitsDto(DateOnly Today, IReadOnlyList<HabitDto> Habits, I
 /// <summary>После «+1 сегодня»: отмеченное занятие, его цель (новый прогресс) и привычка с новым счётом.</summary>
 public sealed record PlusOneResultDto(TaskDto Task, WeeklyGoalDto Goal, HabitDto Habit);
 
-/// <summary>Шаг дела (дело-чеклист): видно только в окне его дела.</summary>
-public sealed record StepDto(int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder);
+/// <summary>Шаг дела в его окне: SortOrder — место в списке шагов; PlannedDate — день, если шаг стоит в дне; GoalId — шаг — занятие цели.</summary>
+public sealed record StepDto(
+    int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder, DateOnly? PlannedDate = null, int? GoalId = null);
 
 /// <summary>Сводка проекта (дела с шагами): «☑ StepsDone/StepsTotal» — шаги без занятий целей; SessionsDone — выполненные занятия («12 занятий»).</summary>
 public sealed record ProjectSummaryDto(int StepsDone, int StepsTotal, int SessionsDone);
@@ -208,3 +222,6 @@ public sealed record DoneYearDto(int Year, int Count);
 
 /// <summary>Группа «Выполненного» — категория ленты (CategoryId = null — «без категории»), счёт по годам и записи, свежие сверху.</summary>
 public sealed record DoneGroupDto(int? CategoryId, string Name, string? Emoji, IReadOnlyList<DoneYearDto> Years, IReadOnlyList<DoneTaskDto> Tasks);
+
+/// <summary>Дело после отметки и его родитель, если тот отметился сам (все шаги сделаны); иначе Parent = null.</summary>
+public sealed record TaskDoneResultDto(TaskDto Task, TaskDto? Parent);

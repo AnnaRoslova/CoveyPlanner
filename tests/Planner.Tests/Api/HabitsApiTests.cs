@@ -34,7 +34,7 @@ public class HabitsApiTests : ApiTestBase
     private async Task<TaskDto> DoneSessionAsync(WeeklyGoalDto goal, DateOnly day)
     {
         var session = (await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(day, 0))).Task!;
-        return await PutAsync<TaskDto>($"/api/tasks/{session.Id}/done", new SetDoneRequest(true));
+        return await SetTaskDoneAsync(session.Id, true);
     }
 
     /// <summary>Цель этой же серии на неделе <paramref name="week"/> (неделю открывают — цели постоянных серий появляются).</summary>
@@ -70,7 +70,7 @@ public class HabitsApiTests : ApiTestBase
 
         // Сняли отметку — скрепка ушла
         var b = (await GetWeekAsync(ThisMonday)).Tasks.Single(t => t.State == TaskStateDto.Done);
-        await PutAsync<TaskDto>($"/api/tasks/{b.Id}/done", new SetDoneRequest(false));
+        await SetTaskDoneAsync(b.Id, false);
         Assert.Equal(0, (await HabitAsync(goal.SeriesId))!.Stats.Total);
     }
 

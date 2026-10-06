@@ -46,7 +46,7 @@ public class TaskGoalApiTests : ApiTestBase
         var nature = await GoalAsync("Дух", "Побыть на природе");
         var walk = await CreateInDayAsync("Прогулка в парке");
         await SetGoalAsync(walk.Id, steps.Id);
-        await PutAsync<TaskDto>($"/api/tasks/{walk.Id}/done", new SetDoneRequest(true));
+        await SetTaskDoneAsync(walk.Id, true);
 
         var result = await SetGoalAsync(walk.Id, nature.Id);
 
@@ -74,7 +74,7 @@ public class TaskGoalApiTests : ApiTestBase
         // Выполненное занятие в тот же день — не заменяется, дело не привязывается
         var run = await CreateInDayAsync("Бег", Monday.AddDays(1));
         var tuesday = (await PostTargetAsync<GoalResultDto>($"/api/goals/{steps.Id}/schedule", new DayTargetDto(Monday.AddDays(1), 0))).Task!;
-        await PutAsync<TaskDto>($"/api/tasks/{tuesday.Id}/done", new SetDoneRequest(true));
+        await SetTaskDoneAsync(tuesday.Id, true);
         var refused = await SetGoalRawAsync(run.Id, steps.Id);
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Null((await GetWeekAsync()).Tasks.Single(t => t.Id == run.Id).GoalId);

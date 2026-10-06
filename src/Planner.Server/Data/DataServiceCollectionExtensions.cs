@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Planner.Core.Abstractions;
 using Planner.Core.Services;
 using Planner.Server.Data.Repositories;
+using Planner.Server.Endpoints;
 
 namespace Planner.Server.Data;
 
@@ -56,6 +57,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<HabitService>();
         services.AddScoped<StepService>();
         services.AddScoped<DoneArchiveService>();
+        services.AddScoped<TaskViews>();
 
         return services;
     }

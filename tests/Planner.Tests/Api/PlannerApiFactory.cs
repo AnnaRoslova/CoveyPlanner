@@ -102,6 +102,10 @@ public abstract class ApiTestBase : IAsyncLifetime
         PutAsync<TaskDto>($"/api/tasks/{task.Id}",
             new UpdateTaskRequest(task.Title, task.Notes, roleIds ?? task.RoleIds, task.Quadrant, startTime, task.DurationMinutes));
 
+    /// <summary>Отметить дело (или снять отметку); родитель, отметившийся сам, — в ответе /done, здесь не нужен.</summary>
+    protected async Task<TaskDto> SetTaskDoneAsync(int id, bool isDone) =>
+        (await PutAsync<TaskDoneResultDto>($"/api/tasks/{id}/done", new SetDoneRequest(isDone))).Task;
+
     protected Task<CategoryDto> CreateCategoryAsync(string name = "Идеи", string? emoji = null) =>
         PostAsync<CategoryDto>("/api/categories", new CreateCategoryRequest(name, emoji));
 }

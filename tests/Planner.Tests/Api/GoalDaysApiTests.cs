@@ -65,7 +65,7 @@ public class GoalDaysApiTests : ApiTestBase
         await SetDaysAsync(goal, Mon | Wed | Fri);
         await GetWeekAsync(Week(1)); // следующую неделю уже открывали — там занятия Пн, Ср, Пт
         var monday = (await GetWeekAsync()).Tasks.Single(t => t.Title == "Скакалка" && t.PlannedDate == Monday);
-        await PutAsync<TaskDto>($"/api/tasks/{monday.Id}/done", new SetDoneRequest(true));
+        await SetTaskDoneAsync(monday.Id, true);
 
         var result = await SetDaysAsync(await GoalOnAsync(0, goal.Id), Tue | Thu);
 

@@ -75,7 +75,7 @@ public class OnePerDayApiTests : ApiTestBase
         var goal = await GoalAsync();
         var today = Monday.AddDays(2);
         var session = (await (await ScheduleAsync(goal.Id, today)).Content.ReadFromJsonAsync<GoalResultDto>())!.Task!;
-        await PutAsync<TaskDto>($"/api/tasks/{session.Id}/done", new SetDoneRequest(true));
+        await SetTaskDoneAsync(session.Id, true);
 
         var toggle = await Client.PostAsJsonAsync($"/api/goals/{goal.Id}/toggle", new ToggleGoalRequest(today));
 

@@ -21,7 +21,7 @@ public class ProjectsApiTests : ApiTestBase
     private Task<List<StepDto>> StepsAsync(int taskId) => GetAsync<List<StepDto>>($"/api/tasks/{taskId}/steps");
 
     private Task<TaskDto> SetDoneAsync(int id, bool isDone = true) =>
-        PutAsync<TaskDto>($"/api/tasks/{id}/done", new SetDoneRequest(isDone));
+        SetTaskDoneAsync(id, isDone);
 
     private Task<TaskDto> SetParentAsync(int id, int? parentId) =>
         PutAsync<TaskDto>($"/api/tasks/{id}/parent", new SetParentRequest(parentId));
@@ -290,6 +290,47 @@ public class ProjectsApiTests : ApiTestBase
         var step = (await StepsAsync(book.Id)).Single();
         Assert.Equal((session.Id, false), (step.Id, step.IsDone));
         Assert.Empty((await GetBoardAsync()).SomedayTasks);
+    }
+
+    // ---------- API: что видит клиент ----------
+
+    [Fact]
+    public async Task Api_WeekAndBoard_CarryStepsOfVisibleProjects_ParentTitle_DoneReturnsParent()
+    {
+        var ideas = await CreateCategoryAsync();
+        var shed = await CreateTaskAsync("Сарай", new SomedayTargetDto(ideas.Id, 0));
+        var boards = await AddStepAsync(shed.Id, "Доски");
+        var repair = await CreateInDayAsync("Ремонт");
+        var paint = await AddStepAsync(repair.Id, "Покрасить");
+        await MoveTaskAsync(boards.Id, new DayTargetDto(Thursday, 0));
+
+        var week = await GetWeekAsync();
+        var inDay = week.Tasks.Single(t => t.Id == boards.Id);
+        Assert.Equal((shed.Id, "Сарай"), (inDay.ParentId!.Value, inDay.ParentTitle));
+        Assert.Equal([paint.Id], week.Steps!.Select(s => s.Id)); // шаги проекта «Ремонт», стоящего в дне
+        Assert.Equal([boards.Id], (await GetBoardAsync()).Steps!.Select(s => s.Id)); // шаги проекта из ленты
+
+        var stepDto = (await StepsAsync(shed.Id)).Single();
+        Assert.Equal(Thursday, stepDto.PlannedDate);
+
+        var result = await PutAsync<TaskDoneResultDto>($"/api/tasks/{paint.Id}/done", new SetDoneRequest(true));
+        Assert.Equal((paint.Id, repair.Id, TaskStateDto.Done), (result.Task.Id, result.Parent!.Id, result.Parent.State));
+    }
+
+    [Fact]
+    public async Task Api_StepsOrder_GoalProjectTitleAndOpenFlag()
+    {
+        var repair = await CreateInDayAsync("Ремонт");
+        var a = await AddStepAsync(repair.Id, "А");
+        var b = await AddStepAsync(repair.Id, "Б");
+        (await Client.PutAsJsonAsync($"/api/tasks/{repair.Id}/steps/order", new ReorderRequest([b.Id, a.Id]))).EnsureSuccessStatusCode();
+        Assert.Equal(["Б", "А"], (await StepsAsync(repair.Id)).Select(s => s.Title));
+
+        var reading = await SetGoalProjectAsync(await CreateGoalAsync("Ум", "Чтение", Monday, recurring: false), repair.Id);
+        Assert.Equal((repair.Id, "Ремонт", true), (reading.ProjectId!.Value, reading.ProjectTitle, reading.ProjectIsOpen));
+        await SetDoneAsync(repair.Id);
+        var goal = (await GetWeekAsync()).Goals.Single(g => g.Id == reading.Id);
+        Assert.False(goal.ProjectIsOpen);
     }
 
     // ---------- P: проект в шаблоне цели ----------
