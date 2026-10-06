@@ -59,7 +59,8 @@ public sealed record UpdateGoalRequest(
     int? DurationMinutes,
     bool? IsRecurring = null,
     bool? AllowSeveralPerDay = null,
-    int? Days = null);
+    int? Days = null,
+    bool? IsHabit = null);
 
 /// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
 public sealed record ToggleGoalRequest(DateOnly Today);

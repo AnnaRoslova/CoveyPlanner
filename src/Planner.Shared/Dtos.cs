@@ -62,7 +62,7 @@ public sealed record GoalRoleDto(int RoleId, int SortOrder);
 /// прогресс и «выполнено» считаются по ним. Roles — роли цели (хотя бы одна): цель видна под каждой, в каждой — на своём месте. IsRecurring — «каждую неделю»: цель появится и на следующей неделе;
 /// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
 /// Days — дни, по которым занятия встают сами (битовая маска: Пн = 1, Вт = 2, … Вс = 64; 127 — каждый день); null — «сам раскладываю».
-/// SeriesId — серия цели (та же цель на других неделях); постоянная серия пилы — привычка с тем же Id (см. HabitDto).
+/// SeriesId — серия цели (та же цель на других неделях); IsHabit — «🫙 копить» серии: постоянная цель с ним — привычка с Id = SeriesId (см. HabitDto).
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
@@ -78,7 +78,8 @@ public sealed record WeeklyGoalDto(
     bool IsRecurring = false,
     bool AllowSeveralPerDay = false,
     int? Days = null,
-    int? SeriesId = null)
+    int? SeriesId = null,
+    bool IsHabit = false)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
@@ -167,15 +168,15 @@ public sealed record HabitStatsDto(
     DateOnly? VacationUntil);
 
 /// <summary>
-/// Привычка — постоянная серия целей «Затачивания пилы» (Id — id серии) — и её статистика. Name — название цели;
-/// Color — цвет первого измерения; DimensionRoleIds — измерения пилы серии по порядку ролей (первое — группа на экране 🫙,
+/// Привычка — постоянная серия целей с «🫙 копить» (Id — id серии) — и её статистика. Name — название цели;
+/// Color — цвет первой роли; RoleIds — роли серии по порядку ролей: сначала измерения пилы, потом обычные (первая — группа на экране 🫙,
 /// остальные — чипы); WeeklyNorm — норма этой недели («раз в неделю» цели); IsArchived — серия закончилась.
 /// </summary>
 public sealed record HabitDto(
     int Id,
     string Name,
     string Color,
-    IReadOnlyList<int> DimensionRoleIds,
+    IReadOnlyList<int> RoleIds,
     int WeeklyNorm,
     int JarSize,
     int StartCount,

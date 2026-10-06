@@ -1,6 +1,6 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1): постоянные цели пилы «Бег» (Тело, 3 раза), «100 страниц» (Ум, стартовое 41),
 // «Увидеться с Олей» (Общение) — это и есть привычки; «Записаться к стоматологу» (Я сама) — обычная цель.
-// Привычка = постоянная цель «Затачивания пилы»: экран 🫙 по измерениям, без «+ копилка»; в окне цели — строка привычки и банка,
+// Привычка = постоянная цель с «🫙 копить» (у пилы — по умолчанию): экран 🫙 по ролям, без «+ копилка»; в окне цели — «копить», строка привычки и банка,
 // «В копилку» нигде нет; отметка занятия → счёт, пилюля, подсказка «📎 +1»; «+1 сегодня» (одно в день); новая цель пилы — новая
 // привычка; сняли «каждую неделю» — в архив с историей, включили — продолжается; удаление из архива с «Вернуть» (цель остаётся);
 // каникулы. В конце — история «задним числом» (норма по неделям) и снимки экрана «Копилки» в темах (out/habits-<тема>.png).
@@ -311,6 +311,51 @@ await check('история привычек: серия, пауза, каник
   assert((await page.$$eval(`${card(HISTORY.reading)} .pip.extra`, p => p.length)) === 2, 'не две розовые точки сверх нормы 3');
   await escape();
   assert((await pillOf(HISTORY.training))?.endsWith(' · 🔥14'), `пилюля: ${await pillOf(HISTORY.training)}`);
+});
+
+/** Переключатель в окне цели по подписи («каждую неделю», «🫙 копить»); null — его нет. */
+const switchOf = label => page.evaluateHandle(l => [...document.querySelectorAll('.editor .switch-row')]
+  .find(r => r.textContent.includes(l))?.querySelector('input') ?? null, label);
+async function setSwitch(label, on) {
+  const box = (await switchOf(label)).asElement();
+  assert(box, `нет переключателя «${label}»`);
+  if (await box.evaluate(e => e.checked) !== on) { await box.evaluate(e => e.click()); await sleep(150); }
+}
+
+await check('🫙 копить: у постоянной цели пилы включено по умолчанию', async () => {
+  await openGoal('Бег');
+  const box = (await switchOf('🫙 копить')).asElement();
+  assert(box && await box.evaluate(e => e.checked), 'у «Бег» «копить» выключен или его нет');
+  await escape();
+});
+
+await check('🫙 копить у обычной роли: включили «каждую неделю» — «копить» выключен; включили — привычка в группе «Я сама»', async () => {
+  await openGoal('Записаться к стоматологу');
+  assert(!(await switchOf('🫙 копить')).asElement(), '«копить» виден у разовой цели');
+  await setSwitch('каждую неделю', true);
+  const box = (await switchOf('🫙 копить')).asElement();
+  assert(box && !(await box.evaluate(e => e.checked)), 'у обычной роли «копить» включён по умолчанию');
+  await setSwitch('🫙 копить', true);
+  await clickIn('.editor .btn', 'Сохранить'); await settle();
+  assert(await pillOf('Записаться к стоматологу') === '🫙 0', `пилюля: ${await pillOf('Записаться к стоматологу')}`);
+  await openScreen();
+  const g = (await groups()).find(([d]) => d === 'Я сама');
+  assert(JSON.stringify(g?.[1]) === '["Записаться к стоматологу"]', JSON.stringify(await groups()));
+  await cardButton('Записаться к стоматологу', '+1 сегодня'); await settle();
+  await escape();
+});
+
+await check('выключили «копить» — привычка пропала (не в архиве); включили — тот же счёт', async () => {
+  const name = 'Записаться к стоматологу';
+  await openGoal(name); await setSwitch('🫙 копить', false);
+  await clickIn('.editor .btn', 'Сохранить'); await settle();
+  assert(await pillOf(name) === null, `пилюля осталась: ${await pillOf(name)}`);
+  await openScreen();
+  assert(!(await page.$(card(name))), 'карточка осталась на экране');
+  await escape();
+  await openGoal(name); await setSwitch('🫙 копить', true);
+  await clickIn('.editor .btn', 'Сохранить'); await settle();
+  assert((await pillOf(name))?.startsWith('🫙 1'), `пилюля: ${await pillOf(name)}`);
 });
 
 for (const theme of ['lotus', 'peony', 'platinum', 'obsidian']) {

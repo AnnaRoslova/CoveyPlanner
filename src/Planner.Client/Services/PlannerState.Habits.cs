@@ -159,11 +159,12 @@ public partial class PlannerState
 
     /// <summary>
     /// Цель могла стать привычкой, перестать ею быть или уйти в архив — перечитываем, если у неё есть роль пилы
-    /// (<paramref name="roleIds"/> — роли после изменения) или она уже была привычкой (<paramref name="before"/>).
+    /// (<paramref name="roleIds"/> — роли после изменения), ей включили «🫙 копить» (<paramref name="isHabit"/>)
+    /// или она уже была привычкой (<paramref name="before"/>).
     /// </summary>
-    private async Task RefreshHabitsIfSawAsync(IEnumerable<int> roleIds, WeeklyGoalDto? before = null)
+    private async Task RefreshHabitsIfSawAsync(IEnumerable<int> roleIds, WeeklyGoalDto? before = null, bool isHabit = false)
     {
-        if (HabitOfGoal(before) is not null || roleIds.Any(id => FindRole(id)?.IsSharpenSaw == true))
+        if (isHabit || HabitOfGoal(before) is not null || roleIds.Any(id => FindRole(id)?.IsSharpenSaw == true))
         {
             await RefreshHabitsAsync();
         }

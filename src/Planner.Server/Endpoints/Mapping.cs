@@ -46,7 +46,8 @@ public static class Mapping
         g.RepeatsAfterThisWeek,
         g.AllowSeveralPerDay,
         (int?)g.Days,
-        g.SeriesId);
+        g.SeriesId,
+        g.Series?.IsHabit ?? false);
 
     /// <summary>Цель, её занятия, стоящие в днях (их поля могли поменяться по шаблону), и убранные при раскладке по дням.</summary>
     public static GoalUpdateResultDto ToUpdateResultDto(this GoalUpdate update) =>
@@ -60,8 +61,8 @@ public static class Mapping
     public static HabitDto ToDto(this HabitOverview o) => new(
         o.Series.Id,
         o.Series.Title,
-        o.SawRoles[0].Color,
-        o.SawRoles.Select(r => r.Id).ToList(),
+        o.Roles[0].Color,
+        o.Roles.Select(r => r.Id).ToList(),
         o.WeeklyNorm,
         o.Series.JarSize,
         o.Series.StartCount,

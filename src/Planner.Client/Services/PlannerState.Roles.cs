@@ -99,7 +99,7 @@ public partial class PlannerState
         }
         else if (ok)
         {
-            await RefreshHabitsIfSawAsync(form.RoleIds, goal); // норма, «каждую неделю», роли — у привычки новые итоги
+            await RefreshHabitsIfSawAsync(form.RoleIds, goal, form.IsHabit == true); // норма, «каждую неделю», «копить», роли — новые итоги
         }
 
         if (ok && removed.Count > 0)

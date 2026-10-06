@@ -8,13 +8,13 @@ using Planner.Core.Time;
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Привычка и её посчитанная статистика. SawRoles — измерения пилы серии по порядку ролей (первое — группа на экране 🫙,
-/// остальные — чипы); WeeklyNorm — норма этой недели (цель недели, иначе шаблон серии); IsArchived — серия закончилась.
+/// Привычка и её посчитанная статистика. Roles — роли серии по порядку ролей (сначала измерения пилы, потом обычные роли;
+/// первая — группа на экране 🫙, остальные — чипы); WeeklyNorm — норма этой недели (цель недели, иначе шаблон серии); IsArchived — серия закончилась.
 /// </summary>
-public sealed record HabitOverview(GoalSeries Series, IReadOnlyList<Role> SawRoles, int WeeklyNorm, bool IsArchived, HabitStats Stats);
+public sealed record HabitOverview(GoalSeries Series, IReadOnlyList<Role> Roles, int WeeklyNorm, bool IsArchived, HabitStats Stats);
 
 /// <summary>
-/// Привычки — это постоянные серии целей в измерениях «Затачивания пилы» (отдельной сущности нет): норма недели — «раз в неделю»
+/// Привычки — это постоянные серии целей с «🫙 копить» (отдельной сущности нет): норма недели — «раз в неделю»
 /// цели той недели, скрепки — выполненные занятия целей серии. Скрепки не хранятся, а считаются одним запросом
 /// (<see cref="IHabitRepository"/>). Здесь — банка (стартовое число, размер), «+1 сегодня», удаление из архива и каникулы.
 /// </summary>
@@ -40,7 +40,8 @@ public class HabitService(
     /// </summary>
     public async Task<IReadOnlyList<HabitOverview>> GetOverviewAsync(DateOnly today, CancellationToken ct = default)
     {
-        var sawRoles = (await roles.GetAllAsync(ct)).Where(r => r.IsSharpenSaw).ToList();
+        // Порядок ролей как на экране: измерения пилы, затем обычные роли
+        var orderedRoles = (await roles.GetAllAsync(ct)).OrderBy(r => r.IsSharpenSaw ? 0 : 1).ThenBy(r => r.SortOrder).ToList();
         var clips = (await habits.GetClipsAsync(ct)).ToLookup(c => c.SeriesId, c => c.Day);
         var norms = (await habits.GetWeekNormsAsync(ct)).ToLookup(n => n.SeriesId);
         var allVacations = await vacations.GetAllAsync(ct);
@@ -49,8 +50,8 @@ public class HabitService(
         var result = new List<HabitOverview>();
         foreach (var habit in await series.GetRecurringAsync(ct))
         {
-            var dimensions = sawRoles.Where(r => habit.RoleIds.Contains(r.Id)).ToList();
-            if (!habit.IsHabit || dimensions.Count == 0)
+            var habitRoles = orderedRoles.Where(r => habit.RoleIds.Contains(r.Id)).ToList();
+            if (!habit.IsHabit || habitRoles.Count == 0)
             {
                 continue;
             }
@@ -67,12 +68,12 @@ public class HabitService(
             var ranges = allVacations.Where(v => v.AppliesTo(habit.Id)).Select(v => v.Range).ToList();
             var stats = HabitStatsCalculator.Calculate(
                 new HabitInput(firstWeek, norm, habit.JarSize, habit.StartCount, own, ranges, weekNorms), today);
-            result.Add(new HabitOverview(habit, dimensions, norm, habit.IsEnded, stats));
+            result.Add(new HabitOverview(habit, habitRoles, norm, habit.IsEnded, stats));
         }
 
-        // По измерениям (порядок ролей пилы), внутри — по порядку создания
+        // По группам (порядок ролей), внутри — по порядку создания
         return result
-            .OrderBy(o => sawRoles.IndexOf(o.SawRoles[0]))
+            .OrderBy(o => orderedRoles.IndexOf(o.Roles[0]))
             .ThenBy(o => o.Series.Id)
             .ToList();
     }
@@ -174,19 +175,9 @@ public class HabitService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    /// <summary>Серия-привычка: постоянная, «🫙 копить», хотя бы с одним измерением пилы (группа на экране).</summary>
-    private async Task<GoalSeries> FindAsync(int id, CancellationToken ct)
-    {
-        var habit = await series.FindAsync(id, ct);
-        if (habit is { IsRecurring: true, IsHabit: true })
-        {
-            var sawRoleIds = (await roles.GetAllAsync(ct)).Where(r => r.IsSharpenSaw).Select(r => r.Id);
-            if (habit.RoleIds.Intersect(sawRoleIds).Any())
-            {
-                return habit;
-            }
-        }
-
-        throw new NotFoundException("Привычка", id);
-    }
+    /// <summary>Серия-привычка: постоянная, с «🫙 копить» (роль не важна).</summary>
+    private async Task<GoalSeries> FindAsync(int id, CancellationToken ct) =>
+        await series.FindAsync(id, ct) is { IsRecurring: true, IsHabit: true } habit
+            ? habit
+            : throw new NotFoundException("Привычка", id);
 }

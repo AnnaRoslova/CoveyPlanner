@@ -25,10 +25,11 @@ public class HabitsApiTests : ApiTestBase
         await PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(await RoleIdAsync(role), week ?? ThisMonday, title, recurring));
 
     private async Task<WeeklyGoalDto> UpdateGoalAsync(
-        WeeklyGoalDto g, int? times = null, IReadOnlyList<int>? roleIds = null, bool? recurring = null, int? days = null, TimeOnly? time = null) =>
+        WeeklyGoalDto g, int? times = null, IReadOnlyList<int>? roleIds = null, bool? recurring = null, int? days = null, TimeOnly? time = null,
+        bool? isHabit = null) =>
         (await PutAsync<GoalUpdateResultDto>($"/api/goals/{g.Id}",
             new UpdateGoalRequest(g.Title, roleIds ?? g.RoleIds, times ?? g.TimesPerWeek, time ?? g.StartTime, g.Quadrant, g.Notes,
-                g.DurationMinutes, recurring, Days: days))).Goal;
+                g.DurationMinutes, recurring, Days: days, IsHabit: isHabit))).Goal;
 
     private async Task<TaskDto> DoneSessionAsync(WeeklyGoalDto goal, DateOnly day)
     {
@@ -51,7 +52,7 @@ public class HabitsApiTests : ApiTestBase
         var body = (await GetBoardAsync()).Roles.Single(r => r.Name == "Тело");
         Assert.Equal((run.SeriesId!.Value, "Бег", body.Color, 1, 30, 0, false),
             (habit.Id, habit.Name, habit.Color, habit.WeeklyNorm, habit.JarSize, habit.StartCount, habit.IsArchived));
-        Assert.Equal([body.Id], habit.DimensionRoleIds);
+        Assert.Equal([body.Id], habit.RoleIds);
         Assert.Equal((0, PeriodResultDto.Current), (habit.Stats.Total, habit.Stats.Weeks[^1].Result));
     }
 
@@ -96,7 +97,7 @@ public class HabitsApiTests : ApiTestBase
         Assert.Equal((3, 2, 2), (habit.Stats.Total, habit.Stats.WeekStreak, habit.WeeklyNorm));
         Assert.Equal([2, 1, 2], habit.Stats.Weeks.TakeLast(3).Select(w => w.Norm!.Value));
         Assert.Equal([PeriodResultDto.Done, PeriodResultDto.Done, PeriodResultDto.Current], habit.Stats.Weeks.TakeLast(3).Select(w => w.Result));
-        Assert.Equal([body, spirit], habit.DimensionRoleIds);
+        Assert.Equal([body, spirit], habit.RoleIds);
         Assert.Equal(PeriodResultDto.BeforeStart, habit.Stats.Weeks[^4].Result);
     }
 
@@ -249,6 +250,61 @@ public class HabitsApiTests : ApiTestBase
 
         var habits = (await GetHabitsAsync()).Habits;
         Assert.Equal(["Прогулка", "Чтение"], habits.Select(h => h.Name)); // Тело раньше Ума
-        Assert.Equal([body, spirit], habits[0].DimensionRoleIds);
+        Assert.Equal([body, spirit], habits[0].RoleIds);
+    }
+
+    /// <summary>H1′, H2′, H8′: «копить» у постоянной цели обычной роли — привычка в группе своей роли; по умолчанию у неё выключено.</summary>
+    [Fact]
+    public async Task OrdinaryRoleGoal_CopitOn_IsHabit_InItsRoleGroup()
+    {
+        var work = await RoleIdAsync("Работа");
+        var report = await CreateGoalAsync("Работа", "Отчёт");
+        Assert.False(report.IsHabit);
+        Assert.Empty((await GetHabitsAsync()).Habits);
+
+        report = await UpdateGoalAsync(report, isHabit: true);
+        Assert.True(report.IsHabit);
+        var habit = Assert.Single((await GetHabitsAsync()).Habits);
+        Assert.Equal(report.SeriesId, habit.Id);
+        Assert.Equal([work], habit.RoleIds);
+
+        // Смешанные роли: сначала измерения пилы, потом обычные
+        var mind = await RoleIdAsync("Ум");
+        await UpdateGoalAsync(report, roleIds: [work, mind]);
+        Assert.Equal([mind, work], (await HabitAsync(report.SeriesId))!.RoleIds);
+    }
+
+    /// <summary>H4′, H5′: выключили «копить» — привычка пропала, банка и скрепки на месте; включили — всё как было.</summary>
+    [Fact]
+    public async Task CopitOff_HidesHabit_KeepsJar_OnAgainSameHistory()
+    {
+        var run = await CreateGoalAsync("Тело", "Бег");
+        Assert.True(run.IsHabit);
+        await DoneSessionAsync(run, Today);
+        await PutAsync<HabitDto>($"/api/habits/{run.SeriesId}?today={Today:yyyy-MM-dd}", new UpdateHabitRequest(5, 40));
+
+        run = await UpdateGoalAsync(run, isHabit: false);
+        Assert.False(run.IsHabit);
+        Assert.Null(await HabitAsync(run.SeriesId));
+        Assert.True(run.IsRecurring); // цель по-прежнему каждую неделю
+
+        await UpdateGoalAsync(run, isHabit: true);
+        var habit = (await HabitAsync(run.SeriesId))!;
+        Assert.Equal((6, 40, 5), (habit.Stats.Total, habit.JarSize, habit.StartCount));
+    }
+
+    /// <summary>H2′, H7′: снова «каждую неделю» без явного «копить» — по умолчанию по ролям; явное значение — как прислали.</summary>
+    [Fact]
+    public async Task ResumeRecurring_HabitByDefaultOrExplicit()
+    {
+        var run = await CreateGoalAsync("Тело", "Бег");
+        run = await UpdateGoalAsync(run, recurring: false, isHabit: false);
+        run = await UpdateGoalAsync(run, recurring: true);
+        Assert.True(run.IsHabit);
+
+        var report = await CreateGoalAsync("Работа", "Отчёт", recurring: false);
+        report = await UpdateGoalAsync(report, recurring: true, isHabit: true);
+        Assert.True(report.IsHabit);
+        Assert.NotNull(await HabitAsync(report.SeriesId));
     }
 }

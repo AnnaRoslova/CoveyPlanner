@@ -45,7 +45,7 @@
 
     @* «Каждую неделю»: цель сама появляется на следующих неделях; правка — с этой недели и дальше *@
     <label class="switch-row">
-        <input type="checkbox" role="switch" @bind="_recurring" />
+        <input type="checkbox" role="switch" @bind="_recurring" @bind:after="OnRecurringChanged" />
         <span class="switch"></span>
         <span>каждую неделю</span>
         <span class="hint">@(_recurring ? "появится и на следующих неделях; изменения — с этой недели и дальше" : "только на этой неделе")</span>
@@ -53,6 +53,14 @@
 
     @if (_recurring)
     {
+        @* «🫙 копить»: постоянная цель с ним — привычка с банкой. Свойство всей серии, история не теряется *@
+        <label class="switch-row">
+            <input type="checkbox" role="switch" @bind="_habit" />
+            <span class="switch"></span>
+            <span>🫙 копить</span>
+            <span class="hint">@(_habit ? "занятия — скрепки в банку привычки" : "без банки и серий")</span>
+        </label>
+
         @* Повтор: «сам раскладываю» — как раньше; дни выбраны — занятия встают в них сами.
            Кружки дней можно переключать руками — тогда в списке «свои дни» *@
         <div class="field">
@@ -86,8 +94,8 @@
         <span class="hint">@(_several ? "например, утром и вечером" : "в один день — не больше одного занятия")</span>
     </label>
 
-    @* Постоянная цель пилы — привычка: её счёт и банка (норма — «раз в неделю», скрепки — выполненные занятия) *@
-    @if (State.HabitOfGoal(EditedGoal) is { } habit)
+    @* Постоянная цель с «копить» — привычка: её счёт и банка (норма — «раз в неделю», скрепки — выполненные занятия) *@
+    @if (_recurring && _habit && State.HabitOfGoal(EditedGoal) is { } habit)
     {
         <div class="field habit-of-goal">
             <button type="button" class="habit-line" title="Открыть на экране «Копилки»" @onclick="() => OpenHabitAsync(habit.Id)">
@@ -152,6 +160,7 @@
     private int? _duration;
     private string? _notes;
     private bool _recurring;
+    private bool _habit;
     private bool _several;
     private int _startCount;
     private int _jarSize = 30;
@@ -223,6 +232,7 @@
         _duration = EditedGoal.DurationMinutes;
         _notes = EditedGoal.Notes;
         _recurring = EditedGoal.IsRecurring;
+        _habit = EditedGoal.IsRecurring ? EditedGoal.IsHabit : HabitByDefault;
         _several = EditedGoal.AllowSeveralPerDay;
         if (State.HabitOfGoal(EditedGoal) is { } habit)
         {
@@ -232,6 +242,18 @@
 
         _days = EditedGoal.Days ?? 0;
         _repeat = RepeatOf(_days);
+    }
+
+    /// <summary>«Копить» по умолчанию (так же решает сервер): есть роль-измерение пилы — копить.</summary>
+    private bool HabitByDefault => _roleIds.Any(id => State.FindRole(id)?.IsSharpenSaw == true);
+
+    /// <summary>Включили «каждую неделю» — «копить» предустанавливается по ролям (видно до «Сохранить»).</summary>
+    private void OnRecurringChanged()
+    {
+        if (_recurring && !EditedGoal.IsRecurring)
+        {
+            _habit = HabitByDefault;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -274,7 +296,7 @@
         await OnClose.InvokeAsync();
         await State.UpdateGoalAsync(EditedGoal.Id,
             new UpdateGoalRequest(_title, _roleIds, DaysChosen ? DayCount(_days) : _times, _time, _quadrant, _notes, _duration,
-                _recurring, _several, Days: DaysChosen ? _days : 0));
+                _recurring, _several, Days: DaysChosen ? _days : 0, IsHabit: _recurring ? _habit : null));
         if (habit is not null && (habit.StartCount, habit.JarSize) != (_startCount, _jarSize))
         {
             await State.UpdateHabitAsync(habit.Id, _startCount, _jarSize);

@@ -94,7 +94,7 @@ public class GoalService(
             removed.AddRange(await sessions.ArrangeByDaysAsync(goal, ct));
         }
 
-        await UpdateSeriesAsync(goal, changes.IsRecurring ?? goal.RepeatsAfterThisWeek, removed, ct);
+        await UpdateSeriesAsync(goal, changes.IsRecurring ?? goal.RepeatsAfterThisWeek, changes.IsHabit, removed, ct);
         await unitOfWork.SaveChangesAsync(ct);
         return new GoalUpdate(goal, removed);
     }
@@ -104,8 +104,10 @@ public class GoalService(
     /// меняются так же (прошлые недели — нет). Выключили «каждую неделю» — серия заканчивается на этой неделе,
     /// уже созданные цели следующих недель удаляются. Включили — серия идёт с этой недели.
     /// </summary>
+    /// <param name="isHabit">«🫙 копить» из окна; null — не менять (а когда «каждую неделю» включают — по умолчанию).</param>
     /// <param name="removed">Куда сложить занятия, убранные в корзину при раскладке по новым дням.</param>
-    private async Task UpdateSeriesAsync(WeeklyGoal goal, bool recurring, List<TaskItem> removed, CancellationToken ct)
+    private async Task UpdateSeriesAsync(
+        WeeklyGoal goal, bool recurring, bool? isHabit, List<TaskItem> removed, CancellationToken ct)
     {
         var wasRecurring = goal.RepeatsAfterThisWeek;
         if (wasRecurring && !recurring)
@@ -126,14 +128,18 @@ public class GoalService(
 
         if (goal.Series is null)
         {
-            await StartRecurringSeriesAsync(goal, ct);
+            await StartRecurringSeriesAsync(goal, ct, isHabit);
             return;
         }
 
         if (!wasRecurring)
         {
             goal.Series.RecurFrom(goal.WeekStart);
-            goal.Series.SetHabit(await HabitByDefaultAsync(goal, ct));
+            goal.Series.SetHabit(isHabit ?? await HabitByDefaultAsync(goal, ct));
+        }
+        else if (isHabit is { } habit)
+        {
+            goal.Series.SetHabit(habit); // свойство серии целиком, не «с этой недели»
         }
 
         await SpreadToLaterWeeksAsync(goal, removed, ct);
@@ -176,12 +182,12 @@ public class GoalService(
 
     /// <summary>
     /// Сделать цель постоянной: новая серия «каждую неделю» с её шаблоном, начиная с её недели;
-    /// «🫙 копить» — по умолчанию (<see cref="HabitByDefaultAsync"/>).
+    /// «🫙 копить» — <paramref name="isHabit"/>, а если не задано — по умолчанию (<see cref="HabitByDefaultAsync"/>).
     /// </summary>
-    private async Task StartRecurringSeriesAsync(WeeklyGoal goal, CancellationToken ct)
+    private async Task StartRecurringSeriesAsync(WeeklyGoal goal, CancellationToken ct, bool? isHabit = null)
     {
         var created = GoalSeries.StartFrom(goal, recurring: true);
-        created.SetHabit(await HabitByDefaultAsync(goal, ct));
+        created.SetHabit(isHabit ?? await HabitByDefaultAsync(goal, ct));
         series.Add(created);
         goal.JoinSeries(created);
     }

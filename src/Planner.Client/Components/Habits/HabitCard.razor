@@ -11,11 +11,11 @@
         <JarPicture Fill="@((double)Stats.InJar / Habit.JarSize)" Color="@Habit.Color" />
         <div class="jar-info">
             <div class="jar-name"><span class="dot"></span><span class="name">@Habit.Name</span></div>
-            @if (Habit.DimensionRoleIds.Count > 1)
+            @if (Habit.RoleIds.Count > 1)
             {
                 @* Привычка в нескольких измерениях — в группе первого, остальные — чипами *@
                 <div class="dims">
-                    @foreach (var role in State.OrderedRoles.Where(r => Habit.DimensionRoleIds.Skip(1).Contains(r.Id)))
+                    @foreach (var role in State.OrderedRoles.Where(r => Habit.RoleIds.Skip(1).Contains(r.Id)))
                     {
                         <span class="dim-chip" style="--d: @role.Color"><span class="dim-dot"></span>@role.Name</span>
                     }

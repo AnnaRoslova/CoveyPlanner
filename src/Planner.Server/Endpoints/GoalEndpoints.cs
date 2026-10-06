@@ -21,7 +21,7 @@ public static class GoalEndpoints
             (await service.UpdateAsync(id, new GoalChanges(
                 request.Title, request.RoleIds, request.TimesPerWeek, request.StartTime,
                 request.Quadrant.ToQuadrant(), request.Notes, request.DurationMinutes, request.IsRecurring,
-                request.AllowSeveralPerDay, (Weekdays?)request.Days), ct))
+                request.AllowSeveralPerDay, (Weekdays?)request.Days, request.IsHabit), ct))
             .ToUpdateResultDto());
 
         // Клик по отметке цели: отметить ближайшее занятие или снять отметку с последнего

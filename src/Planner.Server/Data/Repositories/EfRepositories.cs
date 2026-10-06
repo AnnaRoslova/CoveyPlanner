@@ -128,10 +128,10 @@ public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
 
 public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
 {
-    /// <summary>Один запрос: выполненные занятия целей постоянных серий (дело — занятие одной цели, шагов среди них нет).</summary>
+    /// <summary>Один запрос: выполненные занятия целей постоянных серий (дело — занятие одной цели; шаги-занятия тоже считаются).</summary>
     public Task<List<HabitClip>> GetClipsAsync(CancellationToken ct = default) =>
         db.Set<TaskGoal>().AsNoTracking()
-            .Where(l => l.Task.State == TaskState.Done && l.Task.ParentId == null
+            .Where(l => l.Task.State == TaskState.Done
                         && l.Goal.SeriesId != null && l.Goal.Series!.IsRecurring)
             .Select(l => new HabitClip(l.Goal.SeriesId!.Value, l.Task.PlannedDate, l.Goal.WeekStart))
             .ToListAsync(ct);
