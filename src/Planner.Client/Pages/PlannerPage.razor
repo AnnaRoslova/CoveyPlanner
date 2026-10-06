@@ -7,6 +7,7 @@
 @inject IJSRuntime JS
 @inject ThemeState Theme
 @inject RoleTasksState RoleTasks
+@inject GoalFoldState GoalFold
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -71,7 +72,7 @@ else
         Windows.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), GoalFold.InitAsync(),
             WatchLongTitlesAsync());
     }
 

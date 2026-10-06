@@ -1,6 +1,8 @@
-@* Левая зона: «Затачивание пилы» и роли с целями на неделю *@
+@* Левая зона: «Затачивание пилы» и роли с целями на неделю.
+   В шапке — «свернуть / развернуть все цели» (все цели всех ролей сразу; роли не сворачиваются), запоминается (GoalFoldState). *@
 @inherits StateComponent
 @inject WindowHost Windows
+@inject GoalFoldState GoalFold
 
 <aside class="panel roles-panel">
     <div class="head">
@@ -8,7 +10,13 @@
             <h2 class="h1">Роли и цели</h2>
             <div class="sub">большие камни этой недели</div>
         </div>
-        <PanelToggle />
+        <div class="head-tools">
+            <button type="button" class="fold" aria-pressed="@(GoalFold.IsFolded ? "true" : "false")"
+                    title="@(GoalFold.IsFolded ? "Развернуть все цели" : "Свернуть все цели")" @onclick="GoalFold.ToggleAsync">
+                <Icon Name="@(GoalFold.IsFolded ? "unfold" : "fold")" Size="14" />
+            </button>
+            <PanelToggle />
+        </div>
     </div>
 
     <div class="panel-scroll">
@@ -16,7 +24,7 @@
         <div class="saw">
             @foreach (var role in State.SawRoles)
             {
-                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" />
+                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" Folded="GoalFold.IsFolded" />
             }
         </div>
 
@@ -25,7 +33,7 @@
         <div class="user-roles" data-drop="@DragDropService.RolesZone" data-accept="@DragDropService.RolesAccepts">
             @foreach (var role in State.UserRoles)
             {
-                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" />
+                <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" Folded="GoalFold.IsFolded" />
             }
         </div>
 

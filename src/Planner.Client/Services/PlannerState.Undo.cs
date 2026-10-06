@@ -13,6 +13,9 @@ public partial class PlannerState
     /// <summary>Есть удаление, которое ещё можно вернуть (на сервер оно пока не ушло).</summary>
     public bool HasPendingDelete => _pendingDelete is not null;
 
+    /// <summary>Сколько раз что-то уходило в корзину — по нему значок корзины коротко «вздрагивает».</summary>
+    public int TrashPulse { get; private set; }
+
     /// <summary>
     /// Удалить с возможностью вернуть. Экран меняется сразу (<paramref name="applyLocally"/>), а запрос на сервер
     /// (<paramref name="commit"/>) уходит через <see cref="UndoWindow"/> — или раньше, перед любым другим запросом:
@@ -27,6 +30,10 @@ public partial class PlannerState
 
         var before = TakeSnapshot();
         applyLocally();
+        if (TrashCount > before.TrashCount)
+        {
+            TrashPulse++;
+        }
         var pending = new PendingDelete(before, commit, reloadAfter);
         _pendingDelete = pending;
         pending.ToastVersion = notifier.WithAction(what, "Вернуть", UndoDeleteAsync, UndoWindow);

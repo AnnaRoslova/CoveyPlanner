@@ -86,6 +86,10 @@ public sealed record WeeklyGoalDto(
     [JsonIgnore]
     public bool IsDone => DoneCount >= TimesPerWeek;
 
+    /// <summary>Процент выполненных занятий недели (вниз до целого): 100 — только когда норма выполнена, сверх нормы — тоже 100.</summary>
+    [JsonIgnore]
+    public int Percent => TimesPerWeek <= 0 ? 0 : Math.Min(100, DoneCount * 100 / TimesPerWeek);
+
     [JsonIgnore]
     public IReadOnlyList<int> RoleIds => Roles.Select(r => r.RoleId).ToList();
 

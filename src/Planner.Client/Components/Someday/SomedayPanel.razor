@@ -70,7 +70,8 @@
     @* Корзина — ещё и место, куда можно бросить запись (дело, мысль, цель): она удаляется, как из окна *@
     <button class="trash" title="Корзина" @onclick="() => _trashOpen = !_trashOpen"
             data-drop="@DragDropService.TrashZone" data-accept="@DragDropService.TrashAccepts" data-drop-index="0" data-drop-hover>
-        <Icon Name="trash" Size="15" />
+        @* Что-то ушло в корзину — значок коротко «вздрагивает» (@key: анимация заново на каждое удаление) *@
+        <span @key="State.TrashPulse" class="trash-ico @(State.TrashPulse > 0 ? "shake" : "")"><Icon Name="trash" Size="15" /></span>
     </button>
 
     @if (_trashOpen)

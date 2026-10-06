@@ -10,6 +10,10 @@
 //                   позиция считается только среди остальных, а запись с data-fixed ставится сама (по времени)
 //                 data-list-head — внутри зоны: заголовок, под которым начинается список (для пустого дня)
 //   запись без перетаскивания: data-press — к ней применяются те же правила клика (например, во время поиска)
+//   свайп:       data-swipe — на касании свайп влево по записи показывает её кнопку (класс swiped: 🗑 у дела в дне);
+//                касание в любом другом месте прячет. Мышью свайпа нет — кнопка видна при наведении (CSS)
+//   строгий клик: data-strict-click — кнопка внутри записи (🗑), к которой применяются те же правила клика, что и к записи:
+//                долгое или «дёрнувшееся» нажатие — не клик (чтобы не удалить случайно)
 //   листание:    data-flip="-1|1" data-flip-accept="<виды>" — края недели и стрелки в шапке: задержать над ним запись ~0,5 с —
 //                (data-flip-overlay — накладка: сброс ищется под ней). .NET OnFlipWeek(direction, id) листает неделю (держат дальше — листает дальше); если потом бросили мимо
 //                или нажали Esc — OnFlipCancel (неделя возвращается)
@@ -37,11 +41,13 @@ const AUTOSCROLL_DELAY = 400;  // мс — сколько держать у кр
 const MAX_SPEED = 16;          // px за кадр
 const FLIP_DELAY = 500;        // мс — сколько задержать запись над краем недели или стрелкой, чтобы перелистнуть
 const FLIP_REPEAT = 700;       // мс — держат дальше: следующая неделя через столько
+const SWIPE_MIN = 40;          // px — свайп влево хотя бы на столько показывает кнопку записи (data-swipe)
 
 let dotnet = null;
 let pending = null;  // нажали на запись, но перетаскивание ещё не началось
 let drag = null;     // идёт перетаскивание
 let ignoreClicksUntil = 0;
+let swiped = null;   // запись, у которой свайпом показана кнопка
 
 export function init(dotnetRef) {
     dotnet = dotnetRef;
@@ -75,6 +81,16 @@ function ignoreClicks(ms) {
 
 function onPointerDown(e) {
     if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const strict = e.target.closest('[data-strict-click]');
+    if (swiped && !(strict && swiped.contains(strict))) unswipe();
+    // Кнопка со строгим кликом (🗑 в строке): клик — только короткое нажатие почти без движения
+    if (strict) {
+        pending = {
+            el: strict, canDrag: false, pointerId: e.pointerId, pointerType: e.pointerType,
+            startX: e.clientX, startY: e.clientY, startTime: performance.now(), maxDist: 0, timer: 0,
+        };
+        return;
+    }
     const el = e.target.closest('[data-drag], [data-press]');
     if (!el) return;
     // Кнопки и поля внутри записи (чекбокс, «удалить») работают как обычно
@@ -103,8 +119,19 @@ function onPointerMove(e) {
         pending.maxDist = Math.max(pending.maxDist, dist);
         if (pending.pointerType === 'mouse') {
             if (pending.canDrag && dist >= DRAG_THRESHOLD) start(e.clientX, e.clientY);
+        } else if (pending.swiping) {
+            pending.dx = e.clientX - pending.startX;
         } else if (dist > TOUCH_TOLERANCE) {
-            clearPending(); // палец поехал до долгого нажатия — это прокрутка
+            const dx = e.clientX - pending.startX;
+            const dy = e.clientY - pending.startY;
+            if (pending.el.hasAttribute('data-swipe') && dx < 0 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+                // Палец поехал влево — свайп по записи (не прокрутка и не перетаскивание)
+                clearTimeout(pending.timer);
+                pending.swiping = true;
+                pending.dx = dx;
+            } else {
+                clearPending(); // палец поехал до долгого нажатия — это прокрутка
+            }
         }
         return;
     }
@@ -122,6 +149,12 @@ function onPointerMove(e) {
 
 function onPointerUp(e) {
     if (pending && e.pointerId === pending.pointerId) {
+        if (pending.swiping) {
+            if (pending.dx <= -SWIPE_MIN) swipe(pending.el);
+            ignoreClicks(100); // свайп — не клик
+            clearPending();
+            return;
+        }
         // Не перетаскивание. Клик — только если нажатие короткое и почти без движения
         const isClick = performance.now() - pending.startTime < CLICK_MAX_MS && pending.maxDist < CLICK_MAX_MOVE;
         if (!isClick) ignoreClicks(100); // клик придёт сразу за отпусканием — погасим его
@@ -180,6 +213,7 @@ function start(x, y) {
         raf: 0,
     };
 
+    unswipe();
     el.classList.add('drag-source');
     document.body.classList.add('dragging');
     document.body.dataset.dragKind = drag.kind; // по нему проступают, например, края недели для листания
@@ -397,6 +431,18 @@ function cancel() {
         finish();
         if (flipped) dotnet?.invokeMethodAsync('OnFlipCancel'); // Esc после листания — неделя возвращается
     }
+}
+
+// Свайп влево по записи: показать её кнопку (у одной записи за раз)
+function swipe(el) {
+    if (swiped !== el) unswipe();
+    swiped = el;
+    el.classList.add('swiped');
+}
+
+function unswipe() {
+    swiped?.classList.remove('swiped');
+    swiped = null;
 }
 
 function clearPending() {

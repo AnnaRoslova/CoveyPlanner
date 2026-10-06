@@ -1,5 +1,6 @@
 @* День — страница «в точку»: сначала дела со временем, затем без времени.
-   Клик по делу — окно редактирования, по чекбоксу — «выполнено», «+ дело» — новое дело в конец. *@
+   Клик по делу — окно редактирования, по чекбоксу — «выполнено», «+ дело» — новое дело в конец.
+   🗑 справа при наведении (на касании — после свайпа влево) — в корзину сразу, с плашкой «Вернуть». *@
 @inject PlannerState State
 
 <section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
@@ -33,6 +34,7 @@
                  IsFlashing="State.FlashTaskId == task.Id"
                  OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
                  OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
+                 OnTrash="() => task.Id > 0 ? State.TrashTaskAsync(task.Id) : Task.CompletedTask"
                  DragKind="@(task.Id > 0 ? DragDropService.DayItem : null)"
                  DragFixed="task.StartTime is not null"
                  DragId="task.Id" />

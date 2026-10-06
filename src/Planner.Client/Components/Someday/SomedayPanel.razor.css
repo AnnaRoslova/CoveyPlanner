@@ -118,3 +118,26 @@ body.dragging .trash {
 .trash {
     transition: transform 0.15s, background 0.15s;
 }
+
+/* Что-то ушло в корзину — значок коротко «вздрагивает» */
+.trash-ico {
+    display: inline-flex;
+}
+
+.trash-ico.shake {
+    animation: trash-shake 0.5s ease-in-out;
+}
+
+@keyframes trash-shake {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(-14deg) scale(1.1); }
+    40% { transform: rotate(11deg) scale(1.1); }
+    60% { transform: rotate(-7deg); }
+    80% { transform: rotate(4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .trash-ico.shake {
+        animation: none;
+    }
+}

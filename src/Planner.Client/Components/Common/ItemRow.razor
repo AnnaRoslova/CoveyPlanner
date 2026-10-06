@@ -3,9 +3,9 @@
    Clamp: название не длиннее двух строк, с «…»; полный текст — в подсказке при наведении (только у обрезанных:
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
-<div class="item @(IsDone ? "done" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
+<div class="item @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
-     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press
+     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
      data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint"
      @onclick="OnClick">
@@ -25,7 +25,7 @@
         <span class="dot"></span>
     }
     <div class="tx">
-        <span class="title @(Clamp ? "clamp" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
+        <span class="title @(Clamp ? "clamp" : "") @(Compact ? "one-line" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
         {
             if (segment.IsMatch)
             {
@@ -66,27 +66,41 @@
                 @Badge
             </div>
         }
-        @if (Days is { Count: > 0 })
+        @if (Days is { Count: > 0 } || ProgressBelow)
         {
             <div class="goal-days">
-                @for (var i = 0; i < Days.Count; i++)
+                @if (ProgressBelow)
                 {
-                    if (i > 0)
+                    <span class="progress below">@Progress</span>
+                }
+                @for (var i = 0; i < (Days?.Count ?? 0); i++)
+                {
+                    if (i > 0 || ProgressBelow)
                     {
                         <span class="sep">·</span>
                     }
-                    <span class="d @(Days[i].IsDone ? "done" : "")">@Days[i].Label</span>
+                    <span class="d @(Days![i].IsDone ? "done" : "")">@Days[i].Label</span>
                 }
             </div>
         }
     </div>
-    @if (Progress is not null)
+    @if (Progress is not null && !ProgressBelow)
     {
         <span class="progress">@Progress</span>
+    }
+    @if (Percent is { } percent)
+    {
+        <span class="pct @(percent >= 100 ? "full" : "")" title="Выполнено занятий этой недели: @percent%">@(percent >= 100 ? "100% ✓" : $"{percent}%")</span>
     }
     @if (Actions is not null)
     {
         <div class="actions" @onclick:stopPropagation="true">@Actions</div>
+    }
+    @if (OnTrash.HasDelegate)
+    {
+        @* В корзину без подтверждения (с «Вернуть»): мышью — при наведении; на касании — после свайпа влево (js/dnd.js, класс swiped) *@
+        <button type="button" class="trash-btn" title="В корзину" aria-label="В корзину" data-strict-click
+                @onclick="OnTrash" @onclick:stopPropagation="true"><Icon Name="trash" Size="13" /></button>
     }
 </div>
 
@@ -131,6 +145,21 @@
     /// <summary>Прогресс цели «2/5» — справа в строке названия.</summary>
     [Parameter]
     public string? Progress { get; set; }
+
+    /// <summary>Процент выполнения цели («50%», 100 — «100% ✓» мятным) — справа в строке. null — не показывать.</summary>
+    [Parameter]
+    public int? Percent { get; set; }
+
+    /// <summary>Справа уже процент — «2/5» переезжает под название, в начало строки дней («2/5 · Чт · Пт»): узкой панели не тесно.</summary>
+    private bool ProgressBelow => Progress is not null && Percent is not null;
+
+    /// <summary>Свёрнутая запись: название в одну строку с «…» (цели в левой панели, «свернуть все цели»).</summary>
+    [Parameter]
+    public bool Compact { get; set; }
+
+    /// <summary>«В корзину» прямо из строки (дела в днях): серая иконка справа при наведении. Нет делегата — нет иконки.</summary>
+    [Parameter]
+    public EventCallback OnTrash { get; set; }
 
     /// <summary>Дни, на которые стоят занятия цели («Чт · Пт»), — мелко под названием.</summary>
     [Parameter]
