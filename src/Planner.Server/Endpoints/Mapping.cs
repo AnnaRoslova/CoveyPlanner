@@ -22,7 +22,8 @@ public static class Mapping
         t.StartTime,
         t.DurationMinutes,
         t.SortOrder,
-        t.TrashedAt);
+        t.TrashedAt,
+        t.ParentId);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 
@@ -70,7 +71,7 @@ public static class Mapping
         o.Stats.ToDto());
 
     public static StepDto ToStepDto(this TaskItem s) =>
-        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.SortOrder);
+        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.StepOrder ?? s.SortOrder);
 
     public static HabitStatsDto ToDto(this HabitStats s) => new(
         s.Total,
@@ -94,6 +95,7 @@ public static class Mapping
     {
         SomedayTargetDto s => new SomedayTarget(s.CategoryId, s.Index),
         DayTargetDto d => new DayTarget(d.Date, d.Index),
+        StepListTargetDto s => new StepListTarget(s.ParentId, s.Index),
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, "Неизвестное место назначения."),
     };
 

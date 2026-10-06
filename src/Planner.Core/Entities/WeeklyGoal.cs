@@ -105,6 +105,9 @@ public class WeeklyGoal
 
     public void SetAllowSeveralPerDay(bool allow) => AllowSeveralPerDay = allow;
 
+    /// <summary>Проект новых занятий (null — без проекта). Уже существующие занятия не меняются.</summary>
+    public void SetProject(int? projectId) => ProjectId = projectId;
+
     /// <summary>Выбрать дни (None или null — «сам раскладываю»). Выбраны — «раз в неделю» = их число.</summary>
     public void SetDays(Weekdays? days)
     {
@@ -150,6 +153,7 @@ public class WeeklyGoal
         goal.DurationMinutes = series.DurationMinutes;
         goal.AllowSeveralPerDay = series.AllowSeveralPerDay;
         goal.Days = series.Days;
+        goal.ProjectId = series.ProjectId;
         goal.Series = series;
         return goal;
     }
@@ -166,6 +170,7 @@ public class WeeklyGoal
         goal.Notes = Notes;
         goal.DurationMinutes = DurationMinutes;
         goal.AllowSeveralPerDay = AllowSeveralPerDay;
+        goal.ProjectId = ProjectId;
         goal.Series = Series;
         return goal;
     }

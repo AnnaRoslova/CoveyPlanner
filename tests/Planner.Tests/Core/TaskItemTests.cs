@@ -115,10 +115,17 @@ public class TaskItemTests
     }
 
     [Fact]
-    public void Complete_SomedayTask_Throws()
+    public void Complete_SomedayTask_DoneInSomeday_UncompleteBackToSomeday()
     {
         var task = TaskItem.CreateSomeday("Дело", 5, Now);
 
+        task.Complete(Now); // D2: отметка прямо в ленте
+        Assert.Equal((TaskState.Done, (DateOnly?)null, 5, true), (task.State, task.PlannedDate, task.CategoryId, task.IsDoneInSomeday));
+
+        task.Uncomplete(); // D6: обратно в ленту
+        Assert.Equal((TaskState.Someday, (DateTime?)null), (task.State, task.CompletedAt));
+
+        task.Trash(Now);
         Assert.Throws<DomainException>(() => task.Complete(Now));
     }
 

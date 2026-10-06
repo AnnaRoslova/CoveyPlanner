@@ -6,11 +6,16 @@ namespace Planner.Core.Services;
 
 /// <summary>
 /// Удаление цели вместе с судьбой её занятий (общее для удаления цели, цели → в ленту и удаления роли):
-/// выполненные остаются в неделе обычными делами (история), невыполненные в днях уходят в корзину,
-/// невыполненное занятие без дня (мысль из ленты) возвращается в ленту — в свою категорию или в «неразобранное».
+/// <list type="bullet">
+/// <item>выполненные остаются делами (история); выполненное без дня встаёт в понедельник недели цели; у цели серии они
+/// остаются скрепками этой серии (<see cref="TaskItem.ClipSeriesId"/>);</item>
+/// <item>невыполненные в днях уходят в корзину;</item>
+/// <item>невыполненное занятие без дня: мысль из ленты — обратно в ленту (в свою категорию или в «неразобранное»),
+/// шаг проекта — остаётся шагом без дня у своего родителя.</item>
+/// </list>
 /// Сам не сохраняет изменения.
 /// </summary>
-public class GoalRemover(IGoalRepository goals, ITaskRepository tasks, TaskPlacer placer, TimeProvider clock)
+public class GoalRemover(IGoalRepository goals, TaskPlacer placer, TimeProvider clock)
 {
     public async Task RemoveAsync(WeeklyGoal goal, CancellationToken ct = default)
     {
@@ -22,17 +27,26 @@ public class GoalRemover(IGoalRepository goals, ITaskRepository tasks, TaskPlace
 
             switch (session)
             {
-                case { State: TaskState.Planned, PlannedDate: null }:
+                case { State: TaskState.Planned, PlannedDate: null, IsStep: false }:
                     await placer.ReturnToSomedayAsync(session, ct);
                     break;
 
-                case { State: TaskState.Planned }:
+                case { State: TaskState.Planned, PlannedDate: not null }:
                     session.Trash(now);
                     break;
 
-                case { State: TaskState.Done, PlannedDate: null }:
-                    // Отметка «сделано» без дня нигде не видна — без цели она ничего не значит
-                    tasks.Remove(session);
+                case { State: TaskState.Done }:
+                    if (session.PlannedDate is null)
+                    {
+                        // Отметка без дня (галочка цели другой недели) — в понедельник недели цели, чтобы не потерять скрепку
+                        await placer.PlaceAsync(session, new DayTarget(goal.WeekStart, int.MaxValue), ct);
+                    }
+
+                    if (goal.SeriesId is { } seriesId)
+                    {
+                        session.KeepAsClip(seriesId);
+                    }
+
                     break;
             }
         }

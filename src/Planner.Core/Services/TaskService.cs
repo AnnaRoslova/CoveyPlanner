@@ -6,6 +6,9 @@ using Planner.Core.Time;
 
 namespace Planner.Core.Services;
 
+/// <summary>Дело после отметки и родитель, если его отметили сами (все шаги сделаны).</summary>
+public sealed record TaskDone(TaskItem Task, TaskItem? Parent);
+
 /// <summary>Сценарии работы с делами: создать, изменить, перенести, выполнить, корзина.</summary>
 public class TaskService(
     ITaskRepository tasks,
@@ -13,6 +16,7 @@ public class TaskService(
     IGoalRepository goals,
     GoalSeriesService series,
     TaskPlacer placer,
+    ProjectService projects,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -86,6 +90,16 @@ public class TaskService(
     {
         var task = await GetAsync(id, ct);
 
+        // В список шагов (на строку родителя или в его раскрытый список) — снять с дня, остаться (стать) шагом (S20)
+        if (target is StepListTarget stepList)
+        {
+            await projects.SetParentAsync(task, stepList.ParentId, ct);
+            task.PlanForWeek();
+            await projects.PlaceStepAsync(task, stepList.ParentId, stepList.Index, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            return task;
+        }
+
         // Занятие в день: его цель — на неделе того дня (эта же или та же на другой неделе); в день, где у неё
         // уже есть занятие, нельзя (если не разрешено несколько в день) — проверяем, пока ничего не сдвинули
         WeeklyGoal? transferTo = null;
@@ -118,12 +132,18 @@ public class TaskService(
         return task;
     }
 
-    public async Task<TaskItem> SetDoneAsync(int id, bool isDone, CancellationToken ct = default)
+    /// <summary>
+    /// Отметить или снять отметку. Отметили последний шаг проекта — родитель отмечается сам (S12, возвращается в Parent);
+    /// сам родитель никогда не открывается (S13).
+    /// </summary>
+    public async Task<TaskDone> SetDoneAsync(int id, bool isDone, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
+        TaskItem? parent = null;
         if (isDone)
         {
             task.Complete(Now);
+            parent = await projects.CompleteParentIfAllDoneAsync(task, Now, ct);
         }
         else
         {
@@ -131,38 +151,41 @@ public class TaskService(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
+        return new TaskDone(task, parent);
+    }
+
+    /// <summary>
+    /// «Проект» в карточке: сделать дело шагом <paramref name="parentId"/> или убрать из проекта (null). См. <see cref="ProjectService.SetParentAsync"/>.
+    /// </summary>
+    public async Task<TaskItem> SetParentAsync(int id, int? parentId, CancellationToken ct = default)
+    {
+        var task = await GetAsync(id, ct);
+        await projects.SetParentAsync(task, parentId, ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return task;
     }
 
     /// <summary>
-    /// В корзину. Занятие цели остаётся связанным с ней, но в прогресс не входит;
-    /// вернули из корзины — снова засчитывается.
+    /// В корзину. Занятие цели остаётся связанным с ней, но в прогресс не входит; вернули из корзины — снова засчитывается.
+    /// Проект уходит вместе со своими шагами (занятия среди них отвязываются и остаются) — возвращаются ушедшие с ним шаги.
     /// </summary>
-    public async Task TrashAsync(int id, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskItem>> TrashAsync(int id, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
-        task.Trash(Now);
+        var steps = await projects.TrashAsync(task, Now, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
+        return steps;
     }
 
     /// <summary>
-    /// Вернуть из корзины на прежнее место. Занятие цели без дня снова висит на цели.
+    /// Вернуть из корзины на прежнее место (см. <see cref="ProjectService.RestoreAsync"/>). Занятие цели без дня снова висит на цели.
     /// Дело ленты возвращается в свою категорию, а если её нет — в «неразобранное».
     /// </summary>
     public async Task<TaskItem> RestoreAsync(int id, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
-        task.Restore();
-
-        if (task.IsOnDay)
-        {
-            await placer.MoveToEndOfDayAsync(task, ct);
-        }
-        else if (!task.IsSession)
-        {
-            await placer.ReturnToSomedayAsync(task, ct);
-        }
+        await projects.RestoreAsync(task, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
         return task;

@@ -1,15 +1,15 @@
 using Planner.Core.Abstractions;
 using Planner.Core.Entities;
 using Planner.Core.Errors;
-using Planner.Core.Sorting;
 
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Шаги дела (дело-чеклист, один уровень): добавить в конец, переименовать, отметить, удалить. Шаг видно только в окне
-/// его дела; удаляется сразу (без корзины). Пока без засчитывания шага в цель и без автоотметки дела — это этап 4.
+/// Шаги дела в его окне (один уровень; дело с шагами — проект): добавить в конец, переименовать, отметить, порядок, удалить.
+/// Шаг — полноценное дело (может стоять в дне, см. <see cref="TaskService"/>); новый шаг получает копию ролей родителя.
+/// Отметили последний шаг — родитель отмечается сам (<see cref="ProjectService"/>).
 /// </summary>
-public class StepService(ITaskRepository tasks, IUnitOfWork unitOfWork, TimeProvider clock)
+public class StepService(ITaskRepository tasks, ProjectService projects, IUnitOfWork unitOfWork, TimeProvider clock)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -23,7 +23,8 @@ public class StepService(ITaskRepository tasks, IUnitOfWork unitOfWork, TimeProv
     {
         var parent = await GetParentAsync(parentId, ct);
         var step = TaskItem.CreateStep(parent, title, Now);
-        SortOrdering.Place(await tasks.GetStepsAsync(parentId, ct), step, int.MaxValue);
+        step.SetRoles(parent.RoleIds); // копия на момент создания, дальше независимы (S5)
+        await projects.PlaceStepAsync(step, parentId, int.MaxValue, ct);
         tasks.Add(step);
         await unitOfWork.SaveChangesAsync(ct);
         return step;
@@ -37,12 +38,15 @@ public class StepService(ITaskRepository tasks, IUnitOfWork unitOfWork, TimeProv
         return step;
     }
 
-    public async Task<TaskItem> SetDoneAsync(int stepId, bool isDone, CancellationToken ct = default)
+    /// <summary>Отметить шаг или снять отметку; родитель, если он отметился сам, — в Parent (S12).</summary>
+    public async Task<TaskDone> SetDoneAsync(int stepId, bool isDone, CancellationToken ct = default)
     {
         var step = await GetStepAsync(stepId, ct);
+        TaskItem? parent = null;
         if (isDone)
         {
             step.Complete(Now);
+            parent = await projects.CompleteParentIfAllDoneAsync(step, Now, ct);
         }
         else
         {
@@ -50,7 +54,27 @@ public class StepService(ITaskRepository tasks, IUnitOfWork unitOfWork, TimeProv
         }
 
         await unitOfWork.SaveChangesAsync(ct);
-        return step;
+        return new TaskDone(step, parent);
+    }
+
+    /// <summary>Порядок шагов в списке родителя (все шаги, включая корзину, — в нужном порядке).</summary>
+    public async Task ReorderAsync(int parentId, IReadOnlyList<int> orderedIds, CancellationToken ct = default)
+    {
+        await GetParentAsync(parentId, ct);
+        var steps = await tasks.GetStepsAsync(parentId, ct);
+        var byId = steps.ToDictionary(s => s.Id);
+        if (orderedIds.Count != byId.Count || orderedIds.Distinct().Count() != orderedIds.Count
+            || orderedIds.Any(id => !byId.ContainsKey(id)))
+        {
+            throw new DomainException("Список для сортировки не совпадает с текущими шагами.");
+        }
+
+        for (var i = 0; i < orderedIds.Count; i++)
+        {
+            byId[orderedIds[i]].StepOrder = i;
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     public async Task DeleteAsync(int stepId, CancellationToken ct = default)

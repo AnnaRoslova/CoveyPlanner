@@ -177,7 +177,7 @@ public class TasksApiTests : ApiTestBase
     }
 
     [Fact]
-    public async Task Done_OnlyForPlanned()
+    public async Task Done_InPlanAndInSomeday_NotInTrash()
     {
         var ideas = await CreateCategoryAsync();
         var someday = await CreateTaskAsync("Мысль", new SomedayTargetDto(ideas.Id, 0));
@@ -186,7 +186,13 @@ public class TasksApiTests : ApiTestBase
         var done = await PutAsync<TaskDto>($"/api/tasks/{planned.Id}/done", new SetDoneRequest(true));
         Assert.Equal(TaskStateDto.Done, done.State);
 
-        var response = await Client.PutAsJsonAsync($"/api/tasks/{someday.Id}/done", new SetDoneRequest(true));
+        // D2: мысль отмечена прямо в ленте — из ленты уходит, категория сохраняется
+        var doneInFeed = await PutAsync<TaskDto>($"/api/tasks/{someday.Id}/done", new SetDoneRequest(true));
+        Assert.Equal((TaskStateDto.Done, (DateOnly?)null, ideas.Id), (doneInFeed.State, doneInFeed.PlannedDate, doneInFeed.CategoryId));
+        Assert.Empty((await GetBoardAsync()).SomedayTasks);
+
+        (await Client.DeleteAsync($"/api/tasks/{planned.Id}")).EnsureSuccessStatusCode();
+        var response = await Client.PutAsJsonAsync($"/api/tasks/{planned.Id}/done", new SetDoneRequest(true));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 

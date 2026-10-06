@@ -4,7 +4,7 @@ using Planner.Shared;
 
 namespace Planner.Tests.Api;
 
-/// <summary>Шаги дела: в окне дела, не в днях, ленте и корзине; удаляются вместе с делом.</summary>
+/// <summary>Шаги дела в его окне: шаг без дня — не в днях и не в ленте; удаляются насовсем вместе с делом.</summary>
 public class StepsApiTests : ApiTestBase
 {
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.Now);

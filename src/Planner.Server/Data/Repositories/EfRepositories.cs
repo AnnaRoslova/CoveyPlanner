@@ -23,26 +23,32 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
 
     public Task<List<TaskItem>> GetUntimedOnDayAsync(DateOnly date, CancellationToken ct = default) =>
         db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
-                            && t.PlannedDate == date && t.StartTime == null && t.ParentId == null)
+                            && t.PlannedDate == date && t.StartTime == null)
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
 
     /// <summary>Порядок как на экране: сначала дела со временем (по времени), затем без времени (по SortOrder).</summary>
     public Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
         db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
-                            && t.PlannedDate >= from && t.PlannedDate <= to && t.ParentId == null)
+                            && t.PlannedDate >= from && t.PlannedDate <= to)
             .OrderBy(t => t.PlannedDate)
             .ThenBy(t => t.StartTime == null).ThenBy(t => t.StartTime)
             .ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
+    /// <summary>
+    /// Корзина: дела и шаги, удалённые отдельно; шаги, ушедшие в корзину вместе с проектом (тот же TrashedAt), — в его строке.
+    /// </summary>
     public Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default) =>
-        db.Tasks.Where(t => t.State == TaskState.Trashed && t.ParentId == null)
+        db.Tasks.Where(t => t.State == TaskState.Trashed
+                            && (t.ParentId == null
+                                || !db.Tasks.Any(p => p.Id == t.ParentId && p.State == TaskState.Trashed
+                                                      && p.TrashedAt == t.TrashedAt)))
             .OrderByDescending(t => t.TrashedAt)
             .ToListAsync(ct);
 
     public Task<List<TaskItem>> GetStepsAsync(int parentId, CancellationToken ct = default) =>
-        db.Tasks.Where(t => t.ParentId == parentId).OrderBy(t => t.SortOrder).ThenBy(t => t.Id).ToListAsync(ct);
+        db.Tasks.Where(t => t.ParentId == parentId).OrderBy(t => t.StepOrder).ThenBy(t => t.Id).ToListAsync(ct);
 
     public void Add(TaskItem task) => db.Tasks.Add(task);
 
@@ -129,12 +135,23 @@ public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
 public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
 {
     /// <summary>Один запрос: выполненные занятия целей постоянных серий (дело — занятие одной цели; шаги-занятия тоже считаются).</summary>
-    public Task<List<HabitClip>> GetClipsAsync(CancellationToken ct = default) =>
-        db.Set<TaskGoal>().AsNoTracking()
+    public async Task<List<HabitClip>> GetClipsAsync(CancellationToken ct = default)
+    {
+        var sessions = await db.Set<TaskGoal>().AsNoTracking()
             .Where(l => l.Task.State == TaskState.Done
                         && l.Goal.SeriesId != null && l.Goal.Series!.IsRecurring)
             .Select(l => new HabitClip(l.Goal.SeriesId!.Value, l.Task.PlannedDate, l.Goal.WeekStart))
             .ToListAsync(ct);
+
+        // Выполненные занятия удалённых целей серии остаются её скрепками (у них всегда есть день)
+        var kept = await db.Tasks.AsNoTracking()
+            .Where(t => t.State == TaskState.Done && t.ClipSeriesId != null && t.PlannedDate != null
+                        && db.GoalSeries.Any(s => s.Id == t.ClipSeriesId && s.IsRecurring))
+            .Select(t => new { SeriesId = t.ClipSeriesId!.Value, Date = t.PlannedDate!.Value })
+            .ToListAsync(ct);
+
+        return [.. sessions, .. kept.Select(k => new HabitClip(k.SeriesId, k.Date, k.Date))];
+    }
 
     public Task<List<HabitWeekNorm>> GetWeekNormsAsync(CancellationToken ct = default) =>
         db.WeeklyGoals.AsNoTracking()

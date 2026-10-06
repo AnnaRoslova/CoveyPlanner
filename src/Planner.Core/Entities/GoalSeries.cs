@@ -151,6 +151,7 @@ public class GoalSeries
         DurationMinutes = goal.DurationMinutes;
         AllowSeveralPerDay = goal.AllowSeveralPerDay;
         Days = goal.Days;
+        ProjectId = goal.ProjectId;
     }
 
     /// <summary>

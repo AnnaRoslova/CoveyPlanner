@@ -141,7 +141,7 @@ public class HabitService(
                 throw new DomainException("Сегодня уже отмечено.");
             }
 
-            session = goal.UnscheduledSession ?? sessions.Create(goal);
+            session = goal.UnscheduledSession ?? await sessions.CreateAsync(goal, ct);
             await sessions.PlaceInDayAsync(goal, session, new DayTarget(today, int.MaxValue), ct);
         }
 

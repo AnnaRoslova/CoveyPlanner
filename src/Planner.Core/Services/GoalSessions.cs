@@ -9,17 +9,28 @@ namespace Planner.Core.Services;
 /// Занятия целей: новое занятие по шаблону цели, постановка в день и раскладка по дням постоянной цели
 /// (<see cref="WeeklyGoal.Days"/>). Общий помощник для сервисов целей и серий. Сам не сохраняет изменения.
 /// </summary>
-public class GoalSessions(ITaskRepository tasks, TaskPlacer placer, TimeProvider clock)
+public class GoalSessions(ITaskRepository tasks, TaskPlacer placer, ProjectService projects, TimeProvider clock)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>Новое занятие по шаблону цели (без дня).</summary>
-    public TaskItem Create(WeeklyGoal goal)
+    /// <summary>
+    /// Новое занятие по шаблону цели (без дня). Если у цели выбран проект и он открыт (не выполнен, не в корзине), занятие —
+    /// его шаг в конце списка (P2–P3); иначе — без проекта.
+    /// </summary>
+    public async Task<TaskItem> CreateAsync(WeeklyGoal goal, CancellationToken ct = default)
     {
         var session = TaskItem.CreatePlanned(goal.Title, Now);
         goal.FillFromTemplate(session);
         tasks.Add(session);
         goal.AddSession(session);
+
+        if (goal.ProjectId is { } projectId
+            && await tasks.FindAsync(projectId, ct) is { State: TaskState.Someday or TaskState.Planned, IsStep: false } project)
+        {
+            session.SetParent(project);
+            await projects.PlaceStepAsync(session, projectId, int.MaxValue, ct);
+        }
+
         return session;
     }
 
@@ -53,7 +64,7 @@ public class GoalSessions(ITaskRepository tasks, TaskPlacer placer, TimeProvider
             {
                 if (onDay.Count == 0)
                 {
-                    await PlaceInDayAsync(goal, Create(goal), new DayTarget(date, int.MaxValue), ct);
+                    await PlaceInDayAsync(goal, await CreateAsync(goal, ct), new DayTarget(date, int.MaxValue), ct);
                 }
             }
             else

@@ -70,6 +70,11 @@ public class GoalService(
             goal.SetAllowSeveralPerDay(several);
         }
 
+        if (changes.ProjectId is { } projectId)
+        {
+            goal.SetProject(projectId == 0 ? null : await GetProjectAsync(goal, projectId, ct));
+        }
+
         var lostTime = goal.UpdateTemplate(
             changes.Title, changes.StartTime, changes.Quadrant, changes.Notes, changes.DurationMinutes);
         foreach (var session in lostTime)
@@ -158,6 +163,7 @@ public class GoalService(
             later.SetDays(goal.Days);
             later.SetTimesPerWeek(goal.TimesPerWeek);
             later.SetAllowSeveralPerDay(goal.AllowSeveralPerDay);
+            later.SetProject(goal.ProjectId);
             var lostTime = later.UpdateTemplate(goal.Title, goal.StartTime, goal.Quadrant, goal.Notes, goal.DurationMinutes);
             foreach (var session in lostTime)
             {
@@ -190,6 +196,31 @@ public class GoalService(
         created.SetHabit(isHabit ?? await HabitByDefaultAsync(goal, ct));
         series.Add(created);
         goal.JoinSeries(created);
+    }
+
+    /// <summary>
+    /// Проект новых занятий цели (P1, P9): дело без родителя, не в корзине и не занятие этой же цели. Выполненный можно —
+    /// тогда новые занятия просто создаются без проекта (P3).
+    /// </summary>
+    private async Task<int> GetProjectAsync(WeeklyGoal goal, int projectId, CancellationToken ct)
+    {
+        var project = await tasks.FindAsync(projectId, ct) ?? throw new NotFoundException("Дело", projectId);
+        if (project.IsStep)
+        {
+            throw new DomainException("Проектом может быть только дело, а не шаг.");
+        }
+
+        if (project.State == TaskState.Trashed)
+        {
+            throw new DomainException("Проект в корзине — сначала верните его.");
+        }
+
+        if (project.GoalId == goal.Id)
+        {
+            throw new DomainException("Занятие этой цели не может быть её проектом.");
+        }
+
+        return project.Id;
     }
 
     /// <summary>«🫙 копить» по умолчанию, когда цели включают «каждую неделю»: есть роль-измерение пилы — копить, иначе нет.</summary>
@@ -229,7 +260,7 @@ public class GoalService(
         else
         {
             var open = goal.ActiveSessions.Where(t => t.State == TaskState.Planned).ToList();
-            session = Nearest(open, today) ?? sessions.Create(goal);
+            session = Nearest(open, today) ?? await sessions.CreateAsync(goal, ct);
 
             // Отметка без дня нигде не видна: на текущей неделе занятие встаёт в сегодня
             if (session.PlannedDate is null && isCurrentWeek)
@@ -314,7 +345,7 @@ public class GoalService(
 
         var goal = await GetAsync(id, ct);
         goal.EnsureDayIsFree(day.Date); // не больше одного занятия в день, если не разрешено несколько
-        var session = goal.UnscheduledSession ?? sessions.Create(goal);
+        var session = goal.UnscheduledSession ?? await sessions.CreateAsync(goal, ct);
 
         await sessions.PlaceInDayAsync(goal, session, day, ct);
         await unitOfWork.SaveChangesAsync(ct);

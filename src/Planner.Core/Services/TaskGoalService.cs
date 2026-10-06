@@ -75,9 +75,9 @@ public class TaskGoalService(
         else
         {
             task.DetachFromGoal();
-            if (task.State == TaskState.Planned && task.PlannedDate is null)
+            if (task is { State: TaskState.Planned, PlannedDate: null, IsStep: false })
             {
-                await placer.ReturnToSomedayAsync(task, ct); // занятие без дня без цели нигде не видно — в ленту
+                await placer.ReturnToSomedayAsync(task, ct); // занятие без дня без цели нигде не видно — в ленту (шаг — остаётся в проекте)
             }
         }
 

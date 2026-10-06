@@ -9,6 +9,7 @@ namespace Planner.Core.Services;
 public class CategoryService(
     ICategoryRepository categories,
     ITaskRepository tasks,
+    ProjectService projects,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -90,7 +91,7 @@ public class CategoryService(
             var now = clock.GetUtcNow().UtcDateTime;
             foreach (var task in categoryTasks)
             {
-                task.Trash(now);
+                await projects.TrashAsync(task, now, ct); // проект — вместе со своими шагами
             }
         }
 

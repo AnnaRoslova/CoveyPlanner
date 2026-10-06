@@ -50,8 +50,9 @@ public class TaskItem : ISortable
     public Quadrant? Quadrant { get; set; }
 
     /// <summary>
-    /// Дело, шагом которого является это (дело-чеклист, один уровень). Шаг виден только в окне своего дела:
-    /// без дня, категории, ролей и цели; в днях, ленте и корзине его нет. null — обычное дело.
+    /// Дело, шагом которого является это (один уровень; дело с шагами — «проект»). Шаг — полноценное дело: живёт в списке
+    /// шагов родителя и может стоять в дне, иметь роли, время, быть занятием цели. В ленте отдельной строкой не бывает.
+    /// null — не шаг.
     /// </summary>
     public int? ParentId { get; private set; }
 
@@ -157,7 +158,57 @@ public class TaskItem : ISortable
         }
     }
 
-    internal void AddGoalLink(TaskGoal link) => _goalLinks.Add(link);
+    /// <summary>Стало занятием цели — скрепкой удалённой цели оно больше не числится (серия теперь — через новую цель).</summary>
+    internal void AddGoalLink(TaskGoal link)
+    {
+        _goalLinks.Add(link);
+        ClipSeriesId = null;
+    }
+
+    /// <summary>Выполненное занятие удалённой цели серии <paramref name="seriesId"/> остаётся её скрепкой.</summary>
+    public void KeepAsClip(int seriesId) => ClipSeriesId = seriesId;
+
+    /// <summary>
+    /// Стать шагом дела <paramref name="parent"/> (проект) или перестать быть шагом (null). Мысль из ленты становится
+    /// шагом без дня; дело в дне остаётся в дне; отметка и связь с целью не меняются. Проверки «один уровень»
+    /// (у самого дела нет шагов) — у вызывающего: дело не знает своих шагов.
+    /// </summary>
+    public void SetParent(TaskItem? parent)
+    {
+        EnsureNotTrashed();
+        if (parent is null)
+        {
+            ParentId = null;
+            StepOrder = null;
+            return;
+        }
+
+        if (parent == this || (Id != 0 && parent.Id == Id))
+        {
+            throw new DomainException("Дело не может быть шагом самого себя.");
+        }
+
+        if (parent.IsStep)
+        {
+            throw new DomainException("У шага не бывает своих шагов.");
+        }
+
+        if (parent.State == TaskState.Trashed)
+        {
+            throw new DomainException("Проект в корзине — сначала верните его.");
+        }
+
+        ParentId = parent.Id;
+        if (State == TaskState.Someday)
+        {
+            State = TaskState.Planned; // из ленты — шаг без дня
+            PlannedDate = null;
+            StartTime = null;
+        }
+    }
+
+    /// <summary>Выполнено прямо в ленте: без дня, не занятие и не шаг. В ленте не видно — только в «Выполненном».</summary>
+    public bool IsDoneInSomeday => State == TaskState.Done && PlannedDate is null && !IsSession && !IsStep;
 
     internal void RemoveGoalLink(TaskGoal link) => _goalLinks.Remove(link);
 
@@ -197,12 +248,18 @@ public class TaskItem : ISortable
         StartTime = time is { } t ? new TimeOnly(t.Hour, t.Minute) : null;
     }
 
-    /// <summary>Вернуть в ленту, в указанную категорию (null — в «неразобранное»). Дата, время и отметка «выполнено» сбрасываются.</summary>
+    /// <summary>
+    /// Вернуть в ленту, в указанную категорию (null — в «неразобранное»). Дата, время и отметка «выполнено» сбрасываются;
+    /// шаг перестаёт быть шагом (мысль в ленте живёт сама по себе), скрепка удалённой цели — скрепкой.
+    /// </summary>
     public void MoveToSomeday(int? categoryId)
     {
         EnsureNotTrashed();
         State = TaskState.Someday;
         IsFromSomeday = true;
+        ParentId = null;
+        StepOrder = null;
+        ClipSeriesId = null;
         CategoryId = categoryId;
         CompletedAt = null;
         PlannedDate = null;
@@ -226,13 +283,10 @@ public class TaskItem : ISortable
         StartTime = null;
     }
 
+    /// <summary>Отметить выполненным: в плане — остаётся на своём месте; в ленте — «выполнено в ленте» (категория сохраняется).</summary>
     public void Complete(DateTime now)
     {
-        if (!IsInPlan)
-        {
-            throw new DomainException("Отметить выполненным можно только запланированное дело.");
-        }
-
+        EnsureNotTrashed();
         if (State != TaskState.Done)
         {
             State = TaskState.Done;
@@ -240,13 +294,16 @@ public class TaskItem : ISortable
         }
     }
 
+    /// <summary>Снять отметку: выполненное в ленте возвращается в ленту (на своё место), остальное — открыто там, где стоит.</summary>
     public void Uncomplete()
     {
-        if (State == TaskState.Done)
+        if (State != TaskState.Done)
         {
-            State = TaskState.Planned;
-            CompletedAt = null;
+            return;
         }
+
+        State = IsDoneInSomeday ? TaskState.Someday : TaskState.Planned;
+        CompletedAt = null;
     }
 
     /// <summary>В корзину. Место в плане/ленте запоминается для возврата.</summary>

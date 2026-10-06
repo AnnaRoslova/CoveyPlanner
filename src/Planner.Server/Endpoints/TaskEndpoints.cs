@@ -35,7 +35,11 @@ public static class TaskEndpoints
         });
 
         tasks.MapPut("/{id:int}/done", async (int id, SetDoneRequest request, TaskService service, CancellationToken ct) =>
-            (await service.SetDoneAsync(id, request.IsDone, ct)).ToDto());
+            (await service.SetDoneAsync(id, request.IsDone, ct)).Task.ToDto());
+
+        // «Проект» в карточке: сделать дело шагом другого дела или убрать из проекта
+        tasks.MapPut("/{id:int}/parent", async (int id, SetParentRequest request, TaskService service, CancellationToken ct) =>
+            (await service.SetParentAsync(id, request.ParentId, ct)).ToDto());
 
         // Удаление = в корзину
         tasks.MapDelete("/{id:int}", async (int id, TaskService service, CancellationToken ct) =>

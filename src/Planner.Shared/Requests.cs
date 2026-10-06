@@ -6,6 +6,7 @@ namespace Planner.Shared;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(SomedayTargetDto), "someday")]
 [JsonDerivedType(typeof(DayTargetDto), "day")]
+[JsonDerivedType(typeof(StepListTargetDto), "steps")]
 public abstract record TaskTargetDto;
 
 /// <summary>В ленту: категория (null — «неразобранное») и позиция (0 — наверх).</summary>
@@ -17,7 +18,13 @@ public sealed record SomedayTargetDto(int? CategoryId, int Index) : TaskTargetDt
 /// </summary>
 public sealed record DayTargetDto(DateOnly Date, int Index) : TaskTargetDto;
 
+/// <summary>В список шагов дела ParentId, без дня (на строку родителя или в его раскрытый список): позиция в списке.</summary>
+public sealed record StepListTargetDto(int ParentId, int Index) : TaskTargetDto;
+
 public sealed record CreateTaskRequest(string Title, TaskTargetDto Target);
+
+/// <summary>«Проект» в карточке дела: ParentId — дело-проект, null — убрать из проекта.</summary>
+public sealed record SetParentRequest(int? ParentId);
 
 /// <summary>
 /// StartTime / DurationMinutes = null — без времени / длительности. RoleIds — роли дела (null или пусто — без ролей).
@@ -48,7 +55,8 @@ public sealed record UpdateRoleRequest(string? Name, string? Color);
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title, bool? IsRecurring = null);
 
 /// <summary>Окно цели целиком. null у необязательных полей — «не задано»; IsRecurring / AllowSeveralPerDay = null — «каждую неделю» / «можно несколько раз в день» не менять.
-/// Days — дни (маска, как в WeeklyGoalDto): null — не менять, 0 — «сам раскладываю». RoleIds — роли цели (хотя бы одна).</summary>
+/// Days — дни (маска, как в WeeklyGoalDto): null — не менять, 0 — «сам раскладываю». RoleIds — роли цели (хотя бы одна).
+/// IsHabit — «🫙 копить» (null — не менять); ProjectId — проект новых занятий (null — не менять, 0 — без проекта).</summary>
 public sealed record UpdateGoalRequest(
     string Title,
     IReadOnlyList<int> RoleIds,
@@ -60,7 +68,8 @@ public sealed record UpdateGoalRequest(
     bool? IsRecurring = null,
     bool? AllowSeveralPerDay = null,
     int? Days = null,
-    bool? IsHabit = null);
+    bool? IsHabit = null,
+    int? ProjectId = null);
 
 /// <summary>Клик по отметке цели. Today — сегодняшняя дата у пользователя.</summary>
 public sealed record ToggleGoalRequest(DateOnly Today);

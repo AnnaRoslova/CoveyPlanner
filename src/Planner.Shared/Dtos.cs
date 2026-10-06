@@ -26,6 +26,7 @@ public enum SawDimensionDto
 /// Дело. RoleIds — роли дела (может быть несколько; у занятия цели — роли цели);
 /// Quadrant — 1..4 или null; StartTime — необязательная метка времени;
 /// DurationMinutes — необязательная примерная длительность. GoalId — цель, занятием которой является дело (null — не «камень»).
+/// ParentId — дело-проект, шагом которого является это (null — не шаг).
 /// </summary>
 public sealed record TaskDto(
     int Id,
@@ -40,7 +41,8 @@ public sealed record TaskDto(
     TimeOnly? StartTime,
     int? DurationMinutes,
     int SortOrder,
-    DateTime? TrashedAt);
+    DateTime? TrashedAt,
+    int? ParentId = null);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
