@@ -93,35 +93,9 @@ DayTask 'Ужин с семьёй' 4 '19:00' 'Семья' | Out-Null
 Schedule $park 5 | Out-Null
 DayTask 'Кофе с Олей' 5 $null 'Общение и эмоции' | Out-Null
 
-# Копилки привычек (к целям не привязаны — привязку проверяют сценарии e2e): «Чтение» — со стартовым числом
-Api POST 'habits' @{ name = 'Тренировки'; emoji = '💪'; color = '#9fd3bd'; weeklyNorm = 3; jarSize = 30; startCount = 0 } | Out-Null
-Api POST 'habits' @{ name = 'Чтение'; emoji = '📚'; color = '#a9cde8'; weeklyNorm = 4; jarSize = 30; startCount = 41 } | Out-Null
-
-# Коллекции: «📚 Книги» — привязана к категории «Хочу прочитать» (дочитанные книги из неё — сами на полку),
-# «🛠 Проекты» — законченные на прошлой неделе проекты с шагами (привязаны вручную)
-$toRead = Api POST 'categories' @{ name = 'Хочу прочитать'; emoji = '📖' }
-$bookIds = @()
-foreach ($title in @('«Атомные привычки»', '«Мастер и Маргарита»', '«Дюна»', '«Сто лет одиночества»', '«Солярис»')) {
-    $bookIds += (Api POST 'tasks' @{ title = $title; target = @{ kind = 'someday'; categoryId = $toRead.id; index = 99 } }).id
-}
-Api POST 'habits' @{ name = 'Книги'; emoji = '📚'; color = '#8fb4e3'; weeklyNorm = 1; kind = 'Collection'; yearGoal = 24; startCount = 18; categoryIds = @($toRead.id) } | Out-Null
-# Три книги дочитаны на прошлой неделе: вынуты из ленты в дни и отмечены (категория у них остаётся — по ней они и в коллекции)
-foreach ($i in 0..2) {
-    Api POST "tasks/$($bookIds[$i])/move" @{ kind = 'day'; date = (Day ($i - 7)); index = 99 } | Out-Null
-    Api PUT "tasks/$($bookIds[$i])/done" @{ isDone = $true } | Out-Null
-}
-
-$projects = Api POST 'habits' @{ name = 'Проекты'; emoji = '🛠'; color = '#b9d3b0'; weeklyNorm = 1; kind = 'Collection'; yearGoal = 6 }
-foreach ($project in @(
-        @{ title = 'Полка в прихожей'; day = -6; steps = @('Замерить стену', 'Купить доски', 'Покрасить', 'Повесить') },
-        @{ title = 'Фотокнига за лето'; day = -4; steps = @('Отобрать фото', 'Сверстать', 'Заказать печать') })) {
-    $task = DayTask $project.title $project.day
-    Api PUT "tasks/$($task.id)" @{ title = $project.title; notes = $null; roleIds = @(); quadrant = $null; startTime = $null; durationMinutes = $null; habitId = $projects.id } | Out-Null
-    foreach ($step in $project.steps) {
-        $s = Api POST "tasks/$($task.id)/steps" @{ title = $step }
-        Api PUT "steps/$($s.id)/done" @{ isDone = $true } | Out-Null
-    }
-    Api PUT "tasks/$($task.id)/done" @{ isDone = $true } | Out-Null
-}
+# Привычки — постоянные цели пилы: «Бег», «100 страниц», «Увидеться с Олей» выше уже привычки.
+# У «100 страниц» — стартовое число (историю привычек для снимков строит tests/e2e/lib/habits-history.mjs)
+$reading = (Api GET "week/$week").goals | Where-Object { $_.title -eq '100 страниц' }
+Api PUT "habits/$($reading.seriesId)" @{ startCount = 41; jarSize = 30 } | Out-Null
 
 Write-Host 'Демо-данные добавлены.'

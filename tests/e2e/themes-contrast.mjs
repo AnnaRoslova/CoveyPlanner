@@ -136,8 +136,8 @@ async function setTheme(key) {
   await sleep(600);
 }
 
-// Копилки с историей (пауза, каникулы) — для снимка и замера экрана «Копилки»
-await makeHabitHistory(BASE, process.env.PLANNER_DB);
+// Привычки с историей (пауза, каникулы) — для снимка и замера экрана «Копилки»
+await makeHabitHistory(BASE);
 
 // В корзине должно что-то лежать — для снимка
 await page.goto(BASE, { waitUntil: 'networkidle0' });
@@ -226,7 +226,8 @@ for (const theme of THEMES) {
     await escape();
   });
   await check(`${theme}: экран «Копилки»`, async () => {
-    await page.click('.jar-b'); await page.waitForSelector('.habits .jar-card'); await sleep(500);
+    await page.click('.jar-b'); await page.waitForSelector('.habits .jar-card');
+    await page.mouse.move(5, 5); await sleep(500); // курсор с кнопки 🫙 — иначе под ним оказывается кнопка экрана (замер в hover)
     await shot('habits');
     windows.push(['копилки', await audit(theme, 'habits', '.habits')]);
     await page.click('.habits .btn.vac-b'); await page.waitForSelector('.editor[aria-label="Каникулы"]'); await sleep(300);

@@ -1,9 +1,11 @@
-// @seed — нужны демо-данные (tools/seed-demo.ps1): цели «Бег» (Тело, 3 раза), «100 страниц» (Ум); копилки «Тренировки», «Чтение»
-// Копилки привычек: экран 🫙, новая копилка, привязка цели → отметка занятия → счёт, пилюля и подсказка «📎 +1»; норма недели — сразу в серии;
-// снятая отметка; «+1 сегодня»; новая копилка из окна цели; копилка у дела; каникулы; архив и удаление с «Вернуть». В конце — история «задним числом»
-// и снимки экрана «Копилки» в нескольких темах (out/habits-<тема>.png).
+// @seed — нужны демо-данные (tools/seed-demo.ps1): постоянные цели пилы «Бег» (Тело, 3 раза), «100 страниц» (Ум, стартовое 41),
+// «Увидеться с Олей» (Общение) — это и есть привычки; «Записаться к стоматологу» (Я сама) — обычная цель.
+// Привычка = постоянная цель «Затачивания пилы»: экран 🫙 по измерениям, без «+ копилка»; в окне цели — строка привычки и банка,
+// «В копилку» нигде нет; отметка занятия → счёт, пилюля, подсказка «📎 +1»; «+1 сегодня» (одно в день); новая цель пилы — новая
+// привычка; сняли «каждую неделю» — в архив с историей, включили — продолжается; удаление из архива с «Вернуть» (цель остаётся);
+// каникулы. В конце — история «задним числом» (норма по неделям) и снимки экрана «Копилки» в темах (out/habits-<тема>.png).
 import puppeteer from 'puppeteer-core';
-import { makeHabitHistory } from './lib/habits-history.mjs';
+import { makeHabitHistory, HISTORY } from './lib/habits-history.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -38,7 +40,15 @@ const clickIn = (sel, text) => page.evaluate((sel, text) => {
   el.click();
 }, sel, text);
 const toastText = () => page.evaluate(() => document.querySelector('.toast')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
-const cardTotal = name => page.evaluate(n => document.querySelector(`.jar-card[aria-label="Копилка «${n}»"] .total-n`)?.textContent.trim() ?? null, name);
+const card = name => `.jar-card[aria-label="Привычка «${name}»"]`;
+const cardTotal = name => page.evaluate(s => document.querySelector(`${s} .total-n`)?.textContent.trim() ?? null, card(name));
+const cardButton = (name, text) => page.evaluate((s, t) => [...document.querySelector(s).querySelectorAll('.btn')].find(b => b.textContent.trim() === t).click(), card(name), text);
+const serverHabit = name => page.evaluate(async n => (await (await fetch('/api/habits')).json()).habits.find(h => h.name === n) ?? null, name);
+const api = (method, path, body) => page.evaluate(async (m, p, b) => {
+  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  if (!r.ok) throw new Error(`${m} ${p}: ${r.status}`);
+  return r.status === 204 ? null : r.json();
+}, method, path, body);
 
 async function boxOf(src) {
   const el = (await page.evaluateHandle(src)).asElement();
@@ -61,56 +71,61 @@ async function openGoal(title) {
   await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
   await sleep(200);
 }
-async function chooseHabit(name) {
-  await page.click('.editor .select-field[aria-label="В копилку"]');
-  await page.waitForSelector('.editor .popover');
-  await clickIn('.editor .popover .option .option-name', name);
-  await sleep(250);
-}
-const habitFieldText = () => page.$eval('.editor .select-field[aria-label="В копилку"]', e => e.textContent.replace(/\s+/g, ' ').trim());
+const habitLine = () => page.evaluate(() => document.querySelector('.editor .habit-line')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
 async function openScreen() {
   await page.click('.jar-b');
   await page.waitForSelector('.habits');
   await settle();
 }
+/** Группы экрана: [измерение, [привычки]] по порядку. */
+const groups = () => page.evaluate(() => [...document.querySelectorAll('.habits .dimension')].map(h => [
+  h.textContent.trim(),
+  [...h.nextElementSibling.querySelectorAll('.jar-card .jar-name .name')].map(n => n.textContent.trim()),
+]));
+async function setRecurring(goal, on) {
+  await openGoal(goal);
+  const box = await page.$('.editor .switch-row input[role="switch"]');
+  if (await box.evaluate(e => e.checked) !== on) {
+    await page.evaluate(() => document.querySelector('.editor .switch-row input[role="switch"]').click());
+    await sleep(150);
+  }
+  await clickIn('.editor .btn', 'Сохранить'); await settle();
+}
+const showArchived = async () => {
+  if (!(await page.$('.archived-h[aria-expanded="true"]'))) { await page.click('.archived-h'); await sleep(300); }
+};
 
 await load();
 
-await check('🫙 в шапке открывает экран «Копилки»: карточки демо-копилок, «Чтение» — 41 скрепка; Esc закрывает', async () => {
+await check('🫙 в шапке: экран по измерениям пилы — Бег (Тело), 100 страниц (Ум, 41), Увидеться с Олей (Общение); «+ копилка» нет', async () => {
   await openScreen();
-  assert(await cardTotal('Чтение') === '41', `Чтение: ${await cardTotal('Чтение')}`);
-  assert(await cardTotal('Тренировки') === '0', `Тренировки: ${await cardTotal('Тренировки')}`);
-  const weeks = await page.$$eval('.jar-card[aria-label="Копилка «Чтение»"] .weeks .w', ws => ws.length);
-  assert(weeks === 26, `недель ${weeks}`);
+  const g = JSON.stringify(await groups());
+  assert(g === JSON.stringify([['Тело', ['Бег']], ['Ум', ['100 страниц']], ['Общение и эмоции', ['Увидеться с Олей']]]), g);
+  assert(await cardTotal('100 страниц') === '41', `100 страниц: ${await cardTotal('100 страниц')}`);
+  assert(await cardTotal('Бег') === '0', `Бег: ${await cardTotal('Бег')}`);
+  assert((await page.$$eval(`${card('Бег')} .weeks .w`, ws => ws.length)) === 26, 'не 26 недель');
+  assert(!(await page.$('.add-habit')), 'кнопка «+ копилка» осталась');
   await escape();
   assert(!(await page.$('.habits')), 'экран не закрылся');
 });
 
-await check('«+ копилка»: «Пробежки», норма 2 — новая карточка', async () => {
-  await openScreen();
-  await page.click('.add-habit');
-  await page.waitForSelector('.editor[aria-label="Копилка"]');
-  await page.type('.editor[aria-label="Копилка"] .title-input', 'Пробежки');
-  await page.evaluate(() => document.querySelector('.editor[aria-label="Копилка"] input[aria-label="Норма в неделю"]').closest('.stepper').querySelector('.step[aria-label="Меньше"]').click());
-  await sleep(150);
-  await clickIn('.editor[aria-label="Копилка"] .btn', 'Создать');
-  await settle();
-  assert(await cardTotal('Пробежки') === '0', 'нет карточки «Пробежки»');
-  const of = await page.$eval('.jar-card[aria-label="Копилка «Пробежки»"] .of', e => e.textContent.trim());
-  assert(of === '0 из 2', `эта неделя: ${of}`);
+await check('окно цели «Бег»: строка «🫙 привычка: 0 скрепок · 🔥0» и банка; «В копилку» нет; у обычной цели и дела — ничего', async () => {
+  await openGoal('Бег');
+  assert(await habitLine() === '🫙 привычка: 0 скрепок · 🔥0', `строка: ${await habitLine()}`);
+  assert(await page.$('.editor input[aria-label="Стартовое число"]') && await page.$('.editor input[aria-label="Скрепок в банке"]'), 'нет настроек банки');
+  assert(!(await page.$('.editor .select-field[aria-label="В копилку"]')), 'поле «В копилку» осталось');
+  await escape();
+  await openGoal('Записаться к стоматологу');
+  assert(await habitLine() === null, 'строка привычки у обычной цели');
+  await escape();
+  const el = (await page.evaluateHandle(dayItemSel(1, 'Почитать 30 страниц'))).asElement();
+  await el.$eval('.tx', e => e.click());
+  await page.waitForSelector('.editor[aria-label="Дело"]'); await sleep(200);
+  assert(!(await page.$('.editor .select-field[aria-label="В копилку"]')) && !(await page.$('.editor .habit-line')), 'в окне дела — копилка');
   await escape();
 });
 
-await check('окно цели «Бег»: «🫙 В копилку» → «Тренировки» — у цели пилюля «🫙 0»', async () => {
-  await openGoal('Бег');
-  assert(await habitFieldText() === 'нет', `в поле: ${await habitFieldText()}`);
-  await chooseHabit('Тренировки');
-  assert((await habitFieldText()).includes('Тренировки'), `в поле: ${await habitFieldText()}`);
-  await clickIn('.editor .btn', 'Сохранить'); await settle();
-  assert(await pillOf('Бег') === '🫙 0', `пилюля: ${await pillOf('Бег')}`);
-});
-
-await check('цель → сегодня; отметили занятие — подсказка «📎 +1 в «Тренировки» · 1 · неделя 1 из 3», пилюля «🫙 1»', async () => {
+await check('цель → сегодня; отметили занятие — подсказка «📎 +1 в «Бег» · 1 · неделя 1 из 3», пилюля «🫙 1»', async () => {
   const from = await boxOf(goalSel('Бег'));
   const day = await boxOf(`document.querySelectorAll('.day')[${todayIndex}]`);
   await mouseDrag(from, day.x + 40, day.y + day.height - 40);
@@ -119,7 +134,7 @@ await check('цель → сегодня; отметили занятие — п
   await item.$eval('.ck-hit', e => e.click());
   await sleep(400);
   const toast = await toastText();
-  assert(toast?.includes('📎') && toast.includes('+1 в «Тренировки» · 1 · неделя 1 из 3'), `подсказка: ${toast}`);
+  assert(toast?.includes('📎') && toast.includes('+1 в «Бег» · 1 · неделя 1 из 3'), `подсказка: ${toast}`);
   assert(await page.$('.toast.clip-toast .clip'), 'нет анимированной скрепки');
   await page.screenshot({ path: `${SHOTS}/habits-toast.png` });
   await settle();
@@ -135,87 +150,141 @@ await check('сняли отметку — скрепка ушла: пилюля
   await settle();
 });
 
-await check('клик по пилюле — экран «Копилки» на «Тренировках» (карточка в фокусе)', async () => {
+await check('клик по пилюле — экран «Копилки» на «Бег» (карточка в фокусе)', async () => {
   await page.evaluate(`${goalSel('Бег')}.querySelector('.jar-pill').click()`);
   await page.waitForSelector('.habits'); await settle();
   const focused = await page.evaluate(() => document.querySelector('.jar-card.focused')?.getAttribute('aria-label'));
-  assert(focused === 'Копилка «Тренировки»', `в фокусе: ${focused}`);
-  assert(await cardTotal('Тренировки') === '1', `счёт: ${await cardTotal('Тренировки')}`);
+  assert(focused === 'Привычка «Бег»', `в фокусе: ${focused}`);
+  assert(await cardTotal('Бег') === '1', `счёт: ${await cardTotal('Бег')}`);
 });
 
-await check('«+1 сегодня»: счёт 2, подсказка, в сегодняшнем дне — выполненное «Тренировки»', async () => {
-  await page.evaluate(() => document.querySelector('.jar-card[aria-label="Копилка «Тренировки»"] .plus-one').click());
+await check('«+1 сегодня» у «Бег»: сегодня уже отмечено — второго занятия нет', async () => {
+  await cardButton('Бег', '+1 сегодня');
   await sleep(400);
   const toast = await toastText();
-  assert(toast?.includes('+1 в «Тренировки» · 2 · неделя 2 из 3'), `подсказка: ${toast}`);
+  assert(toast?.toLowerCase().includes('сегодня уже отмечено'), `подсказка: ${toast}`);
   await settle();
-  assert(await cardTotal('Тренировки') === '2', `счёт: ${await cardTotal('Тренировки')}`);
-  await escape();
-  const done = await page.evaluate(`(() => { const it = ${dayItemSel(todayIndex, 'Тренировки')}; return it?.classList.contains('done') ?? null; })()`);
-  assert(done === true, `дело в дне: ${done}`);
+  assert(await cardTotal('Бег') === '1', `счёт: ${await cardTotal('Бег')}`);
 });
 
-await check('норма этой недели выполнена — неделя сразу в серии: «🔥 1 нед. подряд», пилюля «🫙 3 · 🔥1»', async () => {
-  assert(await pillOf('Бег') === '🫙 2', `до нормы: ${await pillOf('Бег')}`); // в процессе — серии ещё нет
-  await openScreen();
-  await page.evaluate(() => document.querySelector('.jar-card[aria-label="Копилка «Тренировки»"] .plus-one').click());
+await check('«+1 сегодня» у «Увидеться с Олей» (1 раз в неделю): норма выполнена — сразу «🔥 1 нед. подряд», занятие в сегодня', async () => {
+  await cardButton('Увидеться с Олей', '+1 сегодня');
   await sleep(400);
-  assert((await toastText())?.includes('неделя 3 из 3 ✓'), `подсказка: ${await toastText()}`);
+  assert((await toastText())?.includes('+1 в «Увидеться с Олей» · 1 · неделя 1 из 1 ✓'), `подсказка: ${await toastText()}`);
   await settle();
-  const chip = await page.$eval('.jar-card[aria-label="Копилка «Тренировки»"] .jar-info .chip', e => e.textContent.replace(/\s+/g, ' ').trim());
+  const chip = await page.$eval(`${card('Увидеться с Олей')} .jar-info .chip`, e => e.textContent.replace(/\s+/g, ' ').trim());
   assert(chip === '🔥 1 нед. подряд', `серия: ${chip}`);
   await escape();
-  assert(await pillOf('Бег') === '🫙 3 · 🔥1', `пилюля: ${await pillOf('Бег')}`);
+  const done = await page.evaluate(`(() => { const it = ${dayItemSel(todayIndex, 'Увидеться с Олей')}; return it?.classList.contains('done') ?? null; })()`);
+  assert(done === true, `занятие в дне: ${done}`);
+  assert(await pillOf('Увидеться с Олей') === '🫙 1 · 🔥1', `пилюля: ${await pillOf('Увидеться с Олей')}`);
 });
 
-await check('окно цели «100 страниц»: «+ новая копилка…» — окно поверх, название и норма из цели; после «Создать» она выбрана', async () => {
-  await openGoal('100 страниц');
-  await chooseHabit('+ новая копилка…');
-  await page.waitForSelector('.editor.nested[aria-label="Копилка"]');
-  const name = await page.$eval('.editor.nested[aria-label="Копилка"] .title-input', e => e.value);
-  const norm = await page.$eval('.editor.nested input[aria-label="Норма в неделю"]', e => e.value);
-  assert(name === '100 страниц' && norm === '1', `название «${name}», норма ${norm}`);
-  await clickIn('.editor.nested .btn', 'Создать'); await settle();
-  assert(!(await page.$('.editor.nested')), 'окно копилки не закрылось');
-  assert(await page.$('.editor[aria-label="Цель недели"]'), 'окно цели закрылось вместе с ним');
-  assert((await habitFieldText()).includes('100 страниц'), `в поле: ${await habitFieldText()}`);
-  await clickIn('.editor .btn', 'Сохранить'); await settle();
-  assert(await pillOf('100 страниц') === '🫙 0', `пилюля: ${await pillOf('100 страниц')}`);
-});
-
-await check('Esc в окне новой копилки закрывает только его', async () => {
+await check('банка в окне цели: стартовое число +3 — пилюля «🫙 4»', async () => {
   await openGoal('Бег');
-  await chooseHabit('+ новая копилка…');
-  await page.waitForSelector('.editor.nested');
-  await escape();
-  assert(!(await page.$('.editor.nested')) && await page.$('.editor[aria-label="Цель недели"]'), 'закрылось не то');
-  await escape();
-});
-
-await check('окно дела: копилка у обычного дела сохраняется', async () => {
-  const el = (await page.evaluateHandle(dayItemSel(1, 'Почитать 30 страниц'))).asElement();
-  assert(el, 'нет дела');
-  await el.$eval('.tx', e => e.click());
-  await page.waitForSelector('.editor[aria-label="Дело"]'); await sleep(200);
-  await chooseHabit('Чтение');
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => document.querySelector('.editor input[aria-label="Стартовое число"]').closest('.stepper').querySelector('.step[aria-label="Больше"]').click());
+    await sleep(100);
+  }
   await clickIn('.editor .btn', 'Сохранить'); await settle();
-  await el.$eval('.tx', e => e.click());
-  await page.waitForSelector('.editor[aria-label="Дело"]'); await sleep(200);
-  assert((await habitFieldText()).includes('Чтение'), `в поле: ${await habitFieldText()}`);
+  assert(await pillOf('Бег') === '🫙 4', `пилюля: ${await pillOf('Бег')}`);
+  assert((await serverHabit('Бег'))?.startCount === 3, 'на сервере не сохранилось');
+});
+
+await check('новая постоянная цель в Духе «Йога» — новая привычка в группе «Дух»', async () => {
+  const role = (await page.evaluateHandle(() => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === 'Дух'))).asElement();
+  await (await role.$('.add')).click(); await settle();
+  await page.keyboard.type('Йога'); await page.keyboard.press('Enter'); await settle();
+  await escape();
+  assert(await pillOf('Йога') === '🫙 0', `пилюля: ${await pillOf('Йога')}`);
+  await openScreen();
+  const dukh = (await groups()).find(([d]) => d === 'Дух');
+  assert(JSON.stringify(dukh?.[1]) === '["Йога"]', JSON.stringify(await groups()));
+  await cardButton('Йога', '+1 сегодня'); await settle(); // скрепка — чтобы в архиве было что показать
   await escape();
 });
 
-await check('каникулы: добавить (для всех) — в списке; удалить — исчезли', async () => {
+await check('привычка в двух измерениях — один раз, в группе первого (Тело), «Дух» — чипом', async () => {
+  const goal = (await api('GET', `week/${new Date().toISOString().slice(0, 10)}`)).goals.find(g => g.title === 'Йога');
+  const roles = Object.fromEntries((await api('GET', 'board')).roles.map(r => [r.name, r.id]));
+  await api('PUT', `goals/${goal.id}`, { title: 'Йога', roleIds: [roles['Дух'], roles['Тело']], timesPerWeek: 1, startTime: null, quadrant: null, notes: null, durationMinutes: null });
+  await load();
+  await openScreen();
+  const g = await groups();
+  assert(JSON.stringify(g.find(([d]) => d === 'Тело')?.[1]) === '["Бег","Йога"]', JSON.stringify(g));
+  assert(!g.some(([d]) => d === 'Дух'), `группа «Дух» осталась: ${JSON.stringify(g)}`);
+  const chips = await page.$$eval(`${card('Йога')} .dim-chip`, cs => cs.map(c => c.textContent.trim()));
+  assert(JSON.stringify(chips) === '["Дух"]', JSON.stringify(chips));
+  await escape();
+});
+
+await check('сняли «каждую неделю» — привычка в архиве (свёрнут) с историей; включили — снова среди идущих', async () => {
+  await setRecurring('Йога', false);
+  await openScreen();
+  assert(!(await page.$(`.grid ${card('Йога')}`)), 'осталась среди идущих');
+  assert((await page.$eval('.archived-h', e => e.textContent)).includes('в архиве: 1'), 'нет строки архива');
+  assert(await page.$('.archived-h[aria-expanded="false"]'), 'архив не свёрнут');
+  await showArchived();
+  assert(await cardTotal('Йога') === '1', `в архиве счёт: ${await cardTotal('Йога')}`);
+  assert(!(await page.$(`${card('Йога')} .plus-one`)), 'у архивной — «+1 сегодня»');
+  await escape();
+  await setRecurring('Йога', true);
+  await openScreen();
+  assert(await page.$(`.grid ${card('Йога')}`) && !(await page.$('.archived-h')), 'не вернулась');
+  assert(await cardTotal('Йога') === '1', `счёт: ${await cardTotal('Йога')}`);
+  await escape();
+});
+
+await check('удалить можно только из архива: у идущей в «настроить» нет «удалить»', async () => {
+  await openScreen();
+  await cardButton('Йога', 'настроить');
+  await page.waitForSelector('.editor.habit-editor'); await sleep(200);
+  const buttons = await page.$$eval('.editor.habit-editor .btn', bs => bs.map(b => b.textContent.trim()));
+  assert(!buttons.includes('удалить'), JSON.stringify(buttons));
+  await escape(); await escape();
+});
+
+await check('удаление из архива — плашка «Удалено «Йога» · Вернуть»; «Вернуть» — привычка целиком', async () => {
+  await setRecurring('Йога', false);
+  await openScreen(); await showArchived();
+  await cardButton('Йога', 'настроить');
+  await page.waitForSelector('.editor.habit-editor'); await sleep(200);
+  await clickIn('.editor.habit-editor .btn', 'удалить'); await sleep(300);
+  assert(!(await page.$(card('Йога'))), 'карточка не исчезла');
+  const toast = await toastText();
+  assert(toast?.includes('Удалено «Йога»') && toast.includes('Вернуть'), `плашка: ${toast}`);
+  await page.click('.toast .action'); await settle();
+  assert(await page.$(card('Йога')), 'после «Вернуть» карточки нет');
+  await sleep(6500); // срок плашки вышел — на сервер ничего не ушло
+  assert((await serverHabit('Йога'))?.isArchived, 'на сервере удалилась');
+  await escape();
+});
+
+await check('без «Вернуть» — через 6 с удалена на сервере; цель «Йога» и её занятие остались', async () => {
+  await openScreen(); await showArchived();
+  await cardButton('Йога', 'настроить');
+  await page.waitForSelector('.editor.habit-editor'); await sleep(200);
+  await clickIn('.editor.habit-editor .btn', 'удалить'); await sleep(300);
+  assert(await serverHabit('Йога'), 'удалилась на сервере сразу, а не через 6 с');
+  await sleep(6800);
+  assert(await serverHabit('Йога') === null, 'на сервере привычка осталась');
+  await escape();
+  await load();
+  assert(await page.evaluate(`!!${goalSel('Йога')}`), 'цель «Йога» пропала');
+  assert(await pillOf('Йога') === null, 'у цели пилюля удалённой привычки');
+  assert(await page.evaluate(`!!${dayItemSel(todayIndex, 'Йога')}`), 'занятие «Йога» пропало из дня');
+});
+
+await check('каникулы: добавить (для всех) — в списке, на карточке подсказка; удалить — исчезли', async () => {
   await openScreen();
   await clickIn('.habits .btn', '🏖 Каникулы');
   await page.waitForSelector('.editor[aria-label="Каникулы"]');
   await clickIn('.editor[aria-label="Каникулы"] .btn', 'Сохранить'); await settle();
   const items = await page.$$eval('.vac-list li', ls => ls.map(l => l.textContent.replace(/\s+/g, ' ').trim()));
-  assert(items.length === 1 && items[0].includes('все копилки'), JSON.stringify(items));
-  // Сегодня каникулы — на карточке подсказка
+  assert(items.length === 1 && items[0].includes('все привычки'), JSON.stringify(items));
   await escape();
   assert(await page.$('.habits'), 'Esc в каникулах закрыл экран');
-  const hint = await page.$eval('.jar-card[aria-label="Копилка «Тренировки»"] .hint.vac', e => e.textContent.trim()).catch(() => null);
+  const hint = await page.$eval(`${card('Бег')} .hint.vac`, e => e.textContent.trim()).catch(() => null);
   assert(hint?.startsWith('🏖 Каникулы до'), `подсказка: ${hint}`);
   await clickIn('.habits .btn', '🏖 Каникулы');
   await page.waitForSelector('.vac-list');
@@ -224,88 +293,24 @@ await check('каникулы: добавить (для всех) — в спи�
   await escape(); await escape();
 });
 
-await check('копилка в архиве: нет в выборе «В копилку», на экране — в «в архиве»', async () => {
-  await openScreen();
-  await page.evaluate(() => [...document.querySelector('.jar-card[aria-label="Копилка «Пробежки»"]').querySelectorAll('.btn')].find(b => b.textContent.trim() === 'настроить').click());
-  await page.waitForSelector('.editor[aria-label="Копилка"]');
-  await clickIn('.editor[aria-label="Копилка"] .btn', 'в архив'); await settle();
-  assert(!(await page.$('.grid .jar-card[aria-label="Копилка «Пробежки»"]')), 'копилка осталась среди активных');
-  assert((await page.$eval('.archived-h', e => e.textContent)).includes('в архиве: 1'), 'нет строки архива');
-  await escape();
-  await openGoal('Бег');
-  await page.click('.editor .select-field[aria-label="В копилку"]'); await page.waitForSelector('.editor .popover');
-  const options = await page.$$eval('.editor .popover .option .option-name', os => os.map(o => o.textContent.trim()));
-  assert(!options.includes('Пробежки'), JSON.stringify(options));
-  await escape(); await escape();
-});
-
-const openHabitEditor = async name => {
-  await page.evaluate(n => [...document.querySelector(`.jar-card[aria-label="Копилка «${n}»"]`).querySelectorAll('.btn')].find(b => b.textContent.trim() === 'настроить').click(), name);
-  await page.waitForSelector('.editor[aria-label="Копилка"]'); await sleep(200);
-};
-const editorButtons = () => page.$$eval('.editor[aria-label="Копилка"] .btn', bs => bs.map(b => b.textContent.trim()));
-const serverHabit = name => page.evaluate(async n => (await (await fetch('/api/habits')).json()).habits.find(h => h.name === n) ?? null, name);
-const showArchived = async () => {
-  if (!(await page.$('.archived-h[aria-expanded="true"]'))) { await page.click('.archived-h'); await sleep(300); }
-};
-
-await check('удалить можно только копилку из архива: у активной — только «в архив»', async () => {
-  await openScreen();
-  await openHabitEditor('100 страниц');
-  const active = await editorButtons();
-  assert(active.includes('в архив') && !active.includes('удалить'), JSON.stringify(active));
-  await clickIn('.editor[aria-label="Копилка"] .btn', 'в архив'); await settle();
-  await showArchived();
-  await openHabitEditor('100 страниц');
-  const archived = await editorButtons();
-  assert(archived.includes('удалить') && archived.includes('из архива'), JSON.stringify(archived));
-  await escape();
-});
-
-await check('удаление — плашка «Удалено «100 страниц» · Вернуть»; «Вернуть» — копилка целиком, с привязкой цели', async () => {
-  await openHabitEditor('100 страниц');
-  await clickIn('.editor[aria-label="Копилка"] .btn', 'удалить'); await sleep(300);
-  assert(!(await page.$('.jar-card[aria-label="Копилка «100 страниц»"]')), 'карточка не исчезла');
-  const toast = await toastText();
-  assert(toast?.includes('Удалено «100 страниц»') && toast.includes('Вернуть'), `плашка: ${toast}`);
-  await escape();
-  assert(await pillOf('100 страниц') === null, 'у цели осталась пилюля удалённой копилки');
-  await page.click('.toast .action'); await settle();
-  assert(await pillOf('100 страниц') === '🫙 0', `после «Вернуть»: ${await pillOf('100 страниц')}`);
-  await sleep(6500); // срок плашки вышел — на сервер ничего не ушло
-  const habit = await serverHabit('100 страниц');
-  assert(habit?.isArchived, `на сервере: ${JSON.stringify(habit)}`);
-});
-
-await check('без «Вернуть» — через 6 с удалена на сервере; цель осталась без копилки', async () => {
-  await openScreen();
-  await showArchived();
-  await openHabitEditor('100 страниц');
-  await clickIn('.editor[aria-label="Копилка"] .btn', 'удалить'); await sleep(300);
-  assert(await serverHabit('100 страниц'), 'удалилась на сервере сразу, а не через 6 с');
-  await sleep(6800);
-  assert(await serverHabit('100 страниц') === null, 'на сервере копилка осталась');
-  await escape();
-  await load();
-  assert(await pillOf('100 страниц') === null, 'у цели пилюля');
-});
-
 // История «задним числом» и снимки экрана в темах
-await check('история копилок: серия, пауза, каникулы — как в макете', async () => {
-  await makeHabitHistory(BASE, process.env.PLANNER_DB);
+await check('история привычек: серия, пауза, каникулы, норма по неделям — как в макете', async () => {
+  await makeHabitHistory(BASE);
   await load();
   await openScreen();
-  const chips = name => page.$$eval(`.jar-card[aria-label="Копилка «${name}»"] .jar-info .chip`, cs => cs.map(c => c.textContent.replace(/\s+/g, ' ').trim()));
-  const training = await chips('Тренировки');
+  const chips = name => page.$$eval(`${card(name)} .jar-info .chip`, cs => cs.map(c => c.textContent.replace(/\s+/g, ' ').trim()));
+  const training = await chips(HISTORY.training);
   assert(training[0] === '🔥 14 нед. подряд', JSON.stringify(training)); // 13 прошлых + эта (норма уже выполнена)
-  const meditation = await chips('Медитация');
-  assert(meditation[0].startsWith('⚠ пауза · 🔥 9'), JSON.stringify(meditation));
-  assert(await page.$('.jar-card[aria-label="Копилка «Медитация»"] .hint.warn'), 'нет подсказки «не пропускай дважды»');
-  const reading = await page.$$eval('.jar-card[aria-label="Копилка «Чтение»"] .weeks .w', ws => ws.map(w => w.className.replace('w ', '').split(' ')[0]));
-  assert(reading.filter(c => c === 'vac').length === 2, JSON.stringify(reading));
-  assert((await page.$$eval('.jar-card[aria-label="Копилка «Чтение»"] .pip.extra', p => p.length)) === 1, 'нет розовой точки сверх нормы');
+  const breathing = await chips(HISTORY.breathing);
+  assert(breathing[0].startsWith('⚠ пауза · 🔥 9'), JSON.stringify(breathing));
+  assert(await page.$(`${card(HISTORY.breathing)} .hint.warn`), 'нет подсказки «не пропускай дважды»');
+  const reading = await page.$$eval(`${card(HISTORY.reading)} .weeks .w`, ws => ws.map(w => [w.className.replace('w ', '').split(' ')[0], w.title]));
+  assert(reading.filter(([c]) => c === 'vac').length === 2, JSON.stringify(reading));
+  // Норму снизили с 4 до 3 на 12-й неделе узора — прошлые недели остались «из 4»
+  assert(reading[1][1].includes('4 из 4') && reading[24][1].includes('из 3'), `${reading[1][1]} / ${reading[24][1]}`);
+  assert((await page.$$eval(`${card(HISTORY.reading)} .pip.extra`, p => p.length)) === 2, 'не две розовые точки сверх нормы 3');
   await escape();
-  assert((await pillOf('Бег'))?.endsWith(' · 🔥14'), `пилюля: ${await pillOf('Бег')}`);
+  assert((await pillOf(HISTORY.training))?.endsWith(' · 🔥14'), `пилюля: ${await pillOf(HISTORY.training)}`);
 });
 
 for (const theme of ['lotus', 'peony', 'platinum', 'obsidian']) {
