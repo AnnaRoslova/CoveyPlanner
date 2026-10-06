@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Шаги и выполненное — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Caveat:wght@500;700&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Макет к docs/specs/tasks-steps-done.md. Палитра «Лотос» — значения из src/Planner.Client/wwwroot/css/app.css */
+:root{
+  --sky0:#fff5f9;--sky1:#e3f2ec;--sky2:#d3ece4;--sky3:#b9e0d6;--paper:#fffcfc;
+  --text:#3e4d52;--soft:#657579;--faint:#828f92;--line:#efe6e7;
+  --a:#f9d0e0;--a-soft:#fff5f9;--a-deep:#c4769a;--b:#9fd6c9;--b-soft:#e8f6f2;--b-deep:#327b6e;
+  --r-body:#9fd3bd;--r-mind:#a9cde8;--r-home:#f3e3a6;--r-work:#8fb4e3;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 Nunito,system-ui,sans-serif;color:var(--text);
+  background:linear-gradient(165deg,var(--sky0) 0%,var(--sky1) 30%,var(--sky2) 62%,var(--sky3) 100%);background-attachment:fixed;padding:20px 16px 40px}
+h1{font:600 22px Lora,serif;margin:0 0 4px}
+.lead{color:var(--soft);margin:0 0 20px;max-width:900px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;max-width:1240px}
+.panel{background:color-mix(in srgb,#fff 72%,transparent);border-radius:22px;padding:16px 16px 18px}
+.panel h2{font:600 15px Lora,serif;margin:0 0 2px}
+.panel .note{font-size:12px;color:var(--faint);margin:0 0 12px}
+.day{background:var(--paper) radial-gradient(color-mix(in srgb,var(--b) 35%,transparent) 1px,transparent 1.2px) 0 0/14px 14px;border-radius:18px;padding:10px 10px 12px}
+.dname{font:700 22px Caveat,cursive;color:var(--b-deep);display:flex;justify-content:space-between;align-items:baseline}
+.dname small{font:12px Nunito;color:var(--faint)}
+.row{display:flex;gap:8px;align-items:flex-start;padding:5px 6px;border-radius:10px}
+.row:hover{background:var(--a-soft)}
+.cb{flex:none;width:16px;height:16px;border-radius:4px;border:2px solid var(--c,var(--b));margin-top:2px;display:grid;place-items:center;font-size:11px;color:#fff}
+.cb.on{background:var(--c,var(--b))}
+.t{flex:1;min-width:0}
+.t.done{text-decoration:line-through;color:var(--faint)}
+.pill{font-size:11px;border-radius:999px;padding:1px 7px;background:var(--b-soft);color:var(--b-deep);white-space:nowrap}
+.pill.rock{background:var(--a-soft);color:var(--a-deep)}
+.prog{font-size:12px;color:var(--b-deep);white-space:nowrap}
+.tw{color:var(--faint);font-size:11px;cursor:pointer;user-select:none}
+.parent-of{display:block;font-size:11.5px;color:var(--faint)}
+.parent-of b{font-weight:600;color:var(--soft);text-decoration:underline dotted}
+.steps{margin:0 0 4px 22px;border-left:2px solid var(--b-soft);padding-left:6px}
+.steps .row{padding:3px 6px;font-size:13px}
+.steps .cb{width:14px;height:14px}
+.mark{font-size:11px;color:var(--faint);white-space:nowrap}
+.mark.here{color:var(--b-deep)}
+.add{font-size:12.5px;color:var(--faint);padding:3px 6px}
+.feed .cat{font-weight:700;display:flex;justify-content:space-between;padding:6px 6px 2px}
+.feed .cat span{color:var(--faint);font-weight:400}
+.feed .cb{--c:#b8d9d1;opacity:.75}
+.toast{margin-top:14px;background:var(--text);color:#fff;border-radius:12px;padding:8px 12px;font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
+.toast a{color:var(--a);font-weight:700;text-decoration:none}
+.bottom{display:flex;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--faint)}
+.card{background:#fff;border-radius:18px;padding:14px;box-shadow:0 16px 48px rgba(60,90,90,.2)}
+.card .title{font-weight:700;font-size:16px;margin-bottom:10px}
+.field{display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.field label{color:var(--soft)}
+.sel{border:1px solid var(--line);border-radius:10px;padding:4px 10px;display:flex;justify-content:space-between}
+.sel.off{color:var(--faint);background:#f7f7f7}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:5px}
+.hdr{display:flex;justify-content:space-between;font-size:12.5px;color:var(--soft);margin:12px 0 4px}
+.grp{margin-top:12px}
+.grp h3{font-size:14px;margin:0;display:flex;justify-content:space-between;align-items:baseline}
+.grp h3 span{font-weight:400;font-size:12px;color:var(--faint)}
+.yr{font-size:11px;color:var(--faint);margin:6px 0 0 6px;letter-spacing:.04em}
+.meta{font-size:11.5px;color:var(--faint)}
+.date{font-size:12px;color:var(--faint);white-space:nowrap}
+.legend{max-width:1240px;margin-top:18px;font-size:12.5px;color:var(--soft)}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>Шаги, проекты и «Выполненное»</h1>
+<p class="lead">Макет к спеке <b>tasks-steps-done.md</b>. Статичный: показывает, как выглядят строки, а не как работают. Номера правил — в подписях.</p>
+
+<div class="grid">
+
+  <!-- День -->
+  <section class="panel">
+    <h2>День недели</h2>
+    <p class="note">S2, S11, S19 · родитель раскрыт; шаг в этом дне — с подписью «↳»</p>
+    <div class="day">
+      <div class="dname">Четверг <small>9 окт · ~2 ч</small></div>
+      <div class="row"><span class="cb" style="--c:var(--r-body)"></span><span class="t">Силовая тренировка</span><span class="pill">07:30</span><span class="pill rock">камень</span></div>
+      <div class="row"><span class="cb" style="--c:var(--r-home)"></span><span class="t">Ремонт</span><span class="prog">☑ 2/5</span><span class="tw">▾</span></div>
+      <div class="steps">
+        <div class="row"><span class="cb on" style="--c:var(--r-home)">✓</span><span class="t done">Выбрать краску</span><span class="mark">Пн</span></div>
+        <div class="row"><span class="cb on" style="--c:var(--r-home)">✓</span><span class="t done">Купить валики</span><span class="mark">Вт</span></div>
+        <div class="row"><span class="cb" style="--c:var(--r-home)"></span><span class="t">Покрасить стены</span><span class="mark here">Чт</span></div>
+        <div class="row"><span class="cb" style="--c:var(--r-home)"></span><span class="t">Повесить полку</span><span class="mark">Сб</span></div>
+        <div class="row"><span class="cb" style="--c:var(--r-home)"></span><span class="t">Вымыть окна</span><span class="mark"></span></div>
+        <div class="add">+ шаг</div>
+      </div>
+      <div class="row"><span class="cb" style="--c:var(--r-home)"></span><span class="t">Покрасить стены<span class="parent-of">↳ <b>Ремонт</b></span></span><span class="pill">~1 ч</span></div>
+      <div class="row"><span class="cb" style="--c:var(--r-mind)"></span><span class="t">Чтение<span class="parent-of">↳ <b>Атомные привычки</b></span></span><span class="pill rock">камень</span></div>
+      <div class="add">+ дело</div>
+    </div>
+  </section>
+
+  <!-- Лента -->
+  <section class="panel feed">
+    <h2>Лента «Когда-нибудь»</h2>
+    <p class="note">D1–D3 · галочка у каждой строки; книга — проект из занятий</p>
+    <div class="cat">📚 Книги <span>3</span></div>
+    <div class="row"><span class="cb"></span><span class="t">Атомные привычки</span><span class="prog">12 занятий</span><span class="tw">▸</span></div>
+    <div class="row"><span class="cb"></span><span class="t">Дом, в котором…</span></div>
+    <div class="row"><span class="cb"></span><span class="t">Чистый код</span></div>
+    <div class="cat">🏠 Быт <span>2</span></div>
+    <div class="row"><span class="cb"></span><span class="t">Ремонт</span><span class="prog">☑ 2/5</span><span class="tw">▾</span></div>
+    <div class="steps">
+      <div class="row"><span class="cb on">✓</span><span class="t done">Выбрать краску</span><span class="mark">Пн 6 окт</span></div>
+      <div class="row"><span class="cb"></span><span class="t">Покрасить стены</span><span class="mark">Чт 9 окт</span></div>
+      <div class="row"><span class="cb"></span><span class="t">Вымыть окна</span><span class="mark"></span></div>
+    </div>
+    <div class="row"><span class="cb"></span><span class="t">Сменить фильтр воды</span></div>
+    <div class="toast">«Купить краску» выполнено · <a href="#">в корзину</a> · <a href="#">вернуть</a></div>
+    <div class="bottom"><span>✓ выполненное</span><span>🗑</span></div>
+  </section>
+
+  <!-- Карточка -->
+  <section class="panel">
+    <h2>Карточка дела</h2>
+    <p class="note">S6–S7 · поле «Проект»; у шага — шапка «↳ Ремонт»</p>
+    <div class="card">
+      <div class="meta">↳ <b style="text-decoration:underline dotted">Ремонт</b></div>
+      <div class="title">Покрасить стены</div>
+      <div class="field"><label>Проект</label><div class="sel"><span><span class="dot" style="--c:var(--r-home)"></span>Ремонт</span>▾</div></div>
+      <div class="field"><label>Дата</label><div class="sel"><span>Чт 9 окт</span>▾</div></div>
+      <div class="field"><label>Роли</label><div><span class="pill" style="background:#fbf6dd;color:#75601e">● Дом ×</span> <span class="pill">+</span></div></div>
+      <div class="field"><label>Время</label><div class="sel"><span>без</span></div></div>
+      <div class="field"><label>Длительность</label><div class="sel"><span>1 ч</span></div></div>
+      <div class="meta" style="margin-top:8px">у шага не бывает шагов</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="title">Ремонт</div>
+      <div class="field"><label>Проект</label><div class="sel off"><span>у дела есть шаги — оно само проект</span></div></div>
+      <div class="hdr"><span>Шаги</span><span>☑ 2/5</span></div>
+      <div class="row"><span class="cb on" style="--c:var(--r-home)">✓</span><span class="t done">Выбрать краску</span><span class="mark">Пн</span></div>
+      <div class="row"><span class="cb" style="--c:var(--r-home)"></span><span class="t">Покрасить стены</span><span class="mark">Чт</span></div>
+      <div class="add">+ шаг</div>
+    </div>
+  </section>
+
+  <!-- Выполненное -->
+  <section class="panel">
+    <h2>✓ Выполненное</h2>
+    <p class="note">V1–V6 · только дела из ленты; группы — по категории, это только вид</p>
+    <div class="grp">
+      <h3>📚 Книги <span>2026 · 7 &nbsp; 2025 · 12</span></h3>
+      <div class="yr">2026</div>
+      <div class="row"><span class="cb on">✓</span><span class="t">Атомные привычки<br><span class="meta">3 шага · 12 занятий · 9 недель</span></span><span class="date">5 окт</span></div>
+      <div class="row"><span class="cb on">✓</span><span class="t">Сто лет одиночества</span><span class="date">14 сен</span></div>
+      <div class="yr">2025</div>
+      <div class="row"><span class="cb on">✓</span><span class="t">Глубокая работа</span><span class="date">2 дек</span></div>
+    </div>
+    <div class="grp">
+      <h3>🎓 Курсы <span>2026 · 1</span></h3>
+      <div class="row"><span class="cb on">✓</span><span class="t">Blazor для начинающих<br><span class="meta">14 шагов · 5 недель</span></span><span class="date">1 окт</span></div>
+    </div>
+    <div class="grp">
+      <h3>без категории <span>2026 · 2</span></h3>
+      <div class="row"><span class="cb on">✓</span><span class="t">Записаться к терапевту</span><span class="date">5 окт</span></div>
+    </div>
+  </section>
+
+</div>
+
+<p class="legend">Окно цели (H2′): при включённом «каждую неделю» — строка «🫙 копить [⬤]»; у измерений пилы включено по умолчанию, у обычных ролей выключено.</p>
+</body>
+</html>
