@@ -38,7 +38,7 @@ CLAUDE.md остаётся общим ТЗ и правилами проекта;
 |---|---|---|
 | [model-principles.md](model-principles.md) | Принципы модели: один смысл, никаких автоматических связей, переход — только явным действием | как есть |
 | [habits.md](habits.md) | Привычки сейчас: постоянные серии пилы, банка, серии недель/месяцев, пауза, каникулы, «+1 сегодня», архив | как есть |
-| [discrepancies.md](discrepancies.md) | Расхождения CLAUDE.md с кодом (на 2026-10-07) | для решения |
-| [tasks-steps-done.md](tasks-steps-done.md) | Дела, шаги и проекты; отметка в ленте; экран «Выполненное»; «🫙 копить» у любой постоянной цели | черновик |
-| [tasks-steps-done-mockup.html](tasks-steps-done-mockup.html) | Макет к ней: день, лента, карточка, «Выполненное» | черновик |
-| [tasks-steps-done.plan.md](tasks-steps-done.plan.md) | План реализации по этапам | черновик |
+| [discrepancies.md](discrepancies.md) | Расхождения CLAUDE.md с кодом (на 2026-10-07) | решено, правка CLAUDE.md — этап 10 |
+| [tasks-steps-done.md](tasks-steps-done.md) | Дела, шаги и проекты; отметка в ленте; экран «Выполненное»; «🫙 копить» у любой постоянной цели; проект в окне цели; скрепки удалённых целей | утверждена |
+| [tasks-steps-done-mockup.html](tasks-steps-done-mockup.html) | Макет к ней: день, лента, карточка, «Выполненное» | к утверждённой спеке |
+| [tasks-steps-done.plan.md](tasks-steps-done.plan.md) | План реализации по этапам | утверждён, в работе |
