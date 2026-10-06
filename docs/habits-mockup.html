@@ -88,48 +88,37 @@ h1,h2,h3{font-family:Lora,serif;font-weight:600;margin:0}
 .rules ul{margin:0;padding-left:18px}
 .vac-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
 .date{border:1px solid #d9e9e4;border-radius:10px;padding:5px 10px;background:#fff;font-weight:600}
-/* Коллекция: полка с корешками вместо банки */
-.shelf-box{flex:0 0 132px;display:flex;flex-direction:column}
-.spines{display:flex;align-items:flex-end;gap:2px;min-height:56px;padding:0 4px}
-.spine{width:8px;border-radius:2px 2px 1px 1px;background:var(--c);box-shadow:inset -1.5px 0 0 rgba(255,255,255,.35)}
-.plank{height:5px;border-radius:3px;background:#b5d3cc}
-.more-spines{margin-top:3px;font-size:11px;color:var(--muted);text-align:right}
-.goal-bar{display:block;height:6px;border-radius:3px;background:var(--b-soft);overflow:hidden;margin-top:4px}
-.goal-bar i{display:block;height:100%;background:var(--c);border-radius:3px}
-.entries{list-style:none;margin:12px 0 0;padding:0;font-size:13px}
-.entries li{padding:3px 6px;border-radius:8px}
-.entries li:hover{background:var(--b-soft)}
-.entries .row{display:flex;gap:6px;align-items:baseline}
-.entries .t{flex:1}
-.entries .d{color:var(--muted);font-size:12px}
-.entries .sub{color:var(--muted);font-size:11.5px;padding-left:16px}
-.entries .steps{padding:2px 0 2px 16px;color:var(--muted);font-size:12.5px}
+.dim-h{display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-family:Lora,serif;font-size:16px;font-weight:600}
+.dim-h .dot{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.dim-chip{display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:1px 7px;border-radius:999px;background:var(--b-soft);color:var(--muted);font-size:11px;font-weight:700}
+.dim-chip i{width:7px;height:7px;border-radius:2px;background:var(--d)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Копилки привычек</h1>
-  <p class="note">Макет для Claude Code. Экран «Копилки» открывается кнопкой 🫙 в верхней панели. Скрепка = одно выполненное дело, привязанное к копилке. Общий счёт не обнуляется; «обнуляется» только банка — полная уезжает на полку. Серии считаются по неделям (итог — в конце воскресенья) и по месяцам.</p>
+  <p class="note">Макет для Claude Code. Экран «Копилки» открывается кнопкой 🫙 в верхней панели. Привычка — это постоянная цель «Затачивания пилы» (с «каждую неделю»): у неё банка. Скрепка = одно выполненное занятие этой цели. Общий счёт не обнуляется; «обнуляется» только банка — полная уезжает на полку. Серии считаются по неделям (итог — в конце воскресенья) и по месяцам. Карточки — по 4 измерениям пилы; архив (серия закончилась) — внизу, свёрнут.</p>
 
   <div class="panel">
     <div class="head">
       <h2>🫙 Копилки</h2>
       <div style="display:flex;gap:8px">
         <button class="btn">🏖 Каникулы</button>
-        <button class="btn pink">+ копилка</button>
       </div>
     </div>
-    <div class="grid" id="grid"></div>
+    <div id="grid"></div>
     <div class="legend">
       <span><i style="background:var(--b)"></i>неделя засчитана</span>
       <span><i style="background:var(--warn)"></i>первый пропуск (⚠ пауза)</span>
       <span><i style="background:#fff;border:1px solid #e3d6d8"></i>второй пропуск подряд — серия прервана</span>
+      <span><i style="background:#e8eeec"></i>без нормы: первая неделя, цели не было</span>
       <span><i style="background:repeating-linear-gradient(45deg,#e3e7f7 0 3px,#f4f6fd 3px 6px)"></i>каникулы</span>
       <span><i style="background:#fff;border:2px dashed var(--b)"></i>текущая неделя (в процессе)</span>
     </div>
+    <p class="note" style="margin:12px 0 0">в архиве: 1 › — серия закончилась (сняли «каждую неделю»), история сохранена; включите повтор снова — продолжится. Удалить можно только отсюда.</p>
   </div>
 
-  <div class="section-title">где ещё видно копилку</div>
+  <div class="section-title">где ещё видно привычку</div>
   <div class="two">
     <div class="panel">
       <h3 style="font-size:15px;margin-bottom:6px">Левая панель — пилюля у цели</h3>
@@ -138,102 +127,50 @@ h1,h2,h3{font-family:Lora,serif;font-weight:600;margin:0}
       <div class="goal-row" style="--c:#c9b8ec"><span class="cb"></span>Медитация · 5 раз <span class="jar-pill warn">🫙 41 · ⚠</span></div>
       <div class="role">Ум</div>
       <div class="goal-row" style="--c:#a9cde8"><span class="cb"></span>Читать 30 минут <span class="jar-pill">🫙 57 · 🔥7</span></div>
-      <div class="goal-row" style="--c:#a9cde8"><span class="cb"></span>Курс по английскому</div>
-      <p class="note" style="margin:10px 0 0">Пилюля только у целей, привязанных к копилке. Клик по пилюле — открыть эту копилку.</p>
+      <div class="goal-row" style="--c:#a9cde8"><span class="cb"></span>Курс по английскому (разовая цель — без банки)</div>
+      <p class="note" style="margin:10px 0 0">Пилюля — у постоянных целей пилы: они и есть привычки. Клик по пилюле — экран «Копилки» на этой привычке.</p>
     </div>
     <div class="panel">
-      <h3 style="font-size:15px;margin-bottom:6px">Окно цели / дела — строка «В копилку»</h3>
+      <h3 style="font-size:15px;margin-bottom:6px">Окно цели-привычки</h3>
       <div class="field"><label>Название</label><b>Тренировка</b></div>
       <div class="field"><label>Повтор</label>3 раза в неделю · каждую неделю</div>
-      <div class="field"><label>🫙 В копилку</label><span class="select">💪 Тренировки ▾</span></div>
-      <p class="note" style="margin:8px 0 14px">В меню: «нет», список копилок, «+ новая копилка…». Норма копилки по умолчанию берётся из цели (3 раза в неделю).</p>
+      <div class="field"><span class="jar-pill">🫙 привычка: 102 скрепки · 🔥13</span></div>
+      <div class="field"><label>Стартовое число</label>0 &nbsp;·&nbsp; <label>В банке</label>30 скрепок</div>
+      <p class="note" style="margin:8px 0 14px">Норма — «раз в неделю» цели. Клик по строке — экран «Копилки». В окне дела про привычки ничего нет; «+ копилки» нет — привычка появляется, когда в пилу добавляют постоянную цель.</p>
       <h3 style="font-size:15px;margin-bottom:8px">Момент галочки</h3>
-      <div class="toast"><span class="clip">📎</span> +1 в «Тренировки» · 103 · неделя 3 из 3 ✓</div>
+      <div class="toast"><span class="clip">📎</span> +1 в «Тренировка» · 103 · неделя 3 из 3 ✓</div>
     </div>
   </div>
-
-  <div class="section-title">коллекция (книги, проекты, поездки)</div>
-  <div class="two">
-    <div class="jar-card" style="--c:#8fb4e3">
-      <div class="jar-top">
-        <div class="shelf-box">
-          <div class="spines">
-            <span class="spine" style="height:44px"></span><span class="spine" style="height:38px"></span><span class="spine" style="height:50px"></span>
-            <span class="spine" style="height:41px"></span><span class="spine" style="height:47px"></span><span class="spine" style="height:36px"></span>
-            <span class="spine" style="height:49px"></span><span class="spine" style="height:43px"></span><span class="spine" style="height:39px"></span>
-            <span class="spine" style="height:46px"></span><span class="spine" style="height:52px"></span><span class="spine" style="height:40px"></span>
-          </div>
-          <div class="plank"></div>
-          <div class="more-spines">ещё 15</div>
-        </div>
-        <div class="jar-info">
-          <div class="jar-name"><span class="dot" style="background:var(--c)"></span>📚 Книги</div>
-          <div class="total">27 <small>за всё время</small></div>
-          <div style="font-size:13px;margin-top:6px"><b style="color:var(--b-deep)">9</b> из 12 в 2026</div>
-          <span class="goal-bar"><i style="width:75%"></i></span>
-          <div class="shelf" style="margin-top:6px">2025: 18 · 2026: 9</div>
-          <div class="shelf">из ленты: 📖 Хочу прочитать</div>
-        </div>
-      </div>
-      <ul class="entries">
-        <li><div class="row"><span class="t">«Дюна»</span><span class="d">3 окт</span></div></li>
-        <li><div class="row"><span class="t">«Мастер и Маргарита»</span><span class="d">21 сен</span></div></li>
-        <li><div class="row"><span class="t">«Атомные привычки»</span><span class="d">2 сен</span></div></li>
-      </ul>
-      <div class="card-actions"><button class="btn ghost">настроить</button></div>
-    </div>
-    <div class="jar-card" style="--c:#b9d3b0">
-      <div class="jar-top">
-        <div class="shelf-box">
-          <div class="spines"><span class="spine" style="height:42px"></span><span class="spine" style="height:48px"></span><span class="spine" style="height:37px"></span></div>
-          <div class="plank"></div>
-        </div>
-        <div class="jar-info">
-          <div class="jar-name"><span class="dot" style="background:var(--c)"></span>🛠 Проекты</div>
-          <div class="total">3 <small>за всё время</small></div>
-          <div style="font-size:13px;margin-top:6px"><b style="color:var(--b-deep)">3</b> из 6 в 2026</div>
-          <span class="goal-bar"><i style="width:50%"></i></span>
-          <div class="shelf" style="margin-top:6px">2026: 3</div>
-        </div>
-      </div>
-      <ul class="entries">
-        <li><div class="row"><span>▾</span><span class="t">Сарай</span><span class="d">30 сен</span></div><div class="sub">14 шагов · 5 недель</div>
-          <div class="steps">☑ Фундамент<br>☑ Стены из бруса<br>☑ Крыша<br>… ещё 11</div></li>
-        <li><div class="row"><span>›</span><span class="t">Фотокнига за лето</span><span class="d">12 сен</span></div><div class="sub">3 шага · за 1 день</div></li>
-        <li><div class="row"><span class="t">Полка в прихожей</span><span class="d">5 авг</span></div></li>
-      </ul>
-      <div class="card-actions"><button class="btn ghost">настроить</button></div>
-    </div>
-  </div>
-  <p class="note">Коллекция — без нормы, серий, пауз, каникул и «+1 сегодня». Запись — выполненное дело: вручную («🫙 В копилку» в окне дела), от цели
-    или из привязанной категории ленты (дело из неё — и вынутое в план — само попадает сюда; ручная привязка к другой копилке важнее;
-    шаги дела не считаются). Корешки — последние ~20 записей, остальное «ещё N». Клик по записи с шагами раскрывает шаги (только просмотр),
-    клик по названию — окно дела. Подсказка в момент галочки: <b>📚 +1 в «Книги» · 10 из 24 в 2026</b>. У привязанной категории в ленте — маленькая 🫙,
-    в её настройках — «→ 📚 Книги».</p>
 
   <div class="section-title">каникулы</div>
   <div class="panel">
     <div class="vac-row">
       🏖 Каникулы с <span class="date">12 окт</span> по <span class="date">25 окт</span>
-      <span class="select">все копилки ▾</span>
+      <span class="select">все привычки ▾</span>
       <button class="btn pink">Сохранить</button>
       <button class="btn ghost">Отмена</button>
     </div>
-    <p class="note" style="margin:10px 0 0">Неделя считается каникулами, если в каникулы попало ≥4 её дней. Такие недели не засчитываются и не считаются пропусками — серия замирает. Скрепки, поставленные в каникулы, всё равно идут в общий счёт. Можно на все копилки или на выбранные. Список прошлых каникул — с возможностью удалить.</p>
+    <p class="note" style="margin:10px 0 0">Неделя считается каникулами, если в каникулы попало ≥4 её дней. Такие недели не засчитываются и не считаются пропусками — серия замирает. Скрепки, поставленные в каникулы, всё равно идут в общий счёт. Можно на все привычки или на выбранные. Список прошлых каникул — с возможностью удалить.</p>
   </div>
 
   <div class="section-title">правила (для ТЗ)</div>
   <div class="panel rules">
+    <h3>Привычка</h3>
+    <ul>
+      <li>Привычка = постоянная цель пилы: любая серия с «каждую неделю» в Теле, Уме, Духе или Общении. Разовые цели пилы и цели обычных ролей банки не имеют; отдельной «копилки» и привязки нет.</li>
+      <li>Привычка в нескольких измерениях — на экране один раз, в группе первого (по порядку ролей), остальные — чипами.</li>
+    </ul>
     <h3>Скрепки</h3>
     <ul>
-      <li>Всего = стартовое число + количество выполненных дел, привязанных к копилке (через цель/серию или напрямую). Число вычисляется, не хранится.</li>
+      <li>Всего = стартовое число + выполненные занятия целей этой серии. Число вычисляется, не хранится.</li>
       <li>Сняли галочку — скрепка ушла. Дело в корзине — не считается.</li>
       <li>Банка вмещает N скрепок (по умолчанию 30). Полные банки = всего ÷ N, текущая = остаток.</li>
     </ul>
     <h3>Неделя</h3>
     <ul>
-      <li>Норма на неделю (по умолчанию из цели). Неделя засчитана, если сделано ≥ норма. Сверх нормы — розовые точки, только в общий счёт.</li>
-      <li>Итог недели — после окончания воскресенья. Текущая неделя всегда «в процессе» и серию не ломает.</li>
+      <li>Норма недели — «раз в неделю» цели этой недели. Правка цели «с этой недели и дальше» прошлые недели не меняет — у них своя норма. Неделя без цели — без нормы: не засчитана и не пропуск.</li>
+      <li>Неделя засчитана, если сделано ≥ норма. Сверх нормы — розовые точки, только в общий счёт.</li>
+      <li>Итог недели — после окончания воскресенья. Текущая неделя «в процессе» и серию не ломает; как только её норма выполнена — сразу в серии (награда мгновенно).</li>
     </ul>
     <h3>Серия недель 🔥</h3>
     <ul>
@@ -248,23 +185,25 @@ h1,h2,h3{font-family:Lora,serif;font-weight:600;margin:0}
       <li>Один незасчитанный месяц — ⚠, второй подряд — серия месяцев прервана.</li>
       <li>Текущий месяц — «в процессе».</li>
     </ul>
-    <h3>Коллекция</h3>
-    <ul><li>Вид копилки — «привычка» или «коллекция»; меняется в настройках, история не теряется.</li><li>Нет нормы, серий и каникул. Счёт за всё время не обнуляется + разбивка по годам завершения; необязательная цель на год.</li><li>Привязка: вручную, от цели или по категории ленты (категория — не больше чем у одной копилки). Ручная важнее категории. Шаги не считаются.</li><li>Длительность проекта — от первого отмеченного шага до завершения дела, включительно (в тот же день — «за 1 день»).</li></ul>
-    <h3>Недели до создания копилки</h3>
-    <ul><li>Не считаются. Первая неделя копилки засчитывается, только если норма в ней выполнена (не выполнена — не пропуск).</li></ul>
+    <h3>Начало, архив, удаление</h3>
+    <ul>
+      <li>Недели до первой недели серии не считаются. Первая неделя засчитывается, только если норма в ней выполнена (не выполнена — не пропуск).</li>
+      <li>Сняли «каждую неделю» — привычка в архиве со всей историей (недели после конца — без нормы, серия замирает); включили — история продолжается.</li>
+      <li>Удалить можно только привычку из архива; удаляется только счёт (стартовое число, банка, её каникулы) — цель и дела остаются.</li>
+    </ul>
   </div>
 </div>
 
 <script>
-// D done, W warn (1st miss), M miss (2nd miss → broken), V vacation, N now, _ before creation
+// D done, W warn (1st miss), M miss (2nd miss → broken), V vacation, N now, _ before start; dim — группа (первое измерение), more — чипы остальных
 const jars=[
- {name:'Тренировки',emoji:'💪',color:'#9fd3bd',total:102,cap:30,norm:3,doneNow:2,extra:0,
+ {name:'Тренировка',dim:'Тело',more:[['Дух','#c9b8ec']],color:'#9fd3bd',total:102,cap:30,norm:3,doneNow:2,extra:0,
   weeks:'DDDDWDDDDMMDDDDDWDDDDDDDDN',months:['апр','май','июн','июл','авг','сен','окт'],mst:['done','warn','done','done','done','done','now'],
   streakW:13,streakM:4,week:'4.2',month:'11',year:'96'},
- {name:'Медитация',emoji:'🧘',color:'#c9b8ec',total:41,cap:30,norm:5,doneNow:1,extra:0,
+ {name:'Медитация',dim:'Дух',color:'#c9b8ec',total:41,cap:30,norm:5,doneNow:1,extra:0,
   weeks:'______DDDWDDDMMDDDDDDDDDWN',months:['апр','май','июн','июл','авг','сен','окт'],mst:['','','done','warn','done','done','now'],
   streakW:9,streakM:2,warn:true,week:'3.6',month:'9',year:'41'},
- {name:'Чтение',emoji:'📚',color:'#a9cde8',total:57,cap:30,norm:4,doneNow:4,extra:1,
+ {name:'Читать 30 минут',dim:'Ум',color:'#a9cde8',total:57,cap:30,norm:4,doneNow:4,extra:1,
   weeks:'DDDDDDDDVVDDDDDMMDDDDWDDDN',months:['апр','май','июн','июл','авг','сен','окт'],mst:['done','done','vac','done','warn','done','now'],
   streakW:7,streakM:1,vacNote:true,week:'4.1',month:'14',year:'57'}
 ];
@@ -280,14 +219,14 @@ function jarSvg(fill,color){
   </svg>`;
 }
 const cls={D:'done',W:'warn',M:'miss',V:'vac',N:'now',_:'before'};
-document.getElementById('grid').innerHTML=jars.map(j=>{
+const card=j=>{
   const full=Math.floor(j.total/j.cap), rest=j.total%j.cap;
   const pips=Array.from({length:j.norm},(_,i)=>`<span class="pip ${i<j.doneNow?'on':''}"></span>`).join('')+
              Array.from({length:j.extra},()=>`<span class="pip extra"></span>`).join('');
   return `<div class="jar-card">
    <div class="jar-top">${jarSvg(rest/j.cap,j.color)}
     <div class="jar-info">
-     <div class="jar-name"><span class="dot" style="background:${j.color}"></span>${j.emoji} ${j.name}</div>
+     <div class="jar-name"><span class="dot" style="background:${j.color}"></span>${j.name}</div>${(j.more||[]).map(([n,c])=>`<span class="dim-chip" style="--d:${c}"><i></i>${n}</span>`).join('')}
      <div class="total">${j.total} <small>скрепок за всё время</small></div>
      <div class="shelf">${'🫙'.repeat(full)} ${full} полн${full==1?'ая':'ых'} · в текущей ${rest} из ${j.cap}</div>
      <div class="stats">
@@ -303,7 +242,13 @@ document.getElementById('grid').innerHTML=jars.map(j=>{
    ${j.warn?`<div class="hint">⚠ Прошлая неделя не засчитана. Не пропускай дважды: ещё ${j.norm-j.doneNow} до конца воскресенья — и серия продолжится.</div>`:''}
    ${j.vacNote?`<div class="hint vac">🏖 Июнь — каникулы: серия замирала, но не прерывалась.</div>`:''}
    <div class="card-actions"><button class="btn pink">+1 сегодня</button><button class="btn ghost">настроить</button></div>
-  </div>`}).join('');
+  </div>`};
+// Группы — 4 измерения пилы по порядку ролей; привычка в нескольких — в группе первого
+const dims=[['Тело','#9fd3bd'],['Ум','#a9cde8'],['Дух','#c9b8ec'],['Общение и эмоции','#f9d0e0']];
+document.getElementById('grid').innerHTML=dims.map(([d,c])=>{
+  const g=jars.filter(j=>j.dim===d);
+  return g.length?`<div class="dim-h" style="--c:${c}"><span class="dot"></span>${d}</div><div class="grid">${g.map(card).join('')}</div>`:'';
+}).join('');
 </script>
 </body>
 </html>
