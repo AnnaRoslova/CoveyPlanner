@@ -83,7 +83,9 @@ public interface IGoalRepository
 /// <summary>Серии целей (постоянные цели «каждую неделю» и связи перенесённых занятий).</summary>
 public interface IGoalSeriesRepository
 {
-    /// <summary>Постоянные серии, у которых могут появиться новые недели.</summary>
+    Task<GoalSeries?> FindAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Постоянные серии (и закончившиеся): у идущих могут появиться новые недели, все они — возможные привычки.</summary>
     Task<List<GoalSeries>> GetRecurringAsync(CancellationToken ct = default);
 
     /// <summary>Серии, в шаблоне которых есть роль (для удаления роли).</summary>
@@ -100,26 +102,17 @@ public interface IUnitOfWork
     Task SaveChangesAsync(CancellationToken ct = default);
 }
 
-/// <summary>Копилки привычек.</summary>
+/// <summary>Скрепки и нормы привычек (постоянных серий) — только чтение, одним запросом каждое.</summary>
 public interface IHabitRepository
 {
-    Task<Habit?> FindAsync(int id, CancellationToken ct = default);
+    /// <summary>Выполненные занятия целей постоянных серий (корзина и шаги не считаются).</summary>
+    Task<List<HabitClip>> GetClipsAsync(CancellationToken ct = default);
 
-    /// <summary>Все копилки (и в архиве) по порядку.</summary>
-    Task<List<Habit>> GetAllAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Возможные скрепки одним запросом: выполненные дела (корзина не считается) с копилкой или из категорий
-    /// <paramref name="collectionCategoryIds"/> (привязанных к коллекциям), с числом шагов и первым отмеченным шагом.
-    /// </summary>
-    Task<List<HabitClipSource>> GetClipsAsync(IReadOnlyCollection<int> collectionCategoryIds, CancellationToken ct = default);
-
-    void Add(Habit habit);
-
-    void Remove(Habit habit);
+    /// <summary>«Раз в неделю» каждой цели постоянных серий — норма её недели.</summary>
+    Task<List<HabitWeekNorm>> GetWeekNormsAsync(CancellationToken ct = default);
 }
 
-/// <summary>Каникулы копилок.</summary>
+/// <summary>Каникулы привычек.</summary>
 public interface IVacationRepository
 {
     Task<Vacation?> FindAsync(int id, CancellationToken ct = default);

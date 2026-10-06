@@ -4,9 +4,9 @@ using Planner.Core.Habits;
 namespace Planner.Core.Entities;
 
 /// <summary>
-/// Каникулы копилок: с <see cref="From"/> по <see cref="To"/> включительно. Неделя, в которую попало не меньше 4 дней
+/// Каникулы привычек: с <see cref="From"/> по <see cref="To"/> включительно. Неделя, в которую попало не меньше 4 дней
 /// каникул, не засчитывается и не считается пропуском — серия замирает (см. <see cref="HabitStatsCalculator"/>).
-/// Каникулы — для всех копилок или для выбранных (<see cref="Habits"/>; пусто — для всех).
+/// Каникулы — для всех привычек или для выбранных (<see cref="Habits"/>: id привычки — id её серии; пусто — для всех).
 /// </summary>
 public class Vacation
 {
@@ -25,7 +25,7 @@ public class Vacation
 
     public DateOnly To { get; private set; }
 
-    /// <summary>Копилки, к которым относятся каникулы (таблица VacationHabits); пусто — ко всем.</summary>
+    /// <summary>Привычки (id серий), к которым относятся каникулы (таблица VacationHabits); пусто — ко всем.</summary>
     public IReadOnlyCollection<VacationHabit> Habits => _habits;
 
     public IReadOnlyList<int> HabitIds => _habits.Select(h => h.HabitId).Order().ToList();
@@ -52,7 +52,7 @@ public class Vacation
     public bool AppliesTo(int habitId) => _habits.Count == 0 || _habits.Any(h => h.HabitId == habitId);
 
     /// <summary>
-    /// Убрать копилку (её удалили). false — каникулы были только у неё и теперь ни к чему не относятся:
+    /// Убрать привычку (её удалили). false — каникулы были только у неё и теперь ни к чему не относятся:
     /// их нужно удалить (иначе пустой список значил бы «для всех»).
     /// </summary>
     public bool RemoveHabit(int habitId)
@@ -66,7 +66,7 @@ public class Vacation
     }
 }
 
-/// <summary>Копилка, к которой относятся каникулы (таблица VacationHabits). Живёт только внутри каникул.</summary>
+/// <summary>Привычка (серия), к которой относятся каникулы (таблица VacationHabits). Живёт только внутри каникул.</summary>
 public class VacationHabit
 {
     // Для EF Core

@@ -356,39 +356,73 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal(expected, counts);
         var goal = await db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).SingleAsync();
         Assert.Equal(1, goal.DoneCount);
-        Assert.Null(goal.HabitId);
-        Assert.All(await db.Tasks.ToListAsync(), t => Assert.Null(t.HabitId));
-        Assert.Empty(await db.Habits.ToListAsync());
     }
 
     [Fact]
-    public async Task Collections_OldHabitsBecomeHabitKind_TasksAndLinksKept()
+    public async Task HabitsAreSeries_HabitsAndCollectionsGone_TasksGoalsSeriesCategoriesKept()
     {
         await using var db = CreateContext();
 
-        // ParentId у Tasks SQLite добавляет пересборкой таблицы — роли, цели и копилки дел должны уцелеть
-        await db.GetService<IMigrator>().MigrateAsync("Habits");
+        // Копилки (привычка и коллекция) с привязками к серии, цели, делу и категории; каникулы — копилки и «для всех».
+        // Снятие колонок SQLite делает пересборкой Tasks, WeeklyGoals и GoalSeries — связанные строки должны уцелеть
+        await db.GetService<IMigrator>().MigrateAsync("Collections");
         await db.Database.ExecuteSqlRawAsync("""
             INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Тело', '#9fd3bd', 0, 'Body');
-            INSERT INTO Habits (Id, Name, Color, WeeklyNorm, JarSize, StartCount, CreatedAt, SortOrder, IsArchived)
-                VALUES (1, 'Тренировки', '#9fd3bd', 3, 30, 5, '2026-09-28 10:00:00', 0, 0);
-            INSERT INTO WeeklyGoals (Id, WeekStart, Title, TimesPerWeek, AllowSeveralPerDay, HabitId) VALUES (1, '2026-09-28', 'Бег', 3, 0, 1);
-            INSERT INTO GoalRoles (GoalId, RoleId, SortOrder) VALUES (1, 1, 0);
-            INSERT INTO Tasks (Id, Title, State, PlannedDate, SortOrder, CreatedAt, CompletedAt, HabitId) VALUES
-                (1, 'Бег', 'Done', '2026-09-28', 0, '2026-09-28 10:00:00', '2026-09-28 11:00:00', 1);
-            INSERT INTO TaskGoals (TaskId, GoalId, Position) VALUES (1, 1, 0);
-            INSERT INTO TaskRoles (TaskId, RoleId) VALUES (1, 1);
+            INSERT INTO Categories (Id, Name, SortOrder, IsExpanded) VALUES (5, 'Проекты', 0, 1);
+            INSERT INTO Habits (Id, Name, Color, WeeklyNorm, JarSize, StartCount, CreatedAt, SortOrder, IsArchived, Kind)
+                VALUES (1, 'Бег', '#9fd3bd', 3, 30, 0, '2026-10-05 10:00:00', 0, 0, 'Habit'),
+                       (4, 'Проекты', '#cfe3a8', 1, 30, 1, '2026-10-05 10:00:00', 1, 0, 'Collection');
+            INSERT INTO HabitCategories (HabitId, CategoryId) VALUES (4, 5);
+            INSERT INTO GoalSeries (Id, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, GeneratedThrough, HabitId)
+                VALUES (1, 'Бег', 3, 0, 1, '2026-09-28', '2026-10-05', 1);
+            INSERT INTO GoalSeriesRoles (SeriesId, RoleId) VALUES (1, 1);
+            INSERT INTO WeeklyGoals (Id, WeekStart, Title, TimesPerWeek, AllowSeveralPerDay, SeriesId, HabitId)
+                VALUES (1, '2026-09-28', 'Бег', 3, 0, 1, NULL), (2, '2026-10-05', 'Бег', 3, 0, 1, 1);
+            INSERT INTO GoalRoles (GoalId, RoleId, SortOrder) VALUES (1, 1, 0), (2, 1, 0);
+            INSERT INTO Tasks (Id, Title, State, PlannedDate, SortOrder, CreatedAt, CompletedAt, HabitId, CategoryId) VALUES
+                (1, 'Бег', 'Done', '2026-09-28', 0, '2026-09-28 10:00:00', '2026-09-28 11:00:00', NULL, NULL),
+                (2, 'Бег', 'Done', '2026-10-05', 0, '2026-10-05 10:00:00', '2026-10-05 11:00:00', 1, NULL),
+                (3, 'Починить', 'Planned', '2026-10-06', 1, '2026-10-05 10:00:00', NULL, 4, NULL),
+                (4, 'Маркетплейс', 'Someday', NULL, 0, '2026-10-05 10:00:00', NULL, NULL, 5);
+            INSERT INTO TaskGoals (TaskId, GoalId, Position) VALUES (1, 1, 0), (2, 2, 0);
+            INSERT INTO TaskRoles (TaskId, RoleId) VALUES (1, 1), (2, 1);
+            INSERT INTO Vacations (Id, "From", "To") VALUES (1, '2026-10-01', '2026-10-03'), (2, '2026-10-10', '2026-10-12');
+            INSERT INTO VacationHabits (VacationId, HabitId) VALUES (1, 1);
             """);
 
         await db.Database.MigrateAsync();
 
-        var habit = await db.Habits.SingleAsync();
-        Assert.Equal((Planner.Core.Enums.HabitKind.Habit, (int?)null), (habit.Kind, habit.YearGoal));
-        Assert.Empty(habit.CategoryIds);
-        var task = await db.Tasks.SingleAsync();
-        Assert.Equal((1, 1, (int?)null), (task.HabitId!.Value, task.GoalId!.Value, task.ParentId));
-        Assert.Equal([1], task.RoleIds);
-        Assert.Equal(1, (await db.WeeklyGoals.SingleAsync()).HabitId);
+        long[] expected = [4, 2, 1, 2, 2, 1, 2, 1, 1, 0];
+        var counts = new List<long>();
+        foreach (var table in new[]
+                 { "Tasks", "WeeklyGoals", "GoalSeries", "TaskGoals", "GoalRoles", "GoalSeriesRoles", "TaskRoles", "Categories", "Vacations", "VacationHabits" })
+        {
+            counts.Add(await CountAsync(db, table));
+        }
+
+        Assert.Equal(expected, counts);
+        Assert.Equal(0, await CountAsync(db, "sqlite_master WHERE name IN ('Habits', 'HabitCategories')"));
+
+        // Серия — привычка с банкой по умолчанию; каникулы «для всех» остались, каникулы копилки — нет
+        var series = await db.GoalSeries.SingleAsync();
+        Assert.Equal((30, 0, false), (series.JarSize, series.StartCount, series.IsHabitDeleted));
+        Assert.Equal(2, (await db.Vacations.SingleAsync()).Id);
+        var goals = await db.WeeklyGoals.Include(g => g.Links).ThenInclude(l => l.Task).OrderBy(g => g.Id).ToListAsync();
+        Assert.Equal([1, 1], goals.Select(g => g.DoneCount));
+        Assert.Equal(5, (await db.Tasks.SingleAsync(t => t.Id == 4)).CategoryId);
+    }
+
+    private static async Task<long> CountAsync(PlannerDbContext db, string table)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {table}";
+        return (long)(await command.ExecuteScalarAsync())!;
     }
 
     public void Dispose()

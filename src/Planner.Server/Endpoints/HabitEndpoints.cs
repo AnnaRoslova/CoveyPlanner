@@ -4,8 +4,9 @@ using Planner.Shared;
 namespace Planner.Server.Endpoints;
 
 /// <summary>
-/// Копилки привычек и каникулы. Скрепки считаются по выполненным делам (одним запросом); только чтение —
-/// GET /api/habits ничего не создаёт (в отличие от /api/week, который заполняет недели постоянных целей).
+/// Привычки (постоянные серии пилы; id привычки — id серии) и каникулы. Скрепки считаются по выполненным занятиям
+/// (одним запросом); GET /api/habits только читает — ничего не создаёт (в отличие от /api/week, который заполняет
+/// недели постоянных целей). Создать привычку — добавить постоянную цель в пилу; отдельного POST нет.
 /// </summary>
 public static class HabitEndpoints
 {
@@ -17,30 +18,25 @@ public static class HabitEndpoints
         habits.MapGet("/", async (DateOnly? today, HabitService service, CancellationToken ct) =>
             await GetAllAsync(service, today ?? service.Today, ct));
 
-        habits.MapPost("/", async (SaveHabitRequest request, HabitService service, CancellationToken ct) =>
+        // Настройки банки: стартовое число и размер
+        habits.MapPut("/{id:int}", async (int id, UpdateHabitRequest request, DateOnly? today, HabitService service, CancellationToken ct) =>
         {
-            var habit = await service.CreateAsync(request.ToFields(), ct);
-            return Results.Created($"/api/habits/{habit.Id}", (await service.GetAsync(habit.Id, service.Today, ct)).ToDto());
-        });
-
-        habits.MapPut("/{id:int}", async (int id, SaveHabitRequest request, DateOnly? today, HabitService service, CancellationToken ct) =>
-        {
-            await service.UpdateAsync(id, request.ToFields(), request.IsArchived, ct);
+            await service.UpdateJarAsync(id, request.StartCount, request.JarSize, ct);
             return (await service.GetAsync(id, today ?? service.Today, ct)).ToDto();
         });
 
-        // Дела и цели остаются — без копилки
+        // Только из архива; удаляется счёт (банка, каникулы привычки) — цель, серия и дела остаются
         habits.MapDelete("/{id:int}", async (int id, HabitService service, CancellationToken ct) =>
         {
             await service.DeleteAsync(id, ct);
             return Results.NoContent();
         });
 
-        // «+1 сегодня»: выполненное дело с названием копилки в конец сегодняшнего дня
+        // «+1 сегодня»: занятие цели этой недели на сегодня — отмеченное
         habits.MapPost("/{id:int}/plus-one", async (int id, PlusOneRequest request, HabitService service, CancellationToken ct) =>
         {
-            var task = await service.PlusOneAsync(id, request.Today, ct);
-            return new PlusOneResultDto(task.ToDto(), (await service.GetAsync(id, request.Today, ct)).ToDto());
+            var (goal, session) = await service.PlusOneAsync(id, request.Today, ct);
+            return new PlusOneResultDto(session.ToDto(), goal.ToDto(), (await service.GetAsync(id, request.Today, ct)).ToDto());
         });
 
         var vacations = api.MapGroup("/vacations");

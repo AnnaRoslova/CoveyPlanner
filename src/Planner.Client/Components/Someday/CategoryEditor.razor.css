@@ -58,10 +58,3 @@
     align-items: stretch;
     gap: 4px;
 }
-
-/* «→ 📚 Книги» — категория привязана к коллекции */
-.linked {
-    padding: 0 4px;
-    color: var(--soft);
-    font-size: 12px;
-}

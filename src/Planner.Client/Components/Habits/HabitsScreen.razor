@@ -1,6 +1,7 @@
-@* Экран «Копилки» (кнопка 🫙 в шапке недели или пилюля у цели — тогда её копилка прокручена в вид и подсвечена).
-   Карточки копилок, «🏖 Каникулы», «+ копилка», легенда квадратиков, копилки в архиве. Esc или клик мимо — закрыть.
-   Образец — docs/habits-mockup.html. *@
+@* Экран «Копилки» (кнопка 🫙 в шапке недели или пилюля у цели — тогда её привычка прокручена в вид и подсвечена).
+   Привычка — постоянная цель «Затачивания пилы»: карточки сгруппированы по 4 измерениям (привычка с несколькими —
+   в группе первого, остальные — чипами на карточке). «🏖 Каникулы», легенда квадратиков, внизу свёрнутый архив
+   (серия закончилась; удалить привычку можно только оттуда). Esc или клик мимо — закрыть. Образец — docs/habits-mockup.html. *@
 @inherits StateComponent
 @inject WindowHost Windows
 
@@ -11,41 +12,42 @@
         <h2>🫙 Копилки</h2>
         <div class="tools">
             <button type="button" class="btn vac-b" @onclick="() => _vacations = true">🏖 Каникулы</button>
-            <button type="button" class="btn pink add-habit" @onclick="() => _editor = Editor.New">+ копилка</button>
             <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
         </div>
     </header>
 
-    @if (!Active.Any())
+    @if (Active.Count == 0)
     {
         <p class="empty">
-            Копилок пока нет. Скрепка — выполненное дело, привязанное к копилке: привяжите цель в её окне
-            («🫙 В копилку») или нажмите «+ копилка».
+            Привычек пока нет. Привычка — цель «Затачивания пилы» с «каждую неделю»: добавьте такую цель в Тело, Ум, Дух
+            или Общение — у неё появится банка. Скрепка — выполненное занятие цели, норма — её «раз в неделю».
         </p>
     }
 
-    <div class="grid">
-        @foreach (var habit in Active)
+    @foreach (var dimension in State.OrderedRoles.Where(r => r.IsSharpenSaw))
+    {
+        var group = Active.Where(h => h.DimensionRoleIds[0] == dimension.Id).ToList();
+        @if (group.Count > 0)
         {
-            var id = habit.Id;
-            @if (habit.IsCollection)
-            {
-                <CollectionCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId" OnEdit="() => Edit(id)" />
-            }
-            else
-            {
-                <HabitCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId"
-                           OnPlusOne="() => State.PlusOneAsync(id)" OnEdit="() => Edit(id)" />
-            }
+            <h3 class="dimension" style="--c: @dimension.Color"><span class="dot"></span>@dimension.Name</h3>
+            <div class="grid">
+                @foreach (var habit in group)
+                {
+                    var id = habit.Id;
+                    <HabitCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId"
+                               OnPlusOne="() => State.PlusOneAsync(id)" OnEdit="() => _editedId = id" />
+                }
+            </div>
         }
-    </div>
+    }
 
-    @if (Active.Any(h => !h.IsCollection))
+    @if (Active.Count > 0)
     {
         <div class="legend">
             <span><i class="w done"></i>неделя засчитана</span>
             <span><i class="w warn"></i>первый пропуск (⚠ пауза)</span>
             <span><i class="w miss"></i>второй пропуск подряд — серия прервана</span>
+            <span><i class="w neutral"></i>без нормы: первая неделя, цели не было</span>
             <span><i class="w vac"></i>каникулы</span>
             <span><i class="w now"></i>текущая неделя (в процессе)</span>
         </div>
@@ -58,31 +60,21 @@
         </button>
         @if (_showArchived)
         {
+            <p class="archive-note">серия закончилась (сняли «каждую неделю») — история сохранена; включите повтор снова, и она продолжится</p>
             <div class="grid">
                 @foreach (var habit in Archived)
                 {
                     var id = habit.Id;
-                    @if (habit.IsCollection)
-                    {
-                        <CollectionCard @key="id" Habit="habit" OnEdit="() => Edit(id)" />
-                    }
-                    else
-                    {
-                        <HabitCard @key="id" Habit="habit" OnEdit="() => Edit(id)" />
-                    }
+                    <HabitCard @key="id" Habit="habit" Focused="id == Windows.FocusHabitId" OnEdit="() => _editedId = id" />
                 }
             </div>
         }
     }
 </section>
 
-@if (_editor == Editor.New)
+@if (_editedId is { } editedId && State.FindHabit(editedId) is { } edited)
 {
-    <HabitEditor Nested="true" OnClose="CloseEditor" />
-}
-else if (_editor == Editor.Existing && State.FindHabit(_editedId) is { } edited)
-{
-    <HabitEditor @key="_editedId" Nested="true" Habit="edited" OnClose="CloseEditor" />
+    <HabitEditor @key="editedId" Habit="edited" OnClose="CloseEditor" />
 }
 
 @if (_vacations)
@@ -91,27 +83,26 @@ else if (_editor == Editor.Existing && State.FindHabit(_editedId) is { } edited)
 }
 
 @code {
-    private enum Editor { None, New, Existing }
-
     private ElementReference _root;
-    private Editor _editor;
-    private int _editedId;
+    private int? _editedId;
     private bool _vacations;
     private bool _showArchived;
     private bool _refocus;
 
-    private IEnumerable<HabitDto> Active => State.ActiveHabits;
+    private List<HabitDto> Active => State.Habits.Where(h => !h.IsArchived).ToList();
 
-    private List<HabitDto> Archived => State.Habits.Where(h => h.IsArchived).OrderBy(h => h.SortOrder).ToList();
+    private List<HabitDto> Archived => State.Habits.Where(h => h.IsArchived).ToList();
 
     protected override async Task OnInitializedAsync()
     {
+        // Открыли на привычке из архива (пилюля у цели прошлой недели) — архив раскрыт
+        _showArchived = State.FindHabit(Windows.FocusHabitId) is { IsArchived: true };
         await State.RefreshHabitsAsync(); // счёт мог поменяться (дела в корзине, новый день)
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Фокус на экран — чтобы Esc закрывал его сразу (копилка из пилюли сама забирает фокус)
+        // Фокус на экран — чтобы Esc закрывал его сразу (привычка из пилюли сама забирает фокус)
         if ((firstRender && Windows.FocusHabitId is null) || _refocus)
         {
             _refocus = false;
@@ -119,16 +110,10 @@ else if (_editor == Editor.Existing && State.FindHabit(_editedId) is { } edited)
         }
     }
 
-    private void Edit(int habitId)
-    {
-        _editedId = habitId;
-        _editor = Editor.Existing;
-    }
-
     // Окно поверх закрылось — фокус снова на экране, чтобы Esc закрывал уже его
     private void CloseEditor()
     {
-        _editor = Editor.None;
+        _editedId = null;
         _refocus = true;
     }
 

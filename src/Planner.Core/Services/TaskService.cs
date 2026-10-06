@@ -11,7 +11,6 @@ public class TaskService(
     ITaskRepository tasks,
     IRoleRepository roles,
     IGoalRepository goals,
-    IHabitRepository habits,
     GoalSeriesService series,
     TaskPlacer placer,
     IUnitOfWork unitOfWork,
@@ -34,11 +33,10 @@ public class TaskService(
     /// <summary>
     /// Изменить дело из окна редактирования. startTime / durationMinutes = null — убрать; roleIds пусто — без ролей.
     /// У занятия цели роли и квадрант всегда от цели — присланные значения не применяются.
-    /// habitId — копилка: null — не менять, 0 — без копилки (у занятия может быть своя, не как у цели).
     /// </summary>
     public async Task<TaskItem> UpdateAsync(
         int id, string title, string? notes, IReadOnlyCollection<int> roleIds, Quadrant? quadrant, TimeOnly? startTime,
-        int? durationMinutes, int? habitId = null, CancellationToken ct = default)
+        int? durationMinutes, CancellationToken ct = default)
     {
         var task = await GetAsync(id, ct);
         // У занятия роли и квадрант — от цели (так же решает клиент)
@@ -66,10 +64,6 @@ public class TaskService(
         task.SetDuration(durationMinutes);
         task.SetRoles(roleIds);
         task.Quadrant = quadrant;
-        if (habitId is { } habit)
-        {
-            task.SetHabit(await habits.ResolveLinkAsync(habit, ct));
-        }
 
         var hadTime = task.StartTime is not null;
         task.SetTime(startTime);

@@ -171,19 +171,17 @@ public partial class PlannerState
 
         _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
         SyncSession(_tasks[taskId]);
-        if (await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone)) && HabitIdOf(task) is { } habitId)
+        if (await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone)) && HabitOfGoal(GoalOfTask(taskId)) is { } habit)
         {
-            await AfterHabitTaskToggledAsync(habitId, isDone, task.PlannedDate);
+            await AfterHabitTaskToggledAsync(habit.Id, isDone, task.PlannedDate);
         }
     }
 
     /// <summary>
-    /// Сохранить окно редактирования. startTime = null — без времени; roleIds пусто — без ролей;
-    /// habitId — копилка (null — не менять, 0 — без копилки).
+    /// Сохранить окно редактирования. startTime = null — без времени; roleIds пусто — без ролей.
     /// </summary>
     public async Task UpdateTaskAsync(
-        int taskId, string title, string? notes, IReadOnlyList<int> roleIds, int? quadrant, TimeOnly? startTime, int? durationMinutes,
-        int? habitId = null)
+        int taskId, string title, string? notes, IReadOnlyList<int> roleIds, int? quadrant, TimeOnly? startTime, int? durationMinutes)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task || string.IsNullOrWhiteSpace(title))
         {
@@ -214,17 +212,10 @@ public partial class PlannerState
             StartTime = startTime,
             DurationMinutes = durationMinutes,
             SortOrder = sortOrder,
-            HabitId = habitId is { } h ? h == 0 ? null : h : task.HabitId,
         };
 
-        var ok = await SaveAsync(() => api.UpdateTaskAsync(taskId,
-            new UpdateTaskRequest(title, notes, roleIds, quadrant, startTime, durationMinutes, habitId)));
-
-        // Выполненное дело переложили в другую копилку — скрепка переехала
-        if (ok && task.State == TaskStateDto.Done && _tasks.GetValueOrDefault(taskId)?.HabitId != task.HabitId)
-        {
-            await RefreshHabitsAsync();
-        }
+        await SaveAsync(() => api.UpdateTaskAsync(taskId,
+            new UpdateTaskRequest(title, notes, roleIds, quadrant, startTime, durationMinutes)));
     }
 
     private int NextUntimedOrder(DateOnly date)

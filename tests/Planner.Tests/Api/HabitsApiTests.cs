@@ -5,237 +5,250 @@ using Planner.Shared;
 
 namespace Planner.Tests.Api;
 
-/// <summary>Копилки привычек: скрепки — выполненные дела копилки (через цель или напрямую), «+1 сегодня», каникулы.</summary>
+/// <summary>
+/// Привычки = постоянные цели «Затачивания пилы»: банка у серии, скрепки — выполненные занятия, норма — «раз в неделю» каждой
+/// недели; одна история через все правки цели; архив при выключении повтора; «+1 сегодня»; каникулы; удаление из архива.
+/// </summary>
 public class HabitsApiTests : ApiTestBase
 {
-    // Копилка создаётся «сейчас» — дела ставим на текущую неделю, чтобы они входили в её недели
+    // Сервер считает «сегодня» по часам компьютера — цели ставим на текущую и прошлые недели
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.Now);
     private static readonly DateOnly ThisMonday = Week.StartOf(Today);
 
-    private Task<HabitDto> CreateHabitAsync(string name = "Тренировки", int norm = 3, int startCount = 0) =>
-        PostAsync<HabitDto>("/api/habits", new SaveHabitRequest(name, "💪", null, norm, StartCount: startCount));
-
     private Task<HabitsDto> GetHabitsAsync() => GetAsync<HabitsDto>($"/api/habits?today={Today:yyyy-MM-dd}");
 
-    private async Task<HabitDto> HabitAsync(int id) => (await GetHabitsAsync()).Habits.Single(h => h.Id == id);
+    private async Task<HabitDto?> HabitAsync(int? seriesId) => (await GetHabitsAsync()).Habits.SingleOrDefault(h => h.Id == seriesId);
 
-    private async Task<WeeklyGoalDto> CreateGoalAsync(string role, string title, bool recurring = false)
+    private async Task<int> RoleIdAsync(string name) => (await GetBoardAsync()).Roles.Single(r => r.Name == name).Id;
+
+    private async Task<WeeklyGoalDto> CreateGoalAsync(string role, string title, bool recurring = true, DateOnly? week = null) =>
+        await PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(await RoleIdAsync(role), week ?? ThisMonday, title, recurring));
+
+    private async Task<WeeklyGoalDto> UpdateGoalAsync(
+        WeeklyGoalDto g, int? times = null, IReadOnlyList<int>? roleIds = null, bool? recurring = null, int? days = null, TimeOnly? time = null) =>
+        (await PutAsync<GoalUpdateResultDto>($"/api/goals/{g.Id}",
+            new UpdateGoalRequest(g.Title, roleIds ?? g.RoleIds, times ?? g.TimesPerWeek, time ?? g.StartTime, g.Quadrant, g.Notes,
+                g.DurationMinutes, recurring, Days: days))).Goal;
+
+    private async Task<TaskDto> DoneSessionAsync(WeeklyGoalDto goal, DateOnly day)
     {
-        var roleId = (await GetBoardAsync()).Roles.Single(r => r.Name == role).Id;
-        return await PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(roleId, ThisMonday, title, recurring));
+        var session = (await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(day, 0))).Task!;
+        return await PutAsync<TaskDto>($"/api/tasks/{session.Id}/done", new SetDoneRequest(true));
     }
 
-    private Task<GoalUpdateResultDto> SetGoalHabitAsync(WeeklyGoalDto g, int habitId, int times = 3) =>
-        PutAsync<GoalUpdateResultDto>($"/api/goals/{g.Id}",
-            new UpdateGoalRequest(g.Title, g.RoleIds, times, g.StartTime, g.Quadrant, g.Notes, g.DurationMinutes, HabitId: habitId));
-
-    private async Task<TaskDto> ScheduleAsync(WeeklyGoalDto goal, DateOnly day) =>
-        (await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(day, 0))).Task!;
-
-    private Task<TaskDto> SetDoneAsync(int taskId, bool done) =>
-        PutAsync<TaskDto>($"/api/tasks/{taskId}/done", new SetDoneRequest(done));
+    /// <summary>Цель этой же серии на неделе <paramref name="week"/> (неделю открывают — цели постоянных серий появляются).</summary>
+    private async Task<WeeklyGoalDto> GoalOnWeekAsync(WeeklyGoalDto goal, DateOnly week) =>
+        (await GetWeekAsync(week)).Goals.Single(g => g.SeriesId == goal.SeriesId);
 
     [Fact]
-    public async Task NewHabit_EmptyStats_DefaultsAndPaletteColor()
+    public async Task RecurringSawGoal_IsHabit_OneOffAndOrdinaryRoles_AreNot()
     {
-        var habit = await CreateHabitAsync(startCount: 5);
+        var run = await CreateGoalAsync("Тело", "Бег");
+        await CreateGoalAsync("Тело", "Марафон", recurring: false);
+        await CreateGoalAsync("Работа", "Планёрка");
 
-        Assert.Equal((30, 5, 0, 5), (habit.JarSize, habit.Stats.Total, habit.Stats.FullJars, habit.Stats.InJar));
-        Assert.Equal(26, habit.Stats.Weeks.Count);
-        Assert.Equal(PeriodResultDto.Current, habit.Stats.Weeks[^1].Result);
-        Assert.Contains(habit.Color, (await GetBoardAsync()).RolePalette);
+        var habit = Assert.Single((await GetHabitsAsync()).Habits);
+        var body = (await GetBoardAsync()).Roles.Single(r => r.Name == "Тело");
+        Assert.Equal((run.SeriesId!.Value, "Бег", body.Color, 1, 30, 0, false),
+            (habit.Id, habit.Name, habit.Color, habit.WeeklyNorm, habit.JarSize, habit.StartCount, habit.IsArchived));
+        Assert.Equal([body.Id], habit.DimensionRoleIds);
+        Assert.Equal((0, PeriodResultDto.Current), (habit.Stats.Total, habit.Stats.Weeks[^1].Result));
     }
 
     [Fact]
-    public async Task GoalWithHabit_SessionsInherit_DoneCounts_UndoneAndTrashedDoNot()
+    public async Task DoneSessions_AreClips_UndoneAndTrashedAreNot()
     {
-        var habit = await CreateHabitAsync();
+        var goal = await UpdateGoalAsync(await CreateGoalAsync("Тело", "Бег"), times: 3, time: null);
+        var a = await DoneSessionAsync(goal, ThisMonday);
+        await DoneSessionAsync(goal, ThisMonday.AddDays(1));
+        await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(ThisMonday.AddDays(2), 0));
+        Assert.Equal(2, (await HabitAsync(goal.SeriesId))!.Stats.Total);
+
+        (await Client.DeleteAsync($"/api/tasks/{a.Id}")).EnsureSuccessStatusCode();
+        Assert.Equal(1, (await HabitAsync(goal.SeriesId))!.Stats.ThisWeek);
+
+        // Сняли отметку — скрепка ушла
+        var b = (await GetWeekAsync(ThisMonday)).Tasks.Single(t => t.State == TaskStateDto.Done);
+        await PutAsync<TaskDto>($"/api/tasks/{b.Id}/done", new SetDoneRequest(false));
+        Assert.Equal(0, (await HabitAsync(goal.SeriesId))!.Stats.Total);
+    }
+
+    [Fact]
+    public async Task History_SurvivesGoalEdits_PastWeeksKeepTheirNorm()
+    {
+        var twoWeeksAgo = ThisMonday.AddDays(-14);
+        var first = await UpdateGoalAsync(await CreateGoalAsync("Тело", "Бег", week: twoWeeksAgo), times: 2);
+        await DoneSessionAsync(first, twoWeeksAgo);
+        await DoneSessionAsync(first, twoWeeksAgo.AddDays(2));
+
+        // Прошлая неделя: норму снизили до 1 «с этой недели и дальше», одно занятие
+        var lastWeek = await GoalOnWeekAsync(first, ThisMonday.AddDays(-7));
+        lastWeek = await UpdateGoalAsync(lastWeek, times: 1);
+        await DoneSessionAsync(lastWeek, ThisMonday.AddDays(-7));
+
+        // Эта неделя: другие дни, время и ещё одно измерение — та же привычка, история на месте
+        var current = await GoalOnWeekAsync(first, ThisMonday);
+        var body = await RoleIdAsync("Тело");
+        var spirit = await RoleIdAsync("Дух");
+        await UpdateGoalAsync(current, roleIds: [body, spirit], days: 1 | 4, time: new TimeOnly(7, 30));
+
+        var habit = (await HabitAsync(first.SeriesId))!;
+        Assert.Equal((3, 2, 2), (habit.Stats.Total, habit.Stats.WeekStreak, habit.WeeklyNorm));
+        Assert.Equal([2, 1, 2], habit.Stats.Weeks.TakeLast(3).Select(w => w.Norm!.Value));
+        Assert.Equal([PeriodResultDto.Done, PeriodResultDto.Done, PeriodResultDto.Current], habit.Stats.Weeks.TakeLast(3).Select(w => w.Result));
+        Assert.Equal([body, spirit], habit.DimensionRoleIds);
+        Assert.Equal(PeriodResultDto.BeforeStart, habit.Stats.Weeks[^4].Result);
+    }
+
+    [Fact]
+    public async Task StopRecurring_HabitToArchiveWithHistory_ResumeContinues()
+    {
+        var lastWeek = ThisMonday.AddDays(-7);
+        var first = await CreateGoalAsync("Ум", "Чтение", week: lastWeek);
+        await DoneSessionAsync(first, lastWeek);
+        var current = await GoalOnWeekAsync(first, ThisMonday);
+
+        current = await UpdateGoalAsync(current, recurring: false);
+        var archived = (await HabitAsync(first.SeriesId))!;
+        Assert.Equal((true, 1, 1), (archived.IsArchived, archived.Stats.Total, archived.Stats.WeekStreak));
+
+        await UpdateGoalAsync(current, recurring: true);
+        var resumed = (await HabitAsync(first.SeriesId))!;
+        Assert.Equal((false, 1, 1), (resumed.IsArchived, resumed.Stats.Total, resumed.Stats.WeekStreak));
+    }
+
+    [Fact]
+    public async Task EndedSeries_WithoutClips_Hidden_WithCustomJar_InArchive()
+    {
+        var empty = await CreateGoalAsync("Дух", "Тишина");
+        var jarred = await CreateGoalAsync("Дух", "Дыхание");
+        await PutAsync<HabitDto>($"/api/habits/{jarred.SeriesId}", new UpdateHabitRequest(StartCount: 12, JarSize: 30));
+
+        (await Client.DeleteAsync($"/api/goals/{empty.Id}?scope=series")).EnsureSuccessStatusCode();
+        (await Client.DeleteAsync($"/api/goals/{jarred.Id}?scope=series")).EnsureSuccessStatusCode();
+
+        var habits = (await GetHabitsAsync()).Habits;
+        var only = Assert.Single(habits);
+        Assert.Equal((jarred.SeriesId!.Value, true, 12), (only.Id, only.IsArchived, only.Stats.Total));
+    }
+
+    [Fact]
+    public async Task Jar_Update_Validation_OnlyHabits()
+    {
         var goal = await CreateGoalAsync("Тело", "Бег");
-        Assert.Equal(habit.Id, (await SetGoalHabitAsync(goal, habit.Id)).Goal.HabitId);
 
-        var first = await ScheduleAsync(goal, ThisMonday);
-        var second = await ScheduleAsync(goal, ThisMonday.AddDays(2));
-        Assert.Equal(habit.Id, first.HabitId);
+        var updated = await PutAsync<HabitDto>($"/api/habits/{goal.SeriesId}", new UpdateHabitRequest(29, 10));
+        Assert.Equal((10, 29, 29, 2, 9), (updated.JarSize, updated.StartCount, updated.Stats.Total, updated.Stats.FullJars, updated.Stats.InJar));
 
-        await SetDoneAsync(first.Id, true);
-        await SetDoneAsync(second.Id, true);
-        var stats = (await HabitAsync(habit.Id)).Stats;
-        Assert.Equal((2, 2), (stats.Total, stats.ThisWeek));
-
-        // Сняли галочку — скрепка ушла; в корзине — не считается
-        await SetDoneAsync(second.Id, false);
-        (await Client.DeleteAsync($"/api/tasks/{first.Id}")).EnsureSuccessStatusCode();
-        Assert.Equal(0, (await HabitAsync(habit.Id)).Stats.Total);
-
-        // Вернули из корзины — снова скрепка
-        await PostAsync<TaskDto>($"/api/trash/{first.Id}/restore", new { });
-        Assert.Equal(1, (await HabitAsync(habit.Id)).Stats.Total);
-    }
-
-    [Fact]
-    public async Task GoalCheckbox_NewDoneSession_IsAClip()
-    {
-        var habit = await CreateHabitAsync();
-        var goal = await CreateGoalAsync("Ум", "Чтение");
-        await SetGoalHabitAsync(goal, habit.Id);
-
-        var result = await PostAsync<GoalResultDto>($"/api/goals/{goal.Id}/toggle", new ToggleGoalRequest(Today));
-
-        Assert.Equal(habit.Id, result.Task!.HabitId);
-        Assert.Equal(1, (await HabitAsync(habit.Id)).Stats.ThisWeek);
-    }
-
-    [Fact]
-    public async Task LinkingGoalLater_ItsDoneSessionsMoveToHabit_ChangingHabitMovesThem()
-    {
-        var goal = await CreateGoalAsync("Тело", "Бег");
-        var session = await ScheduleAsync(goal, ThisMonday);
-        await SetDoneAsync(session.Id, true);
-
-        var a = await CreateHabitAsync("A");
-        var b = await CreateHabitAsync("B");
-        await SetGoalHabitAsync(goal, a.Id);
-        Assert.Equal(1, (await HabitAsync(a.Id)).Stats.Total);
-
-        await SetGoalHabitAsync(goal, b.Id);
-        Assert.Equal((0, 1), ((await HabitAsync(a.Id)).Stats.Total, (await HabitAsync(b.Id)).Stats.Total));
-
-        // 0 — без копилки
-        Assert.Null((await SetGoalHabitAsync(goal, 0)).Goal.HabitId);
-        Assert.Equal(0, (await HabitAsync(b.Id)).Stats.Total);
-    }
-
-    [Fact]
-    public async Task RecurringGoal_NextWeekGoalAndItsSessionsKeepHabit()
-    {
-        var habit = await CreateHabitAsync();
-        var goal = await CreateGoalAsync("Тело", "Бег", recurring: true);
-        await PutAsync<GoalUpdateResultDto>($"/api/goals/{goal.Id}",
-            new UpdateGoalRequest(goal.Title, goal.RoleIds, 2, null, null, null, null, IsRecurring: true, Days: 1 | 4, HabitId: habit.Id));
-
-        var next = await GetWeekAsync(ThisMonday.AddDays(7));
-        var nextGoal = next.Goals.Single(g => g.Title == "Бег");
-        Assert.Equal(habit.Id, nextGoal.HabitId);
-        Assert.All(next.Tasks.Where(t => t.GoalId == nextGoal.Id), t => Assert.Equal(habit.Id, t.HabitId));
-    }
-
-    [Fact]
-    public async Task Task_OwnHabit_SetAndClear()
-    {
-        var habit = await CreateHabitAsync();
-        var task = await CreateInDayAsync("Зарядка", Today);
-
-        var linked = await PutAsync<TaskDto>($"/api/tasks/{task.Id}",
-            new UpdateTaskRequest(task.Title, null, [], null, null, null, habit.Id));
-        Assert.Equal(habit.Id, linked.HabitId);
-
-        // HabitId = null — не менять
-        var same = await PutAsync<TaskDto>($"/api/tasks/{task.Id}", new UpdateTaskRequest("Зарядка!", null, [], null, null, null));
-        Assert.Equal(habit.Id, same.HabitId);
-
-        var cleared = await PutAsync<TaskDto>($"/api/tasks/{task.Id}", new UpdateTaskRequest("Зарядка", null, [], null, null, null, 0));
-        Assert.Null(cleared.HabitId);
-
-        var missing = await Client.PutAsJsonAsync($"/api/tasks/{task.Id}", new UpdateTaskRequest("Зарядка", null, [], null, null, null, 999));
-        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
-    }
-
-    [Fact]
-    public async Task PlusOne_DoneTaskAtEndOfToday_TotalGrows()
-    {
-        var habit = await CreateHabitAsync(startCount: 29);
-        await CreateInDayAsync("Утро", Today);
-
-        var result = await PostAsync<PlusOneResultDto>($"/api/habits/{habit.Id}/plus-one", new PlusOneRequest(Today));
-
-        Assert.Equal(("Тренировки", TaskStateDto.Done, Today, habit.Id), (result.Task.Title, result.Task.State, result.Task.PlannedDate!.Value, result.Task.HabitId!.Value));
-        Assert.Equal((30, 1, 0, 1), (result.Habit.Stats.Total, result.Habit.Stats.FullJars, result.Habit.Stats.InJar, result.Habit.Stats.ThisWeek));
-        var day = (await GetWeekAsync(Today)).Tasks.Where(t => t.PlannedDate == Today).OrderBy(t => t.SortOrder).Select(t => t.Title);
-        Assert.Equal(["Утро", "Тренировки"], day);
-    }
-
-    [Fact]
-    public async Task Update_ArchiveAndValidation()
-    {
-        var habit = await CreateHabitAsync();
-
-        var updated = await PutAsync<HabitDto>($"/api/habits/{habit.Id}",
-            new SaveHabitRequest("Спорт", "🏃", "#a9cde8", 4, 50, 10, IsArchived: true));
-        Assert.Equal(("Спорт", "🏃", "#a9cde8", 4, 50, 10, true),
-            (updated.Name, updated.Emoji, updated.Color, updated.WeeklyNorm, updated.JarSize, updated.StartCount, updated.IsArchived));
-
-        var bad = await Client.PutAsJsonAsync($"/api/habits/{habit.Id}", new SaveHabitRequest("Спорт", null, null, 0));
+        var bad = await Client.PutAsJsonAsync($"/api/habits/{goal.SeriesId}", new UpdateHabitRequest(0, 0));
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
 
-        var archivedPlus = await Client.PostAsJsonAsync($"/api/habits/{habit.Id}/plus-one", new PlusOneRequest(Today));
-        Assert.Equal(HttpStatusCode.BadRequest, archivedPlus.StatusCode);
+        // Постоянная цель обычной роли — не привычка
+        var work = await CreateGoalAsync("Работа", "Планёрка");
+        var notHabit = await Client.PutAsJsonAsync($"/api/habits/{work.SeriesId}", new UpdateHabitRequest(0, 30));
+        Assert.Equal(HttpStatusCode.NotFound, notHabit.StatusCode);
     }
 
     [Fact]
-    public async Task Vacations_CreateListDelete_WeekBecomesVacation()
+    public async Task PlusOne_DoneSessionToday_OncePerDay()
     {
-        var habit = await CreateHabitAsync();
-        var other = await CreateHabitAsync("Чтение");
-        var lastWeek = ThisMonday.AddDays(-7);
+        var goal = await UpdateGoalAsync(await CreateGoalAsync("Тело", "Бег"), times: 3);
+        await CreateInDayAsync("Утро", Today);
 
-        var vacation = await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(lastWeek, lastWeek.AddDays(6), [habit.Id]));
+        var result = await PostAsync<PlusOneResultDto>($"/api/habits/{goal.SeriesId}/plus-one", new PlusOneRequest(Today));
+
+        Assert.Equal(("Бег", TaskStateDto.Done, Today, goal.Id), (result.Task.Title, result.Task.State, result.Task.PlannedDate!.Value, result.Task.GoalId!.Value));
+        Assert.Equal((1, 1), (result.Goal.DoneCount, result.Habit.Stats.ThisWeek));
+        var day = (await GetWeekAsync(ThisMonday)).Tasks.Where(t => t.PlannedDate == Today).OrderBy(t => t.SortOrder).Select(t => t.Title);
+        Assert.Equal(["Утро", "Бег"], day);
+
+        // Одно занятие в день — как у галочки цели
+        var again = await Client.PostAsJsonAsync($"/api/habits/{goal.SeriesId}/plus-one", new PlusOneRequest(Today));
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+    }
+
+    [Fact]
+    public async Task PlusOne_OpenSessionToday_IsChecked_NoNewTask()
+    {
+        var goal = await CreateGoalAsync("Тело", "Бег");
+        var session = (await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(Today, 0))).Task!;
+
+        var result = await PostAsync<PlusOneResultDto>($"/api/habits/{goal.SeriesId}/plus-one", new PlusOneRequest(Today));
+
+        Assert.Equal((session.Id, TaskStateDto.Done), (result.Task.Id, result.Task.State));
+        Assert.Single((await GetWeekAsync(ThisMonday)).Tasks);
+    }
+
+    [Fact]
+    public async Task PlusOne_Archived_400()
+    {
+        var goal = await CreateGoalAsync("Тело", "Бег");
+        await UpdateGoalAsync(goal, recurring: false);
+
+        var response = await Client.PostAsJsonAsync($"/api/habits/{goal.SeriesId}/plus-one", new PlusOneRequest(Today));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Vacations_CreateListDelete_TodayInVacation()
+    {
+        var goal = await CreateGoalAsync("Тело", "Бег");
+
+        var vacation = await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today.AddDays(5), [goal.SeriesId!.Value]));
         var all = await GetHabitsAsync();
         Assert.Equal([vacation.Id], all.Vacations.Select(v => v.Id));
-        Assert.Equal([habit.Id], all.Vacations[0].HabitIds);
-
-        // Копилка создана на этой неделе — прошлая для неё «до создания», каникулы её не меняют
-        Assert.Equal(PeriodResultDto.BeforeStart, all.Habits.Single(h => h.Id == habit.Id).Stats.Weeks[^2].Result);
+        Assert.Equal([goal.SeriesId.Value], all.Vacations[0].HabitIds);
+        Assert.Equal(Today.AddDays(5), all.Habits.Single().Stats.VacationUntil);
 
         var bad = await Client.PostAsJsonAsync("/api/vacations", new CreateVacationRequest(Today, Today.AddDays(-1), null));
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        var unknown = await Client.PostAsJsonAsync("/api/vacations", new CreateVacationRequest(Today, Today, [999]));
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
 
         (await Client.DeleteAsync($"/api/vacations/{vacation.Id}")).EnsureSuccessStatusCode();
         Assert.Empty((await GetHabitsAsync()).Vacations);
-        Assert.NotNull(other);
     }
 
     [Fact]
-    public async Task Today_InVacation_VacationUntil()
-    {
-        var habit = await CreateHabitAsync();
-        await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today.AddDays(5), null));
-
-        Assert.Equal(Today.AddDays(5), (await HabitAsync(habit.Id)).Stats.VacationUntil);
-    }
-
-    [Fact]
-    public async Task Delete_TasksAndGoalsStay_OwnVacationsGo_SharedKeepOthers()
-    {
-        var habit = await CreateHabitAsync();
-        var other = await CreateHabitAsync("Чтение");
-        var goal = await CreateGoalAsync("Тело", "Бег");
-        await SetGoalHabitAsync(goal, habit.Id);
-        var session = await ScheduleAsync(goal, Today);
-        await SetDoneAsync(session.Id, true);
-        await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today, [habit.Id]));
-        var shared = await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today, [habit.Id, other.Id]));
-
-        // Активную копилку удалить нельзя — только из архива
-        Assert.Equal(HttpStatusCode.BadRequest, (await Client.DeleteAsync($"/api/habits/{habit.Id}")).StatusCode);
-        await PutAsync<HabitDto>($"/api/habits/{habit.Id}", new SaveHabitRequest(habit.Name, habit.Emoji, habit.Color, habit.WeeklyNorm, IsArchived: true));
-        (await Client.DeleteAsync($"/api/habits/{habit.Id}")).EnsureSuccessStatusCode();
-
-        var week = await GetWeekAsync(Today);
-        Assert.Null(week.Goals.Single().HabitId);
-        Assert.Null(week.Tasks.Single(t => t.Id == session.Id).HabitId);
-        var vacations = (await GetHabitsAsync()).Vacations;
-        Assert.Equal([shared.Id], vacations.Select(v => v.Id));
-        Assert.Equal([other.Id], vacations[0].HabitIds);
-    }
-
-    [Fact]
-    public async Task UnknownHabit_ForGoal_404()
+    public async Task Delete_OnlyFromArchive_CountGone_GoalAndTasksStay_ResumeBringsItBack()
     {
         var goal = await CreateGoalAsync("Тело", "Бег");
+        var other = await CreateGoalAsync("Ум", "Чтение");
+        var session = await DoneSessionAsync(goal, ThisMonday);
+        await PutAsync<HabitDto>($"/api/habits/{goal.SeriesId}", new UpdateHabitRequest(5, 20));
+        await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today, [goal.SeriesId!.Value]));
+        var shared = await PostAsync<VacationDto>("/api/vacations", new CreateVacationRequest(Today, Today, [goal.SeriesId.Value, other.SeriesId!.Value]));
 
-        var response = await Client.PutAsJsonAsync($"/api/goals/{goal.Id}",
-            new UpdateGoalRequest(goal.Title, goal.RoleIds, 1, null, null, null, null, HabitId: 42));
+        // Идущую привычку удалить нельзя — только из архива
+        Assert.Equal(HttpStatusCode.BadRequest, (await Client.DeleteAsync($"/api/habits/{goal.SeriesId}")).StatusCode);
+        var stopped = await UpdateGoalAsync(goal, recurring: false);
+        (await Client.DeleteAsync($"/api/habits/{goal.SeriesId}")).EnsureSuccessStatusCode();
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var habits = await GetHabitsAsync();
+        Assert.DoesNotContain(habits.Habits, h => h.Id == goal.SeriesId);
+        Assert.Equal([shared.Id], habits.Vacations.Select(v => v.Id));
+        Assert.Equal([other.SeriesId.Value], habits.Vacations[0].HabitIds);
+        var week = await GetWeekAsync(ThisMonday);
+        Assert.Contains(week.Goals, g => g.Id == goal.Id);
+        Assert.Equal(TaskStateDto.Done, week.Tasks.Single(t => t.Id == session.Id).State);
+
+        // Снова «каждую неделю» — привычка вернулась: скрепки — те же занятия, банка — новая
+        await UpdateGoalAsync(stopped, recurring: true);
+        var back = (await HabitAsync(goal.SeriesId))!;
+        Assert.Equal((1, 0, 30), (back.Stats.Total, back.StartCount, back.JarSize));
+    }
+
+    [Fact]
+    public async Task SeveralDimensions_OrderedByRoles_GroupedByFirst()
+    {
+        var spirit = await RoleIdAsync("Дух");
+        var body = await RoleIdAsync("Тело");
+        var walk = await CreateGoalAsync("Дух", "Прогулка");
+        await UpdateGoalAsync(walk, roleIds: [spirit, body]);
+        await CreateGoalAsync("Ум", "Чтение");
+
+        var habits = (await GetHabitsAsync()).Habits;
+        Assert.Equal(["Прогулка", "Чтение"], habits.Select(h => h.Name)); // Тело раньше Ума
+        Assert.Equal([body, spirit], habits[0].DimensionRoleIds);
     }
 }

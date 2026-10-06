@@ -40,8 +40,7 @@ public sealed record TaskDto(
     TimeOnly? StartTime,
     int? DurationMinutes,
     int SortOrder,
-    DateTime? TrashedAt,
-    int? HabitId = null);
+    DateTime? TrashedAt);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -63,6 +62,7 @@ public sealed record GoalRoleDto(int RoleId, int SortOrder);
 /// прогресс и «выполнено» считаются по ним. Roles — роли цели (хотя бы одна): цель видна под каждой, в каждой — на своём месте. IsRecurring — «каждую неделю»: цель появится и на следующей неделе;
 /// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
 /// Days — дни, по которым занятия встают сами (битовая маска: Пн = 1, Вт = 2, … Вс = 64; 127 — каждый день); null — «сам раскладываю».
+/// SeriesId — серия цели (та же цель на других неделях); постоянная серия пилы — привычка с тем же Id (см. HabitDto).
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
@@ -78,7 +78,7 @@ public sealed record WeeklyGoalDto(
     bool IsRecurring = false,
     bool AllowSeveralPerDay = false,
     int? Days = null,
-    int? HabitId = null)
+    int? SeriesId = null)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
@@ -122,7 +122,7 @@ public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
 /// </summary>
 public sealed record TaskGoalResultDto(TaskDto Task, IReadOnlyList<WeeklyGoalDto> Goals, IReadOnlyList<int> ReplacedTaskIds);
 
-/// <summary>Итог недели или месяца копилки (см. Planner.Core.Habits.PeriodResult).</summary>
+/// <summary>Итог недели или месяца привычки (см. Planner.Core.Habits.PeriodResult).</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<PeriodResultDto>))]
 public enum PeriodResultDto
 {
@@ -135,10 +135,10 @@ public enum PeriodResultDto
     Current,
 }
 
-/// <summary>Неделя копилки: понедельник, сколько скрепок, итог.</summary>
-public sealed record HabitWeekDto(DateOnly WeekStart, int Count, PeriodResultDto Result);
+/// <summary>Неделя привычки: понедельник, сколько скрепок, итог, норма той недели (null — цели не было).</summary>
+public sealed record HabitWeekDto(DateOnly WeekStart, int Count, PeriodResultDto Result, int? Norm = null);
 
-/// <summary>Месяц копилки (первое число) и итог.</summary>
+/// <summary>Месяц привычки (первое число) и итог.</summary>
 public sealed record HabitMonthDto(DateOnly Month, PeriodResultDto Result);
 
 /// <summary>
@@ -163,54 +163,29 @@ public sealed record HabitStatsDto(
     DateOnly? VacationUntil);
 
 /// <summary>
-/// Копилка и её статистика. Kind — привычка или коллекция (вид решает, что показать: Stats — серии привычки, Collection — полка);
-/// YearGoal — цель коллекции на год; CategoryIds — категории ленты коллекции. Unit — единица количества (на будущее, пока null).
+/// Привычка — постоянная серия целей «Затачивания пилы» (Id — id серии) — и её статистика. Name — название цели;
+/// Color — цвет первого измерения; DimensionRoleIds — измерения пилы серии по порядку ролей (первое — группа на экране 🫙,
+/// остальные — чипы); WeeklyNorm — норма этой недели («раз в неделю» цели); IsArchived — серия закончилась.
 /// </summary>
 public sealed record HabitDto(
     int Id,
     string Name,
-    string? Emoji,
     string Color,
+    IReadOnlyList<int> DimensionRoleIds,
     int WeeklyNorm,
     int JarSize,
     int StartCount,
-    int SortOrder,
     bool IsArchived,
-    string? Unit,
-    HabitStatsDto Stats,
-    HabitKindDto Kind = HabitKindDto.Habit,
-    int? YearGoal = null,
-    IReadOnlyList<int>? CategoryIds = null,
-    CollectionStatsDto? Collection = null)
-{
-    [JsonIgnore]
-    public bool IsCollection => Kind == HabitKindDto.Collection;
-}
+    HabitStatsDto Stats);
 
-/// <summary>Каникулы с From по To включительно; HabitIds пусто — для всех копилок.</summary>
+/// <summary>Каникулы с From по To включительно; HabitIds (id привычек) пусто — для всех привычек.</summary>
 public sealed record VacationDto(int Id, DateOnly From, DateOnly To, IReadOnlyList<int> HabitIds);
 
-/// <summary>Экран «Копилки»: все копилки (и в архиве) со статистикой на день Today и все каникулы.</summary>
+/// <summary>Экран «Копилки»: все привычки (и в архиве) со статистикой на день Today и все каникулы.</summary>
 public sealed record HabitsDto(DateOnly Today, IReadOnlyList<HabitDto> Habits, IReadOnlyList<VacationDto> Vacations);
 
-/// <summary>После «+1 сегодня»: новое выполненное дело и копилка с новым счётом.</summary>
-public sealed record PlusOneResultDto(TaskDto Task, HabitDto Habit);
-
-[JsonConverter(typeof(JsonStringEnumConverter<HabitKindDto>))]
-public enum HabitKindDto
-{
-    Habit,
-    Collection,
-}
-
-public sealed record CollectionYearDto(int Year, int Count);
-
-/// <summary>Запись коллекции: дело, день завершения; StepCount — шагов у дела, SpanDays — дней от первого отмеченного шага до завершения.</summary>
-public sealed record CollectionEntryDto(int TaskId, string Title, DateOnly CompletedOn, int StepCount, int? SpanDays);
-
-/// <summary>Коллекция: всего (со стартовым числом), в этом году, цель года, по годам, записи — свежие сверху.</summary>
-public sealed record CollectionStatsDto(
-    int Total, int ThisYear, int? YearGoal, IReadOnlyList<CollectionYearDto> Years, IReadOnlyList<CollectionEntryDto> Entries);
+/// <summary>После «+1 сегодня»: отмеченное занятие, его цель (новый прогресс) и привычка с новым счётом.</summary>
+public sealed record PlusOneResultDto(TaskDto Task, WeeklyGoalDto Goal, HabitDto Habit);
 
 /// <summary>Шаг дела (дело-чеклист): видно только в окне его дела.</summary>
 public sealed record StepDto(int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder);

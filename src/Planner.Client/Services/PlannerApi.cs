@@ -26,7 +26,6 @@ public class PlannerApi(HttpClient http)
     public Task<TaskDto> CreateTaskAsync(string title, TaskTargetDto target) =>
         SendAsync<TaskDto>(HttpMethod.Post, "api/tasks", new CreateTaskRequest(title, target));
 
-    public Task<TaskDto> GetTaskAsync(int id) => GetAsync<TaskDto>($"api/tasks/{id}");
 
     public Task<TaskDto> UpdateTaskAsync(int id, UpdateTaskRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Put, $"api/tasks/{id}", request);
@@ -128,20 +127,17 @@ public class PlannerApi(HttpClient http)
 
     public Task DeleteStepAsync(int stepId) => SendAsync(HttpMethod.Delete, $"api/steps/{stepId}");
 
-    // Копилки привычек и каникулы
+    // Привычки (постоянные цели пилы) и каникулы
 
-    /// <summary>Все копилки со статистикой на день <paramref name="today"/> и каникулы. Только чтение — недели не создаются.</summary>
+    /// <summary>Все привычки со статистикой на день <paramref name="today"/> и каникулы. Только чтение — недели не создаются.</summary>
     public Task<HabitsDto> GetHabitsAsync(DateOnly today) => GetAsync<HabitsDto>($"api/habits?today={Format(today)}");
 
-    public Task<HabitDto> CreateHabitAsync(SaveHabitRequest request) =>
-        SendAsync<HabitDto>(HttpMethod.Post, "api/habits", request);
-
-    public Task<HabitDto> UpdateHabitAsync(int id, SaveHabitRequest request, DateOnly today) =>
+    public Task<HabitDto> UpdateHabitAsync(int id, UpdateHabitRequest request, DateOnly today) =>
         SendAsync<HabitDto>(HttpMethod.Put, $"api/habits/{id}?today={Format(today)}", request);
 
     public Task DeleteHabitAsync(int id) => SendAsync(HttpMethod.Delete, $"api/habits/{id}");
 
-    /// <summary>«+1 сегодня»: выполненное дело копилки в конец сегодняшнего дня.</summary>
+    /// <summary>«+1 сегодня»: отмеченное занятие цели привычки на сегодня.</summary>
     public Task<PlusOneResultDto> PlusOneAsync(int id, DateOnly today) =>
         SendAsync<PlusOneResultDto>(HttpMethod.Post, $"api/habits/{id}/plus-one", new PlusOneRequest(today));
 

@@ -1,4 +1,4 @@
-@* «🏖 Каникулы»: новые каникулы (с — по, все копилки или выбранные) и список прежних с удалением.
+@* «🏖 Каникулы»: новые каникулы (с — по, все привычки или выбранные) и список прежних с удалением.
    Неделя, в которую попало ≥ 4 дней каникул, не засчитывается и не пропуск — серия замирает.
    Стили — css/editor.css и VacationsDialog.razor.css. *@
 @inject PlannerState State
@@ -16,14 +16,14 @@
     </div>
 
     <div class="field">
-        <div class="label">Для копилок</div>
+        <div class="label">Для привычек</div>
         <div class="chips">
-            <button type="button" class="chip @(_habitIds.Count == 0 ? "on" : "")" @onclick="() => _habitIds.Clear()">все копилки</button>
-            @foreach (var habit in State.ActiveHabits.Where(h => !h.IsCollection))
+            <button type="button" class="chip @(_habitIds.Count == 0 ? "on" : "")" @onclick="() => _habitIds.Clear()">все привычки</button>
+            @foreach (var habit in State.Habits.Where(h => !h.IsArchived))
             {
                 var id = habit.Id;
                 <button type="button" class="chip @(_habitIds.Contains(id) ? "on" : "")" style="--c: @habit.Color"
-                        @onclick="() => Toggle(id)">@habit.Emoji @habit.Name</button>
+                        @onclick="() => Toggle(id)">@habit.Name</button>
             }
         </div>
     </div>
@@ -84,7 +84,7 @@
     }
 
     private string ForWhom(VacationDto vacation) => vacation.HabitIds.Count == 0
-        ? "все копилки"
+        ? "все привычки"
         : string.Join(", ", vacation.HabitIds.Select(id => State.FindHabit(id)?.Name).OfType<string>());
 
     private async Task SaveAsync()

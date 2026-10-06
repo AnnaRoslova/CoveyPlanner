@@ -22,8 +22,7 @@ public static class Mapping
         t.StartTime,
         t.DurationMinutes,
         t.SortOrder,
-        t.TrashedAt,
-        t.HabitId);
+        t.TrashedAt);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 
@@ -47,7 +46,7 @@ public static class Mapping
         g.RepeatsAfterThisWeek,
         g.AllowSeveralPerDay,
         (int?)g.Days,
-        g.HabitId);
+        g.SeriesId);
 
     /// <summary>Цель, её занятия, стоящие в днях (их поля могли поменяться по шаблону), и убранные при раскладке по дням.</summary>
     public static GoalUpdateResultDto ToUpdateResultDto(this GoalUpdate update) =>
@@ -59,28 +58,15 @@ public static class Mapping
         new(result.Goal.ToDto(), result.Session.ToDto());
 
     public static HabitDto ToDto(this HabitOverview o) => new(
-        o.Habit.Id,
-        o.Habit.Name,
-        o.Habit.Emoji,
-        o.Habit.Color,
-        o.Habit.WeeklyNorm,
-        o.Habit.JarSize,
-        o.Habit.StartCount,
-        o.Habit.SortOrder,
-        o.Habit.IsArchived,
-        o.Habit.Unit,
-        o.Stats.ToDto(),
-        (HabitKindDto)o.Habit.Kind,
-        o.Habit.YearGoal,
-        o.Habit.CategoryIds,
-        o.Collection.ToDto());
-
-    public static CollectionStatsDto ToDto(this CollectionStats c) => new(
-        c.Total,
-        c.ThisYear,
-        c.YearGoal,
-        c.Years.Select(y => new CollectionYearDto(y.Year, y.Count)).ToList(),
-        c.Entries.Select(e => new CollectionEntryDto(e.TaskId, e.Title, e.CompletedOn, e.StepCount, e.SpanDays)).ToList());
+        o.Series.Id,
+        o.Series.Title,
+        o.SawRoles[0].Color,
+        o.SawRoles.Select(r => r.Id).ToList(),
+        o.WeeklyNorm,
+        o.Series.JarSize,
+        o.Series.StartCount,
+        o.IsArchived,
+        o.Stats.ToDto());
 
     public static StepDto ToStepDto(this TaskItem s) =>
         new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.SortOrder);
@@ -94,7 +80,7 @@ public static class Mapping
         s.WeekPaused,
         s.MonthStreak,
         s.MonthPaused,
-        s.Weeks.Select(w => new HabitWeekDto(w.WeekStart, w.Count, (PeriodResultDto)w.Result)).ToList(),
+        s.Weeks.Select(w => new HabitWeekDto(w.WeekStart, w.Count, (PeriodResultDto)w.Result, w.Norm)).ToList(),
         s.Months.Select(m => new HabitMonthDto(m.Month, (PeriodResultDto)m.Result)).ToList(),
         s.AveragePerWeek,
         s.ThisMonth,
@@ -102,9 +88,6 @@ public static class Mapping
         s.VacationUntil);
 
     public static VacationDto ToDto(this Vacation v) => new(v.Id, v.From, v.To, v.HabitIds);
-
-    public static HabitFields ToFields(this SaveHabitRequest r) =>
-        new(r.Name, r.Emoji, r.Color, r.WeeklyNorm, r.JarSize, r.StartCount, (HabitKind)r.Kind, r.YearGoal, r.CategoryIds);
 
     public static TaskTarget ToCore(this TaskTargetDto target) => target switch
     {

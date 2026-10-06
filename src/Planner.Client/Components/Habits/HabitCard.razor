@@ -1,15 +1,26 @@
-@* Карточка копилки (docs/habits-mockup.html): банка с уровнем, общий счёт, полка полных банок, 🔥 серия недель (⚠ пауза),
+@* Карточка привычки (docs/habits-mockup.html): название цели, чипы других измерений пилы (если их несколько), банка с уровнем, общий счёт, полка полных банок, 🔥 серия недель (⚠ пауза),
    🌙 серия месяцев, точки «эта неделя N из нормы» (сверх нормы — розовые), 26 последних недель квадратиками, полоса месяцев,
    среднее за неделю, за месяц и год, подсказки «не пропускай дважды» и про каникулы; «+1 сегодня» и «настроить».
    Всё посчитано на сервере (HabitStatsCalculator). *@
 @using System.Globalization
+@inject PlannerState State
 
 <article @ref="_card" class="jar-card @(Focused ? "focused" : "") @(Habit.IsArchived ? "archived" : "")" tabindex="-1"
-         style="--c: @Habit.Color" data-habit="@Habit.Id" aria-label="Копилка «@Habit.Name»">
+         style="--c: @Habit.Color" data-habit="@Habit.Id" aria-label="Привычка «@Habit.Name»">
     <div class="jar-top">
         <JarPicture Fill="@((double)Stats.InJar / Habit.JarSize)" Color="@Habit.Color" />
         <div class="jar-info">
-            <div class="jar-name"><span class="dot"></span>@if (Habit.Emoji is { } emoji) { <span class="emoji">@emoji</span> }<span class="name">@Habit.Name</span></div>
+            <div class="jar-name"><span class="dot"></span><span class="name">@Habit.Name</span></div>
+            @if (Habit.DimensionRoleIds.Count > 1)
+            {
+                @* Привычка в нескольких измерениях — в группе первого, остальные — чипами *@
+                <div class="dims">
+                    @foreach (var role in State.OrderedRoles.Where(r => Habit.DimensionRoleIds.Skip(1).Contains(r.Id)))
+                    {
+                        <span class="dim-chip" style="--d: @role.Color"><span class="dim-dot"></span>@role.Name</span>
+                    }
+                </div>
+            }
             <div class="total"><span class="total-n">@Stats.Total</span> <small>@ClipsWord(Stats.Total) за всё время</small></div>
             <div class="shelf">
                 @if (Stats.FullJars > 0)
@@ -112,7 +123,7 @@
     [Parameter, EditorRequired]
     public HabitDto Habit { get; set; } = null!;
 
-    /// <summary>Открыли экран кликом по пилюле этой копилки: карточка прокручивается в вид и подсвечивается.</summary>
+    /// <summary>Открыли экран кликом по пилюле цели этой привычки: карточка прокручивается в вид и подсвечивается.</summary>
     [Parameter]
     public bool Focused { get; set; }
 
@@ -150,9 +161,9 @@
 
     private static string ResultText(PeriodResultDto result) => result switch
     {
-        PeriodResultDto.BeforeStart => "до копилки",
+        PeriodResultDto.BeforeStart => "до привычки",
         PeriodResultDto.Done => "засчитана",
-        PeriodResultDto.Neutral => "первая неделя — не пропуск",
+        PeriodResultDto.Neutral => "без нормы — не пропуск",
         PeriodResultDto.Paused => "первый пропуск (пауза)",
         PeriodResultDto.Missed => "пропуск — серия прервана",
         PeriodResultDto.Vacation => "каникулы",
@@ -161,7 +172,9 @@
     };
 
     private string WeekTitle(HabitWeekDto week) =>
-        $"{RuDates.DayMonthShort(week.WeekStart)}: {week.Count} из {Habit.WeeklyNorm} — {ResultText(week.Result)}";
+        week.Norm is { } norm
+            ? $"{RuDates.DayMonthShort(week.WeekStart)}: {week.Count} из {norm} — {ResultText(week.Result)}"
+            : $"{RuDates.DayMonthShort(week.WeekStart)}: {week.Count} — {(week.Result == PeriodResultDto.BeforeStart ? "до привычки" : "цели не было")}";
 
     private static string MonthTitle(HabitMonthDto month) => $"{Capitalize(RuDates.Month(month.Month))}: " + month.Result switch
     {
@@ -171,7 +184,7 @@
         PeriodResultDto.Vacation => "каникулы",
         PeriodResultDto.Current => "в процессе",
         PeriodResultDto.Neutral => "неполный, не пропуск",
-        _ => "до копилки",
+        _ => "до привычки",
     };
 
     private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];

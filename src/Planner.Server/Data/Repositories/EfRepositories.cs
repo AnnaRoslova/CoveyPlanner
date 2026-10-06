@@ -112,6 +112,9 @@ public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
 
 public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
 {
+    public Task<GoalSeries?> FindAsync(int id, CancellationToken ct = default) =>
+        db.GoalSeries.FirstOrDefaultAsync(s => s.Id == id, ct);
+
     public Task<List<GoalSeries>> GetRecurringAsync(CancellationToken ct = default) =>
         db.GoalSeries.Where(s => s.IsRecurring).ToListAsync(ct);
 
@@ -125,36 +128,19 @@ public class EfGoalSeriesRepository(PlannerDbContext db) : IGoalSeriesRepository
 
 public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
 {
-    public Task<Habit?> FindAsync(int id, CancellationToken ct = default) =>
-        db.Habits.FirstOrDefaultAsync(h => h.Id == id, ct);
-
-    public Task<List<Habit>> GetAllAsync(CancellationToken ct = default) =>
-        db.Habits.OrderBy(h => h.SortOrder).ThenBy(h => h.Id).ToListAsync(ct);
-
-    /// <summary>
-    /// Один запрос: выполненные дела с копилкой или из категорий коллекций; неделя цели (для занятий без дня),
-    /// число шагов и первый отмеченный шаг — подзапросами.
-    /// </summary>
-    public Task<List<HabitClipSource>> GetClipsAsync(IReadOnlyCollection<int> collectionCategoryIds, CancellationToken ct = default) =>
-        db.Tasks.AsNoTracking()
-            .Where(t => t.State == TaskState.Done
-                        && (t.HabitId != null || (t.CategoryId != null && collectionCategoryIds.Contains(t.CategoryId.Value))))
-            .Select(t => new HabitClipSource(
-                t.Id,
-                t.Title,
-                t.ParentId,
-                t.HabitId,
-                t.CategoryId,
-                t.PlannedDate,
-                t.GoalLinks.Select(l => (DateOnly?)l.Goal.WeekStart).FirstOrDefault(),
-                t.CompletedAt,
-                db.Tasks.Count(s => s.ParentId == t.Id),
-                db.Tasks.Where(s => s.ParentId == t.Id && s.State == TaskState.Done).Min(s => s.CompletedAt)))
+    /// <summary>Один запрос: выполненные занятия целей постоянных серий (дело — занятие одной цели, шагов среди них нет).</summary>
+    public Task<List<HabitClip>> GetClipsAsync(CancellationToken ct = default) =>
+        db.Set<TaskGoal>().AsNoTracking()
+            .Where(l => l.Task.State == TaskState.Done && l.Task.ParentId == null
+                        && l.Goal.SeriesId != null && l.Goal.Series!.IsRecurring)
+            .Select(l => new HabitClip(l.Goal.SeriesId!.Value, l.Task.PlannedDate, l.Goal.WeekStart))
             .ToListAsync(ct);
 
-    public void Add(Habit habit) => db.Habits.Add(habit);
-
-    public void Remove(Habit habit) => db.Habits.Remove(habit);
+    public Task<List<HabitWeekNorm>> GetWeekNormsAsync(CancellationToken ct = default) =>
+        db.WeeklyGoals.AsNoTracking()
+            .Where(g => g.SeriesId != null && g.Series!.IsRecurring)
+            .Select(g => new HabitWeekNorm(g.SeriesId!.Value, g.WeekStart, g.TimesPerWeek))
+            .ToListAsync(ct);
 }
 
 public class EfVacationRepository(PlannerDbContext db) : IVacationRepository

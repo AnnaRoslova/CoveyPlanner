@@ -40,6 +40,11 @@ public partial class PlannerState
             NotifyChanged();
         }
 
+        if (ok)
+        {
+            await RefreshHabitsIfSawAsync([roleId]); // постоянная цель пилы — новая привычка
+        }
+
         return ok;
     }
 
@@ -70,7 +75,6 @@ public partial class PlannerState
             IsRecurring = form.IsRecurring ?? goal.IsRecurring,
             AllowSeveralPerDay = form.AllowSeveralPerDay ?? goal.AllowSeveralPerDay,
             Days = form.Days is { } d ? d == 0 ? null : d : goal.Days,
-            HabitId = form.HabitId is { } h ? h == 0 ? null : h : goal.HabitId,
         });
 
         // Дни поменялись — занятия разложил сервер (добавил и убрал в корзину) — потом перечитываем
@@ -93,9 +97,9 @@ public partial class PlannerState
         {
             await ReloadAsync();
         }
-        else if (ok && FindGoal(goalId)?.HabitId != goal.HabitId)
+        else if (ok)
         {
-            await RefreshHabitsAsync(); // скрепки занятий переехали в другую копилку
+            await RefreshHabitsIfSawAsync(form.RoleIds, goal); // норма, «каждую неделю», роли — у привычки новые итоги
         }
 
         if (ok && removed.Count > 0)
@@ -159,9 +163,9 @@ public partial class PlannerState
             }
         });
 
-        if (ok && changed?.HabitId is { } habitId)
+        if (ok && changed is not null && HabitOfGoal(goal) is { } habit)
         {
-            await AfterHabitTaskToggledAsync(habitId, changed.State == TaskStateDto.Done, changed.PlannedDate ?? goal.WeekStart);
+            await AfterHabitTaskToggledAsync(habit.Id, changed.State == TaskStateDto.Done, changed.PlannedDate ?? goal.WeekStart);
         }
     }
 
@@ -180,7 +184,7 @@ public partial class PlannerState
 
         var scope = !goal.IsRecurring ? "" : fromThisWeekOn ? " — с этой недели и дальше" : " — на этой неделе";
         await DeleteWithUndoAsync(Deleted(goal.Title) + scope, () => RemoveGoalLocally(goal),
-            () => api.DeleteGoalAsync(goalId, fromThisWeekOn), reloadAfter: goal.Sessions.Count > 0);
+            () => api.DeleteGoalAsync(goalId, fromThisWeekOn), reloadAfter: goal.Sessions.Count > 0 || HabitOfGoal(goal) is not null);
     }
 
     // ---------- Роли ----------
@@ -278,7 +282,10 @@ public partial class PlannerState
         }
 
         SetSessionRoles(goal, roleIds);
-        await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index, from, addRole)));
+        if (await SaveAsync(() => api.MoveGoalAsync(goalId, new MoveGoalRequest(roleId, index, from, addRole))) && rolesChanged)
+        {
+            await RefreshHabitsIfSawAsync(roleIds, goal); // цель могла войти в пилу или выйти из неё
+        }
     }
 
     /// <summary>
@@ -322,7 +329,7 @@ public partial class PlannerState
 
         _tasks[taskId] = session;
 
-        await SaveAsync(async () =>
+        var ok = await SaveAsync(async () =>
         {
             var result = await api.CreateGoalFromTaskAsync(new GoalFromTaskRequest(taskId, roleId, WeekStart, index));
             ReplaceTempGoal(temp.Id, result.Goal);
@@ -331,6 +338,11 @@ public partial class PlannerState
                 _tasks[taskId] = saved;
             }
         });
+
+        if (ok)
+        {
+            await RefreshHabitsIfSawAsync([roleId]);
+        }
     }
 
     /// <summary>

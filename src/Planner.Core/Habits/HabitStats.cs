@@ -6,29 +6,43 @@ public readonly record struct DateRange(DateOnly From, DateOnly To)
     public bool Contains(DateOnly date) => date >= From && date <= To;
 }
 
-/// <summary>Что известно о копилке для подсчёта: всё, что нужно калькулятору, без сущностей и базы.</summary>
-/// <param name="FirstDay">День создания копилки: недели раньше его недели не считаются.</param>
+/// <summary>Что известно о привычке для подсчёта: всё, что нужно калькулятору, без сущностей и базы.</summary>
+/// <param name="FirstDay">Первый день привычки: недели раньше его недели не считаются.</param>
+/// <param name="WeeklyNorm">Норма — сколько раз в неделю (для всех недель, если не задано <paramref name="WeekNorms"/>).</param>
 /// <param name="Clips">Дни скрепок — по одной дате на каждое выполненное дело (повторы — несколько скрепок в день).</param>
-/// <param name="Vacations">Каникулы, которые относятся к этой копилке.</param>
+/// <param name="Vacations">Каникулы, которые относятся к этой привычке.</param>
+/// <param name="WeekNorms">
+/// Норма каждой недели (понедельник → «раз в неделю» цели той недели): правка цели «с этой недели и дальше» прошлые недели
+/// не меняет — они оцениваются по своей тогдашней норме. Недели, которой здесь нет (цель удалили «только на этой неделе»,
+/// серия закончилась), — без нормы: не засчитана и не пропуск. null — у всех недель <paramref name="WeeklyNorm"/>.
+/// </param>
 public sealed record HabitInput(
     DateOnly FirstDay,
     int WeeklyNorm,
     int JarSize,
     int StartCount,
     IReadOnlyCollection<DateOnly> Clips,
-    IReadOnlyCollection<DateRange> Vacations);
+    IReadOnlyCollection<DateRange> Vacations,
+    IReadOnlyDictionary<DateOnly, int>? WeekNorms = null)
+{
+    /// <summary>Норма недели <paramref name="weekStart"/>; null — у недели нормы нет (цели не было).</summary>
+    public int? NormOf(DateOnly weekStart) =>
+        WeekNorms is null ? WeeklyNorm
+        : WeekNorms.TryGetValue(weekStart, out var norm) ? norm
+        : null;
+}
 
 /// <summary>Итог недели (или месяца).</summary>
 public enum PeriodResult
 {
-    /// <summary>До создания копилки — не считается.</summary>
+    /// <summary>До начала привычки — не считается.</summary>
     BeforeStart,
 
     /// <summary>Засчитана: норма выполнена (месяц — серия недель в нём не прервалась).</summary>
     Done,
 
     /// <summary>
-    /// Ни засчитана, ни пропуск: первая неделя копилки без нормы (она неполная), месяц из одних таких недель.
+    /// Ни засчитана, ни пропуск: первая неделя привычки без нормы (она неполная), неделя без цели (нормы нет), месяц из одних таких недель.
     /// На серию не влияет.
     /// </summary>
     Neutral,
@@ -49,13 +63,13 @@ public enum PeriodResult
     Current,
 }
 
-/// <summary>Неделя копилки: понедельник, сколько скрепок, итог.</summary>
-public sealed record HabitWeek(DateOnly WeekStart, int Count, PeriodResult Result);
+/// <summary>Неделя привычки: понедельник, сколько скрепок, итог, норма той недели (null — у недели нет цели).</summary>
+public sealed record HabitWeek(DateOnly WeekStart, int Count, PeriodResult Result, int? Norm = null);
 
-/// <summary>Месяц копилки: первое число месяца и итог. Неделя относится к месяцу своего четверга.</summary>
+/// <summary>Месяц привычки: первое число месяца и итог. Неделя относится к месяцу своего четверга.</summary>
 public sealed record HabitMonth(DateOnly Month, PeriodResult Result);
 
-/// <summary>Посчитанная статистика копилки.</summary>
+/// <summary>Посчитанная статистика привычки.</summary>
 /// <param name="Total">Всего скрепок за всё время: стартовое число + выполненные дела.</param>
 /// <param name="FullJars">Полных банок на полке.</param>
 /// <param name="InJar">Скрепок в текущей банке.</param>

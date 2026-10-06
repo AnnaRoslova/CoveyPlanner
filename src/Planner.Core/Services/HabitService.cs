@@ -3,37 +3,29 @@ using Planner.Core.Entities;
 using Planner.Core.Enums;
 using Planner.Core.Errors;
 using Planner.Core.Habits;
+using Planner.Core.Time;
 
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Поля окна копилки. Color = null — следующий цвет палитры. Kind — привычка или коллекция; YearGoal — цель коллекции на год;
-/// CategoryIds — категории ленты коллекции (null — не менять).
+/// Привычка и её посчитанная статистика. SawRoles — измерения пилы серии по порядку ролей (первое — группа на экране 🫙,
+/// остальные — чипы); WeeklyNorm — норма этой недели (цель недели, иначе шаблон серии); IsArchived — серия закончилась.
 /// </summary>
-public sealed record HabitFields(
-    string Name,
-    string? Emoji,
-    string? Color,
-    int WeeklyNorm,
-    int JarSize = Habit.DefaultJarSize,
-    int StartCount = 0,
-    HabitKind Kind = HabitKind.Habit,
-    int? YearGoal = null,
-    IReadOnlyList<int>? CategoryIds = null);
-
-/// <summary>Копилка и её посчитанная статистика: серии (для привычки) и полка (для коллекции) — считаются обе, вид решает, что показать.</summary>
-public sealed record HabitOverview(Habit Habit, HabitStats Stats, CollectionStats Collection);
+public sealed record HabitOverview(GoalSeries Series, IReadOnlyList<Role> SawRoles, int WeeklyNorm, bool IsArchived, HabitStats Stats);
 
 /// <summary>
-/// Копилки (привычки и коллекции) и каникулы: создать, изменить, «+1 сегодня», статистика. Скрепки не хранятся —
-/// считаются по выполненным делам одним запросом (<see cref="IHabitRepository.GetClipsAsync"/>); чья скрепка — <see cref="HabitAttribution"/>.
+/// Привычки — это постоянные серии целей в измерениях «Затачивания пилы» (отдельной сущности нет): норма недели — «раз в неделю»
+/// цели той недели, скрепки — выполненные занятия целей серии. Скрепки не хранятся, а считаются одним запросом
+/// (<see cref="IHabitRepository"/>). Здесь — банка (стартовое число, размер), «+1 сегодня», удаление из архива и каникулы.
 /// </summary>
 public class HabitService(
+    IGoalSeriesRepository series,
+    IGoalRepository goals,
+    IRoleRepository roles,
     IHabitRepository habits,
     IVacationRepository vacations,
-    ITaskRepository tasks,
-    ICategoryRepository categories,
-    TaskPlacer placer,
+    GoalSeriesService seriesService,
+    GoalSessions sessions,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -42,107 +34,74 @@ public class HabitService(
     /// <summary>Сегодня у пользователя (сервер работает на его компьютере).</summary>
     public DateOnly Today => DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
 
-    /// <summary>Все копилки (и в архиве) со статистикой на день <paramref name="today"/>.</summary>
+    /// <summary>
+    /// Все привычки со статистикой на день <paramref name="today"/>: идущие и архив (законченные — только со скрепками
+    /// или настроенной банкой; пустые законченные серии не показываются).
+    /// </summary>
     public async Task<IReadOnlyList<HabitOverview>> GetOverviewAsync(DateOnly today, CancellationToken ct = default)
     {
-        var all = await habits.GetAllAsync(ct);
-        var collectionOfCategory = CollectionOfCategory(all);
-        var zone = clock.LocalTimeZone;
-        var clips = (await habits.GetClipsAsync([.. collectionOfCategory.Keys], ct))
-            .Select(c => (Clip: c, HabitId: HabitAttribution.HabitOf(c, collectionOfCategory)))
-            .Where(c => c.HabitId is not null)
-            .ToLookup(c => c.HabitId!.Value, c => c.Clip);
+        var sawRoles = (await roles.GetAllAsync(ct)).Where(r => r.IsSharpenSaw).ToList();
+        var clips = (await habits.GetClipsAsync(ct)).ToLookup(c => c.SeriesId, c => c.Day);
+        var norms = (await habits.GetWeekNormsAsync(ct)).ToLookup(n => n.SeriesId);
         var allVacations = await vacations.GetAllAsync(ct);
+        var currentWeek = Week.StartOf(today);
 
-        return all.Select(h =>
+        var result = new List<HabitOverview>();
+        foreach (var habit in await series.GetRecurringAsync(ct))
         {
-            var own = clips[h.Id].ToList();
-            var items = own.Select(c => new CollectionItem(c.TaskId, c.Title, c.CompletedOn(zone), c.StepCount, c.FirstStepOn(zone))).ToList();
-            return new HabitOverview(h,
-                Calculate(h, [.. own.Select(c => c.Day(zone))], allVacations, today),
-                CollectionStatsCalculator.Calculate(items, h.StartCount, h.YearGoal, today));
-        }).ToList();
+            var dimensions = sawRoles.Where(r => habit.RoleIds.Contains(r.Id)).ToList();
+            if (habit.IsHabitDeleted || dimensions.Count == 0)
+            {
+                continue;
+            }
+
+            var own = clips[habit.Id].ToList();
+            if (habit.IsEnded && own.Count == 0 && !habit.HasCustomJar)
+            {
+                continue;
+            }
+
+            var weekNorms = norms[habit.Id].ToDictionary(n => n.WeekStart, n => n.TimesPerWeek);
+            var norm = weekNorms.GetValueOrDefault(currentWeek, habit.TimesPerWeek);
+            var firstWeek = weekNorms.Keys.Append(habit.FirstWeek).Min();
+            var ranges = allVacations.Where(v => v.AppliesTo(habit.Id)).Select(v => v.Range).ToList();
+            var stats = HabitStatsCalculator.Calculate(
+                new HabitInput(firstWeek, norm, habit.JarSize, habit.StartCount, own, ranges, weekNorms), today);
+            result.Add(new HabitOverview(habit, dimensions, norm, habit.IsEnded, stats));
+        }
+
+        // По измерениям (порядок ролей пилы), внутри — по порядку создания
+        return result
+            .OrderBy(o => sawRoles.IndexOf(o.SawRoles[0]))
+            .ThenBy(o => o.Series.Id)
+            .ToList();
     }
 
-    /// <summary>Категория ленты → коллекция (только копилки вида «коллекция»; у категории — не больше одной).</summary>
-    public static IReadOnlyDictionary<int, int> CollectionOfCategory(IEnumerable<Habit> all) =>
-        all.Where(h => h.IsCollection)
-            .SelectMany(h => h.CategoryIds.Select(categoryId => (categoryId, h.Id)))
-            .GroupBy(x => x.categoryId)
-            .ToDictionary(g => g.Key, g => g.First().Id);
-
-    /// <summary>Одна копилка со статистикой.</summary>
+    /// <summary>Одна привычка со статистикой.</summary>
     public async Task<HabitOverview> GetAsync(int id, DateOnly today, CancellationToken ct = default) =>
-        (await GetOverviewAsync(today, ct)).FirstOrDefault(o => o.Habit.Id == id) ?? throw new NotFoundException("Копилка", id);
+        (await GetOverviewAsync(today, ct)).FirstOrDefault(o => o.Series.Id == id) ?? throw new NotFoundException("Привычка", id);
 
-    /// <summary>Новая копилка — в конец списка.</summary>
-    public async Task<Habit> CreateAsync(HabitFields fields, CancellationToken ct = default)
-    {
-        var all = await habits.GetAllAsync(ct);
-        var habit = Habit.Create(fields.Name, fields.Emoji, fields.Color ?? RolePalette.ForIndex(all.Count),
-            fields.WeeklyNorm, fields.JarSize, fields.StartCount, Now);
-        await ApplyCollectionFieldsAsync(habit, fields, all, ct);
-        habit.SortOrder = all.Count == 0 ? 0 : all.Max(h => h.SortOrder) + 1;
-        habits.Add(habit);
-        await unitOfWork.SaveChangesAsync(ct);
-        return habit;
-    }
-
-    /// <summary>Сохранить окно копилки; <paramref name="isArchived"/> = null — архив не менять. Смена вида историю не трогает.</summary>
-    public async Task<Habit> UpdateAsync(int id, HabitFields fields, bool? isArchived = null, CancellationToken ct = default)
+    /// <summary>Настройки банки: стартовое число и размер.</summary>
+    public async Task UpdateJarAsync(int id, int startCount, int jarSize, CancellationToken ct = default)
     {
         var habit = await FindAsync(id, ct);
-        habit.Update(fields.Name, fields.Emoji, fields.Color ?? habit.Color, fields.WeeklyNorm, fields.JarSize, fields.StartCount);
-        await ApplyCollectionFieldsAsync(habit, fields, await habits.GetAllAsync(ct), ct);
-        if (isArchived is { } archived)
-        {
-            habit.SetArchived(archived);
-        }
-
+        habit.SetJar(startCount, jarSize);
         await unitOfWork.SaveChangesAsync(ct);
-        return habit;
     }
 
     /// <summary>
-    /// Вид, цель года и категории ленты. Категория — не больше чем у одной копилки: выбранная здесь уходит от прежней.
-    /// </summary>
-    private async Task ApplyCollectionFieldsAsync(Habit habit, HabitFields fields, IEnumerable<Habit> all, CancellationToken ct)
-    {
-        habit.SetKind(fields.Kind);
-        habit.SetYearGoal(fields.YearGoal);
-        if (fields.CategoryIds is not { } categoryIds)
-        {
-            return;
-        }
-
-        foreach (var categoryId in categoryIds.Distinct())
-        {
-            if (await categories.FindAsync(categoryId, ct) is null)
-            {
-                throw new NotFoundException("Категория", categoryId);
-            }
-
-            foreach (var other in all.Where(h => h != habit))
-            {
-                other.RemoveCategory(categoryId);
-            }
-        }
-
-        habit.SetCategories(categoryIds);
-    }
-
-    /// <summary>
-    /// Удалить копилку — только из архива (активную сначала отправляют в архив). Дела и цели остаются, просто без копилки
-    /// (связь обнуляет база); каникулы только этой копилки удаляются, у общих она убирается из списка.
+    /// Удалить привычку — только из архива (серия закончилась). Удаляется только счёт: банка и каникулы этой привычки
+    /// (общие каникулы остаются для остальных); цель, её серия и дела не трогаются.
     /// «Вернуть» — на клиенте: удаление уходит на сервер через несколько секунд.
     /// </summary>
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var habit = await FindAsync(id, ct);
-        if (!habit.IsArchived)
+        if (!habit.IsEnded)
         {
-            throw new DomainException("Удалить можно только копилку из архива.");
+            throw new DomainException("Удалить можно только привычку из архива.");
         }
+
         foreach (var vacation in await vacations.GetAllAsync(ct))
         {
             if (!vacation.RemoveHabit(id))
@@ -151,34 +110,46 @@ public class HabitService(
             }
         }
 
-        habits.Remove(habit);
+        habit.DeleteHabit();
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    /// <summary>«+1 сегодня»: выполненное дело с названием копилки — в конец дел дня <paramref name="today"/> без времени.</summary>
-    public async Task<TaskItem> PlusOneAsync(int id, DateOnly today, CancellationToken ct = default)
+    /// <summary>
+    /// «+1 сегодня» — выполненное занятие цели этой недели на <paramref name="today"/>: невыполненное сегодняшнее
+    /// отмечается, иначе новое (или занятие без дня) встаёт в конец дня уже отмеченным. Правило «одно занятие в день» —
+    /// как у цели: сегодня уже отмечено — второе не добавляется.
+    /// </summary>
+    public async Task<(WeeklyGoal Goal, TaskItem Session)> PlusOneAsync(int id, DateOnly today, CancellationToken ct = default)
     {
         var habit = await FindAsync(id, ct);
-        if (habit.IsArchived)
+        if (habit.IsEnded)
         {
-            throw new DomainException("Копилка в архиве.");
+            throw new DomainException("Привычка в архиве.");
         }
 
-        if (habit.IsCollection)
+        var weekStart = Week.StartOf(today);
+        await seriesService.EnsureWeeksAsync(weekStart, ct);
+        var goal = await goals.FindInSeriesAsync(id, weekStart, ct)
+                   ?? throw new DomainException("На этой неделе цели нет.");
+
+        var session = goal.ActiveSessions.FirstOrDefault(t => t.State == TaskState.Planned && t.PlannedDate == today);
+        if (session is null)
         {
-            throw new DomainException("У коллекции нет «+1 сегодня» — скрепка в ней только выполненное дело.");
+            if (!goal.AllowSeveralPerDay && goal.HasSessionOn(today))
+            {
+                throw new DomainException("Сегодня уже отмечено.");
+            }
+
+            session = goal.UnscheduledSession ?? sessions.Create(goal);
+            await sessions.PlaceInDayAsync(goal, session, new DayTarget(today, int.MaxValue), ct);
         }
 
-        var task = TaskItem.CreatePlanned(habit.Name, Now);
-        task.SetHabit(habit.Id);
-        await placer.PlaceAsync(task, new DayTarget(today, int.MaxValue), ct);
-        task.Complete(Now);
-        tasks.Add(task);
+        session.Complete(Now);
         await unitOfWork.SaveChangesAsync(ct);
-        return task;
+        return (goal, session);
     }
 
-    /// <summary>Каникулы с <paramref name="from"/> по <paramref name="to"/>; habitIds пусто — для всех копилок.</summary>
+    /// <summary>Каникулы с <paramref name="from"/> по <paramref name="to"/>; habitIds пусто — для всех привычек.</summary>
     public async Task<Vacation> CreateVacationAsync(
         DateOnly from, DateOnly to, IReadOnlyCollection<int> habitIds, CancellationToken ct = default)
     {
@@ -203,22 +174,19 @@ public class HabitService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    private HabitStats Calculate(Habit habit, List<DateOnly> clips, IEnumerable<Vacation> allVacations, DateOnly today)
+    /// <summary>Серия-привычка: постоянная, не удалённая как привычка, хотя бы с одним измерением пилы.</summary>
+    private async Task<GoalSeries> FindAsync(int id, CancellationToken ct)
     {
-        var firstDay = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(habit.CreatedAt, clock.LocalTimeZone));
-        var ranges = allVacations.Where(v => v.AppliesTo(habit.Id)).Select(v => v.Range).ToList();
-        return HabitStatsCalculator.Calculate(
-            new HabitInput(firstDay, habit.WeeklyNorm, habit.JarSize, habit.StartCount, clips, ranges), today);
+        var habit = await series.FindAsync(id, ct);
+        if (habit is { IsRecurring: true, IsHabitDeleted: false })
+        {
+            var sawRoleIds = (await roles.GetAllAsync(ct)).Where(r => r.IsSharpenSaw).Select(r => r.Id);
+            if (habit.RoleIds.Intersect(sawRoleIds).Any())
+            {
+                return habit;
+            }
+        }
+
+        throw new NotFoundException("Привычка", id);
     }
-
-    private async Task<Habit> FindAsync(int id, CancellationToken ct) =>
-        await habits.FindAsync(id, ct) ?? throw new NotFoundException("Копилка", id);
-}
-
-/// <summary>Привязка цели или дела к копилке.</summary>
-public static class HabitLinks
-{
-    /// <summary>Копилка по выбору в окне: 0 — «без копилки» (null), иначе копилка должна существовать.</summary>
-    public static async Task<int?> ResolveLinkAsync(this IHabitRepository habits, int habitId, CancellationToken ct = default) =>
-        habitId == 0 ? null : (await habits.FindAsync(habitId, ct) ?? throw new NotFoundException("Копилка", habitId)).Id;
 }

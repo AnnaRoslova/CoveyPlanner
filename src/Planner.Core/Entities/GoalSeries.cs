@@ -14,6 +14,8 @@ namespace Planner.Core.Entities;
 /// </list>
 /// Цели создаются лениво — когда неделю открывают (или переносят на неё занятие). <see cref="GeneratedThrough"/> —
 /// до какой недели цели уже созданы: удалённая «только на этой неделе» цель поэтому сама не возвращается.
+/// Постоянная серия в измерении «Затачивания пилы» — привычка: у неё банка со скрепками (<see cref="Services.HabitService"/>),
+/// одна история на все правки цели; закончилась серия — привычка в архиве.
 /// </summary>
 public class GoalSeries
 {
@@ -44,9 +46,6 @@ public class GoalSeries
 
     public int? DurationMinutes { get; private set; }
 
-    /// <summary>Копилка привычки целей серии.</summary>
-    public int? HabitId { get; private set; }
-
     /// <summary>Можно ли несколько занятий в один день.</summary>
     public bool AllowSeveralPerDay { get; private set; }
 
@@ -64,6 +63,50 @@ public class GoalSeries
 
     /// <summary>До этой недели (включительно) цели серии уже созданы.</summary>
     public DateOnly GeneratedThrough { get; private set; }
+
+    // Банка привычки: действует, только если серия — привычка (постоянная, в измерении «Затачивания пилы»)
+
+    public const int DefaultJarSize = 30;
+    public const int MinJarSize = 1;
+    public const int MaxJarSize = 1000;
+    public const int MaxStartCount = 1_000_000;
+
+    /// <summary>Сколько скрепок вмещает банка.</summary>
+    public int JarSize { get; private set; } = DefaultJarSize;
+
+    /// <summary>Стартовое число: скрепки, накопленные до привычки (их дат нет — в серии недель не входят).</summary>
+    public int StartCount { get; private set; }
+
+    /// <summary>
+    /// Привычку удалили (из архива): серия, её цели и дела остаются, но банки у неё больше нет.
+    /// Снова включили «каждую неделю» — привычка возвращается (скрепки — выполненные занятия — никуда не делись).
+    /// </summary>
+    public bool IsHabitDeleted { get; private set; }
+
+    /// <summary>Серия закончилась (сняли «каждую неделю» или удалили «с этой недели и дальше») — привычка в архиве.</summary>
+    public bool IsEnded => LastWeek is not null;
+
+    /// <summary>Банка настроена (не как у новой) — такую законченную привычку видно в архиве, даже без скрепок.</summary>
+    public bool HasCustomJar => JarSize != DefaultJarSize || StartCount != 0;
+
+    /// <summary>Настройки банки привычки.</summary>
+    public void SetJar(int startCount, int jarSize)
+    {
+        JarSize = jarSize is >= MinJarSize and <= MaxJarSize
+            ? jarSize
+            : throw new DomainException($"В банке — от {MinJarSize} до {MaxJarSize} скрепок.");
+        StartCount = startCount is >= 0 and <= MaxStartCount
+            ? startCount
+            : throw new DomainException($"Стартовое число — от 0 до {MaxStartCount}.");
+    }
+
+    /// <summary>Удалить привычку: только её счёт (банка — как у новой); серия, цели и дела остаются.</summary>
+    public void DeleteHabit()
+    {
+        JarSize = DefaultJarSize;
+        StartCount = 0;
+        IsHabitDeleted = true;
+    }
 
     /// <summary>Серия из цели: шаблон — её, первая неделя — её неделя.</summary>
     public static GoalSeries StartFrom(WeeklyGoal goal, bool recurring)
@@ -97,7 +140,6 @@ public class GoalSeries
         DurationMinutes = goal.DurationMinutes;
         AllowSeveralPerDay = goal.AllowSeveralPerDay;
         Days = goal.Days;
-        HabitId = goal.HabitId;
     }
 
     /// <summary>
@@ -145,12 +187,14 @@ public class GoalSeries
 
     /// <summary>
     /// Снова «каждую неделю» с недели <paramref name="week"/>. Недели между прежним концом и этой — не заполняются.
+    /// Удалённая привычка возвращается: её история — выполненные занятия — продолжается.
     /// </summary>
     public void RecurFrom(DateOnly week)
     {
         EnsureWeekStart(week);
         IsRecurring = true;
         LastWeek = null;
+        IsHabitDeleted = false;
         if (GeneratedThrough < week)
         {
             GeneratedThrough = week;

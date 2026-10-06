@@ -55,9 +55,6 @@ public class WeeklyGoal
 
     public int? DurationMinutes { get; private set; }
 
-    /// <summary>Копилка привычки (часть шаблона): занятия цели — скрепки в ней.</summary>
-    public int? HabitId { get; private set; }
-
     /// <summary>Можно ли ставить несколько занятий в один день («Чтение» утром и вечером). По умолчанию — нет.</summary>
     public bool AllowSeveralPerDay { get; private set; }
 
@@ -150,7 +147,6 @@ public class WeeklyGoal
         goal.DurationMinutes = series.DurationMinutes;
         goal.AllowSeveralPerDay = series.AllowSeveralPerDay;
         goal.Days = series.Days;
-        goal.HabitId = series.HabitId;
         goal.Series = series;
         return goal;
     }
@@ -167,7 +163,6 @@ public class WeeklyGoal
         goal.Notes = Notes;
         goal.DurationMinutes = DurationMinutes;
         goal.AllowSeveralPerDay = AllowSeveralPerDay;
-        goal.HabitId = HabitId;
         goal.Series = Series;
         return goal;
     }
@@ -234,21 +229,6 @@ public class WeeklyGoal
     public void CopyTemplateFrom(TaskItem task)
     {
         UpdateTemplate(task.Title, task.StartTime, task.Quadrant, task.Notes, task.DurationMinutes);
-        HabitId = task.HabitId;
-    }
-
-    /// <summary>
-    /// Поменять копилку цели. Занятия, у которых копилка была как у цели, переходят в новую — и выполненные тоже:
-    /// их скрепки переезжают вместе с целью. Занятие со своей копилкой (отличается от прежней копилки цели) не трогается.
-    /// </summary>
-    public void SetHabit(int? habitId)
-    {
-        var old = HabitId;
-        HabitId = habitId;
-        foreach (var session in Sessions.Where(t => t.HabitId == old))
-        {
-            session.SetHabit(habitId);
-        }
     }
 
     /// <summary>Новое занятие получает значения цели. Время — когда занятие встанет в день.</summary>
@@ -258,7 +238,6 @@ public class WeeklyGoal
         session.Quadrant = Quadrant;
         session.SetNotes(Notes);
         session.SetDuration(DurationMinutes);
-        session.SetHabit(HabitId);
     }
 
     public void SetTimesPerWeek(int times)
@@ -350,12 +329,6 @@ public class WeeklyGoal
         task.AddGoalLink(link);
         task.SetRoles(RoleIds);
         task.Quadrant = Quadrant;
-
-        // Цель с копилкой — дело становится её скрепкой; цель без копилки своё у дела не отнимает
-        if (HabitId is not null)
-        {
-            task.SetHabit(HabitId);
-        }
     }
 
     /// <summary>Перестать считать дело занятием этой цели (дело остаётся, его роли — тоже).</summary>

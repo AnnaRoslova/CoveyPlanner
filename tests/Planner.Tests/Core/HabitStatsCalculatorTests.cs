@@ -2,7 +2,7 @@ using Planner.Core.Habits;
 
 namespace Planner.Tests.Core;
 
-/// <summary>Правила копилок (docs/habits-mockup.html, блок «правила»): скрепки, недели, серии, месяцы, каникулы.</summary>
+/// <summary>Правила привычек (docs/habits-mockup.html, блок «правила»): скрепки, недели, серии, месяцы, каникулы.</summary>
 public class HabitStatsCalculatorTests
 {
     // Сегодня — среда 7 октября 2026; текущая неделя — с понедельника 5 октября (четверг 8-го — октябрь)
@@ -17,7 +17,8 @@ public class HabitStatsCalculatorTests
     /// просто для чтения (границы месяцев). Копилка создана в понедельник первой недели (или в <paramref name="firstDay"/>).
     /// </summary>
     private static HabitStats Run(string weeks, int norm = 3, DateOnly? firstDay = null, int startCount = 0, int jarSize = 30,
-        DateRange[]? vacations = null, DateOnly? today = null, IEnumerable<DateOnly>? extraClips = null)
+        DateRange[]? vacations = null, DateOnly? today = null, IEnumerable<DateOnly>? extraClips = null,
+        int[]? weekNorms = null)
     {
         var counts = weeks.Where(char.IsDigit).Select(c => c - '0').ToList();
         var first = W(-(counts.Count - 1));
@@ -31,7 +32,10 @@ public class HabitStatsCalculatorTests
         }
 
         clips.AddRange(extraClips ?? []);
-        var input = new HabitInput(firstDay ?? first, norm, jarSize, startCount, clips, vacations ?? []);
+        // Норма по неделям (как недели в weeks; 0 — у недели нет цели)
+        var norms = weekNorms?.Select((n, i) => (Week: first.AddDays(7 * i), Norm: n)).Where(x => x.Norm > 0)
+            .ToDictionary(x => x.Week, x => x.Norm);
+        var input = new HabitInput(firstDay ?? first, norm, jarSize, startCount, clips, vacations ?? [], norms);
         return HabitStatsCalculator.Calculate(input, today ?? Today);
     }
 
@@ -582,5 +586,67 @@ public class HabitStatsCalculatorTests
         Assert.All(stats.Weeks, w => Assert.Equal(PeriodResult.BeforeStart, w.Result));
         Assert.All(stats.Months, m => Assert.Equal(PeriodResult.BeforeStart, m.Result));
         Assert.Equal(5, stats.Total);
+    }
+
+    // ---------- Норма у каждой недели своя (правки цели «с этой недели и дальше») ----------
+
+    [Fact]
+    public void WeekNorms_EachWeekJudgedByItsOwnNorm()
+    {
+        // Норму снизили до 2, потом подняли до 3: прошлые недели не пересчитываются
+        var stats = Run("3 2 2 0", weekNorms: [3, 2, 3, 3]);
+
+        Assert.Equal("DDPC", Marks(stats, 4));
+        Assert.Equal((2, true), (stats.WeekStreak, stats.WeekPaused));
+    }
+
+    [Fact]
+    public void WeekNorms_RaisedNorm_DoesNotBreakPastWeeks()
+    {
+        var withHistory = Run("2 2 2 1", weekNorms: [2, 2, 5, 5]);
+        var withoutHistory = Run("2 2 2 1", norm: 5);
+
+        Assert.Equal("DDPC", Marks(withHistory, 4));
+        Assert.Equal(2, withHistory.WeekStreak);
+        Assert.Equal("NMMC", Marks(withoutHistory, 4)); // одна норма на всё — прошлые недели «провалены»
+    }
+
+    [Fact]
+    public void WeekNorms_CurrentWeek_RewardByItsNorm()
+    {
+        var stats = Run("3 2", weekNorms: [3, 2]);
+
+        Assert.Equal(2, stats.WeekStreak);
+    }
+
+    [Fact]
+    public void WeekWithoutGoal_NeitherDoneNorMiss_StreakFrozen()
+    {
+        // Цель удалили «только на этой неделе»
+        var stats = Run("3 0 3 0", weekNorms: [3, 0, 3, 3]);
+
+        Assert.Equal("DNDC", Marks(stats, 4));
+        Assert.Equal((2, false), (stats.WeekStreak, stats.WeekPaused));
+    }
+
+    [Fact]
+    public void EndedSeries_WeeksAfterEnd_NotMisses_HistoryKept()
+    {
+        // Сняли «каждую неделю» две недели назад: дальше целей нет — серия замерла, не оборвалась
+        var stats = Run("3 3 0 0 0", weekNorms: [3, 3, 0, 0, 0]);
+
+        Assert.Equal("DDNNC", Marks(stats, 5));
+        Assert.Equal((2, false), (stats.WeekStreak, stats.WeekPaused));
+        Assert.Equal(6, stats.Total);
+    }
+
+    [Fact]
+    public void ResumedSeries_HistoryContinues()
+    {
+        // Перерыв (целей не было), потом снова «каждую неделю»
+        var stats = Run("3 0 0 3 3", weekNorms: [3, 0, 0, 3, 3]);
+
+        Assert.Equal("DNNDC", Marks(stats, 5));
+        Assert.Equal(3, stats.WeekStreak);
     }
 }

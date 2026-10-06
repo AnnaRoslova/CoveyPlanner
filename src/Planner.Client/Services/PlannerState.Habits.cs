@@ -2,28 +2,22 @@ using Planner.Shared;
 
 namespace Planner.Client.Services;
 
-// Копилки привычек: список со статистикой (её считает сервер), «+1 сегодня», каникулы, подсказка «📎 +1»
+// Привычки — постоянные цели «Затачивания пилы» (id привычки — id серии цели): список со статистикой (её считает сервер),
+// настройки банки, «+1 сегодня», каникулы, подсказка «📎 +1»
 public partial class PlannerState
 {
-    /// <summary>Все копилки (и в архиве) по порядку, со статистикой на сегодня.</summary>
+    /// <summary>Все привычки (и в архиве) по измерениям пилы, со статистикой на сегодня.</summary>
     public List<HabitDto> Habits { get; private set; } = [];
 
     /// <summary>Каникулы, новые сверху.</summary>
     public List<VacationDto> Vacations { get; private set; } = [];
 
-    /// <summary>Копилки не в архиве — их предлагает «🫙 В копилку».</summary>
-    public IEnumerable<HabitDto> ActiveHabits => Habits.Where(h => !h.IsArchived).OrderBy(h => h.SortOrder);
-
     public HabitDto? FindHabit(int? habitId) => habitId is { } id ? Habits.FirstOrDefault(h => h.Id == id) : null;
 
-    /// <summary>Коллекция, к которой привязана категория ленты (у категории — не больше одной); null — ни к какой.</summary>
-    public HabitDto? CollectionOfCategory(int? categoryId) =>
-        categoryId is { } id ? Habits.FirstOrDefault(h => h.IsCollection && h.CategoryIds?.Contains(id) == true) : null;
+    /// <summary>Привычка цели — её серия, если та привычка; null — цель не привычка.</summary>
+    public HabitDto? HabitOfGoal(WeeklyGoalDto? goal) => FindHabit(goal?.SeriesId);
 
-    /// <summary>Чья скрепка дело (так же решает сервер): копилка, выбранная вручную, иначе коллекция его категории.</summary>
-    public int? HabitIdOf(TaskDto task) => task.HabitId ?? CollectionOfCategory(task.CategoryId)?.Id;
-
-    /// <summary>Перечитать копилки (скрепки считаются на сервере по делам).</summary>
+    /// <summary>Перечитать привычки (скрепки считаются на сервере по занятиям).</summary>
     public async Task RefreshHabitsAsync()
     {
         // Отложенное удаление — сначала на сервер, иначе перечитанное вернуло бы удалённое на экран (как в ReloadAsync)
@@ -46,38 +40,13 @@ public partial class PlannerState
         Vacations = [.. habits.Vacations];
     }
 
-    /// <summary>Новая копилка (ждём сервер — Id нужен сразу, например чтобы выбрать её в окне цели). null — не сохранилась.</summary>
-    public async Task<HabitDto?> CreateHabitAsync(SaveHabitRequest request)
+    /// <summary>Настройки банки: стартовое число и размер.</summary>
+    public async Task UpdateHabitAsync(int habitId, int startCount, int jarSize)
     {
         try
         {
             await CommitPendingDeleteAsync();
-            var habit = await api.CreateHabitAsync(request);
-            Habits.Add(habit);
-            await RefreshHabitsAsync(); // категории могли уйти от другой коллекции
-            return habit;
-        }
-        catch (ApiException ex)
-        {
-            notifier.Error(ex.Message);
-            return null;
-        }
-    }
-
-    /// <summary>Сохранить окно копилки (и «в архив» / «из архива»).</summary>
-    public async Task UpdateHabitAsync(int habitId, SaveHabitRequest request)
-    {
-        try
-        {
-            await CommitPendingDeleteAsync();
-            var saved = await api.UpdateHabitAsync(habitId, request, RuDates.Today);
-            var index = Habits.FindIndex(h => h.Id == habitId);
-            if (index >= 0)
-            {
-                Habits[index] = saved;
-            }
-
-            await RefreshHabitsAsync(); // смена вида или категорий меняет счёт и других коллекций
+            ReplaceHabit(await api.UpdateHabitAsync(habitId, new UpdateHabitRequest(startCount, jarSize), RuDates.Today));
         }
         catch (ApiException ex)
         {
@@ -88,9 +57,8 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Удалить копилку из архива — с плашкой «Удалено «…» · Вернуть»: на экране сразу, на сервер — через 6 секунд
-    /// (см. <see cref="DeleteWithUndoAsync"/>). «Вернуть» — копилка целиком: привязки, стартовое число, каникулы.
-    /// После удаления дела и цели остаются без копилки, каникулы только этой копилки исчезают — перечитываем.
+    /// Удалить привычку из архива — с плашкой «Удалено «…» · Вернуть»: на экране сразу, на сервер — через 6 секунд
+    /// (см. <see cref="DeleteWithUndoAsync"/>). Удаляется только счёт (банка, каникулы этой привычки) — цель и дела остаются.
     /// </summary>
     public async Task DeleteHabitAsync(int habitId)
     {
@@ -103,29 +71,28 @@ public partial class PlannerState
             () => api.DeleteHabitAsync(habitId), reloadAfter: true);
     }
 
-    /// <summary>Как удаление копилки выглядит сразу (так же решает сервер).</summary>
+    /// <summary>Как удаление привычки выглядит сразу (так же решает сервер).</summary>
     private void RemoveHabitLocally(int habitId)
     {
         Habits.RemoveAll(h => h.Id == habitId);
-        foreach (var goal in Goals.Where(g => g.HabitId == habitId).ToList())
-        {
-            ReplaceGoal(goal with { HabitId = null });
-        }
-
-        foreach (var task in _tasks.Values.Where(t => t.HabitId == habitId).ToList())
-        {
-            _tasks[task.Id] = task with { HabitId = null };
-        }
-
         Vacations = Vacations
             .Where(v => !v.HabitIds.SequenceEqual([habitId]))
             .Select(v => v with { HabitIds = [.. v.HabitIds.Where(id => id != habitId)] })
             .ToList();
     }
 
-    /// <summary>«+1 сегодня»: выполненное дело копилки в конец сегодняшнего дня и подсказка «📎 +1».</summary>
+    /// <summary>«+1 сегодня»: занятие цели на сегодня отмечено (или добавлено отмеченным) и подсказка «📎 +1».</summary>
     public async Task PlusOneAsync(int habitId)
     {
+        // Сегодня уже отмечено, а невыполненного сегодняшнего нет (так же откажет сервер — как у галочки цели)
+        var today = RuDates.Today;
+        if (Goals.FirstOrDefault(g => g.SeriesId == habitId && g.WeekStart == RuDates.WeekStartOf(today)) is { AllowSeveralPerDay: false } goal
+            && goal.Sessions.Any(s => s.PlannedDate == today) && !goal.Sessions.Any(s => s.PlannedDate == today && !s.IsDone))
+        {
+            notifier.Info("сегодня уже отмечено");
+            return;
+        }
+
         try
         {
             await CommitPendingDeleteAsync();
@@ -135,8 +102,13 @@ public partial class PlannerState
                 _tasks[result.Task.Id] = result.Task;
             }
 
+            if (result.Goal.WeekStart == WeekStart)
+            {
+                ReplaceGoal(result.Goal);
+            }
+
             ReplaceHabit(result.Habit);
-            notifier.Clip(ClipMessage(result.Habit, result.Task.PlannedDate), ClipIcon(result.Habit));
+            notifier.Clip(ClipMessage(result.Habit, result.Task.PlannedDate));
         }
         catch (ApiException ex)
         {
@@ -146,7 +118,7 @@ public partial class PlannerState
         NotifyChanged();
     }
 
-    /// <summary>Каникулы с from по to (habitIds пусто — для всех копилок). false — не сохранились.</summary>
+    /// <summary>Каникулы с from по to (habitIds пусто — для всех привычек). false — не сохранились.</summary>
     public async Task<bool> CreateVacationAsync(DateOnly from, DateOnly to, IReadOnlyList<int> habitIds)
     {
         try
@@ -173,7 +145,7 @@ public partial class PlannerState
     }
 
     /// <summary>
-    /// Отметили (или сняли отметку с) дела копилки: перечитываем счёт; отметили — подсказка
+    /// Отметили (или сняли отметку с) занятие цели-привычки: перечитываем счёт; отметили — подсказка
     /// «📎 +1 в «Тренировки» · 103 · неделя 3 из 3 ✓» (неделя — та, где стоит дело).
     /// </summary>
     private async Task AfterHabitTaskToggledAsync(int habitId, bool isDone, DateOnly? date)
@@ -181,28 +153,30 @@ public partial class PlannerState
         await RefreshHabitsAsync();
         if (isDone && FindHabit(habitId) is { } habit)
         {
-            notifier.Clip(ClipMessage(habit, date), ClipIcon(habit));
+            notifier.Clip(ClipMessage(habit, date));
         }
     }
 
-    /// <summary>Что падает в подсказке: у коллекции — её значок («📚»), у привычки — скрепка.</summary>
-    private static string ClipIcon(HabitDto habit) => habit.IsCollection ? habit.Emoji ?? "🫙" : "📎";
+    /// <summary>
+    /// Цель могла стать привычкой, перестать ею быть или уйти в архив — перечитываем, если у неё есть роль пилы
+    /// (<paramref name="roleIds"/> — роли после изменения) или она уже была привычкой (<paramref name="before"/>).
+    /// </summary>
+    private async Task RefreshHabitsIfSawAsync(IEnumerable<int> roleIds, WeeklyGoalDto? before = null)
+    {
+        if (HabitOfGoal(before) is not null || roleIds.Any(id => FindRole(id)?.IsSharpenSaw == true))
+        {
+            await RefreshHabitsAsync();
+        }
+    }
 
-    /// <summary>Привычка: «+1 в «Тренировки» · 103 · неделя 3 из 3 ✓»; коллекция: «+1 в «Книги» · 10 из 24 в 2026».</summary>
+    /// <summary>«+1 в «Тренировки» · 103 · неделя 3 из 3 ✓» — норма той недели, где стоит дело.</summary>
     private static string ClipMessage(HabitDto habit, DateOnly? date)
     {
-        if (habit is { IsCollection: true, Collection: { } collection })
-        {
-            var year = RuDates.Today.Year;
-            return collection.YearGoal is { } goal
-                ? $"+1 в «{habit.Name}» · {collection.ThisYear} из {goal} в {year}"
-                : $"+1 в «{habit.Name}» · {collection.ThisYear} в {year}";
-        }
-
         var message = $"+1 в «{habit.Name}» · {habit.Stats.Total}";
-        if (date is { } day && habit.Stats.Weeks.FirstOrDefault(w => w.WeekStart == RuDates.WeekStartOf(day)) is { } week)
+        if (date is { } day && habit.Stats.Weeks.FirstOrDefault(w => w.WeekStart == RuDates.WeekStartOf(day)) is { } week
+            && (week.Norm ?? habit.WeeklyNorm) is var norm)
         {
-            message += $" · неделя {week.Count} из {habit.WeeklyNorm}{(week.Count >= habit.WeeklyNorm ? " ✓" : "")}";
+            message += $" · неделя {week.Count} из {norm}{(week.Count >= norm ? " ✓" : "")}";
         }
 
         return message;

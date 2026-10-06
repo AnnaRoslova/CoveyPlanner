@@ -1,196 +1,55 @@
-@* Окно копилки: вид (привычка / коллекция), название, иконка, цвет (палитра ролей); у привычки — норма в неделю и сколько скрепок
-   в банке, у коллекции — цель на год и категории ленты (выполненное дело из них само попадает в коллекцию); стартовое число.
-   У существующей — «в архив» / «из архива»; копилку из архива можно «удалить» (плашка «Удалено … · Вернуть»). Открывается с экрана
-   «Копилки» и из строки «🫙 В копилку» в окне цели или дела (Nested — поверх того окна). Enter в названии — сохранить, Esc — отмена.
-   Стили — css/editor.css. *@
+@* Окно «настроить» привычки (с экрана «Копилки»): банка — стартовое число и сколько скрепок в ней. Название, норма, дни,
+   измерения — у цели (её окно), здесь их нет. Привычку из архива можно «удалить» (плашка «Удалено … · Вернуть»):
+   удаляется только счёт — цель и её дела остаются. Открывается поверх экрана «Копилки»; Esc — отмена. Стили — css/editor.css. *@
 @inject PlannerState State
 
-<div class="editor-backdrop @(Nested ? "nested" : "")" @onclick="OnClose"></div>
+<div class="editor-backdrop nested" @onclick="OnClose"></div>
 
-<div class="editor habit-editor @(Nested ? "nested" : "")" role="dialog" aria-label="Копилка"
+<div class="editor habit-editor nested" role="dialog" aria-label="Привычка «@Habit.Name»"
      @onkeydown="OnKeyDown" @onkeydown:stopPropagation="true" @onclick:stopPropagation="true">
-    <div class="habit-title-row">
-        <button type="button" class="emoji-btn @(_emoji.Length == 0 ? "empty" : "")" title="Иконка копилки"
-                aria-label="Иконка копилки" @onclick="() => _showEmojis = !_showEmojis">@(_emoji.Length == 0 ? "🫙" : _emoji)</button>
-        <input @ref="_nameInput" class="title-input" maxlength="100" placeholder="Название копилки"
-               @bind="_name" @bind:event="oninput" @onkeydown="OnNameKey" />
-    </div>
-    @if (_showEmojis)
-    {
-        <EmojiPicker Selected="@_emoji" OnPick="PickEmoji" />
-    }
-
-    @* Вид: привычка (норма, серии) или коллекция (полка, цель на год, категории ленты); смена вида историю не трогает *@
-    <div class="segments kind" role="radiogroup" aria-label="Вид копилки">
-        <button type="button" role="radio" class="@(_kind == HabitKindDto.Habit ? "on" : "")" aria-checked="@(_kind == HabitKindDto.Habit ? "true" : "false")"
-                @onclick="() => _kind = HabitKindDto.Habit">привычка</button>
-        <button type="button" role="radio" class="@(_kind == HabitKindDto.Collection ? "on" : "")" aria-checked="@(_kind == HabitKindDto.Collection ? "true" : "false")"
-                @onclick="() => _kind = HabitKindDto.Collection">коллекция</button>
-    </div>
+    <div class="habit-editor-h"><span class="dot" style="--c: @Habit.Color"></span>@Habit.Name</div>
     <div class="rock-note">
-        @if (_kind == HabitKindDto.Collection)
-        {
-            <text>книги, проекты, поездки: запись — выполненное дело (вручную, от цели или из категории ленты)</text>
-        }
-        else
-        {
-            <text>скрепка — выполненное дело, привязанное к копилке (через цель или напрямую)</text>
-        }
+        привычка — постоянная цель пилы: скрепка — выполненное занятие, норма — «раз в неделю» цели
+        (название, норму и дни меняют в окне цели)
     </div>
 
-    <div class="field">
-        <div class="label">Цвет</div>
-        <ColorSwatches Selected="@_color" SelectedChanged="c => _color = c" />
-    </div>
-
-    @if (_kind == HabitKindDto.Collection)
-    {
+    <div class="row">
         <div class="field">
-            <div class="label">Цель на год</div>
-            <Stepper Value="_yearGoal" ValueChanged="v => _yearGoal = v" Min="1" Max="10000" AllowEmpty="true" EmptyText="без цели"
-                     Label="Цель на год" Unit="@($"в {RuDates.Today.Year}")" />
+            <div class="label">Стартовое число</div>
+            <Stepper Value="_startCount" ValueChanged="v => _startCount = v ?? 0" Min="0" Max="1000000" Label="Стартовое число" />
         </div>
-
-        @* Категории ленты: выполненное дело из них (и вынутое из них в план) само попадает в коллекцию *@
         <div class="field">
-            <div class="label">Категории ленты</div>
-            <div class="chips" role="group" aria-label="Категории ленты">
-                @foreach (var category in State.OrderedCategories)
-                {
-                    var id = category.Id;
-                    var on = _categoryIds.Contains(id);
-                    var elsewhere = State.CollectionOfCategory(id) is { } owner && owner.Id != Habit?.Id ? owner : null;
-                    <button type="button" class="chip @(on ? "on" : "")" aria-pressed="@(on ? "true" : "false")"
-                            title="@(elsewhere is null ? null : $"сейчас — в «{elsewhere.Name}»; выберете — перейдёт сюда")"
-                            @onclick="() => ToggleCategory(id)">@category.Emoji @category.Name</button>
-                }
-            </div>
-            @if (State.Categories.Count == 0)
-            {
-                <div class="date-hint">в ленте пока нет категорий</div>
-            }
-            else
-            {
-                <div class="date-hint">выполненное дело из этих категорий само попадает сюда (если у него не выбрана другая копилка)</div>
-            }
+            <div class="label">В банке</div>
+            <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
         </div>
-    }
-    else
-    {
-        <div class="row">
-            <div class="field">
-                <div class="label">Норма в неделю</div>
-                <Stepper Value="_norm" ValueChanged="v => _norm = v ?? 1" Min="1" Max="50" Label="Норма в неделю" Unit="раз" />
-            </div>
-            <div class="field">
-                <div class="label">В банке</div>
-                <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
-            </div>
-        </div>
-    }
-
-    <div class="field">
-        <div class="label">Стартовое число</div>
-        <Stepper Value="_startCount" ValueChanged="v => _startCount = v ?? 0" Min="0" Max="1000000" Label="Стартовое число" />
-        <div class="date-hint">сколько @(_kind == HabitKindDto.Collection ? "записей" : "скрепок") уже было до копилки — идут только в общий счёт</div>
     </div>
+    <div class="date-hint">стартовое число — сколько скрепок было до привычки: идут только в общий счёт</div>
 
     <div class="buttons">
-        @* Удалить можно только копилку из архива (с «Вернуть»); у активной — только «в архив» *@
-        @if (Habit is { IsArchived: true })
+        @* Удалить можно только привычку из архива (с «Вернуть»): у идущей сначала снимают «каждую неделю» в окне цели *@
+        @if (Habit.IsArchived)
         {
-            <button type="button" class="btn danger trash" @onclick="DeleteAsync">удалить</button>
-        }
-        @if (Habit is not null)
-        {
-            <button type="button" class="btn quiet" @onclick="ToggleArchiveAsync">@(Habit.IsArchived ? "из архива" : "в архив")</button>
+            <button type="button" class="btn danger trash" title="Цель и её дела останутся — удаляется только счёт" @onclick="DeleteAsync">удалить</button>
         }
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
-        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="SaveAsync">
-            @(Habit is null ? "Создать" : "Сохранить")
-        </button>
+        <button type="button" class="btn" @onclick="SaveAsync">Сохранить</button>
     </div>
 </div>
 
 @code {
-    private ElementReference _nameInput;
-    private string _name = "";
-    private string _emoji = "";
-    private string? _color;
-    private int _norm = 3;
-    private int _jarSize = 30;
     private int _startCount;
-    private HabitKindDto _kind;
-    private int? _yearGoal;
-    private readonly HashSet<int> _categoryIds = [];
-    private bool _showEmojis;
+    private int _jarSize = 30;
 
-    /// <summary>Правка копилки; null — новая.</summary>
-    [Parameter]
-    public HabitDto? Habit { get; set; }
-
-    /// <summary>Для новой: название (из цели или дела).</summary>
-    [Parameter]
-    public string? DefaultName { get; set; }
-
-    /// <summary>Для новой: норма — «раз в неделю» цели.</summary>
-    [Parameter]
-    public int DefaultNorm { get; set; } = 3;
-
-    /// <summary>Для новой: цвет (например, первой роли цели); null — следующий цвет палитры.</summary>
-    [Parameter]
-    public string? DefaultColor { get; set; }
-
-    /// <summary>Для новой: вид (с экрана «Копилки» — по выбору в окне).</summary>
-    [Parameter]
-    public HabitKindDto DefaultKind { get; set; }
-
-    /// <summary>Окно поверх другого окна (цели, дела).</summary>
-    [Parameter]
-    public bool Nested { get; set; }
+    [Parameter, EditorRequired]
+    public HabitDto Habit { get; set; } = null!;
 
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    /// <summary>Копилку сохранили (новую — уже с Id).</summary>
-    [Parameter]
-    public EventCallback<HabitDto> OnSaved { get; set; }
-
     protected override void OnInitialized()
     {
-        if (Habit is { } habit)
-        {
-            _name = habit.Name;
-            _emoji = habit.Emoji ?? "";
-            _color = habit.Color;
-            _norm = habit.WeeklyNorm;
-            _jarSize = habit.JarSize;
-            _startCount = habit.StartCount;
-            _kind = habit.Kind;
-            _yearGoal = habit.YearGoal;
-            _categoryIds.UnionWith(habit.CategoryIds ?? []);
-        }
-        else
-        {
-            _name = DefaultName?.Trim() ?? "";
-            _norm = Math.Clamp(DefaultNorm, 1, 50);
-            _kind = DefaultKind;
-            _color = DefaultColor ?? (State.RolePalette.Count > 0 ? State.RolePalette[State.Habits.Count % State.RolePalette.Count] : null);
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await _nameInput.FocusAsync();
-        }
-    }
-
-    private void PickEmoji(string emoji)
-    {
-        _emoji = emoji;
-        _showEmojis = false;
+        _startCount = Habit.StartCount;
+        _jarSize = Habit.JarSize;
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -201,55 +60,16 @@
         }
     }
 
-    private async Task OnNameKey(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await SaveAsync();
-        }
-    }
-
-    private SaveHabitRequest Form(bool? archived = null) =>
-        new(_name.Trim(), _emoji.Length == 0 ? null : _emoji, _color, _norm, _jarSize, _startCount, archived,
-            _kind, _kind == HabitKindDto.Collection ? _yearGoal : Habit?.YearGoal, [.. _categoryIds]);
-
-    private void ToggleCategory(int categoryId)
-    {
-        if (!_categoryIds.Remove(categoryId))
-        {
-            _categoryIds.Add(categoryId);
-        }
-    }
-
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(_name))
-        {
-            return;
-        }
-
-        if (Habit is { } habit)
-        {
-            await OnClose.InvokeAsync();
-            await State.UpdateHabitAsync(habit.Id, Form());
-        }
-        else if (await State.CreateHabitAsync(Form()) is { } created)
-        {
-            await OnSaved.InvokeAsync(created);
-            await OnClose.InvokeAsync();
-        }
-    }
-
-    private async Task ToggleArchiveAsync()
-    {
-        var habit = Habit!;
+        var habitId = Habit.Id;
         await OnClose.InvokeAsync();
-        await State.UpdateHabitAsync(habit.Id, Form(archived: !habit.IsArchived));
+        await State.UpdateHabitAsync(habitId, _startCount, _jarSize);
     }
 
     private async Task DeleteAsync()
     {
-        var habitId = Habit!.Id;
+        var habitId = Habit.Id;
         await OnClose.InvokeAsync();
         await State.DeleteHabitAsync(habitId);
     }

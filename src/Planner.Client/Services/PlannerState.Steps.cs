@@ -19,31 +19,6 @@ public partial class PlannerState
         }
     }
 
-    /// <summary>
-    /// Показать дело, где бы оно ни было (запись коллекции): листаем на его неделю, чтобы окно дела открылось как обычно.
-    /// false — дела нет.
-    /// </summary>
-    public async Task<bool> ShowTaskAsync(int taskId)
-    {
-        if (FindTask(taskId) is not null)
-        {
-            return true;
-        }
-
-        if (await TryAsync(() => api.GetTaskAsync(taskId)) is not { } task)
-        {
-            return false;
-        }
-
-        if (task.PlannedDate is { } date && RuDates.WeekStartOf(date) != WeekStart)
-        {
-            await GoToWeekAsync(date);
-        }
-
-        _tasks.TryAdd(task.Id, task); // занятие без дня — в неделе его нет
-        return true;
-    }
-
     /// <summary>Новый шаг в конец. null — не сохранился.</summary>
     public Task<StepDto?> AddStepAsync(int taskId, string title) => TryAsync(() => api.AddStepAsync(taskId, title.Trim()));
 

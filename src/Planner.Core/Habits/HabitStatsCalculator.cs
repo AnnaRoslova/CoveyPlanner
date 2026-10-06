@@ -3,14 +3,15 @@ using Planner.Core.Time;
 namespace Planner.Core.Habits;
 
 /// <summary>
-/// Статистика копилки по её скрепкам (правила — docs/habits-mockup.html, блок «правила»). Чистая функция:
+/// Статистика привычки по её скрепкам (правила — docs/habits-mockup.html, блок «правила»). Чистая функция:
 /// ни базы, ни часов — «сегодня» передаётся.
 /// <list type="bullet">
 /// <item>Неделя засчитана, если скрепок не меньше нормы. Текущая неделя «в процессе» и серию не ломает; как только норма
 /// в ней выполнена — сразу входит в серию и снимает паузу (награда мгновенно).</item>
 /// <item>Серия недель: первый пропуск — ⚠ пауза (серия жива, но не растёт), второй подряд — серия прервана;
 /// длина — число засчитанных недель с начала серии.</item>
-/// <item>Недели до создания копилки не считаются; первая неделя засчитывается, если норма выполнена, а если нет — это не пропуск.</item>
+/// <item>Норма у каждой недели своя (правка цели прошлые недели не меняет); неделя без цели не засчитана и не пропуск.</item>
+/// <item>Недели до начала привычки не считаются; первая неделя засчитывается, если норма выполнена, а если нет — это не пропуск.</item>
 /// <item>Каникулы: неделя, в которую попало не меньше 4 дней каникул, не засчитывается и не пропуск — серия замирает
 /// (пропуски до и после каникул — подряд). Скрепки в каникулы всё равно идут в общий счёт.</item>
 /// <item>Неделя относится к месяцу своего четверга. Месяц засчитан, если внутри него серия недель не прервалась
@@ -38,7 +39,7 @@ public static class HabitStatsCalculator
         bool IsVacation(DateOnly week) =>
             Week.Days(week).Count(day => input.Vacations.Any(v => v.Contains(day))) >= VacationDaysForWeek;
 
-        // Завершённые недели копилки — от первой до прошлой
+        // Завершённые недели привычки — от первой до прошлой
         var finished = new List<DateOnly>();
         var weekResults = new List<PeriodResult>();
         var weekBreaks = new List<bool>(); // на этой неделе серия прервалась (второй пропуск подряд и дальше)
@@ -51,7 +52,11 @@ public static class HabitStatsCalculator
             {
                 weekStreak.Skip(PeriodResult.Vacation);
             }
-            else if (CountOf(week) >= input.WeeklyNorm)
+            else if (input.NormOf(week) is not { } norm)
+            {
+                weekStreak.Skip(PeriodResult.Neutral); // у недели нет цели — нечего выполнять
+            }
+            else if (CountOf(week) >= norm)
             {
                 weekStreak.Done();
             }
@@ -68,7 +73,8 @@ public static class HabitStatsCalculator
         }
 
         // Награда сразу: норма текущей недели уже выполнена — неделя в серии и пауза снята (не выполнена — «в процессе»)
-        if (currentWeek >= firstWeek && !IsVacation(currentWeek) && CountOf(currentWeek) >= input.WeeklyNorm)
+        if (currentWeek >= firstWeek && !IsVacation(currentWeek) && input.NormOf(currentWeek) is { } currentNorm
+            && CountOf(currentWeek) >= currentNorm)
         {
             weekStreak.CountCurrent();
         }
@@ -104,7 +110,8 @@ public static class HabitStatsCalculator
             .Select(week => new HabitWeek(week, CountOf(week),
                 week < firstWeek ? PeriodResult.BeforeStart
                 : week == currentWeek ? PeriodResult.Current
-                : weekResults[finished.IndexOf(week)]))
+                : weekResults[finished.IndexOf(week)],
+                input.NormOf(week)))
             .ToList();
 
         var months = Enumerable.Range(0, MonthsShown)

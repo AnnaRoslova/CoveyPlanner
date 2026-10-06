@@ -1,6 +1,7 @@
-@* Окно цели — шаблон занятий: название, роли (можно несколько), «раз в неделю», «каждую неделю», копилка, время, квадрант, длительность, заметки.
+@* Окно цели — шаблон занятий: название, роли (можно несколько), «раз в неделю», «каждую неделю», время, квадрант, длительность, заметки.
    Изменения расходятся по невыполненным занятиям недели (кроме полей, которые у занятия свои);
-   роль и квадрант — по всем занятиям. Enter в названии — сохранить, Esc или клик мимо — отмена.
+   роль и квадрант — по всем занятиям. Постоянная цель пилы — привычка: строка «🫙 привычка: 102 скрепки · 🔥13»
+   (клик — экран «Копилки» на ней) и настройки банки. Enter в названии — сохранить, Esc или клик мимо — отмена.
    Стили — css/editor.css. *@
 @inject PlannerState State
 @inject WindowHost Windows
@@ -85,12 +86,26 @@
         <span class="hint">@(_several ? "например, утром и вечером" : "в один день — не больше одного занятия")</span>
     </label>
 
-    @* Копилка — часть шаблона: занятия цели становятся скрепками в ней *@
-    <div class="field">
-        <div class="label">🫙 В копилку</div>
-        <HabitField @bind-Value="_habitId" NewName="@_title" NewNorm="@(DaysChosen ? DayCount(_days) : _times)"
-                    NewColor="@State.OrderedRoles.FirstOrDefault(r => _roleIds.Contains(r.Id))?.Color" />
-    </div>
+    @* Постоянная цель пилы — привычка: её счёт и банка (норма — «раз в неделю», скрепки — выполненные занятия) *@
+    @if (State.HabitOfGoal(EditedGoal) is { } habit)
+    {
+        <div class="field habit-of-goal">
+            <button type="button" class="habit-line" title="Открыть на экране «Копилки»" @onclick="() => OpenHabitAsync(habit.Id)">
+                🫙 привычка: @habit.Stats.Total @HabitCard.ClipsWord(habit.Stats.Total) · @(habit.Stats.WeekPaused ? "⚠" : $"🔥{habit.Stats.WeekStreak}")
+            </button>
+            <div class="row">
+                <div class="field">
+                    <div class="label">Стартовое число</div>
+                    <Stepper Value="_startCount" ValueChanged="v => _startCount = v ?? 0" Min="0" Max="1000000" Label="Стартовое число" />
+                </div>
+                <div class="field">
+                    <div class="label">В банке</div>
+                    <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
+                </div>
+            </div>
+            <div class="date-hint">стартовое число — сколько скрепок было до привычки: идут только в общий счёт</div>
+        </div>
+    }
 
     <div class="row">
         <div class="field">
@@ -138,7 +153,8 @@
     private string? _notes;
     private bool _recurring;
     private bool _several;
-    private int? _habitId;
+    private int _startCount;
+    private int _jarSize = 30;
     private int _days; // маска дней (Пн = 1 … Вс = 64), 0 — «сам раскладываю»
 
     private const int EveryDay = 127;
@@ -208,7 +224,12 @@
         _notes = EditedGoal.Notes;
         _recurring = EditedGoal.IsRecurring;
         _several = EditedGoal.AllowSeveralPerDay;
-        _habitId = EditedGoal.HabitId;
+        if (State.HabitOfGoal(EditedGoal) is { } habit)
+        {
+            _startCount = habit.StartCount;
+            _jarSize = habit.JarSize;
+        }
+
         _days = EditedGoal.Days ?? 0;
         _repeat = RepeatOf(_days);
     }
@@ -248,10 +269,23 @@
             return;
         }
 
+        // Банка — у привычки, а не у цели: сохраняется отдельно (привычка остаётся той же, даже если цель перестанет повторяться)
+        var habit = State.HabitOfGoal(EditedGoal);
         await OnClose.InvokeAsync();
         await State.UpdateGoalAsync(EditedGoal.Id,
             new UpdateGoalRequest(_title, _roleIds, DaysChosen ? DayCount(_days) : _times, _time, _quadrant, _notes, _duration,
-                _recurring, _several, Days: DaysChosen ? _days : 0, HabitId: _habitId ?? 0));
+                _recurring, _several, Days: DaysChosen ? _days : 0));
+        if (habit is not null && (habit.StartCount, habit.JarSize) != (_startCount, _jarSize))
+        {
+            await State.UpdateHabitAsync(habit.Id, _startCount, _jarSize);
+        }
+    }
+
+    /// <summary>Пилюля «🫙 привычка: …» — экран «Копилки» на этой привычке (несохранённая правка окна теряется, как при «Отмена»).</summary>
+    private async Task OpenHabitAsync(int habitId)
+    {
+        await OnClose.InvokeAsync();
+        Windows.OpenHabits(habitId);
     }
 
     /// <summary>Удалить; мысль цели без дня вернётся в ленту (без своей категории — в «неразобранное»).</summary>

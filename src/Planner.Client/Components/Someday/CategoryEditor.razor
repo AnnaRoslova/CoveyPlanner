@@ -15,12 +15,6 @@
                      OnSubmit="SaveAsync" OnCancel="OnClose" CancelOnEmptyBlur="false" />
     </div>
 
-    @if (Category is not null && State.CollectionOfCategory(Category.Id) is { } collection)
-    {
-        @* Связь с коллекцией настраивается в окне коллекции на экране «Копилки» *@
-        <div class="linked" title="выполненные дела этой категории сами попадают в коллекцию">→ @collection.Emoji @collection.Name</div>
-    }
-
     @if (_showEmojis)
     {
         <EmojiPicker Selected="@_emoji" OnPick="PickEmoji" />

@@ -765,7 +765,7 @@
     color: var(--b-deep);
 }
 
-/* Окно поверх другого окна или экрана «Копилки»: копилка из окна цели, окно копилки, каникулы */
+/* Окно поверх экрана «Копилки»: «настроить» привычку, каникулы */
 .editor-backdrop.nested {
     z-index: 43;
 }
@@ -774,29 +774,36 @@
     z-index: 44;
 }
 
-/* Окно копилки: иконка рядом с названием */
-.editor .habit-title-row {
+/* Окно «настроить» привычки: заголовок — точка цвета измерения и название цели */
+.editor .habit-editor-h {
     display: flex;
     align-items: center;
     gap: 8px;
+    font-size: 17px;
+    font-weight: 800;
 }
 
-.editor .emoji-btn {
+.editor .habit-editor-h .dot {
     flex: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: var(--surface);
-    box-shadow: inset 0 0 0 1px var(--line);
-    font-size: 18px;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--c);
 }
 
-.editor .emoji-btn:hover {
+/* Окно цели-привычки: строка «🫙 привычка: 102 скрепки · 🔥13» (клик — экран «Копилки») и банка */
+.editor .habit-line {
+    align-self: flex-start;
+    padding: 3px 10px;
+    border-radius: 999px;
     background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 12.5px;
+    font-weight: 700;
 }
 
-.editor .emoji-btn.empty {
-    opacity: 0.6;
+.editor .habit-line:hover {
+    background: color-mix(in srgb, var(--b) 35%, var(--surface));
 }
 
 /* Шаги дела (StepsList): квадратик, название (клик — переименовать), × при наведении, «+ шаг» */
