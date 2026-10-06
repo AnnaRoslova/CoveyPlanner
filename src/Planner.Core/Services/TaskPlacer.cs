@@ -54,6 +54,23 @@ public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories)
     }
 
     /// <summary>
+    /// Сняли отметку с выполненного в ленте (D6): дело — на своё прежнее место в своей категории (SortOrder не менялся);
+    /// категории нет (удалили) — наверх «неразобранного».
+    /// </summary>
+    public async Task ReturnToOwnPlaceAsync(TaskItem task, CancellationToken ct = default)
+    {
+        if (task.CategoryId is { } own && await categories.FindAsync(own, ct) is not null)
+        {
+            var siblings = await tasks.GetSomedayInCategoryAsync(own, ct);
+            SortOrdering.Place(siblings, task, siblings.Count(s => s != task && s.SortOrder < task.SortOrder));
+        }
+        else
+        {
+            await PlaceAsync(task, new SomedayTarget(null, 0), ct);
+        }
+    }
+
+    /// <summary>
     /// Вернуть дело в ленту наверх его категории, а если своей категории нет (создано в плане,
     /// категорию удалили) — наверх «неразобранного».
     /// </summary>

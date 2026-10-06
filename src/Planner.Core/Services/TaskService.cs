@@ -148,6 +148,10 @@ public class TaskService(
         else
         {
             task.Uncomplete();
+            if (task.State == TaskState.Someday)
+            {
+                await placer.ReturnToOwnPlaceAsync(task, ct); // выполненное в ленте — обратно на своё место (D6)
+            }
         }
 
         await unitOfWork.SaveChangesAsync(ct);

@@ -196,3 +196,15 @@ public sealed record PlusOneResultDto(TaskDto Task, WeeklyGoalDto Goal, HabitDto
 
 /// <summary>Шаг дела (дело-чеклист): видно только в окне его дела.</summary>
 public sealed record StepDto(int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder);
+
+/// <summary>Сводка проекта (дела с шагами): «☑ StepsDone/StepsTotal» — шаги без занятий целей; SessionsDone — выполненные занятия («12 занятий»).</summary>
+public sealed record ProjectSummaryDto(int StepsDone, int StepsTotal, int SessionsDone);
+
+/// <summary>Запись «Выполненного»: дело, день отметки, сводка проекта, «N недель» (null — выполненных шагов нет) и шаги (без корзины).</summary>
+public sealed record DoneTaskDto(TaskDto Task, DateOnly Date, ProjectSummaryDto? Project, int? Weeks, IReadOnlyList<StepDto> Steps);
+
+/// <summary>Сколько дел группы выполнено в году.</summary>
+public sealed record DoneYearDto(int Year, int Count);
+
+/// <summary>Группа «Выполненного» — категория ленты (CategoryId = null — «без категории»), счёт по годам и записи, свежие сверху.</summary>
+public sealed record DoneGroupDto(int? CategoryId, string Name, string? Emoji, IReadOnlyList<DoneYearDto> Years, IReadOnlyList<DoneTaskDto> Tasks);

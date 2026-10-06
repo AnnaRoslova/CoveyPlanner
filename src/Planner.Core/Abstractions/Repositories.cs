@@ -25,6 +25,12 @@ public interface ITaskRepository
     /// <summary>Шаги дела по порядку.</summary>
     Task<List<TaskItem>> GetStepsAsync(int parentId, CancellationToken ct = default);
 
+    /// <summary>Шаги нескольких дел (для сводок проектов), по родителю и порядку.</summary>
+    Task<List<TaskItem>> GetStepsOfAsync(IReadOnlyCollection<int> parentIds, CancellationToken ct = default);
+
+    /// <summary>«Выполненное»: выполненные дела из ленты без родителя, свежие сверху.</summary>
+    Task<List<TaskItem>> GetDoneFromSomedayAsync(CancellationToken ct = default);
+
     /// <summary>Корзина, свежие сверху.</summary>
     Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default);
 

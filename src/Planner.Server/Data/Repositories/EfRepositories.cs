@@ -50,6 +50,16 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
     public Task<List<TaskItem>> GetStepsAsync(int parentId, CancellationToken ct = default) =>
         db.Tasks.Where(t => t.ParentId == parentId).OrderBy(t => t.StepOrder).ThenBy(t => t.Id).ToListAsync(ct);
 
+    public Task<List<TaskItem>> GetStepsOfAsync(IReadOnlyCollection<int> parentIds, CancellationToken ct = default) =>
+        db.Tasks.Where(t => t.ParentId != null && parentIds.Contains(t.ParentId.Value))
+            .OrderBy(t => t.ParentId).ThenBy(t => t.StepOrder).ThenBy(t => t.Id)
+            .ToListAsync(ct);
+
+    public Task<List<TaskItem>> GetDoneFromSomedayAsync(CancellationToken ct = default) =>
+        db.Tasks.Where(t => t.State == TaskState.Done && t.IsFromSomeday && t.ParentId == null)
+            .OrderByDescending(t => t.CompletedAt).ThenByDescending(t => t.Id)
+            .ToListAsync(ct);
+
     public void Add(TaskItem task) => db.Tasks.Add(task);
 
     public void Remove(TaskItem task) => db.Tasks.Remove(task);

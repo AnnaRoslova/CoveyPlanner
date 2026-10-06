@@ -70,6 +70,9 @@ public static class Mapping
         o.IsArchived,
         o.Stats.ToDto());
 
+    public static ProjectSummaryDto? ToDto(this ProjectSummary? p) =>
+        p is null ? null : new ProjectSummaryDto(p.StepsDone, p.StepsTotal, p.SessionsDone);
+
     public static StepDto ToStepDto(this TaskItem s) =>
         new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.StepOrder ?? s.SortOrder);
 
