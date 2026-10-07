@@ -20,6 +20,7 @@ public class GoalService(
     TaskPlacer placer,
     GoalRemover remover,
     GoalOrdering ordering,
+    ProjectService projects,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -215,12 +216,54 @@ public class GoalService(
             throw new DomainException("Проект в корзине — сначала верните его.");
         }
 
-        if (project.GoalId == goal.Id)
+        if (project.IsSession)
         {
-            throw new DomainException("Занятие этой цели не может быть её проектом.");
+            throw new DomainException(ProjectService.SessionNotProjectMessage);
         }
 
         return project;
+    }
+
+    /// <summary>
+    /// «+ шаг» цели (G1–G4): шаг — в конец списка проекта цели. Проекта нет или он в корзине — сначала проект (G3, G9): дело с названием
+    /// и ролями цели наверху «неразобранного», выбранное в цели (у постоянной — с этой недели и дальше, как выбор в поле «Проект»).
+    /// Выполненный проект остаётся выполненным (G8, S13). Возвращает цель, шаг и проект, если его создали сейчас.
+    /// </summary>
+    public async Task<GoalStep> AddStepAsync(int id, string title, CancellationToken ct = default)
+    {
+        var goal = await GetAsync(id, ct);
+        TaskItem? created = null;
+        if (goal.Project is not { State: not TaskState.Trashed } project)
+        {
+            project = TaskItem.CreateSomeday(goal.Title, null, Now);
+            project.SetRoles(goal.RoleIds);
+            await placer.PlaceAsync(project, new SomedayTarget(null, 0), ct);
+            tasks.Add(project);
+            await unitOfWork.SaveChangesAsync(ct); // у проекта появляется Id — цель ссылается на него
+            await SetProjectFromThisWeekOnAsync(goal, project, ct);
+            created = project;
+        }
+
+        var step = TaskItem.CreateStep(project, title, Now);
+        step.SetRoles(project.RoleIds); // S5: копия ролей проекта
+        await projects.PlaceStepAsync(step, project.Id, int.MaxValue, ct);
+        tasks.Add(step);
+        await unitOfWork.SaveChangesAsync(ct);
+        return new GoalStep(goal, step, created);
+    }
+
+    /// <summary>Выбрать проект цели — как в окне: постоянной цели с этой недели и дальше (шаблон серии и уже созданные цели), P4.</summary>
+    private async Task SetProjectFromThisWeekOnAsync(WeeklyGoal goal, TaskItem project, CancellationToken ct)
+    {
+        goal.SetProject(project);
+        if (goal.RepeatsAfterThisWeek)
+        {
+            goal.Series!.CopyTemplateFrom(goal);
+            foreach (var later in await LaterInSeriesAsync(goal, ct))
+            {
+                later.SetProject(project);
+            }
+        }
     }
 
     /// <summary>«🫙 копить» по умолчанию, когда цели включают «каждую неделю»: есть роль-измерение пилы — копить, иначе нет.</summary>

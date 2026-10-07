@@ -451,6 +451,8 @@ function clearPending() {
 }
 
 function finish() {
+    // Тащили из окна (шаг из окна цели — в день): фокус — обратно окну, чтобы Esc его закрывал
+    const editor = drag.el.closest('.editor');
     cancelAnimationFrame(drag.raf);
     drag.ghost.remove();
     drag.line.remove();
@@ -463,6 +465,7 @@ function finish() {
     drag = null;
     // Сброс или отмена: отпускание кнопки над новым местом — не клик
     ignoreClicks(AFTER_DROP_MS);
+    editor?.focus({ preventScroll: true });
 }
 
 // Элемент под указателем, «сквозь» прозрачные для сброса накладки (data-flip-overlay — края недели для листания):

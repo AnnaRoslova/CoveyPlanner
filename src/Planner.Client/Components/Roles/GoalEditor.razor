@@ -3,12 +3,12 @@
    роль и квадрант — по всем занятиям. Постоянная цель пилы — привычка: строка «🫙 привычка: 102 скрепки · 🔥13»
    (клик — экран «Копилки» на ней) и настройки банки. Enter в названии — сохранить, Esc или клик мимо — отмена.
    Стили — css/editor.css. *@
-@inject PlannerState State
+@inherits StateComponent
 @inject WindowHost Windows
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
-<div class="editor" role="dialog" aria-label="Цель недели" @onkeydown="OnKeyDown">
+<div class="editor" role="dialog" aria-label="Цель недели" tabindex="-1" @onkeydown="OnKeyDown">
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Цель на неделю"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
@@ -87,6 +87,16 @@
         </div>
     }
 
+    @* Проект цели (P1): новые занятия — его шаги; его шаги — шаги цели, один список (G1–G2) *@
+    <div class="field">
+        <div class="project-row">
+            <span class="label">Проект</span>
+            <ChoiceField TValue="int" Items="ProjectChoices" Value="ShownProjectId" ValueChanged="SetProject" Label="Проект" Searchable="true" />
+        </div>
+        <div class="date-hint">новые занятия — шаги проекта</div>
+    </div>
+    <GoalStepsBlock Goal="@(State.FindGoal(EditedGoal.Id) ?? EditedGoal)" />
+
     <label class="switch-row">
         <input type="checkbox" role="switch" @bind="_several" />
         <span class="switch"></span>
@@ -161,6 +171,39 @@
     private string? _notes;
     private bool _recurring;
     private bool _habit;
+    private int _projectId; // 0 — без проекта
+    private bool _projectChanged;
+
+    /// <summary>
+    /// Кого можно выбрать проектом (P1, S7): открытые дела без родителя, не занятия целей — из ленты и из показанной недели;
+    /// текущий проект — всегда (даже выполненный, с пометкой).
+    /// </summary>
+    private IReadOnlyList<Choice<int>> ProjectChoices
+    {
+        get
+        {
+            var current = State.FindGoal(EditedGoal.Id) ?? EditedGoal;
+            var list = new List<Choice<int>> { new(0, "— нет") };
+            if (current.ProjectId is { } id && ShownProjectId == id)
+            {
+                list.Add(new(id, (current.ProjectTitle ?? "проект") + (current.ProjectIsOpen ? "" : " (выполнен)")));
+            }
+
+            list.AddRange(State.ProjectCandidates()
+                .Where(t => t.Id != current.ProjectId)
+                .Select(t => new Choice<int>(t.Id, t.Title)));
+            return list.DistinctBy(c => c.Value).ToList();
+        }
+    }
+
+    /// <summary>Что в поле: выбранное здесь, а пока не трогали — проект цели (его мог только что создать «+ шаг», G3).</summary>
+    private int ShownProjectId => _projectChanged ? _projectId : (State.FindGoal(EditedGoal.Id) ?? EditedGoal).ProjectId ?? 0;
+
+    private void SetProject(int projectId)
+    {
+        _projectId = projectId;
+        _projectChanged = true;
+    }
     private bool _several;
     private int _startCount;
     private int _jarSize = 30;
@@ -224,6 +267,7 @@
 
     protected override void OnInitialized()
     {
+        base.OnInitialized(); // перерисовка при изменениях: «+ шаг» мог создать проект (G3)
         _title = EditedGoal.Title;
         _roleIds = [.. EditedGoal.RoleIds];
         _times = EditedGoal.TimesPerWeek;
@@ -233,6 +277,7 @@
         _notes = EditedGoal.Notes;
         _recurring = EditedGoal.IsRecurring;
         _habit = EditedGoal.IsRecurring ? EditedGoal.IsHabit : HabitByDefault;
+        _projectId = EditedGoal.ProjectId ?? 0;
         _several = EditedGoal.AllowSeveralPerDay;
         if (State.HabitOfGoal(EditedGoal) is { } habit)
         {
@@ -296,7 +341,8 @@
         await OnClose.InvokeAsync();
         await State.UpdateGoalAsync(EditedGoal.Id,
             new UpdateGoalRequest(_title, _roleIds, DaysChosen ? DayCount(_days) : _times, _time, _quadrant, _notes, _duration,
-                _recurring, _several, Days: DaysChosen ? _days : 0, IsHabit: _recurring ? _habit : null));
+                _recurring, _several, Days: DaysChosen ? _days : 0, IsHabit: _recurring ? _habit : null,
+                ProjectId: _projectChanged ? _projectId : null)); // проект, созданный «+ шаг», уже выбран на сервере
         if (habit is not null && (habit.StartCount, habit.JarSize) != (_startCount, _jarSize))
         {
             await State.UpdateHabitAsync(habit.Id, _startCount, _jarSize);

@@ -25,9 +25,13 @@
     @foreach (var task in Tasks)
     {
         var roles = State.RolesOf(task);
-        var project = task.ParentId is null && task.Id > 0 ? State.ProjectOf(task.Id) : null;
-        var expanded = project is not null && Folds.IsOpen(task.Id);
+        // Чьи шаги у строки: у занятия цели — проекта цели (G4), у дела без родителя — свои
+        var host = task.Id > 0 ? State.StepsHostOf(task) : null;
+        var goal = task.GoalId is { } goalId ? State.FindGoal(goalId) : null;
+        var project = host is { } hostId ? State.ProjectOf(hostId) : null;
+        var expanded = project is not null && Folds.IsOpen(host!.Value);
         var isStep = task.ParentId is not null;
+        var stepOfOwnGoal = goal?.ProjectId is { } goalProject && task.ParentId == goalProject;
         <ItemRow @key="task.Id" Title="@task.Title" Clamp="true"
                  Color="@roles.FirstOrDefault()?.Color"
                  RoleDots="@(roles.Count > 1 ? roles : null)"
@@ -39,12 +43,12 @@
                  IsPending="task.Id < 0"
                  IsFlashing="State.FlashTaskId == task.Id"
                  Expanded="@(project is null ? null : expanded)"
-                 OnExpand="() => Folds.ToggleAsync(task.Id)"
+                 OnExpand="() => Folds.ToggleAsync(host ?? task.Id)"
                  ProjectLabel="@PlannerState.ProjectLabel(project)"
-                 ParentCaption="@State.ParentTitleOf(task)"
+                 ParentCaption="@(stepOfOwnGoal ? null : State.ParentTitleOf(task))"
                  OnParentClick="() => OpenParentAsync(task.ParentId)"
                  DropZone="@(project is null ? null : DragDropService.ProjectZone)"
-                 DropKey="@task.Id.ToString()"
+                 DropKey="@((host ?? task.Id).ToString())"
                  DropAccept="@DragDropService.StepsAccepts"
                  DropHint="снять с дня — в список шагов"
                  OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
@@ -55,7 +59,7 @@
                  DragId="task.Id" />
         @if (expanded)
         {
-            <ProjectSteps @key="@($"steps-{task.Id}")" ParentId="task.Id" />
+            <ProjectSteps @key="@($"steps-{task.Id}")" ParentId="host!.Value" GoalId="goal?.Id" />
         }
     }
 

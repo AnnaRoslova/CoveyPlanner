@@ -129,6 +129,55 @@ public partial class PlannerState
     }
 
     /// <summary>
+    /// Проект, чьи шаги показывает дело: у занятия цели — проект его цели (G4, G6; null — у цели проекта нет), у остальных — само дело.
+    /// </summary>
+    public int? StepsHostOf(TaskDto task) =>
+        task.GoalId is { } goalId ? FindGoal(goalId)?.ProjectId is { } projectId && projectId > 0 ? projectId : null
+        : task.ParentId is null ? task.Id : null;
+
+    /// <summary>
+    /// Кого можно выбрать проектом (S6–S7, P1): открытые дела без родителя, не занятия целей — из ленты и показанной недели, по названию.
+    /// </summary>
+    public IReadOnlyList<TaskDto> ProjectCandidates() =>
+        _tasks.Values
+            .Where(t => t.Id > 0 && t.ParentId is null && t.GoalId is null
+                        && t.State is TaskStateDto.Someday or TaskStateDto.Planned)
+            .OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    /// <summary>Шаги цели — шаги её проекта (G1); проекта нет — пусто.</summary>
+    public IReadOnlyList<TaskDto> StepsOfGoal(WeeklyGoalDto goal) =>
+        goal.ProjectId is { } projectId ? CountedStepsOf(projectId) : [];
+
+    /// <summary>
+    /// «+ шаг» цели (в окне цели, в окне и строке её занятия): шаг — в проект цели; проекта нет — сервер создаёт его наверху «неразобранного»
+    /// и выбирает в цели (G3). false — не сохранился.
+    /// </summary>
+    public async Task<bool> AddGoalStepAsync(int goalId, string title)
+    {
+        title = title.Trim();
+        if (title.Length == 0 || goalId < 0)
+        {
+            return false;
+        }
+
+        return await SaveAsync(async () =>
+        {
+            var result = await api.AddGoalStepAsync(goalId, title);
+            if (result.CreatedProject is { } project)
+            {
+                _tasks[project.Id] = project; // новый проект — в «неразобранном» ленты
+            }
+
+            _tasks[result.Step.Id] = result.Step;
+            if (FindGoal(goalId) is not null)
+            {
+                ReplaceGoal(result.Goal);
+            }
+        });
+    }
+
+    /// <summary>
     /// После отметки: родитель отметился сам (все шаги сделаны, S12) — он обновляется на экране и плашка
     /// «Все шаги сделаны — «…» выполнено · вернуть» («вернуть» снимает отметку только с родителя).
     /// </summary>

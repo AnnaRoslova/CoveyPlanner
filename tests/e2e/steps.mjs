@@ -40,7 +40,7 @@ const day = i => page.evaluate(i => {
   const row = it => ({
     title: it.querySelector('.title')?.textContent.trim(),
     parent: it.querySelector('.parent-of span')?.textContent.trim() ?? null,
-    project: it.querySelector('.project-label')?.textContent.trim() ?? null,
+    project: it.querySelector('.project-label')?.textContent.replace('▸', '').trim() ?? null,
     mark: it.querySelector('.day-mark')?.textContent.trim() ?? null,
     done: it.classList.contains('done'),
   });

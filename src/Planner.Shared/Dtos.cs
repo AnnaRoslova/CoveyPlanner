@@ -69,7 +69,7 @@ public sealed record GoalRoleDto(int RoleId, int SortOrder);
 /// AllowSeveralPerDay — можно несколько занятий в один день (иначе — не больше одного).
 /// Days — дни, по которым занятия встают сами (битовая маска: Пн = 1, Вт = 2, … Вс = 64; 127 — каждый день); null — «сам раскладываю».
 /// SeriesId — серия цели (та же цель на других неделях); IsHabit — «🫙 копить» серии: постоянная цель с ним — привычка с Id = SeriesId (см. HabitDto).
-/// ProjectId / ProjectTitle — проект новых занятий; ProjectIsOpen = false — проект выполнен или в корзине (новые занятия — без проекта).
+/// ProjectId / ProjectTitle — проект новых занятий; ProjectIsOpen = false — проект выполнен или в корзине (новые занятия — без проекта), ProjectIsTrashed — в корзине.
 /// </summary>
 public sealed record WeeklyGoalDto(
     int Id,
@@ -89,7 +89,8 @@ public sealed record WeeklyGoalDto(
     bool IsHabit = false,
     int? ProjectId = null,
     string? ProjectTitle = null,
-    bool ProjectIsOpen = true)
+    bool ProjectIsOpen = true,
+    bool ProjectIsTrashed = false)
 {
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
@@ -225,3 +226,6 @@ public sealed record DoneGroupDto(int? CategoryId, string Name, string? Emoji, I
 
 /// <summary>Дело после отметки и его родитель, если тот отметился сам (все шаги сделаны); иначе Parent = null.</summary>
 public sealed record TaskDoneResultDto(TaskDto Task, TaskDto? Parent);
+
+/// <summary>«+ шаг» цели: цель (с проектом), новый шаг и проект, если его создали этим шагом (иначе null).</summary>
+public sealed record GoalStepResultDto(WeeklyGoalDto Goal, TaskDto Step, TaskDto? CreatedProject);

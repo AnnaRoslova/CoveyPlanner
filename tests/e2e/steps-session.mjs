@@ -41,11 +41,16 @@ const rowEl = (i, title) => page.evaluateHandle((i, t) =>
 const rowInfo = (i, title) => page.evaluate((i, t) => {
   const it = [...document.querySelectorAll('.day')[i].querySelectorAll(':scope > .item')]
     .find(x => x.querySelector('.title')?.textContent.trim() === t);
-  return it ? { done: it.classList.contains('done'), project: it.querySelector('.project-label')?.textContent.trim() ?? null } : null;
+  return it ? { done: it.classList.contains('done'), project: it.querySelector('.project-label')?.textContent.replace('▸', '').trim() ?? null } : null;
 }, i, title);
 const stepsShown = i => page.evaluate(i => [...document.querySelectorAll('.day')[i].querySelectorAll('.steps .item .title')].map(t => t.textContent.trim()), i);
 
 /** Клик мышью по «▸» строки — в его видимой точке (центр значка), как это делает человек. */
+/** Закрыть окно: Esc закрывает верхний слой — сначала открытое поле «+ шаг», потом само окно. */
+async function closeEditor() {
+  for (let i = 0; i < 3 && await page.$('.editor'); i++) { await page.keyboard.press('Escape'); await settle(); }
+}
+
 async function clickFold(i, title) {
   const fold = await (await rowEl(i, title)).asElement().$('.fold');
   assert(fold, 'нет «▸»');
@@ -63,12 +68,14 @@ const plain = await api('POST', 'tasks', { title: 'Ремонт', target: { kind
 await api('POST', `tasks/${plain.id}/steps`, { title: 'Обои' });
 await load();
 
-await check('занятие цели: два шага через окно дела — «☑ 0/2», дело не отмечено', async () => {
-  await (await (await rowEl(1, 'Подготовка к собесу')).asElement().$('.tx')).click(); await settle();
+await check('занятие цели: два шага в окне занятия (шаги цели, G4) — «☑ 0/2», дело не отмечено', async () => {
+  await (await (await rowEl(1, 'Подготовка к собесу')).asElement().$('.title')).click(); await settle();
   for (const t of ['Задачи', 'Резюме']) {
-    await page.type('.editor .step-new', t); await page.keyboard.press('Enter'); await settle();
+    if (await page.$('.editor .goal-steps .add-step')) { await page.click('.editor .goal-steps .add-step'); await sleep(200); }
+    else await page.focus('.editor .goal-steps .inline-input');
+    await page.keyboard.type(t); await page.keyboard.press('Enter'); await settle();
   }
-  await page.keyboard.press('Escape'); await settle();
+  await closeEditor();
   const info = await rowInfo(1, 'Подготовка к собесу');
   assert(info?.project === '☑ 0/2' && !info.done, JSON.stringify(info));
 });
@@ -86,9 +93,9 @@ await check('баг 2: «▸» у обычного дела раскрывает
 });
 
 await check('баг 1: отметили один шаг в окне занятия — дело не отмечено, «☑ 1/2»', async () => {
-  await (await (await rowEl(1, 'Подготовка к собесу')).asElement().$('.tx')).click(); await settle();
-  await page.click('.editor .step-ck'); await settle();
-  await page.keyboard.press('Escape'); await settle();
+  await (await (await rowEl(1, 'Подготовка к собесу')).asElement().$('.title')).click(); await settle();
+  await page.click('.editor .goal-steps .steps .item .ck-hit'); await settle();
+  await closeEditor();
   const info = await rowInfo(1, 'Подготовка к собесу');
   assert(info?.project === '☑ 1/2' && !info.done, JSON.stringify(info));
   const server = await api('GET', `tasks/${session.id}`);
@@ -96,9 +103,10 @@ await check('баг 1: отметили один шаг в окне заняти
 });
 
 await check('баг 1: удалили все шаги — дело не отмечено', async () => {
-  await (await (await rowEl(1, 'Подготовка к собесу')).asElement().$('.tx')).click(); await settle();
-  while (await page.$('.editor .steps .row-action')) { await page.click('.editor .steps .row-action'); await settle(); }
-  await page.keyboard.press('Escape'); await settle();
+  // Шаги цели удаляются как дела — в корзину
+  const goalNow = (await api('GET', `week/${dayIso(0)}`)).goals.find(g => g.id === goal.id);
+  for (const s of await api('GET', `tasks/${goalNow.projectId}/steps`)) await api('DELETE', `tasks/${s.id}`);
+  await load();
   const info = await rowInfo(1, 'Подготовка к собесу');
   assert(info && !info.done && info.project === null, JSON.stringify(info));
   assert((await api('GET', `tasks/${session.id}`)).state === 'Planned', 'на сервере отмечено');

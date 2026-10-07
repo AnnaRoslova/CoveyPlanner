@@ -85,6 +85,11 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
         }
 
         var parent = await tasks.FindAsync(id, ct) ?? throw new NotFoundException("Дело", id);
+        if (parent.IsSession)
+        {
+            throw new DomainException(SessionNotProjectMessage); // S7, G4
+        }
+
         if ((await tasks.GetStepsAsync(task.Id, ct)).Count > 0)
         {
             throw new DomainException(HasStepsMessage);
@@ -95,6 +100,8 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
     }
 
     public const string HasStepsMessage = "У дела есть шаги — оно само проект.";
+
+    public const string SessionNotProjectMessage = "Занятие цели не бывает проектом — шаги цели живут в её проекте.";
 
     /// <summary>Поставить шаг на место <paramref name="index"/> в списке шагов родителя (индекс — без самого шага).</summary>
     public async Task PlaceStepAsync(TaskItem step, int parentId, int index, CancellationToken ct = default)

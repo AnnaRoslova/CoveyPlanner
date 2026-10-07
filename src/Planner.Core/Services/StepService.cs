@@ -9,7 +9,8 @@ namespace Planner.Core.Services;
 /// Шаг — полноценное дело (может стоять в дне, см. <see cref="TaskService"/>); новый шаг получает копию ролей родителя.
 /// Отметили последний шаг — родитель отмечается сам (<see cref="ProjectService"/>).
 /// </summary>
-public class StepService(ITaskRepository tasks, ProjectService projects, IUnitOfWork unitOfWork, TimeProvider clock)
+public class StepService(
+    ITaskRepository tasks, ProjectService projects, GoalService goals, IUnitOfWork unitOfWork, TimeProvider clock)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -19,9 +20,15 @@ public class StepService(ITaskRepository tasks, ProjectService projects, IUnitOf
         return await tasks.GetStepsAsync(parentId, ct);
     }
 
+    /// <summary>Новый шаг в конец. У занятия цели своих шагов нет — шаг уходит в проект его цели (G4; нет проекта — он создаётся, G3).</summary>
     public async Task<TaskItem> AddAsync(int parentId, string title, CancellationToken ct = default)
     {
         var parent = await GetParentAsync(parentId, ct);
+        if (parent.GoalId is { } goalId)
+        {
+            return (await goals.AddStepAsync(goalId, title, ct)).Step;
+        }
+
         var step = TaskItem.CreateStep(parent, title, Now);
         step.SetRoles(parent.RoleIds); // копия на момент создания, дальше независимы (S5)
         await projects.PlaceStepAsync(step, parentId, int.MaxValue, ct);

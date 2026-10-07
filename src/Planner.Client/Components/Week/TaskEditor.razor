@@ -7,7 +7,7 @@
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
-<div class="editor" role="dialog" aria-label="Дело" @onkeydown="OnKeyDown">
+<div class="editor" role="dialog" aria-label="Дело" tabindex="-1" @onkeydown="OnKeyDown">
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
@@ -113,8 +113,13 @@
         <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
     </div>
 
-    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить». У шага своих шагов не бывает *@
-    @if (EditedTask.Id > 0 && EditedTask.ParentId is null)
+    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить». У шага своих шагов не бывает;
+       у занятия цели — шаги цели (её проекта), один список на все занятия (G4) *@
+    @if (EditedTask.Id > 0 && Goal is { } stepsGoal)
+    {
+        <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" />
+    }
+    else if (EditedTask.Id > 0 && EditedTask.ParentId is null)
     {
         <div class="field">
             <div class="label-row">

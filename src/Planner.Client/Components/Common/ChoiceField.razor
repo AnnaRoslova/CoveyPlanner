@@ -15,7 +15,12 @@
 @if (_open)
 {
     <Popover Anchor="_field" OnClose="() => _open = false" Class="options" Role="listbox" Label="@Label" Arrows="true">
-        @foreach (var item in Items)
+        @if (Searchable)
+        {
+            @* Длинный список (проекты) — поиск по названию *@
+            <input class="option-search" type="search" placeholder="Поиск" aria-label="Поиск" @bind="_query" @bind:event="oninput" />
+        }
+        @foreach (var item in Items.Where(i => !Searchable || Is(i.Value) || string.IsNullOrWhiteSpace(_query) || TextSearch.Contains(i.Label, _query)))
         {
             var on = Is(item.Value);
             <button type="button" class="option @(on ? "on" : "")" role="option" aria-selected="@(on ? "true" : "false")"
@@ -31,6 +36,11 @@
 @code {
     private ElementReference _field;
     private bool _open;
+    private string _query = "";
+
+    /// <summary>Над списком — поле поиска по подписи (для длинных списков, например проектов).</summary>
+    [Parameter]
+    public bool Searchable { get; set; }
 
     [Parameter, EditorRequired]
     public IReadOnlyList<Choice<TValue>> Items { get; set; } = [];

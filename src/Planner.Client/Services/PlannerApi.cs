@@ -50,6 +50,10 @@ public class PlannerApi(HttpClient http)
     /// <summary>Одно дело — например, проект шага, стоящий на другой неделе.</summary>
     public Task<TaskDto> GetTaskAsync(int id) => GetAsync<TaskDto>($"api/tasks/{id}");
 
+    /// <summary>«+ шаг» цели: в её проект (нет проекта — он создаётся в «неразобранном», G3).</summary>
+    public Task<GoalStepResultDto> AddGoalStepAsync(int goalId, string title) =>
+        SendAsync<GoalStepResultDto>(HttpMethod.Post, $"api/goals/{goalId}/steps", new StepRequest(title));
+
     /// <summary>«Проект» в карточке: сделать дело шагом parentId (null — убрать из проекта).</summary>
     public Task<TaskDto> SetParentAsync(int id, int? parentId) =>
         SendAsync<TaskDto>(HttpMethod.Put, $"api/tasks/{id}/parent", new SetParentRequest(parentId));

@@ -360,23 +360,10 @@ body.dragging .trash-btn {
 
 /* «▸» перед названием проекта: раскрыть шаги прямо в списке */
 .fold {
-    position: relative; /* поверх зоны чекбокса, которая заходит под соседа */
-    z-index: 1;
-    flex: none;
-    align-self: flex-start;
-    width: 20px;
-    height: 20px;
-    margin: -2px -6px -2px 2px; /* отступ от чекбокса: промах мимо стрелки не отмечает дело */
-    padding: 0;
-    border-radius: 6px;
+    display: inline-block;
+    width: 14px;
     color: var(--soft);
-    font-size: 13px;
-    line-height: 20px;
-    text-align: center;
-}
-
-.fold:hover {
-    background: color-mix(in srgb, var(--b) 25%, transparent);
+    font-size: 12px;
 }
 
 .fold .chev {
@@ -390,9 +377,11 @@ body.dragging .trash-btn {
 
 /* «☑ 2/5» — тихой строкой под названием (в узком дне справа ему не хватает места) */
 .project-label {
-    display: block;
-    margin-top: 1px;
-    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    margin: 1px 0 0 0;
+    padding: 0 6px 0 2px;
+    border-radius: 6px;
     text-align: left;
     color: var(--b-deep);
     font-size: 11px;
@@ -436,6 +425,57 @@ body.dragging .trash-btn {
 }
 
 .project-label:hover {
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    background: color-mix(in srgb, var(--b) 25%, transparent);
+}
+
+/* ---------- «Развернуть по длине» (L1–L4) ---------- */
+
+/* Название и «⌄» в конце его текста (в правом нижнем углу, не у чекбокса и «▸») */
+.title-box {
+    position: relative;
+    display: block;
+}
+
+/* Место под значок — только у обрезанной или развёрнутой записи */
+.title.clamp[data-long],
+.title.unclamped {
+    padding-right: 16px;
+}
+
+.unclamp {
+    position: absolute;
+    right: -3px;
+    bottom: 0;
+    display: none;
+    width: 17px;
+    height: 17px;
+    padding: 0;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--soft);
+    font-size: 13px;
+    line-height: 17px;
+    text-align: center;
+}
+
+/* Знак — в CSS: текст строки (название) остаётся чистым */
+.unclamp::before {
+    content: "⌄";
+    position: relative;
+    top: -3px;
+}
+
+.unclamp.on::before {
+    content: "⌃";
+    top: 3px;
+}
+
+.title.clamp[data-long] + .unclamp,
+.unclamp.on {
+    display: block;
+}
+
+.unclamp:hover {
+    background: var(--b-soft);
+    color: var(--b-deep);
 }

@@ -113,7 +113,7 @@ await check('окно дела ленты: Esc и клик мимо — отме
 });
 
 const LONG = 'Очень длинная запись, которая точно не помещается в две строки узкой колонки дня и ленты, поэтому её нужно обрезать';
-await check('длинные записи — не больше двух строк, с «…»; стрелки «развернуть» нет', async () => {
+await check('длинные записи — не больше двух строк, с «…» и «⌄» (L1: развернуть по длине)', async () => {
   const ideas = (await api('GET', 'board')).categories.find(c => c.name === 'Идеи');
   await api('POST', 'tasks', { title: LONG, target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
   const today = new Date().toISOString().slice(0, 10);
@@ -122,10 +122,10 @@ await check('длинные записи — не больше двух стро
   const m = await page.$$eval('.item', (items, long) => items.filter(i => i.querySelector('.title')?.textContent.trim() === long).map(i => {
     const t = i.querySelector('.title');
     return { lines: t.clientHeight / parseFloat(getComputedStyle(t).lineHeight), ellipsis: getComputedStyle(t).webkitLineClamp,
-      long: t.hasAttribute('data-long'), more: !!i.querySelector('.more, .ellipsis-hit') };
+      long: t.hasAttribute('data-long'), more: getComputedStyle(i.querySelector('.unclamp')).display !== 'none' };
   }), LONG);
   assert(m.length === 2, `записей: ${m.length}`);
-  assert(m.every(x => Math.round(x.lines) === 2 && x.ellipsis === '2' && x.long && !x.more), JSON.stringify(m));
+  assert(m.every(x => Math.round(x.lines) === 2 && x.ellipsis === '2' && x.long && x.more), JSON.stringify(m));
 });
 
 const tipText = () => page.evaluate(() => document.querySelector('.clamp-tip')?.isConnected ? document.querySelector('.clamp-tip').textContent : null);

@@ -1,0 +1,38 @@
+@* Шаги цели (G1–G9) — в окне цели и в окне её занятия: это шаги проекта цели, один список на цель (и на все недели постоянной).
+   Отметить, порядок (перетаскиванием в списке), открыть шаг (клик — его окно: там «Дата» — поставить в день), «+ шаг — Enter».
+   Проекта нет — первый «+ шаг» создаёт его в «неразобранном» (G3); выполнен — шаги видны, новые идут в него же (G8);
+   в корзине — список пуст, «+ шаг» создаст новый проект (G9). Меняется сразу, без «Сохранить». *@
+@inherits StateComponent
+
+<div class="field goal-steps">
+    <div class="label-row">
+        <span class="label">@(Title ?? "Шаги")</span>
+        @if (State.ProjectOf(Goal.ProjectId ?? 0) is { StepsTotal: > 0 } summary)
+        {
+            <span class="hint">☑ @summary.StepsDone/@summary.StepsTotal</span>
+        }
+    </div>
+    @if (Goal.ProjectId is null)
+    {
+        <div class="date-hint">первый шаг создаст проект «@Goal.Title» в «неразобранном»</div>
+    }
+    else if (Goal.ProjectIsTrashed)
+    {
+        <div class="date-hint">проект «@Goal.ProjectTitle» в корзине — новый шаг создаст новый проект</div>
+    }
+    else if (!Goal.ProjectIsOpen)
+    {
+        <div class="date-hint">проект «@Goal.ProjectTitle» выполнен — новые занятия без проекта</div>
+    }
+    <ProjectSteps ParentId="@(Goal.ProjectId is { } id && !Goal.ProjectIsTrashed ? id : 0)" GoalId="Goal.Id" LongDates="true" />
+</div>
+
+@code {
+    /// <summary>Цель, чьи шаги в блоке (свежая — из состояния, если она на неделе).</summary>
+    [Parameter, EditorRequired]
+    public WeeklyGoalDto Goal { get; set; } = null!;
+
+    /// <summary>Подпись блока (в окне занятия — «Шаги цели «…»»); null — «Шаги».</summary>
+    [Parameter]
+    public string? Title { get; set; }
+}

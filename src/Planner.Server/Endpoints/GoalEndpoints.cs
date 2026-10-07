@@ -42,6 +42,15 @@ public static class GoalEndpoints
             (await service.MoveAsync(id, request.RoleId, request.Index, request.FromRoleId, request.AddRole, ct)).ToDto());
 
         // Цель → день: новое занятие
+        // «+ шаг» цели: в её проект (нет проекта — он создаётся в «неразобранном» и выбирается в цели)
+        goals.MapPost("/{id:int}/steps", async (int id, StepRequest request, GoalService service, TaskViews views, CancellationToken ct) =>
+        {
+            var added = await service.AddStepAsync(id, request.Title, ct);
+            return new GoalStepResultDto(
+                added.Goal.ToDto(), await views.ToDtoAsync(added.Step, ct),
+                added.CreatedProject is { } project ? await views.ToDtoAsync(project, ct) : null);
+        });
+
         goals.MapPost("/{id:int}/schedule", async (int id, TaskTargetDto target, GoalService service, CancellationToken ct) =>
             (await service.ScheduleAsync(id, target.ToCore(), ct)).ToResultDto());
 

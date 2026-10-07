@@ -100,7 +100,8 @@ await check('«Прогулка в парке» в Пн → на строку «
 await check('в окне дела нет «засчитывается в цели»; роль — «от цели», без выбора', async () => {
   await page.evaluate(js => eval(js).querySelector('.title').click(), dayItemJs(0, 'Прогулка в парке')); await settle();
   const labels = await page.$$eval('.editor .label', ls => ls.map(l => l.textContent.trim()));
-  assert(!labels.some(l => /цел/i.test(l)), `поля: ${labels}`);
+  // «Шаги цели «…»» — блок шагов цели (G4), а не выбор цели
+  assert(!labels.some(l => /цел/i.test(l) && !l.startsWith('Шаги цели')), `поля: ${labels}`);
   assert(!(await page.$('.editor .tag-add')), 'роль можно выбирать');
   assert((await page.$eval('.editor .tags .hint', e => e.textContent)).includes('от цели'), 'нет «от цели»');
   await page.keyboard.press('Escape'); await settle();

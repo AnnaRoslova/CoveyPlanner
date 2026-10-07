@@ -5,12 +5,12 @@
 @inherits StateComponent
 @inject WindowHost Windows
 
-<div class="steps" data-drop="@DragDropService.StepsZone" data-key="@ParentId" data-accept="@DragDropService.StepsAccepts">
-    @foreach (var step in State.CountedStepsOf(ParentId))
+<div class="steps" data-drop="@(ParentId > 0 ? DragDropService.StepsZone : null)" data-key="@ParentId" data-accept="@DragDropService.StepsAccepts">
+    @foreach (var step in ParentId > 0 ? State.CountedStepsOf(ParentId) : Array.Empty<TaskDto>())
     {
         var roles = State.RolesOf(step);
         var id = step.Id;
-        <ItemRow @key="id" Title="@step.Title" Compact="true" Highlight="@Highlight"
+        <ItemRow @key="id" Title="@step.Title" Clamp="true" Highlight="@Highlight"
                  Color="@roles.FirstOrDefault()?.Color"
                  IsDone="step.State == TaskStateDto.Done"
                  DayLabel="@DayLabel(step)"
@@ -38,8 +38,13 @@
     private bool _adding;
     private string _newTitle = "";
 
+    /// <summary>Дело-проект, чьи шаги в списке; 0 — проекта пока нет (у цели), список пуст, есть только «+ шаг».</summary>
     [Parameter, EditorRequired]
     public int ParentId { get; set; }
+
+    /// <summary>Шаги цели (её проекта): «+ шаг» идёт через цель — нет проекта, он создаётся (G3).</summary>
+    [Parameter]
+    public int? GoalId { get; set; }
 
     /// <summary>Текст поиска — совпадения в названиях шагов подсвечиваются.</summary>
     [Parameter]
@@ -67,7 +72,14 @@
         }
 
         _newTitle = "";
-        await State.AddProjectStepAsync(ParentId, title);
+        if (GoalId is { } goalId)
+        {
+            await State.AddGoalStepAsync(goalId, title);
+        }
+        else
+        {
+            await State.AddProjectStepAsync(ParentId, title);
+        }
     }
 
     private async Task SaveAndCloseAsync()

@@ -644,7 +644,8 @@
     color: var(--b-deep);
 }
 
-.editor .repeat-row {
+.editor .repeat-row,
+.editor .project-row {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -887,4 +888,42 @@
 
 .steps .step-new::placeholder {
     color: var(--faint);
+}
+
+/* Поиск над длинным списком выбора (проекты) */
+.editor .popover .option-search {
+    width: 100%;
+    margin: 0 0 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    font: inherit;
+    font-size: 12.5px;
+}
+
+.editor .popover.options {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+/* Шаги цели в окне цели и занятия */
+.editor .goal-steps .steps {
+    margin-left: 0;
+}
+
+/* Перетаскивание шага из окна цели в день (G2): затемнение пропускает указатель к дням, окно бледнеет
+   (порядок шагов внутри окна по-прежнему меняется — само окно остаётся зоной) */
+body.dragging .editor-backdrop {
+    pointer-events: none;
+}
+
+body.dragging .editor {
+    opacity: 0.55;
+    transition: opacity 0.15s;
+}
+
+/* Окно получает фокус (после перетаскивания из него) — без рамки фокуса */
+.editor:focus {
+    outline: none;
 }

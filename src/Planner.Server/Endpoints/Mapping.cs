@@ -55,7 +55,8 @@ public static class Mapping
         g.Series?.IsHabit ?? false,
         g.ProjectId,
         g.Project?.Title,
-        g.Project is null || g.Project.State is TaskState.Someday or TaskState.Planned);
+        g.Project is null || g.Project.State is TaskState.Someday or TaskState.Planned,
+        g.Project?.State == TaskState.Trashed);
 
     /// <summary>Цель, её занятия, стоящие в днях (их поля могли поменяться по шаблону), и убранные при раскладке по дням.</summary>
     public static GoalUpdateResultDto ToUpdateResultDto(this GoalUpdate update) =>

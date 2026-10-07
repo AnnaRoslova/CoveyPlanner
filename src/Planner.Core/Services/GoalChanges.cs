@@ -26,3 +26,6 @@ public sealed record GoalChanges(
 
 /// <summary>Цель после сохранения окна и занятия, убранные в корзину при раскладке по новым дням.</summary>
 public sealed record GoalUpdate(WeeklyGoal Goal, IReadOnlyList<TaskItem> RemovedSessions);
+
+/// <summary>«+ шаг» цели: цель, новый шаг её проекта и проект, если его создали этим шагом (G3).</summary>
+public sealed record GoalStep(WeeklyGoal Goal, TaskItem Step, TaskItem? CreatedProject);

@@ -72,6 +72,6 @@ public static class BoardEndpoints
             monday,
             weekGoals.Select(g => g.ToDto()).ToList(),
             await views.ToDtosAsync(shown, ct),
-            await views.StepsOfAsync(shown, ct));
+            await views.StepsOfAsync(shown.Concat(weekGoals.Select(g => g.Project).OfType<TaskItem>()).ToList(), ct)); // и шаги проектов целей (G)
     }
 }
