@@ -42,7 +42,11 @@
                 <button type="button" class="chip @(_date is null ? "on" : "")" @onclick="() => _date = null">без даты</button>
             </div>
         </div>
-        @if (_date is null)
+        @if (_date is null && State.ParentTitleOf(EditedTask) is { } projectTitle)
+        {
+            <div class="date-hint">останется в списке шагов «@projectTitle»</div>
+        }
+        else if (_date is null)
         {
             <div class="date-hint">вернётся в ленту@(State.FindCategory(EditedTask.CategoryId) is { } category ? $" — в «{category.Name}»" : " — в «неразобранное»")</div>
         }
@@ -109,8 +113,8 @@
         <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
     </div>
 
-    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить» *@
-    @if (EditedTask.Id > 0)
+    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить». У шага своих шагов не бывает *@
+    @if (EditedTask.Id > 0 && EditedTask.ParentId is null)
     {
         <div class="field">
             <div class="label-row">

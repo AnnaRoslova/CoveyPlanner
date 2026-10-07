@@ -114,7 +114,15 @@ public partial class PlannerState
 
         if (date is not { } day)
         {
-            await MoveTaskToFeedAsync(taskId, IsFeedPlace(task.CategoryId) ? task.CategoryId : null, 0);
+            if (task.ParentId is { } parentId)
+            {
+                await MoveStepToListAsync(taskId, parentId, int.MaxValue); // шаг без даты — в список своего проекта
+            }
+            else
+            {
+                await MoveTaskToFeedAsync(taskId, IsFeedPlace(task.CategoryId) ? task.CategoryId : null, 0);
+            }
+
             return;
         }
 
@@ -171,7 +179,10 @@ public partial class PlannerState
 
         _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
         SyncSession(_tasks[taskId]);
-        if (await SaveAsync(() => api.SetTaskDoneAsync(taskId, isDone)) && HabitOfGoal(GoalOfTask(taskId)) is { } habit)
+        TaskDto? autoDoneParent = null;
+        var ok = await SaveAsync(async () => autoDoneParent = (await api.SetTaskDoneAsync(taskId, isDone)).Parent);
+        AfterParentAutoDone(autoDoneParent); // последний шаг — проект отметился сам (S12)
+        if (ok && HabitOfGoal(GoalOfTask(taskId)) is { } habit)
         {
             await AfterHabitTaskToggledAsync(habit.Id, isDone, task.PlannedDate);
         }

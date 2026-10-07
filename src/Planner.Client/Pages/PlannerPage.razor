@@ -8,6 +8,7 @@
 @inject ThemeState Theme
 @inject RoleTasksState RoleTasks
 @inject GoalFoldState GoalFold
+@inject ProjectFoldState ProjectFold
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -72,7 +73,7 @@ else
         Windows.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), GoalFold.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), GoalFold.InitAsync(), ProjectFold.InitAsync(),
             WatchLongTitlesAsync());
     }
 

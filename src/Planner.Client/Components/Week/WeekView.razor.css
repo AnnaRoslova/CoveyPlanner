@@ -125,7 +125,8 @@
 }
 
 body[data-drag-kind="someday"] .flip-zone,
-body[data-drag-kind="day"] .flip-zone {
+body[data-drag-kind="day"] .flip-zone,
+body[data-drag-kind="step"] .flip-zone {
     display: flex;
 }
 

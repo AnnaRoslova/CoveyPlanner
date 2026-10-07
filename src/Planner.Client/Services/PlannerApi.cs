@@ -47,6 +47,13 @@ public class PlannerApi(HttpClient http)
 
     public Task<List<TaskDto>> GetTrashAsync() => GetAsync<List<TaskDto>>("api/trash");
 
+    /// <summary>Одно дело — например, проект шага, стоящий на другой неделе.</summary>
+    public Task<TaskDto> GetTaskAsync(int id) => GetAsync<TaskDto>($"api/tasks/{id}");
+
+    /// <summary>«Проект» в карточке: сделать дело шагом parentId (null — убрать из проекта).</summary>
+    public Task<TaskDto> SetParentAsync(int id, int? parentId) =>
+        SendAsync<TaskDto>(HttpMethod.Put, $"api/tasks/{id}/parent", new SetParentRequest(parentId));
+
     /// <summary>Дело ленты без своей категории вернётся в «неразобранное».</summary>
     public Task<TaskDto> RestoreTaskAsync(int id) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/trash/{id}/restore");

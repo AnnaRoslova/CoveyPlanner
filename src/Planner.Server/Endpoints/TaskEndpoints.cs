@@ -17,6 +17,10 @@ public static class TaskEndpoints
             return Results.Created($"/api/tasks/{task.Id}", await views.ToDtoAsync(task, ct));
         });
 
+        // Одно дело (например, проект шага, стоящий на другой неделе, — для его окна)
+        tasks.MapGet("/{id:int}", async (int id, ITaskRepository repository, TaskViews views, CancellationToken ct) =>
+            await repository.FindAsync(id, ct) is { } task ? Results.Ok(await views.ToDtoAsync(task, ct)) : Results.NotFound());
+
         tasks.MapPut("/{id:int}", async (int id, UpdateTaskRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
             await views.ToDtoAsync(await service.UpdateAsync(
                 id, request.Title, request.Notes, request.RoleIds ?? [], request.Quadrant.ToQuadrant(), request.StartTime,

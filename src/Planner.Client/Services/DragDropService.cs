@@ -21,6 +21,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string DayItem = "day";         // дело в дне недели
     public const string GoalItem = "goal";       // цель роли на неделю
     public const string RoleItem = "role";       // пользовательская роль
+    public const string StepItem = "step";       // шаг проекта: в дне, в раскрытом списке проекта
 
     public const string SomedayZone = "someday"; // категория ленты (список или заголовок)
     public const string DayZone = "day";         // день недели
@@ -28,15 +29,17 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string RolesZone = "roles";     // список пользовательских ролей
     public const string TrashZone = "trash";     // значок корзины внизу ленты
     public const string GoalZone = "goal";       // строка цели: сделать дело её занятием
+    public const string ProjectZone = "project"; // строка проекта: шаг — снять с дня, в конец своего списка
+    public const string StepsZone = "steps";     // раскрытый список шагов проекта: порядок, снять шаг с дня
 
     /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
     public const string UnsortedKey = "unsorted";
 
     /// <summary>Категория ленты: дела ленты, дела из плана (возврат в ленту), цели (цель → мысль).</summary>
-    public const string SomedayAccepts = SomedayItem + " " + DayItem + " " + GoalItem;
+    public const string SomedayAccepts = SomedayItem + " " + DayItem + " " + GoalItem + " " + StepItem;
 
     /// <summary>День: дела из ленты и других дней, цели (цель → дело-«камень» в этот день).</summary>
-    public const string DayAccepts = SomedayItem + " " + DayItem + " " + GoalItem;
+    public const string DayAccepts = SomedayItem + " " + DayItem + " " + GoalItem + " " + StepItem;
 
     /// <summary>Роль: её и чужие цели, дела из ленты и из дней (дело → цель недели).</summary>
     public const string RoleAccepts = GoalItem + " " + SomedayItem + " " + DayItem;
@@ -45,13 +48,16 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string RolesAccepts = RoleItem;
 
     /// <summary>Строка цели: дела из дней и из ленты — сделать занятием этой цели.</summary>
-    public const string GoalAccepts = SomedayItem + " " + DayItem;
+    public const string GoalAccepts = SomedayItem + " " + DayItem + " " + StepItem;
 
     /// <summary>Стрелки недели: листают во время перетаскивания дела из ленты или из дня (цели привязаны к своей неделе).</summary>
-    public const string FlipAccepts = SomedayItem + " " + DayItem;
+    public const string FlipAccepts = SomedayItem + " " + DayItem + " " + StepItem;
 
     /// <summary>Корзина: дела ленты и плана, цели — удалить, как из окна (с «Вернуть»).</summary>
-    public const string TrashAccepts = SomedayItem + " " + DayItem + " " + GoalItem;
+    public const string TrashAccepts = SomedayItem + " " + DayItem + " " + GoalItem + " " + StepItem;
+
+    /// <summary>Строка проекта и его раскрытый список: только шаги (своего проекта — проверяется при сбросе).</summary>
+    public const string StepsAccepts = StepItem;
 
     private DotNetObjectReference<DragDropService>? _selfRef;
     private IJSObjectReference? _module;
@@ -135,18 +141,18 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
         switch (drop)
         {
             // Лента или день → лента: порядок в категории, другая категория, возврат из плана
-            case { Kind: SomedayItem or DayItem, Zone: SomedayZone } when TryFeedKey(drop.Key, out var categoryId):
+            case { Kind: SomedayItem or DayItem or StepItem, Zone: SomedayZone } when TryFeedKey(drop.Key, out var categoryId):
                 await state.MoveTaskToFeedAsync(drop.Id, categoryId, drop.Index);
                 break;
 
             // Лента или день → день: запланировать, перенести на другой день, порядок в дне
-            case { Kind: SomedayItem or DayItem, Zone: DayZone }
+            case { Kind: SomedayItem or DayItem or StepItem, Zone: DayZone }
                 when DateOnly.TryParseExact(drop.Key, "yyyy-MM-dd", out var date):
                 await state.MoveTaskToDayAsync(drop.Id, date, drop.Index);
                 break;
 
             // Лента или день → строка цели: дело становится занятием этой цели (было занятием другой — переходит)
-            case { Kind: SomedayItem or DayItem, Zone: GoalZone } when int.TryParse(drop.Key, out var goalId):
+            case { Kind: SomedayItem or DayItem or StepItem, Zone: GoalZone } when int.TryParse(drop.Key, out var goalId):
                 await state.LinkTaskToGoalAsync(drop.Id, goalId);
                 break;
 
@@ -172,12 +178,21 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
                 break;
 
             // Запись → корзина: удалить (как из окна, с «Вернуть»)
-            case { Kind: SomedayItem or DayItem, Zone: TrashZone }:
+            case { Kind: SomedayItem or DayItem or StepItem, Zone: TrashZone }:
                 await state.TrashTaskAsync(drop.Id);
                 break;
 
             case { Kind: GoalItem, Zone: TrashZone }:
                 await windows.DeleteGoalAsync(state, drop.Id); // постоянную — с вопросом
+                break;
+
+            // Шаг → строка своего проекта (в конец) или его раскрытый список (на место): снять с дня, остаться шагом
+            case { Kind: StepItem, Zone: ProjectZone } when int.TryParse(drop.Key, out var parentId):
+                await state.MoveStepToListAsync(drop.Id, parentId, int.MaxValue);
+                break;
+
+            case { Kind: StepItem, Zone: StepsZone } when int.TryParse(drop.Key, out var parentId):
+                await state.MoveStepToListAsync(drop.Id, parentId, drop.Index);
                 break;
 
             // Роль → список ролей: порядок

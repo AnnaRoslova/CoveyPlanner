@@ -355,3 +355,74 @@ body.dragging .trash-btn {
     font-size: 10.5px;
     line-height: inherit;
 }
+
+/* ---------- Проекты и шаги (docs/specs/tasks-steps-done.md) ---------- */
+
+/* «▸» перед названием проекта: раскрыть шаги прямо в списке */
+.fold {
+    flex: none;
+    width: 12px;
+    margin: 0 -3px 0 -4px;
+    padding: 0;
+    color: var(--faint);
+    font-size: 12px;
+    line-height: 17px;
+}
+
+.fold:hover {
+    color: var(--b-deep);
+}
+
+.fold .chev {
+    display: inline-block;
+    transition: transform 0.15s;
+}
+
+.fold .chev.open {
+    transform: rotate(90deg);
+}
+
+/* «☑ 2/5» — тихой строкой под названием (в узком дне справа ему не хватает места) */
+.project-label {
+    display: block;
+    margin-top: 1px;
+    color: var(--b-deep);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 15px;
+    white-space: nowrap;
+}
+
+/* «↳ Ремонт» под названием шага: тихая подпись, клик — окно проекта */
+.parent-of {
+    display: block;
+    max-width: 100%;
+    margin-top: 1px;
+    padding: 0;
+    overflow: hidden;
+    color: var(--faint);
+    font-size: 11px;
+    line-height: 15px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.parent-of span {
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+
+.parent-of:hover {
+    color: var(--b-deep);
+}
+
+/* Метка дня у шага в раскрытом списке проекта («Чт», «Чт 9 окт») */
+.day-mark {
+    flex: none;
+    align-self: flex-start;
+    color: var(--faint);
+    font-size: 11px;
+    line-height: 17px;
+    white-space: nowrap;
+}

@@ -1,0 +1,16 @@
+/* Раскрытый список шагов проекта — под его строкой, с отступом и тонкой бирюзовой линией слева */
+.steps {
+    margin: 0 0 4px 16px;
+    padding-left: 6px;
+    border-left: 2px solid var(--b-soft);
+}
+
+.steps ::deep .item {
+    padding: 3px 6px;
+    font-size: 12.5px;
+}
+
+.add-step {
+    padding: 2px 6px;
+    font-size: 12px;
+}

@@ -24,6 +24,13 @@
     {
         <span class="dot"></span>
     }
+    @if (Expanded is { } expanded)
+    {
+        @* Проект: «▸» раскрывает шаги прямо в списке (дня, ленты) *@
+        <button type="button" class="fold" aria-expanded="@(expanded ? "true" : "false")"
+                title="@(expanded ? "Свернуть шаги" : "Показать шаги")" aria-label="@(expanded ? "Свернуть шаги" : "Показать шаги")"
+                @onclick="OnExpand" @onclick:stopPropagation="true"><span class="chev @(expanded ? "open" : "")">▸</span></button>
+    }
     <div class="tx">
         <span class="title @(Clamp ? "clamp" : "") @(Compact ? "one-line" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
         {
@@ -39,6 +46,16 @@
         {
             <span class="note" title="@NotesPreview"><Icon Name="note" Size="11" /></span>
         }</span>
+        @if (ProjectLabel is not null)
+        {
+            <span class="project-label" title="Шаги проекта">@ProjectLabel</span>
+        }
+        @if (ParentCaption is not null)
+        {
+            @* Шаг проекта: «↳ Ремонт», клик — окно проекта *@
+            <button type="button" class="parent-of" title="Открыть проект «@ParentCaption»"
+                    @onclick="OnParentClick" @onclick:stopPropagation="true">↳ <span>@ParentCaption</span></button>
+        }
         @if (RoleDots is { Count: > 0 } dots)
         {
             <span class="role-dots" title="@string.Join(", ", dots.Select(r => r.Name))">
@@ -87,6 +104,10 @@
     @if (Progress is not null && !ProgressBelow)
     {
         <span class="progress">@Progress</span>
+    }
+    @if (DayLabel is not null)
+    {
+        <span class="day-mark">@DayLabel</span>
     }
     @if (Percent is { } percent)
     {
@@ -220,4 +241,26 @@
     /// <summary>У записи своё место в зоне (дело со временем в дне) — ручной порядок на неё не влияет.</summary>
     [Parameter]
     public bool DragFixed { get; set; }
+
+    /// <summary>Проект: раскрыт ли список шагов (null — не проект, стрелки нет).</summary>
+    [Parameter]
+    public bool? Expanded { get; set; }
+
+    [Parameter]
+    public EventCallback OnExpand { get; set; }
+
+    /// <summary>Сводка проекта справа: «☑ 2/5», «12 занятий».</summary>
+    [Parameter]
+    public string? ProjectLabel { get; set; }
+
+    /// <summary>Шаг проекта: название проекта под своим («↳ Ремонт»), клик — <see cref="OnParentClick"/>.</summary>
+    [Parameter]
+    public string? ParentCaption { get; set; }
+
+    [Parameter]
+    public EventCallback OnParentClick { get; set; }
+
+    /// <summary>Метка дня справа («Чт», «Чт 9 окт») — у шага в раскрытом списке проекта.</summary>
+    [Parameter]
+    public string? DayLabel { get; set; }
 }

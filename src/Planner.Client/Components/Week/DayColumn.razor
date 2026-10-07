@@ -2,6 +2,9 @@
    Клик по делу — окно редактирования, по чекбоксу — «выполнено», «+ дело» — новое дело в конец.
    🗑 справа при наведении (на касании — после свайпа влево) — в корзину сразу, с плашкой «Вернуть». *@
 @inject PlannerState State
+@inject ProjectFoldState Folds
+@inject WindowHost Windows
+@implements IDisposable
 
 <section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
          data-drop="@DragDropService.DayZone" data-key="@Css.Date(Date)"
@@ -22,6 +25,9 @@
     @foreach (var task in Tasks)
     {
         var roles = State.RolesOf(task);
+        var project = task.ParentId is null && task.Id > 0 ? State.ProjectOf(task.Id) : null;
+        var expanded = project is not null && Folds.IsOpen(task.Id);
+        var isStep = task.ParentId is not null;
         <ItemRow @key="task.Id" Title="@task.Title" Clamp="true"
                  Color="@roles.FirstOrDefault()?.Color"
                  RoleDots="@(roles.Count > 1 ? roles : null)"
@@ -32,12 +38,25 @@
                  Notes="@task.Notes"
                  IsPending="task.Id < 0"
                  IsFlashing="State.FlashTaskId == task.Id"
+                 Expanded="@(project is null ? null : expanded)"
+                 OnExpand="() => Folds.ToggleAsync(task.Id)"
+                 ProjectLabel="@PlannerState.ProjectLabel(project)"
+                 ParentCaption="@State.ParentTitleOf(task)"
+                 OnParentClick="() => OpenParentAsync(task.ParentId)"
+                 DropZone="@(project is null ? null : DragDropService.ProjectZone)"
+                 DropKey="@task.Id.ToString()"
+                 DropAccept="@DragDropService.StepsAccepts"
+                 DropHint="снять с дня — в список шагов"
                  OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
                  OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
                  OnTrash="() => task.Id > 0 ? State.TrashTaskAsync(task.Id) : Task.CompletedTask"
-                 DragKind="@(task.Id > 0 ? DragDropService.DayItem : null)"
+                 DragKind="@(task.Id > 0 ? isStep ? DragDropService.StepItem : DragDropService.DayItem : null)"
                  DragFixed="task.StartTime is not null"
                  DragId="task.Id" />
+        @if (expanded)
+        {
+            <ProjectSteps @key="@($"steps-{task.Id}")" ParentId="task.Id" />
+        }
     }
 
     @if (_adding)
@@ -68,6 +87,30 @@
     public EventCallback<int> OnEdit { get; set; }
 
     private bool IsToday => Date == RuDates.Today;
+
+    protected override void OnInitialized() => Folds.Changed += OnFoldsChanged;
+
+    public void Dispose() => Folds.Changed -= OnFoldsChanged;
+
+    private void OnFoldsChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Клик по «↳ Ремонт» — окно проекта (проект на другой неделе сначала подгружается).</summary>
+    private async Task OpenParentAsync(int? parentId)
+    {
+        if (parentId is not { } id || !await State.EnsureTaskAsync(id))
+        {
+            return;
+        }
+
+        if (State.FindTask(id) is { State: TaskStateDto.Someday })
+        {
+            Windows.OpenSomedayTask(id);
+        }
+        else
+        {
+            Windows.OpenTask(id);
+        }
+    }
 
     /// <summary>Сумма длительностей дел дня (у кого указана) — «~3 ч» в заголовке.</summary>
     private int TotalMinutes => Tasks.Sum(t => t.DurationMinutes ?? 0);

@@ -17,6 +17,7 @@ builder.Services.AddScoped<TodayWatcher>();
 builder.Services.AddScoped<WindowHost>();
 builder.Services.AddScoped<ThemeState>();
 builder.Services.AddScoped<RoleTasksState>();
+builder.Services.AddScoped<ProjectFoldState>();
 builder.Services.AddScoped<GoalFoldState>();
 
 await builder.Build().RunAsync();

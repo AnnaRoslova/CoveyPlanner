@@ -1,0 +1,85 @@
+@* Раскрытый список шагов проекта — прямо в дне или в ленте, под строкой «▸ Ремонт ☑ 2/5» (S2, S11, S19, S20).
+   Шаг: чекбокс (общий с его строкой в дне), название, метка дня; клик — окно шага. Шаг можно перетащить в любой день,
+   на другую неделю, на цель, в ленту (станет мыслью); бросить сюда же — порядок и «снять с дня». В конце — «+ шаг».
+   Занятия целей среди шагов здесь не показываются — они в счёте «12 занятий» (S17). *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+<div class="steps" data-drop="@DragDropService.StepsZone" data-key="@ParentId" data-accept="@DragDropService.StepsAccepts">
+    @foreach (var step in State.CountedStepsOf(ParentId))
+    {
+        var roles = State.RolesOf(step);
+        var id = step.Id;
+        <ItemRow @key="id" Title="@step.Title" Compact="true" Highlight="@Highlight"
+                 Color="@roles.FirstOrDefault()?.Color"
+                 IsDone="step.State == TaskStateDto.Done"
+                 DayLabel="@DayLabel(step)"
+                 IsPending="id < 0"
+                 OnToggle="() => State.SetDoneAsync(id, step.State != TaskStateDto.Done)"
+                 OnClick="() => id > 0 ? OpenStep(id) : Task.CompletedTask"
+                 DragKind="@(id > 0 ? DragDropService.StepItem : null)"
+                 DragId="id" />
+    }
+
+    @if (_adding)
+    {
+        <Dismissable OnDismiss="StopAdding" OnClickOutside="SaveAndCloseAsync">
+            <InlineInput @bind-Value="_newTitle" Placeholder="Новый шаг — Enter" MaxLength="500"
+                         OnSubmit="AddAsync" OnCancel="StopAdding" CancelOnEmptyBlur="false" />
+        </Dismissable>
+    }
+    else
+    {
+        <button type="button" class="add add-step" @onclick="() => _adding = true">+ шаг</button>
+    }
+</div>
+
+@code {
+    private bool _adding;
+    private string _newTitle = "";
+
+    [Parameter, EditorRequired]
+    public int ParentId { get; set; }
+
+    /// <summary>Текст поиска — совпадения в названиях шагов подсвечиваются.</summary>
+    [Parameter]
+    public string? Highlight { get; set; }
+
+    /// <summary>В ленте шаги из разных недель — метка с датой («Чт 9 окт»), в дне хватает дня недели («Чт»).</summary>
+    [Parameter]
+    public bool LongDates { get; set; }
+
+    private string? DayLabel(TaskDto step) => step.PlannedDate is { } date
+        ? LongDates || RuDates.WeekStartOf(date) != State.WeekStart ? RuDates.ShortDate(date) : RuDates.ShortDay(date)
+        : null;
+
+    private Task OpenStep(int stepId)
+    {
+        Windows.OpenTask(stepId);
+        return Task.CompletedTask;
+    }
+
+    private async Task AddAsync(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        _newTitle = "";
+        await State.AddProjectStepAsync(ParentId, title);
+    }
+
+    private async Task SaveAndCloseAsync()
+    {
+        var title = _newTitle;
+        StopAdding();
+        await AddAsync(title);
+    }
+
+    private void StopAdding()
+    {
+        _adding = false;
+        _newTitle = "";
+    }
+}

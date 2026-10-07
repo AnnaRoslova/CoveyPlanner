@@ -192,6 +192,9 @@ public partial class PlannerState
             CategoryId = categoryId,
             PlannedDate = null,
             StartTime = null,
+            ParentId = null, // шаг, брошенный в ленту, становится мыслью (S21)
+            ParentTitle = null,
+            StepOrder = null,
         });
         for (var i = 0; i < siblings.Count; i++)
         {
@@ -212,12 +215,25 @@ public partial class PlannerState
             return;
         }
 
-        await DeleteWithUndoAsync(Deleted(task.Title), () =>
+        // Проект — вместе со своими шагами (занятия целей среди них остаются на месте, без проекта) — S23
+        var steps = task.ParentId is null ? CountedStepsOf(taskId) : [];
+        var sessions = task.ParentId is null ? StepsOf(taskId).Where(s => s.GoalId is not null).ToList() : [];
+        await DeleteWithUndoAsync(Deleted(task.Title) + StepsSuffix(steps.Count), () =>
         {
             _tasks.Remove(taskId);
             TrashCount++;
             RemoveSession(taskId);
-        }, () => api.TrashTaskAsync(taskId));
+            foreach (var step in steps)
+            {
+                _tasks.Remove(step.Id);
+                RemoveSession(step.Id);
+            }
+
+            foreach (var session in sessions)
+            {
+                _tasks[session.Id] = session with { ParentId = null, ParentTitle = null, StepOrder = null };
+            }
+        }, () => api.TrashTaskAsync(taskId), reloadAfter: steps.Count + sessions.Count > 0);
     }
 
     // ---------- Корзина ----------
