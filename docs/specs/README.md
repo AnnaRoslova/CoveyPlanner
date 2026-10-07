@@ -42,3 +42,4 @@ CLAUDE.md остаётся общим ТЗ и правилами проекта;
 | [tasks-steps-done.md](tasks-steps-done.md) | Дела, шаги и проекты; отметка в ленте; экран «Выполненное»; «🫙 копить» у любой постоянной цели; проект в окне цели; скрепки удалённых целей | утверждена |
 | [tasks-steps-done-mockup.html](tasks-steps-done-mockup.html) | Макет к ней: день, лента, карточка, «Выполненное» | к утверждённой спеке |
 | [tasks-steps-done.plan.md](tasks-steps-done.plan.md) | План реализации по этапам | утверждён, в работе |
+| [tasks-steps-done.metrics.md](tasks-steps-done.metrics.md) | Журнал этапов: коммит, тесты, решения, правки, находки проверок | ведётся |
