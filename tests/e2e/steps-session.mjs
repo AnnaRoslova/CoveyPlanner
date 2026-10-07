@@ -127,6 +127,20 @@ await check('клик по «☑ 0/1» раскрывает и сворачив�
   assert(!(await rowInfo(2, 'Ремонт')).done, 'отметилось дело');
 });
 
+await check('длинное название проекта в дне: обрезано на 2 строках, через ~0,5 с — подсказка с полным текстом (clamp.js)', async () => {
+  const long = 'Очень длинное название проекта, которое точно не помещается в две строки узкой колонки дня';
+  const p = await api('POST', 'tasks', { title: long, target: { kind: 'day', date: dayIso(4), index: 0 } });
+  await api('POST', `tasks/${p.id}/steps`, { title: 'Шаг' });
+  await load();
+  await page.mouse.move(5, 5); await settle();
+  const row = (await rowEl(4, long)).asElement();
+  assert(await row.$eval('.title', t => t.hasAttribute('data-long')), 'нет data-long');
+  const t = await row.$eval('.title', e => e.getBoundingClientRect().toJSON());
+  await page.mouse.move(t.left + 30, t.top + 6); await sleep(900);
+  const tip = await page.evaluate(() => document.querySelector('.clamp-tip')?.isConnected ? document.querySelector('.clamp-tip').textContent : null);
+  assert(tip === long, `подсказка: ${tip}`);
+});
+
 await check('в консоли нет ошибок', async () => {
   assert(consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 600));
 });
