@@ -360,17 +360,23 @@ body.dragging .trash-btn {
 
 /* «▸» перед названием проекта: раскрыть шаги прямо в списке */
 .fold {
+    position: relative; /* поверх зоны чекбокса, которая заходит под соседа */
+    z-index: 1;
     flex: none;
-    width: 12px;
-    margin: 0 -3px 0 -4px;
+    align-self: flex-start;
+    width: 20px;
+    height: 20px;
+    margin: -2px -6px -2px 2px; /* отступ от чекбокса: промах мимо стрелки не отмечает дело */
     padding: 0;
-    color: var(--faint);
-    font-size: 12px;
-    line-height: 17px;
+    border-radius: 6px;
+    color: var(--soft);
+    font-size: 13px;
+    line-height: 20px;
+    text-align: center;
 }
 
 .fold:hover {
-    color: var(--b-deep);
+    background: color-mix(in srgb, var(--b) 25%, transparent);
 }
 
 .fold .chev {
@@ -386,6 +392,8 @@ body.dragging .trash-btn {
 .project-label {
     display: block;
     margin-top: 1px;
+    padding: 0;
+    text-align: left;
     color: var(--b-deep);
     font-size: 11px;
     font-weight: 700;
@@ -425,4 +433,9 @@ body.dragging .trash-btn {
     font-size: 11px;
     line-height: 17px;
     white-space: nowrap;
+}
+
+.project-label:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }

@@ -93,6 +93,36 @@ public class ProjectsApiTests : ApiTestBase
         Assert.Equal(TaskStateDto.Done, (await TaskAsync(repair.Id)).State);
     }
 
+    /// <summary>
+    /// S13 (баг ручной проверки этапа 6): у занятия цели с шагами отметка и снятие отдельных шагов, удаление шагов
+    /// состояние самого дела не меняют — ни открытого, ни уже отмеченного.
+    /// </summary>
+    [Fact]
+    public async Task S13_SessionWithSteps_StepToggleAndDelete_NeverChangeParent()
+    {
+        var goal = await CreateGoalAsync("Работа", "Подготовка к собесу", Monday, recurring: false);
+        var session = await ScheduleAsync(goal, Thursday);
+        var a = await AddStepAsync(session.Id, "Задачи");
+        var b = await AddStepAsync(session.Id, "Резюме");
+
+        await SetDoneAsync(a.Id);
+        await SetDoneAsync(a.Id, false);
+        await SetDoneAsync(a.Id);
+        Assert.Equal(TaskStateDto.Planned, (await TaskAsync(session.Id)).State);
+
+        (await Client.DeleteAsync($"/api/steps/{a.Id}")).EnsureSuccessStatusCode();
+        (await Client.DeleteAsync($"/api/steps/{b.Id}")).EnsureSuccessStatusCode();
+        Assert.Equal(TaskStateDto.Planned, (await TaskAsync(session.Id)).State);
+
+        // Отмеченное дело: шаги его не открывают
+        await SetDoneAsync(session.Id);
+        var c = await AddStepAsync(session.Id, "Вопросы");
+        await SetDoneAsync(c.Id);
+        await SetDoneAsync(c.Id, false);
+        (await Client.DeleteAsync($"/api/steps/{c.Id}")).EnsureSuccessStatusCode();
+        Assert.Equal(TaskStateDto.Done, (await TaskAsync(session.Id)).State);
+    }
+
     [Fact]
     public async Task S15_S16_TrashLastOpenStep_NoAutoDone_ManualDoneKeepsStepsOpen()
     {

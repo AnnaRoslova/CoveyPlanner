@@ -48,7 +48,9 @@
         }</span>
         @if (ProjectLabel is not null)
         {
-            <span class="project-label" title="Шаги проекта">@ProjectLabel</span>
+            @* Подпись тоже раскрывает шаги — на неё жмут так же часто, как на «▸» *@
+            <button type="button" class="project-label" title="@(Expanded == true ? "Свернуть шаги" : "Показать шаги")"
+                    @onclick="OnExpand" @onclick:stopPropagation="true">@ProjectLabel</button>
         }
         @if (ParentCaption is not null)
         {
