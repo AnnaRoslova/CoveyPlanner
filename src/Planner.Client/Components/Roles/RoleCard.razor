@@ -1,7 +1,7 @@
 @* Роль (или измерение пилы) и её цели на неделю.
    Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
-   Справа у цели — процент выполненных занятий недели («50%», норма выполнена — «100% ✓»).
-   Свёрнутые цели (Folded) — одна строка «название · процент», без дней, банки и «2/5».
+   Справа у цели — процент выполненных занятий недели («50%», норма выполнена — «100% ✓»), перед ним — шаги её проекта («☑ 1/3 · 25%»).
+   Свёрнутые цели (Folded) — одна строка «название · процент», без дней и «2/5».
    Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»),
    крестик — удалить, «+ цель» — новая цель в конец.
    «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки.
@@ -29,7 +29,7 @@
     @foreach (var goal in Goals)
     {
         <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone" Compact="Folded"
-                 Progress="@(Folded ? null : Progress(goal))" Days="@(Folded ? null : Days(goal))" Percent="goal.Percent" IsPending="goal.Id < 0"
+                 Progress="@(Folded ? null : Progress(goal))" Days="@(Folded ? null : Days(goal))" Percent="goal.Percent" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
                  OnToggle="() => State.ToggleGoalAsync(goal.Id)"
                  OnClick="() => OpenGoal(goal.Id)"
                  DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id"
@@ -102,6 +102,10 @@
     /// <summary>Цели свёрнуты в одну строку «название · процент» (кнопка в шапке панели, все цели сразу).</summary>
     [Parameter]
     public bool Folded { get; set; }
+
+    /// <summary>«☑ 1/3» — шаги проекта цели (R7), перед процентом; шагов нет — null. Меняется сразу: шаги лежат в состоянии экрана.</summary>
+    private string? StepsLabel(WeeklyGoalDto goal) =>
+        State.StepsOfGoal(goal) is { Count: > 0 } steps ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
 
     /// <summary>«2/5» — только у цели на несколько раз в неделю.</summary>
     private static string? Progress(WeeklyGoalDto goal) =>

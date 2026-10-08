@@ -148,6 +148,28 @@ public class GoalStepsApiTests : ApiTestBase
         Assert.Equal(1, week.Goals.Single(g => g.Id == goal.Id).DoneCount);
     }
 
+    /// <summary>
+    /// Найдено на проверке 6в: проект цели уже выполнен (его шаги закрыли раньше), в него добавили новые шаги и отметили все из занятия —
+    /// занятие должно отметиться, хотя сам проект уже выполнен (S12 не срабатывает, R4 — да).
+    /// </summary>
+    [Fact]
+    public async Task R4_ProjectAlreadyDone_NewStepsAllDoneFromSession_SessionCompleted()
+    {
+        var goal = await CreateGoalAsync("Подготовка к собесу");
+        var session = await ScheduleAsync(goal, Tuesday);
+        var old = (await AddGoalStepAsync(goal.Id, "Задачи")).Step;
+        await SetTaskDoneAsync(old.Id, true); // проект отметился сам (из окна цели — без занятия)
+        Assert.Equal(TaskStateDto.Planned, (await GetWeekAsync()).Tasks.Single(t => t.Id == session.Id).State);
+
+        var a = (await AddGoalStepAsync(goal.Id, "Резюме")).Step;
+        var b = (await AddGoalStepAsync(goal.Id, "Вопросы")).Step;
+        await PutAsync<TaskDoneResultDto>($"/api/tasks/{a.Id}/done", new SetDoneRequest(true, session.Id));
+        var last = await PutAsync<TaskDoneResultDto>($"/api/tasks/{b.Id}/done", new SetDoneRequest(true, session.Id));
+
+        Assert.Null(last.Parent); // проект уже был выполнен — сам не менялся
+        Assert.Equal((session.Id, TaskStateDto.Done), (last.Session!.Id, last.Session.State));
+    }
+
     [Fact]
     public async Task R4_LastStepFromGoalWindow_OnlyProject()
     {

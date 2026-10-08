@@ -146,9 +146,10 @@ public class TaskService(
         {
             task.Complete(Now);
             parent = await projects.CompleteParentIfAllDoneAsync(task, Now, ct);
-            if (parent is not null && viaSessionId is { } sessionId)
+            // R4: из занятия — после отметки все шаги проекта сделаны (даже если сам проект отметили раньше) — и занятие
+            if (viaSessionId is { } sessionId && task.ParentId is { } projectId && await projects.AllStepsDoneAsync(projectId, ct))
             {
-                session = await CompleteSessionOfProjectAsync(sessionId, parent, ct);
+                session = await CompleteSessionOfProjectAsync(sessionId, projectId, ct);
             }
         }
         else
@@ -165,10 +166,10 @@ public class TaskService(
     }
 
     /// <summary>R4: занятие, из которого отметили последний шаг, — отметить, если оно занятие цели с этим проектом и ещё не отмечено.</summary>
-    private async Task<TaskItem?> CompleteSessionOfProjectAsync(int sessionId, TaskItem project, CancellationToken ct)
+    private async Task<TaskItem?> CompleteSessionOfProjectAsync(int sessionId, int projectId, CancellationToken ct)
     {
         if (await tasks.FindAsync(sessionId, ct) is not { State: TaskState.Planned, GoalId: { } goalId } session
-            || await goals.FindAsync(goalId, ct) is not { } goal || goal.ProjectId != project.Id)
+            || await goals.FindAsync(goalId, ct) is not { } goal || goal.ProjectId != projectId)
         {
             return null;
         }

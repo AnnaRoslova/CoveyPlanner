@@ -41,10 +41,8 @@
         }</span></span>
         @if (ProjectLabel is not null)
         {
-            @* «☑ 2/5» — подпись под названием; тоже разворачивает запись (R5) *@
-            <button type="button" class="project-label" aria-expanded="@(IsOpen ? "true" : "false")"
-                    title="@(IsOpen ? "Свернуть" : "Развернуть: текст целиком и шаги")"
-                    @onclick="ToggleAllAsync" @onclick:stopPropagation="true">@ProjectLabel</button>
+            @* «☑ 2/5» — только подпись: разворачивает запись одна стрелка справа внизу (R5′) *@
+            <span class="project-label" title="Шаги проекта">@ProjectLabel</span>
         }
         @if (ParentCaption is not null)
         {
@@ -115,7 +113,7 @@
     }
     @if (Percent is { } percent)
     {
-        <span class="pct @(percent >= 100 ? "full" : "")" title="Выполнено занятий этой недели: @percent%">@(percent >= 100 ? "100% ✓" : $"{percent}%")</span>
+        <span class="pct @(percent >= 100 ? "full" : "")" title="@(PercentPrefix is null ? "" : "Шаги цели: " + PercentPrefix + " · ")Выполнено занятий этой недели: @percent%">@(PercentPrefix is null ? "" : PercentPrefix + " · ")@(percent >= 100 ? "100% ✓" : $"{percent}%")</span>
     }
     @if (Actions is not null)
     {
@@ -191,6 +189,10 @@
     /// <summary>Процент выполнения цели («50%», 100 — «100% ✓» мятным) — справа в строке. null — не показывать.</summary>
     [Parameter]
     public int? Percent { get; set; }
+
+    /// <summary>Перед процентом — «☑ 1/3» шагов проекта цели (R7): «☑ 1/3 · 25%»; процент — по-прежнему занятия.</summary>
+    [Parameter]
+    public string? PercentPrefix { get; set; }
 
     /// <summary>Справа уже процент — «2/5» переезжает под название, в начало строки дней («2/5 · Чт · Пт»): узкой панели не тесно.</summary>
     private bool ProgressBelow => Progress is not null && Percent is not null;

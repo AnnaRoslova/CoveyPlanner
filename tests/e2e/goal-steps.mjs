@@ -179,12 +179,48 @@ await check('R3: 🗑 у шага в развёрнутой строке — ш�
   assert(JSON.stringify(await stepsIn(5)) === '["Первый","Второй"]', JSON.stringify(await stepsIn(5)));
 });
 
+// ---------- Найдено на проверке 6в: R7, защита 🗑 у шага ----------
+const goalPct = t => page.evaluate(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === t)?.querySelector('.pct')?.textContent.trim() ?? null, t);
+
+await check('R7: у цели слева «☑ N/M · %» — сразу меняется при отметке, добавлении и удалении шага', async () => {
+  await load();
+  assert(/^☑ 0\/2 · \d+%/.test(await goalPct(R)), `слева: ${await goalPct(R)}`);
+  const step = (await page.evaluateHandle(() => [...document.querySelectorAll('.day')[5].querySelectorAll('.steps .item')].find(i => i.querySelector('.title').textContent.trim() === 'Первый'))).asElement();
+  await (await step.$('.ck-hit')).click(); await settle();
+  assert((await goalPct(R))?.startsWith('☑ 1/2 · '), `после отметки: ${await goalPct(R)}`);
+  await (await (await dayRow(5, R)).asElement().$('.title')).click(); await settle();
+  await addStepInEditor('Третий'); await closeEditor();
+  assert((await goalPct(R))?.startsWith('☑ 1/3 · '), `после добавления: ${await goalPct(R)}`);
+});
+
+await check('🗑 у шага защищена, как у записей: долгое и «дёрнувшееся» нажатие не удаляют; короткий клик — в корзину', async () => {
+  const third = async () => (await page.evaluateHandle(() => [...document.querySelectorAll('.day')[5].querySelectorAll('.steps .item')].find(i => i.querySelector('.title').textContent.trim() === 'Третий'))).asElement();
+  const press = async (holdMs, moveX) => {
+    const s = await third();
+    const b = await s.boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await sleep(250);
+    const t = await (await third()).$('.trash-btn');
+    const tb = await t.boundingBox();
+    await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+    await page.mouse.down(); await sleep(holdMs);
+    if (moveX) await page.mouse.move(tb.x + tb.width / 2 + moveX, tb.y + tb.height / 2);
+    await page.mouse.up(); await settle();
+  };
+  await press(600, 0);
+  assert(await third(), 'удалено долгим нажатием');
+  await press(80, 6);
+  assert(await third(), 'удалено «дёрнувшимся» нажатием');
+  await press(60, 0);
+  assert(!(await third()), 'короткий клик не удалил');
+  assert((await goalPct(R))?.startsWith('☑ 1/2 · '), `после удаления: ${await goalPct(R)}`);
+});
+
 await check('R4: последний шаг отметили в строке занятия — отмечены проект и это занятие; «вернуть» откатывает оба', async () => {
   const tick = async t => {
     const s = (await page.evaluateHandle(t => [...document.querySelectorAll('.day')[5].querySelectorAll('.steps .item')].find(i => i.querySelector('.title').textContent.trim() === t), t)).asElement();
     await (await s.$('.ck-hit')).click(); await settle();
   };
-  await tick('Первый');
+  // «Первый» отмечен в проверке R7 — остаётся последний
   assert(!(await dayInfo(5)).find(x => x.title === R).done, 'занятие отмечено раньше времени');
   await tick('Второй');
   assert((await dayInfo(5)).find(x => x.title === R).done, 'занятие не отмечено');

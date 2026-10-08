@@ -407,9 +407,6 @@ body.dragging .trash-btn {
     white-space: nowrap;
 }
 
-.project-label:hover {
-    background: color-mix(in srgb, var(--b) 25%, transparent);
-}
 
 /* ---------- Одна «⌄» (R5): развернуть запись целиком — текст и шаги ---------- */
 

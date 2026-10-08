@@ -145,6 +145,13 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
         return parent;
     }
 
+    /// <summary>Все шаги проекта в счёте (не занятия, не корзина) выполнены, и они есть (для R4 — отметить и занятие).</summary>
+    public async Task<bool> AllStepsDoneAsync(int projectId, CancellationToken ct = default)
+    {
+        var steps = (await tasks.GetStepsAsync(projectId, ct)).Where(ProjectRules.CountsAsStep).ToList();
+        return steps.Count > 0 && steps.All(s => s.State == TaskState.Done);
+    }
+
     /// <summary>
     /// В корзину (S23). У проекта вместе с ним уходят его шаги в счёте — где бы они ни стояли (тот же TrashedAt — по нему
     /// они и возвращаются вместе); занятия целей среди шагов отвязываются и остаются в своих днях и целях.

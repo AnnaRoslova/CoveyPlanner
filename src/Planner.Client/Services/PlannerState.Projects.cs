@@ -179,11 +179,12 @@ public partial class PlannerState
 
     /// <summary>
     /// После отметки: родитель отметился сам (все шаги сделаны, S12) — он обновляется на экране и плашка
-    /// «Все шаги сделаны — «…» выполнено · вернуть»: «вернуть» снимает отметку с родителя и с занятия, отмеченного вместе с ним (R4).
+    /// «Все шаги сделаны — «…» выполнено · вернуть»: «вернуть» снимает отметку с того, что отметилось само — родителя и/или занятия (R4;
+    /// проект мог быть выполнен раньше — тогда отмечается только занятие).
     /// </summary>
     private void AfterParentAutoDone(TaskDto? parent, TaskDto? session = null)
     {
-        if (parent is null)
+        if (parent is null && session is null)
         {
             return;
         }
@@ -192,6 +193,14 @@ public partial class PlannerState
         {
             _tasks[session.Id] = session; // R4: последний шаг отметили из занятия — оно тоже выполнено
             SyncSession(session);
+        }
+
+        if (parent is null)
+        {
+            notifier.WithAction($"Все шаги сделаны — «{session!.Title}» выполнено", "вернуть",
+                () => UncompleteAutoDoneParentAsync(null, session), Notifier.DefaultDuration);
+            NotifyChanged();
+            return;
         }
 
         if (parent.State == TaskStateDto.Done && parent.PlannedDate is null && parent.GoalId is null)
@@ -209,14 +218,18 @@ public partial class PlannerState
         NotifyChanged();
     }
 
-    private async Task UncompleteAutoDoneParentAsync(TaskDto parent, TaskDto? session)
+    private async Task UncompleteAutoDoneParentAsync(TaskDto? parent, TaskDto? session)
     {
         try
         {
             await CommitPendingDeleteAsync();
-            var result = await api.SetTaskDoneAsync(parent.Id, false);
-            _tasks[parent.Id] = result.Task;
-            SyncSession(result.Task);
+            if (parent is not null)
+            {
+                var result = await api.SetTaskDoneAsync(parent.Id, false);
+                _tasks[parent.Id] = result.Task;
+                SyncSession(result.Task);
+            }
+
             if (session is not null)
             {
                 await api.SetTaskDoneAsync(session.Id, false);

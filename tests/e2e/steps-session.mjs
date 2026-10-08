@@ -129,12 +129,13 @@ await check('«⌄» отдельно от чекбокса и 🗑: вся ст
   assert(g.gap >= 0 && g.misses === 0 && !g.trashOverlap && g.size[0] >= 24 && g.size[1] >= 24, JSON.stringify(g));
 });
 
-await check('клик по «☑ 0/1» раскрывает и сворачивает шаги', async () => {
+await check('«☑ 0/1» — только подпись: клик не разворачивает шаги (R5′), дело не отмечается', async () => {
   const label = await (await rowEl(2, 'Ремонт')).asElement().$('.project-label');
   const was = (await stepsShown(2)).length;
   await label.click(); await settle();
-  assert((await stepsShown(2)).length !== was, 'не переключилось');
+  assert((await stepsShown(2)).length === was, 'подпись развернула или свернула шаги');
   assert(!(await rowInfo(2, 'Ремонт')).done, 'отметилось дело');
+  await closeEditor(); // клик по строке открывает окно, как по тексту
 });
 
 await check('длинное название проекта в дне: обрезано на 2 строках, через ~0,5 с — подсказка с полным текстом (clamp.js)', async () => {
