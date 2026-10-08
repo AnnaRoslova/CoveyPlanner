@@ -107,6 +107,59 @@ public class GoalStepsApiTests : ApiTestBase
         Assert.Equal(projectId, (await GetWeekAsync(Monday.AddDays(14))).Goals.Single(g => g.SeriesId == goal.SeriesId).ProjectId);
     }
 
+    /// <summary>R2: будущие недели постоянной цели созданы раньше, чем у неё появился проект, — проект проставляется и им.</summary>
+    [Fact]
+    public async Task R2_FutureWeeksGeneratedBefore_GetProjectOnFirstStep()
+    {
+        var goal = await CreateGoalAsync("Чтение", recurring: true, role: "Ум");
+        var next = (await GetWeekAsync(Monday.AddDays(7))).Goals.Single(g => g.SeriesId == goal.SeriesId);
+        await GetWeekAsync(Monday.AddDays(14)); // и эту неделю — тоже заранее
+        Assert.Null(next.ProjectId);
+
+        var projectId = (await AddGoalStepAsync(goal.Id, "Глава 1")).Step.ParentId!.Value;
+
+        foreach (var week in new[] { Monday.AddDays(7), Monday.AddDays(14) })
+        {
+            var w = await GetWeekAsync(week);
+            Assert.Equal(projectId, w.Goals.Single(g => g.SeriesId == goal.SeriesId).ProjectId);
+            Assert.Contains(w.Steps!, s => s.Title == "Глава 1"); // и шаги приходят с той неделей
+        }
+    }
+
+    /// <summary>R4: последний шаг отметили «из занятия» — отмечены проект и это занятие; без занятия — только проект.</summary>
+    [Fact]
+    public async Task R4_LastStepFromSession_CompletesProjectAndThatSession()
+    {
+        var goal = await CreateGoalAsync("Подготовка к собесу");
+        var tue = await ScheduleAsync(goal, Tuesday);
+        var wed = await ScheduleAsync(goal, Wednesday);
+        var a = (await AddGoalStepAsync(goal.Id, "Задачи")).Step;
+        var b = (await AddGoalStepAsync(goal.Id, "Резюме")).Step;
+
+        // Не последний шаг — занятие не трогается даже «из занятия»
+        var first = await PutAsync<TaskDoneResultDto>($"/api/tasks/{a.Id}/done", new SetDoneRequest(true, tue.Id));
+        Assert.Null(first.Session);
+
+        var last = await PutAsync<TaskDoneResultDto>($"/api/tasks/{b.Id}/done", new SetDoneRequest(true, tue.Id));
+        Assert.Equal(TaskStateDto.Done, last.Parent!.State);
+        Assert.Equal((tue.Id, TaskStateDto.Done), (last.Session!.Id, last.Session.State));
+        var week = await GetWeekAsync();
+        Assert.Equal(TaskStateDto.Planned, week.Tasks.Single(t => t.Id == wed.Id).State); // другое занятие — нет
+        Assert.Equal(1, week.Goals.Single(g => g.Id == goal.Id).DoneCount);
+    }
+
+    [Fact]
+    public async Task R4_LastStepFromGoalWindow_OnlyProject()
+    {
+        var goal = await CreateGoalAsync("Подготовка к собесу");
+        var tue = await ScheduleAsync(goal, Tuesday);
+        var a = (await AddGoalStepAsync(goal.Id, "Задачи")).Step;
+        var done = await PutAsync<TaskDoneResultDto>($"/api/tasks/{a.Id}/done", new SetDoneRequest(true));
+        Assert.Equal(TaskStateDto.Done, done.Parent!.State);
+        Assert.Null(done.Session);
+        Assert.Equal(TaskStateDto.Planned, (await GetWeekAsync()).Tasks.Single(t => t.Id == tue.Id).State);
+    }
+
     [Fact]
     public async Task G8_G9_K34_K35_DoneProject_StepsGoThere_TrashedProject_NewOneCreated()
     {

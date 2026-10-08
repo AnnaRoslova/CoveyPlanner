@@ -3,7 +3,7 @@
    Clamp: название не длиннее двух строк, с «…»; полный текст — в подсказке при наведении (только у обрезанных:
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
-<div class="item @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
+<div class="item @(Expanded is not null ? "has-steps" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
      style="@(Color is null ? null : $"--c: {Color}")"
      data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
@@ -38,19 +38,13 @@
         }@if (!string.IsNullOrWhiteSpace(Notes))
         {
             <span class="note" title="@NotesPreview"><Icon Name="note" Size="11" /></span>
-        }</span>@if (Clamp)
-        {
-            @* «Развернуть по длине» (L1): «⌄» только у обрезанной (CSS — по data-long от js/clamp.js), «⌃» — свернуть; знак — в CSS, не в тексте *@
-            <button type="button" class="unclamp @(_unclamped ? "on" : "")" aria-expanded="@(_unclamped ? "true" : "false")"
-                    title="@(_unclamped ? "Свернуть в две строки" : "Показать целиком")" aria-label="@(_unclamped ? "Свернуть в две строки" : "Показать целиком")"
-                    @onclick="() => _unclamped = !_unclamped" @onclick:stopPropagation="true"></button>
-        }</span>
+        }</span></span>
         @if (ProjectLabel is not null)
         {
-            @* «Раскрыть шаги»: вся строка «▸ ☑ 2/5» под названием — название занимает всю ширину, от чекбокса далеко *@
-            <button type="button" class="project-label" aria-expanded="@(Expanded == true ? "true" : "false")"
-                    title="@(Expanded == true ? "Свернуть шаги" : "Показать шаги")"
-                    @onclick="OnExpand" @onclick:stopPropagation="true"><span class="fold"><span class="chev @(Expanded == true ? "open" : "")">▸</span></span>@ProjectLabel</button>
+            @* «☑ 2/5» — подпись под названием; тоже разворачивает запись (R5) *@
+            <button type="button" class="project-label" aria-expanded="@(IsOpen ? "true" : "false")"
+                    title="@(IsOpen ? "Свернуть" : "Развернуть: текст целиком и шаги")"
+                    @onclick="ToggleAllAsync" @onclick:stopPropagation="true">@ProjectLabel</button>
         }
         @if (ParentCaption is not null)
         {
@@ -103,6 +97,14 @@
             </div>
         }
     </div>
+    @if (Clamp || Expanded is not null)
+    {
+        @* Одна «⌄» (R5): есть что разворачивать — обрезанный текст (CSS: data-long от js/clamp.js) и/или шаги; клик — запись целиком
+           (текст + шаги), «⌃» — свернуть. Справа внизу, зона 24px; знак — в CSS, не в тексте строки *@
+        <button type="button" class="expand @(IsOpen ? "on" : "")" aria-expanded="@(IsOpen ? "true" : "false")"
+                title="@(IsOpen ? "Свернуть" : "Развернуть")" aria-label="@(IsOpen ? "Свернуть" : "Развернуть")"
+                @onclick="ToggleAllAsync" @onclick:stopPropagation="true"><Icon Name="chevron-down" Size="16" /></button>
+    }
     @if (Progress is not null && !ProgressBelow)
     {
         <span class="progress">@Progress</span>
@@ -128,8 +130,22 @@
 </div>
 
 @code {
-    /// <summary>Развёрнута по длине (L1); не запоминается — после перезагрузки снова две строки (L4).</summary>
+    /// <summary>Текст развёрнут по длине; не запоминается — после перезагрузки снова две строки (L4).</summary>
     private bool _unclamped;
+
+    /// <summary>Запись развёрнута: текст целиком и/или шаги (R5).</summary>
+    private bool IsOpen => _unclamped || Expanded == true;
+
+    /// <summary>«⌄» / «☑ 2/5»: развернуть запись целиком (текст + шаги) или свернуть всё (R5). Шаги запоминает вызывающий (по строке, R1).</summary>
+    private async Task ToggleAllAsync()
+    {
+        var open = !IsOpen;
+        _unclamped = open && Clamp;
+        if (Expanded is { } expanded && expanded != open)
+        {
+            await OnExpand.InvokeAsync();
+        }
+    }
 
     [Parameter, EditorRequired]
     public string Title { get; set; } = "";

@@ -80,7 +80,7 @@ await check('1. проект в дне: «▸ Ремонт ☑ 0/3», раскр
   const mon = await day(0);
   assert(mon.rows[0]?.project === '☑ 0/3', JSON.stringify(mon.rows));
   const fold = (await rowEl(0, 'Ремонт')).asElement();
-  await (await fold.$('.fold')).click(); await settle();
+  await (await fold.$('.expand')).click(); await settle();
   assert(JSON.stringify((await day(0)).steps.map(s => s.title)) === '["Обои","Плинтус","Люстра"]', JSON.stringify((await day(0)).steps));
   await load();
   assert((await day(0)).steps.length === 3, 'после перезагрузки свёрнут');

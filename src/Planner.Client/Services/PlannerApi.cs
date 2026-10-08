@@ -38,8 +38,8 @@ public class PlannerApi(HttpClient http)
         SendAsync<TaskGoalResultDto>(HttpMethod.Put, $"api/tasks/{id}/goal", new SetTaskGoalRequest(goalId));
 
     /// <summary>Отметка; Parent — родитель, если он отметился сам (все шаги сделаны).</summary>
-    public Task<TaskDoneResultDto> SetTaskDoneAsync(int id, bool isDone) =>
-        SendAsync<TaskDoneResultDto>(HttpMethod.Put, $"api/tasks/{id}/done", new SetDoneRequest(isDone));
+    public Task<TaskDoneResultDto> SetTaskDoneAsync(int id, bool isDone, int? viaSessionId = null) =>
+        SendAsync<TaskDoneResultDto>(HttpMethod.Put, $"api/tasks/{id}/done", new SetDoneRequest(isDone, viaSessionId));
 
     public Task TrashTaskAsync(int id) => SendAsync(HttpMethod.Delete, $"api/tasks/{id}");
 

@@ -358,23 +358,6 @@ body.dragging .trash-btn {
 
 /* ---------- Проекты и шаги (docs/specs/tasks-steps-done.md) ---------- */
 
-/* «▸» перед названием проекта: раскрыть шаги прямо в списке */
-.fold {
-    display: inline-block;
-    width: 14px;
-    color: var(--soft);
-    font-size: 12px;
-}
-
-.fold .chev {
-    display: inline-block;
-    transition: transform 0.15s;
-}
-
-.fold .chev.open {
-    transform: rotate(90deg);
-}
-
 /* «☑ 2/5» — тихой строкой под названием (в узком дне справа ему не хватает места) */
 .project-label {
     display: inline-flex;
@@ -428,54 +411,62 @@ body.dragging .trash-btn {
     background: color-mix(in srgb, var(--b) 25%, transparent);
 }
 
-/* ---------- «Развернуть по длине» (L1–L4) ---------- */
+/* ---------- Одна «⌄» (R5): развернуть запись целиком — текст и шаги ---------- */
 
-/* Название и «⌄» в конце его текста (в правом нижнем углу, не у чекбокса и «▸») */
 .title-box {
-    position: relative;
     display: block;
 }
 
-/* Место под значок — только у обрезанной или развёрнутой записи */
+/* Место под «⌄» справа — у записей, которым есть что разворачивать */
 .title.clamp[data-long],
-.title.unclamped {
-    padding-right: 16px;
+.title.unclamped,
+.has-steps .title {
+    padding-right: 14px;
 }
 
-.unclamp {
+/* Справа внизу записи, зона 24×24 (в поле записи; не задевает чекбокс слева и 🗑 — она у таких записей сдвинута левее) */
+.expand {
     position: absolute;
-    right: -3px;
+    right: 0;
     bottom: 0;
     display: none;
-    width: 17px;
-    height: 17px;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     padding: 0;
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--surface) 70%, transparent);
-    color: var(--soft);
-    font-size: 13px;
-    line-height: 17px;
-    text-align: center;
+    border-radius: 8px;
+    color: var(--b-deep);
 }
 
-/* Знак — в CSS: текст строки (название) остаётся чистым */
-.unclamp::before {
-    content: "⌄";
-    position: relative;
-    top: -3px;
+/* Шеврон-иконка (не текст — название строки остаётся чистым); развёрнуто — смотрит вверх */
+.expand ::deep svg {
+    transition: transform 0.15s;
 }
 
-.unclamp.on::before {
-    content: "⌃";
-    top: 3px;
+.expand.on ::deep svg {
+    transform: rotate(180deg);
 }
 
-.title.clamp[data-long] + .unclamp,
-.unclamp.on {
-    display: block;
+.has-steps .expand,
+.item:has(.title.clamp[data-long]) .expand,
+.expand.on {
+    display: inline-flex;
 }
 
-.unclamp:hover {
+.expand:hover {
     background: var(--b-soft);
     color: var(--b-deep);
+}
+
+/* 🗑 у разворачиваемых записей — левее «⌄», чтобы не пересекались */
+.has-steps .trash-btn,
+.item:has(.title.clamp[data-long]) .trash-btn,
+.item:has(.expand.on) .trash-btn {
+    right: 28px;
+}
+
+/* «⌄» ставится относительно записи */
+.item:has(> .expand) {
+    position: relative;
 }

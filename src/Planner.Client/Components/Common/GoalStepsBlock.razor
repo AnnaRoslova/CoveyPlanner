@@ -24,13 +24,17 @@
     {
         <div class="date-hint">проект «@Goal.ProjectTitle» выполнен — новые занятия без проекта</div>
     }
-    <ProjectSteps ParentId="@(Goal.ProjectId is { } id && !Goal.ProjectIsTrashed ? id : 0)" GoalId="Goal.Id" LongDates="true" />
+    <ProjectSteps ParentId="@(Goal.ProjectId is { } id && !Goal.ProjectIsTrashed ? id : 0)" GoalId="Goal.Id" LongDates="true" ViaSessionId="ViaSessionId" />
 </div>
 
 @code {
     /// <summary>Цель, чьи шаги в блоке (свежая — из состояния, если она на неделе).</summary>
     [Parameter, EditorRequired]
     public WeeklyGoalDto Goal { get; set; } = null!;
+
+    /// <summary>Блок — в окне этого занятия: последний шаг отмечает проект и занятие (R4); null — окно цели.</summary>
+    [Parameter]
+    public int? ViaSessionId { get; set; }
 
     /// <summary>Подпись блока (в окне занятия — «Шаги цели «…»»); null — «Шаги».</summary>
     [Parameter]

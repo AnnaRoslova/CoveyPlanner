@@ -111,10 +111,10 @@ await check('разовая цель: 0% → галочка цели → «100% 
   assert((await goalRow('Записаться к стоматологу')).pct === '0%', 'снятие галочки не вернуло 0%');
 });
 
-await check('по умолчанию все цели развёрнуты: дни занятий, банка привычки, «2/5»', async () => {
+await check('по умолчанию все цели развёрнуты: дни занятий, «2/5»; пилюли банки у целей нет (R6)', async () => {
   const dentist = await goalRow('Записаться к стоматологу');
   assert(!dentist.compact && dentist.days, 'у цели нет строки дней');
-  assert((await goalRow('Бег')).jar, 'у привычки нет банки');
+  assert(!(await goalRow('Бег')).jar, 'у привычки в левой панели пилюля банки (R6: её больше нет)');
   assert((await foldButton()).title === 'Свернуть все цели', `подсказка: ${(await foldButton()).title}`);
   await page.evaluate(() => document.querySelector('.roles-panel .panel-scroll').scrollTop = 0);
   await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/goal-fold-open.png` });
@@ -170,7 +170,7 @@ await check('«развернуть все цели» — обратно, и э�
   const state = await page.evaluate(() => document.querySelectorAll('.roles-panel .role .item.compact').length);
   assert(state === 0, `свёрнутых осталось: ${state}`);
   await load();
-  assert(!(await goalRow('Бег')).compact && (await goalRow('Бег')).jar, 'после перезагрузки свёрнуто');
+  assert(!(await goalRow('Бег')).compact, 'после перезагрузки свёрнуто');
   assert((await goalRow('Записаться к стоматологу')).days, 'нет строки дней');
 });
 

@@ -40,9 +40,10 @@ public static class TaskEndpoints
         // Отметить; отметили последний шаг — в ответе и родитель, отмеченный сам
         tasks.MapPut("/{id:int}/done", async (int id, SetDoneRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
         {
-            var done = await service.SetDoneAsync(id, request.IsDone, ct);
+            var done = await service.SetDoneAsync(id, request.IsDone, ct, request.ViaSessionId);
             return new TaskDoneResultDto(
-                await views.ToDtoAsync(done.Task, ct), done.Parent is { } parent ? await views.ToDtoAsync(parent, ct) : null);
+                await views.ToDtoAsync(done.Task, ct), done.Parent is { } parent ? await views.ToDtoAsync(parent, ct) : null,
+                done.Session is { } session ? await views.ToDtoAsync(session, ct) : null);
         });
 
         // «Проект» в карточке: сделать дело шагом другого дела или убрать из проекта

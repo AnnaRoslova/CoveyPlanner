@@ -34,8 +34,7 @@
                  OnClick="() => OpenGoal(goal.Id)"
                  DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id"
                  DropZone="@(goal.Id > 0 ? DragDropService.GoalZone : null)" DropKey="@goal.Id.ToString()"
-                 DropAccept="@DragDropService.GoalAccepts" DropHint="сделать занятием этой цели"
-                 Badge="@(Folded ? null : JarBadge(goal))">
+                 DropAccept="@DragDropService.GoalAccepts" DropHint="сделать занятием этой цели">
             <Actions>
                 @if (goal.Id > 0)
                 {
@@ -103,21 +102,6 @@
     /// <summary>Цели свёрнуты в одну строку «название · процент» (кнопка в шапке панели, все цели сразу).</summary>
     [Parameter]
     public bool Folded { get; set; }
-
-    /// <summary>Пилюля привычки у цели (постоянная цель пилы); клик — экран «Копилки» на этой привычке. null — цель не привычка.</summary>
-    private RenderFragment? JarBadge(WeeklyGoalDto goal) => State.HabitOfGoal(goal) is not { } habit ? null :
-        @<button type="button" class="jar-pill @(habit.Stats.WeekPaused ? "warn" : "")" title="@JarTitle(habit)"
-                 @onclick="() => Windows.OpenHabits(habit.Id)" @onclick:stopPropagation="true">@JarLabel(habit)</button>;
-
-    /// <summary>Пилюля привычки цели: «🫙 102 · 🔥13», при паузе — «🫙 41 · ⚠»; серии нет — только счёт.</summary>
-    private static string JarLabel(HabitDto habit) =>
-        habit.Stats.WeekPaused ? $"🫙 {habit.Stats.Total} · ⚠"
-        : habit.Stats.WeekStreak > 0 ? $"🫙 {habit.Stats.Total} · 🔥{habit.Stats.WeekStreak}"
-        : $"🫙 {habit.Stats.Total}";
-
-    private static string JarTitle(HabitDto habit) =>
-        $"Привычка «{habit.Name}»: {habit.Stats.Total} · эта неделя {habit.Stats.ThisWeek} из {habit.WeeklyNorm}"
-        + (habit.Stats.WeekPaused ? " · ⚠ пауза — не пропускай дважды" : $" · 🔥 {habit.Stats.WeekStreak} нед. подряд");
 
     /// <summary>«2/5» — только у цели на несколько раз в неделю.</summary>
     private static string? Progress(WeeklyGoalDto goal) =>

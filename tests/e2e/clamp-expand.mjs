@@ -44,7 +44,7 @@ const state = (scope, title) => page.evaluate((s, t) => {
   const i = [...document.querySelectorAll(`${s} .item`)].find(x => x.querySelector('.title')?.textContent.trim() === t);
   if (!i) return null;
   const title = i.querySelector('.title');
-  const btn = i.querySelector('.unclamp');
+  const btn = i.querySelector('.expand');
   const lh = parseFloat(getComputedStyle(title).lineHeight);
   return {
     lines: Math.round(title.clientHeight / lh),
@@ -53,7 +53,7 @@ const state = (scope, title) => page.evaluate((s, t) => {
   };
 }, scope, title);
 async function clickArrow(scope, title) {
-  const btn = await (await row(scope, title)).asElement().$('.unclamp');
+  const btn = await (await row(scope, title)).asElement().$('.expand');
   const b = await btn.boundingBox();
   await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); await settle();
 }
@@ -68,7 +68,7 @@ const project = await api('POST', 'tasks', { title: 'Ремонт', target: { ki
 await api('POST', `tasks/${project.id}/steps`, { title: LONG_STEP });
 await load();
 // Раскрыть шаги проекта (Ср)
-await (await (await row('.day', 'Ремонт')).asElement().$('.fold')).click(); await settle();
+await (await (await row('.day', 'Ремонт')).asElement().$('.expand')).click(); await settle();
 
 for (const [where, scope, title] of [['в дне', '.day', LONG], ['в ленте', '.someday', LONG], ['у шага в раскрытом списке', '.day .steps', LONG_STEP]]) {
   await check(`${where}: «⌄» у обрезанной; клик — текст целиком, «⌃»; ещё клик — снова две строки`, async () => {
@@ -96,10 +96,10 @@ await check('у короткой записи «⌄» нет', async () => {
 });
 
 await check('«⌄» не пересекается с чекбоксом и «▸»; клик по тексту развёрнутой записи — окно', async () => {
-  const boxes = await page.evaluate(long => [...document.querySelectorAll('.item')].filter(i => i.querySelector('.unclamp') && getComputedStyle(i.querySelector('.unclamp')).display !== 'none')
+  const boxes = await page.evaluate(long => [...document.querySelectorAll('.item')].filter(i => i.querySelector('.expand') && getComputedStyle(i.querySelector('.expand')).display !== 'none')
     .map(i => {
-      const u = i.querySelector('.unclamp').getBoundingClientRect();
-      const others = [...i.querySelectorAll('.ck-hit, .fold')].map(e => e.getBoundingClientRect());
+      const u = i.querySelector('.expand').getBoundingClientRect();
+      const others = [...i.querySelectorAll('.ck-hit, .trash-btn')].map(e => e.getBoundingClientRect());
       return others.some(o => !(u.right <= o.left || u.left >= o.right || u.bottom <= o.top || u.top >= o.bottom));
     }), LONG);
   assert(boxes.length >= 3 && boxes.every(x => !x), JSON.stringify(boxes));

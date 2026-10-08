@@ -117,7 +117,7 @@
        у занятия цели — шаги цели (её проекта), один список на все занятия (G4) *@
     @if (EditedTask.Id > 0 && Goal is { } stepsGoal)
     {
-        <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" />
+        <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" ViaSessionId="EditedTask.Id" />
     }
     else if (EditedTask.Id > 0 && EditedTask.ParentId is null)
     {

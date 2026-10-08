@@ -179,13 +179,19 @@ public partial class PlannerState
 
     /// <summary>
     /// После отметки: родитель отметился сам (все шаги сделаны, S12) — он обновляется на экране и плашка
-    /// «Все шаги сделаны — «…» выполнено · вернуть» («вернуть» снимает отметку только с родителя).
+    /// «Все шаги сделаны — «…» выполнено · вернуть»: «вернуть» снимает отметку с родителя и с занятия, отмеченного вместе с ним (R4).
     /// </summary>
-    private void AfterParentAutoDone(TaskDto? parent)
+    private void AfterParentAutoDone(TaskDto? parent, TaskDto? session = null)
     {
         if (parent is null)
         {
             return;
+        }
+
+        if (session is not null)
+        {
+            _tasks[session.Id] = session; // R4: последний шаг отметили из занятия — оно тоже выполнено
+            SyncSession(session);
         }
 
         if (parent.State == TaskStateDto.Done && parent.PlannedDate is null && parent.GoalId is null)
@@ -199,11 +205,11 @@ public partial class PlannerState
         }
 
         notifier.WithAction($"Все шаги сделаны — «{parent.Title}» выполнено", "вернуть",
-            () => UncompleteAutoDoneParentAsync(parent), Notifier.DefaultDuration);
+            () => UncompleteAutoDoneParentAsync(parent, session), Notifier.DefaultDuration);
         NotifyChanged();
     }
 
-    private async Task UncompleteAutoDoneParentAsync(TaskDto parent)
+    private async Task UncompleteAutoDoneParentAsync(TaskDto parent, TaskDto? session)
     {
         try
         {
@@ -211,6 +217,10 @@ public partial class PlannerState
             var result = await api.SetTaskDoneAsync(parent.Id, false);
             _tasks[parent.Id] = result.Task;
             SyncSession(result.Task);
+            if (session is not null)
+            {
+                await api.SetTaskDoneAsync(session.Id, false);
+            }
         }
         catch (ApiException ex)
         {

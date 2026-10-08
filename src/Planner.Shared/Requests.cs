@@ -33,7 +33,8 @@ public sealed record SetParentRequest(int? ParentId);
 public sealed record UpdateTaskRequest(
     string Title, string? Notes, IReadOnlyList<int>? RoleIds, int? Quadrant, TimeOnly? StartTime, int? DurationMinutes);
 
-public sealed record SetDoneRequest(bool IsDone);
+/// <summary>ViaSessionId — шаг отмечают в строке или окне этого занятия цели: если отметка закончила проект цели, отмечается и занятие (R4).</summary>
+public sealed record SetDoneRequest(bool IsDone, int? ViaSessionId = null);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 

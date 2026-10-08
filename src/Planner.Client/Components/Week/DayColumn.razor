@@ -29,7 +29,7 @@
         var host = task.Id > 0 ? State.StepsHostOf(task) : null;
         var goal = task.GoalId is { } goalId ? State.FindGoal(goalId) : null;
         var project = host is { } hostId ? State.ProjectOf(hostId) : null;
-        var expanded = project is not null && Folds.IsOpen(host!.Value);
+        var expanded = project is not null && Folds.IsOpen(task.Id); // раскрытие — свойство строки (R1)
         var isStep = task.ParentId is not null;
         var stepOfOwnGoal = goal?.ProjectId is { } goalProject && task.ParentId == goalProject;
         <ItemRow @key="task.Id" Title="@task.Title" Clamp="true"
@@ -43,7 +43,7 @@
                  IsPending="task.Id < 0"
                  IsFlashing="State.FlashTaskId == task.Id"
                  Expanded="@(project is null ? null : expanded)"
-                 OnExpand="() => Folds.ToggleAsync(host ?? task.Id)"
+                 OnExpand="() => Folds.ToggleAsync(task.Id)"
                  ProjectLabel="@PlannerState.ProjectLabel(project)"
                  ParentCaption="@(stepOfOwnGoal ? null : State.ParentTitleOf(task))"
                  OnParentClick="() => OpenParentAsync(task.ParentId)"
@@ -59,7 +59,7 @@
                  DragId="task.Id" />
         @if (expanded)
         {
-            <ProjectSteps @key="@($"steps-{task.Id}")" ParentId="host!.Value" GoalId="goal?.Id" />
+            <ProjectSteps @key="@($"steps-{task.Id}")" ParentId="host!.Value" GoalId="goal?.Id" ViaSessionId="@(goal is null ? null : task.Id)" />
         }
     }
 

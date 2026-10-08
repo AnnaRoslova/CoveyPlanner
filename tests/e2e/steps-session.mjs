@@ -52,7 +52,7 @@ async function closeEditor() {
 }
 
 async function clickFold(i, title) {
-  const fold = await (await rowEl(i, title)).asElement().$('.fold');
+  const fold = await (await rowEl(i, title)).asElement().$('.expand');
   assert(fold, 'нет «▸»');
   const b = await fold.boundingBox();
   await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
@@ -112,19 +112,21 @@ await check('баг 1: удалили все шаги — дело не отме
   assert((await api('GET', `tasks/${session.id}`)).state === 'Planned', 'на сервере отмечено');
 });
 
-await check('«▸» отдельно от чекбокса: вся стрелка — стрелка, зона чекбокса до неё не доходит', async () => {
+await check('«⌄» отдельно от чекбокса и 🗑: вся стрелка — стрелка, не меньше 24px (R5)', async () => {
   await load();
   const g = await page.evaluate(() => {
-    const it = [...document.querySelectorAll('.day > .item')].find(x => x.querySelector('.fold'));
-    const f = it.querySelector('.fold').getBoundingClientRect();
+    const it = [...document.querySelectorAll('.day > .item')].find(x => x.querySelector('.expand') && getComputedStyle(x.querySelector('.expand')).display !== 'none' && x.querySelector('.trash-btn'));
+    const f = it.querySelector('.expand').getBoundingClientRect();
     const c = it.querySelector('.ck-hit').getBoundingClientRect();
     const misses = [];
     for (let x = Math.ceil(f.left) + 2; x < f.right - 2; x++) for (let y = Math.ceil(f.top) + 2; y < f.bottom - 2; y += 3) {
-      const el = document.elementFromPoint(x, y); if (!el?.closest('.fold')) misses.push(`${x - f.left|0},${y - f.top|0}:${el?.className}`);
+      const el = document.elementFromPoint(x, y); if (!el?.closest('.expand')) misses.push(`${x - f.left|0},${y - f.top|0}:${el?.className}`);
     }
-    return { gap: f.left - c.right, misses: misses.length, where: misses.join(' ') };
+    const t = it.querySelector('.trash-btn').getBoundingClientRect();
+    const trashOverlap = !(f.right <= t.left || f.left >= t.right || f.bottom <= t.top || f.top >= t.bottom);
+    return { gap: f.left - c.right, size: [f.width, f.height], trashOverlap, misses: misses.length, where: misses.join(' ') };
   });
-  assert(g.gap >= 0 && g.misses === 0, JSON.stringify(g));
+  assert(g.gap >= 0 && g.misses === 0 && !g.trashOverlap && g.size[0] >= 24 && g.size[1] >= 24, JSON.stringify(g));
 });
 
 await check('клик по «☑ 0/1» раскрывает и сворачивает шаги', async () => {

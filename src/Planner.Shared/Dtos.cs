@@ -224,8 +224,8 @@ public sealed record DoneYearDto(int Year, int Count);
 /// <summary>Группа «Выполненного» — категория ленты (CategoryId = null — «без категории»), счёт по годам и записи, свежие сверху.</summary>
 public sealed record DoneGroupDto(int? CategoryId, string Name, string? Emoji, IReadOnlyList<DoneYearDto> Years, IReadOnlyList<DoneTaskDto> Tasks);
 
-/// <summary>Дело после отметки и его родитель, если тот отметился сам (все шаги сделаны); иначе Parent = null.</summary>
-public sealed record TaskDoneResultDto(TaskDto Task, TaskDto? Parent);
+/// <summary>Дело после отметки; Parent — родитель, если отметился сам (все шаги сделаны); Session — занятие, отмеченное вместе с ним (R4).</summary>
+public sealed record TaskDoneResultDto(TaskDto Task, TaskDto? Parent, TaskDto? Session = null);
 
 /// <summary>«+ шаг» цели: цель (с проектом), новый шаг и проект, если его создали этим шагом (иначе null).</summary>
 public sealed record GoalStepResultDto(WeeklyGoalDto Goal, TaskDto Step, TaskDto? CreatedProject);

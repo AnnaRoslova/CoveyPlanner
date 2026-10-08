@@ -6,8 +6,8 @@ using Planner.Core.Time;
 
 namespace Planner.Core.Services;
 
-/// <summary>Дело после отметки и родитель, если его отметили сами (все шаги сделаны).</summary>
-public sealed record TaskDone(TaskItem Task, TaskItem? Parent);
+/// <summary>Дело после отметки, родитель, если он отметился сам (все шаги сделаны), и занятие, отмеченное вместе с ним (R4).</summary>
+public sealed record TaskDone(TaskItem Task, TaskItem? Parent, TaskItem? Session = null);
 
 /// <summary>Сценарии работы с делами: создать, изменить, перенести, выполнить, корзина.</summary>
 public class TaskService(
@@ -136,14 +136,20 @@ public class TaskService(
     /// Отметить или снять отметку. Отметили последний шаг проекта — родитель отмечается сам (S12, возвращается в Parent);
     /// сам родитель никогда не открывается (S13).
     /// </summary>
-    public async Task<TaskDone> SetDoneAsync(int id, bool isDone, CancellationToken ct = default)
+    /// <param name="viaSessionId">Шаг отмечают в строке или окне этого занятия цели: проект закончился — отмечается и занятие (R4).</param>
+    public async Task<TaskDone> SetDoneAsync(int id, bool isDone, CancellationToken ct = default, int? viaSessionId = null)
     {
         var task = await GetAsync(id, ct);
         TaskItem? parent = null;
+        TaskItem? session = null;
         if (isDone)
         {
             task.Complete(Now);
             parent = await projects.CompleteParentIfAllDoneAsync(task, Now, ct);
+            if (parent is not null && viaSessionId is { } sessionId)
+            {
+                session = await CompleteSessionOfProjectAsync(sessionId, parent, ct);
+            }
         }
         else
         {
@@ -155,7 +161,20 @@ public class TaskService(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
-        return new TaskDone(task, parent);
+        return new TaskDone(task, parent, session);
+    }
+
+    /// <summary>R4: занятие, из которого отметили последний шаг, — отметить, если оно занятие цели с этим проектом и ещё не отмечено.</summary>
+    private async Task<TaskItem?> CompleteSessionOfProjectAsync(int sessionId, TaskItem project, CancellationToken ct)
+    {
+        if (await tasks.FindAsync(sessionId, ct) is not { State: TaskState.Planned, GoalId: { } goalId } session
+            || await goals.FindAsync(goalId, ct) is not { } goal || goal.ProjectId != project.Id)
+        {
+            return null;
+        }
+
+        session.Complete(Now);
+        return session;
     }
 
     /// <summary>

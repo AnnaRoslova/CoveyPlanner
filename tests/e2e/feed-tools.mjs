@@ -122,7 +122,7 @@ await check('длинные записи — не больше двух стро
   const m = await page.$$eval('.item', (items, long) => items.filter(i => i.querySelector('.title')?.textContent.trim() === long).map(i => {
     const t = i.querySelector('.title');
     return { lines: t.clientHeight / parseFloat(getComputedStyle(t).lineHeight), ellipsis: getComputedStyle(t).webkitLineClamp,
-      long: t.hasAttribute('data-long'), more: getComputedStyle(i.querySelector('.unclamp')).display !== 'none' };
+      long: t.hasAttribute('data-long'), more: getComputedStyle(i.querySelector('.expand')).display !== 'none' };
   }), LONG);
   assert(m.length === 2, `записей: ${m.length}`);
   assert(m.every(x => Math.round(x.lines) === 2 && x.ellipsis === '2' && x.long && x.more), JSON.stringify(m));

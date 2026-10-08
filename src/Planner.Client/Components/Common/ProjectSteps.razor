@@ -1,5 +1,5 @@
 @* Раскрытый список шагов проекта — прямо в дне или в ленте, под строкой «▸ Ремонт ☑ 2/5» (S2, S11, S19, S20).
-   Шаг: чекбокс (общий с его строкой в дне), название, метка дня; клик — окно шага. Шаг можно перетащить в любой день,
+   Шаг: чекбокс (общий с его строкой в дне), название, метка дня, 🗑 при наведении (в корзину с «Вернуть», R3); клик — окно шага. Шаг можно перетащить в любой день,
    на другую неделю, на цель, в ленту (станет мыслью); бросить сюда же — порядок и «снять с дня». В конце — «+ шаг».
    Занятия целей среди шагов здесь не показываются — они в счёте «12 занятий» (S17). *@
 @inherits StateComponent
@@ -15,7 +15,8 @@
                  IsDone="step.State == TaskStateDto.Done"
                  DayLabel="@DayLabel(step)"
                  IsPending="id < 0"
-                 OnToggle="() => State.SetDoneAsync(id, step.State != TaskStateDto.Done)"
+                 OnToggle="() => State.SetDoneAsync(id, step.State != TaskStateDto.Done, ViaSessionId)"
+                 OnTrash="() => id > 0 ? State.TrashTaskAsync(id) : Task.CompletedTask"
                  OnClick="() => id > 0 ? OpenStep(id) : Task.CompletedTask"
                  DragKind="@(id > 0 ? DragDropService.StepItem : null)"
                  DragId="id" />
@@ -45,6 +46,10 @@
     /// <summary>Шаги цели (её проекта): «+ шаг» идёт через цель — нет проекта, он создаётся (G3).</summary>
     [Parameter]
     public int? GoalId { get; set; }
+
+    /// <summary>Список показан в строке или окне этого занятия цели: последний шаг отмечает проект и это занятие (R4).</summary>
+    [Parameter]
+    public int? ViaSessionId { get; set; }
 
     /// <summary>Текст поиска — совпадения в названиях шагов подсвечиваются.</summary>
     [Parameter]

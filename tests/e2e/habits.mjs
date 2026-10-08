@@ -33,7 +33,15 @@ const titleOf = el => [...el.querySelector('.tx').childNodes].filter(n => !n.cla
 const T = `const titleOf = ${titleOf};`;
 const goalSel = title => `(() => { ${T} return [...document.querySelectorAll('.role .item')].find(i => titleOf(i) === ${JSON.stringify(title)}); })()`;
 const dayItemSel = (i, title) => `(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].find(it => titleOf(it) === ${JSON.stringify(title)}); })()`;
-const pillOf = title => page.evaluate(`(() => { const g = ${goalSel(title)}; return g?.querySelector('.jar-pill')?.textContent.trim() ?? null; })()`);
+// Пилюли банки в левой панели больше нет (R6) — тот же текст («🫙 102 · 🔥13», «🫙 41 · ⚠», «🫙 N») считаем по API: счёт не изменился
+const pillOf = title => page.evaluate(async t => {
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const goal = (await (await fetch(`/api/week/${iso(new Date())}`)).json()).goals.find(g => g.title === t);
+  const habit = goal ? (await (await fetch(`/api/habits?today=${iso(new Date())}`)).json()).habits.find(h => h.id === goal.seriesId && !h.isArchived) : null;
+  if (!habit) return null;
+  const s = habit.stats;
+  return s.weekPaused ? `🫙 ${s.total} · ⚠` : s.weekStreak > 0 ? `🫙 ${s.total} · 🔥${s.weekStreak}` : `🫙 ${s.total}`;
+}, title);
 const clickIn = (sel, text) => page.evaluate((sel, text) => {
   const el = [...document.querySelectorAll(sel)].find(b => b.textContent.trim() === text);
   if (!el) throw new Error(`нет «${text}» в ${sel}`);
@@ -150,8 +158,10 @@ await check('сняли отметку — скрепка ушла: пилюля
   await settle();
 });
 
-await check('клик по пилюле — экран «Копилки» на «Бег» (карточка в фокусе)', async () => {
-  await page.evaluate(`${goalSel('Бег')}.querySelector('.jar-pill').click()`);
+await check('пилюли банки у целей нет (R6); строка «🫙 привычка» в окне цели — экран «Копилки» на «Бег» (карточка в фокусе)', async () => {
+  assert(!(await page.$('.role .item .jar-pill')), 'в левой панели пилюля банки');
+  await openGoal('Бег');
+  await page.click('.editor .habit-line');
   await page.waitForSelector('.habits'); await settle();
   const focused = await page.evaluate(() => document.querySelector('.jar-card.focused')?.getAttribute('aria-label'));
   assert(focused === 'Привычка «Бег»', `в фокусе: ${focused}`);

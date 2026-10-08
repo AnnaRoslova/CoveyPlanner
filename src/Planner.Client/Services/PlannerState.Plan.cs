@@ -170,7 +170,7 @@ public partial class PlannerState
     }
 
     /// <summary>Отметка «выполнено»; у цели этого занятия пересчитывается прогресс.</summary>
-    public async Task SetDoneAsync(int taskId, bool isDone)
+    public async Task SetDoneAsync(int taskId, bool isDone, int? viaSessionId = null)
     {
         if (taskId < 0 || FindTask(taskId) is not { } task)
         {
@@ -179,9 +179,13 @@ public partial class PlannerState
 
         _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
         SyncSession(_tasks[taskId]);
-        TaskDto? autoDoneParent = null;
-        var ok = await SaveAsync(async () => autoDoneParent = (await api.SetTaskDoneAsync(taskId, isDone)).Parent);
-        AfterParentAutoDone(autoDoneParent); // последний шаг — проект отметился сам (S12)
+        TaskDoneResultDto? result = null;
+        var ok = await SaveAsync(async () => result = await api.SetTaskDoneAsync(taskId, isDone, viaSessionId));
+        AfterParentAutoDone(result?.Parent, result?.Session); // последний шаг — проект (и занятие, R4) отметились сами (S12)
+        if (result?.Session is { } session && HabitOfGoal(GoalOfTask(session.Id)) is { } sessionHabit)
+        {
+            await AfterHabitTaskToggledAsync(sessionHabit.Id, true, session.PlannedDate);
+        }
         if (ok && HabitOfGoal(GoalOfTask(taskId)) is { } habit)
         {
             await AfterHabitTaskToggledAsync(habit.Id, isDone, task.PlannedDate);
