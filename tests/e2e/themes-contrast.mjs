@@ -20,7 +20,8 @@ const MUST_PASS_AA = ['obsidian'];
 const LIGHT = ['lotus', 'peony', 'platinum'];
 // Второстепенный текст: «+ …» и «свернуть всё», счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
 const SECONDARY = ['.add', '.others-h', '.other .d', '.other .sep', '.other.done', '.fold', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
-  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category', '.strip-label', '.m.before', '.legend'].join(', ');
+  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category', '.strip-label', '.m.before', '.legend',
+  '.done-link', '.parent-of', '.project-label', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps'].join(', ');
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -147,6 +148,25 @@ await page.evaluate(async () => {
   if (t) await fetch(`/api/tasks/${t.id}`, { method: 'DELETE' });
 });
 
+// Проект с шагами (подписи «↳ Ремонт» и «☑ 1/2» в днях) и выполненная мысль ленты — для экрана «Выполненное»
+await page.evaluate(async () => {
+  const d = new Date(), iso = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  const post = async (url, body, method = 'POST') => {
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const text = await r.text();
+    return text ? JSON.parse(text) : null;
+  };
+  const repair = await post('/api/tasks', { title: 'Ремонт', target: { kind: 'day', date: iso(d), index: 99 } });
+  const walls = await post(`/api/tasks/${repair.id}/steps`, { title: 'Стены' });
+  await post(`/api/tasks/${repair.id}/steps`, { title: 'Полы' });
+  await post(`/api/tasks/${walls.id}/done`, { isDone: true }, 'PUT');
+  const next = new Date(d); next.setDate(d.getDate() + (d.getDay() === 0 ? -1 : 1)); // соседний день этой же недели
+  await post(`/api/tasks/${walls.id}/move`, { kind: 'day', date: iso(next), index: 99 });
+  const board = await (await fetch('/api/board')).json();
+  const thought = board.somedayTasks.find(t => t.categoryId !== null);
+  if (thought) await post(`/api/tasks/${thought.id}/done`, { isDone: true }, 'PUT');
+});
+
 for (const theme of THEMES) {
   await setTheme(theme);
   const shot = name => page.screenshot({ path: `${SHOTS}/cmp-${theme}-${name}.png` });
@@ -154,6 +174,8 @@ for (const theme of THEMES) {
 
   await check(`${theme}: экран`, async () => {
     assert(await page.evaluate(() => document.documentElement.dataset.theme) === theme, 'тема не включилась');
+    const has = await page.evaluate(() => ['.day .parent-of', '.day .project-label', '.someday .cat-b .ck-hit'].filter(q => !document.querySelector(q)));
+    assert(has.length === 0, `на экране нет: ${has.join(', ')}`); // «↳», «☑ N/M», чекбокс ленты — в замере
     await shot('screen');
     windows.push(['экран', await audit(theme, 'screen')]);
   });
@@ -233,6 +255,13 @@ for (const theme of THEMES) {
     await page.click('.habits .btn.vac-b'); await page.waitForSelector('.editor[aria-label="Каникулы"]'); await sleep(300);
     windows.push(['каникулы', await audit(theme, 'vacations', '.editor[aria-label="Каникулы"]')]);
     await escape(); await escape();
+  });
+  await check(`${theme}: экран «Выполненное»`, async () => {
+    await page.click('.someday .done-link'); await page.waitForSelector('.done-screen .done-row');
+    await page.mouse.move(5, 5); await sleep(400);
+    await shot('done');
+    windows.push(['выполненное', await audit(theme, 'done', '.done-screen')]);
+    await escape();
   });
   await check(`${theme}: меню тем`, async () => {
     await page.click('.palette-b'); await page.waitForSelector('.themes'); await sleep(300);
