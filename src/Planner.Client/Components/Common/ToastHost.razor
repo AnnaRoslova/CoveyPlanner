@@ -1,12 +1,12 @@
-@* Всплывающее сообщение внизу по центру; исчезает само через несколько секунд.
-   У сообщения может быть кнопка-действие («Вернуть», «Показать»); клик по остальному — закрыть. *@
+@* Всплывающее сообщение внизу по центру (про ленту и корзину — у значка корзины внизу ленты); исчезает само через несколько секунд.
+   У сообщения может быть одна-две кнопки-действия («Вернуть», «Показать», «в корзину · вернуть»); клик по остальному — закрыть. *@
 @implements IDisposable
 @inject Notifier Notifier
 
 @if (Notifier.Message is { } message)
 {
     var version = Notifier.Version;
-    <div class="toast @(Notifier.IsError ? "error" : "") @(Notifier.IsClip ? "clip-toast" : "")" role="status" @onclick="() => Notifier.Dismiss(version)">
+    <div class="toast @(Notifier.IsError ? "error" : "") @(Notifier.IsClip ? "clip-toast" : "") @(Notifier.IsNearTrash ? "near-trash" : "")" role="status" @onclick="() => Notifier.Dismiss(version)">
         @if (Notifier.IsClip)
         {
             @* @key — у каждой подсказки анимация заново *@
@@ -17,6 +17,11 @@
         {
             <span class="sep">·</span>
             <button type="button" class="action" @onclick="() => Notifier.RunActionAsync(version)" @onclick:stopPropagation="true">@label</button>
+        }
+        @if (Notifier.SecondActionLabel is { } second)
+        {
+            <span class="sep">·</span>
+            <button type="button" class="action" @onclick="() => Notifier.RunActionAsync(version, second: true)" @onclick:stopPropagation="true">@second</button>
         }
     </div>
 }

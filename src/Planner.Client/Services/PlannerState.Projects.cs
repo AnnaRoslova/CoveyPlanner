@@ -145,6 +145,10 @@ public partial class PlannerState
             .OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
+    /// <summary>Поиск по ленте: совпало название мысли или название одного из её шагов (проект тогда развёрнут, шаг подсвечен).</summary>
+    public bool FeedMatches(TaskDto task, string query) =>
+        TextSearch.Contains(task.Title, query) || StepsOf(task.Id).Any(s => TextSearch.Contains(s.Title, query));
+
     /// <summary>Шаги цели — шаги её проекта (G1); проекта нет — пусто.</summary>
     public IReadOnlyList<TaskDto> StepsOfGoal(WeeklyGoalDto goal) =>
         goal.ProjectId is { } projectId ? CountedStepsOf(projectId) : [];
@@ -241,6 +245,68 @@ public partial class PlannerState
         }
 
         await ReloadAsync();
+    }
+
+    /// <summary>
+    /// Отметили мысль прямо в ленте (D2): она уходит из ленты в «Выполненное». Плашка у корзины
+    /// «„…“ выполнено · в корзину · вернуть» (D3): «вернуть» — снять отметку, дело на прежнее место (D6).
+    /// </summary>
+    public async Task CompleteInFeedAsync(int taskId)
+    {
+        if (taskId < 0 || FindTask(taskId) is not { State: TaskStateDto.Someday } task)
+        {
+            return;
+        }
+
+        _tasks.Remove(taskId);
+        TaskDto? autoDoneParent = null;
+        if (!await SaveAsync(async () => autoDoneParent = (await api.SetTaskDoneAsync(taskId, true)).Parent))
+        {
+            return;
+        }
+
+        notifier.WithActions($"«{task.Title}» выполнено",
+            "в корзину", () => TrashDoneInFeedAsync(task),
+            "вернуть", () => UncompleteInFeedAsync(taskId),
+            UndoWindow, nearTrash: true);
+        AfterParentAutoDone(autoDoneParent);
+        NotifyChanged();
+    }
+
+    /// <summary>«в корзину» на плашке отметки: выполненное (его уже нет в ленте) — в корзину, с обычным «Вернуть».</summary>
+    private Task TrashDoneInFeedAsync(TaskDto task) =>
+        DeleteWithUndoAsync(Deleted(task.Title), () => TrashCount++, () => api.TrashTaskAsync(task.Id));
+
+    /// <summary>Снять отметку с выполненного в ленте: обратно в ленту на своё место (решает сервер).</summary>
+    public async Task UncompleteInFeedAsync(int taskId)
+    {
+        await SaveAsync(async () => await api.SetTaskDoneAsync(taskId, false));
+        await ReloadAsync();
+    }
+
+    /// <summary>
+    /// Шаг бросили в ленту (не на свой проект) — он стал мыслью там, куда бросили (S21); плашка
+    /// «„…“ больше не шаг „Ремонт“ · Вернуть» возвращает его в проект (и в его день).
+    /// </summary>
+    private void OfferBackToProject(TaskDto step)
+    {
+        if (step.ParentId is not { } parentId)
+        {
+            return;
+        }
+
+        notifier.WithAction($"«{step.Title}» больше не шаг «{ParentTitleOf(step)}»", "Вернуть", async () =>
+        {
+            await SaveAsync(async () =>
+            {
+                await api.SetParentAsync(step.Id, parentId);
+                if (step.PlannedDate is { } date)
+                {
+                    await api.MoveTaskAsync(step.Id, new DayTargetDto(date, int.MaxValue));
+                }
+            });
+            await ReloadAsync();
+        }, UndoWindow, nearTrash: true);
     }
 
     /// <summary>«Удалено «Ремонт» и 3 шага» — проект уходит в корзину вместе со своими шагами (S23).</summary>

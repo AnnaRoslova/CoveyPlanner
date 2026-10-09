@@ -33,9 +33,7 @@ else
         <div class="cat-b" data-drop="someday" data-key="@Category.Id" data-accept="@DropAccept">
             @foreach (var task in VisibleTasks)
             {
-                <ItemRow @key="task.Id" Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search" Clamp="true"
-                         IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
-                         OnClick="() => OpenTask(task.Id)" />
+                <FeedRow @key="task.Id" Item="task" Search="@Search" />
             }
 
             @if (_adding)
@@ -80,7 +78,7 @@ else
     private IReadOnlyList<TaskDto> VisibleTasks =>
         !IsSearching || TextSearch.Contains(Category.Name, Search!)
             ? Tasks
-            : Tasks.Where(t => TextSearch.Contains(t.Title, Search!)).ToList();
+            : Tasks.Where(t => State.FeedMatches(t, Search!)).ToList();
 
     private async Task ToggleAsync()
     {

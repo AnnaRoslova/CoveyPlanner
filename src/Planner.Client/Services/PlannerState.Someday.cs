@@ -174,7 +174,10 @@ public partial class PlannerState
             RemoveSession(taskId);
         }
 
-        await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index)));
+        if (await SaveAsync(() => api.MoveTaskAsync(taskId, new SomedayTargetDto(categoryId, index))) && task.ParentId is not null)
+        {
+            OfferBackToProject(task); // шаг стал мыслью — можно вернуть в проект
+        }
     }
 
     /// <summary>

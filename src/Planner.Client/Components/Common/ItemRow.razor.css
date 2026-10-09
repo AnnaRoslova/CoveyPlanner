@@ -414,11 +414,17 @@ body.dragging .trash-btn {
     display: block;
 }
 
-/* Место под «⌄» справа — у записей, которым есть что разворачивать */
+/* Место под «⌄» справа — у записей, которым есть что разворачивать: и у названия, и у пилюль под ним */
 .title.clamp[data-long],
 .title.unclamped,
 .has-steps .title {
     padding-right: 14px;
+}
+
+.has-steps .pills,
+.item:has(.title.clamp[data-long]) .pills,
+.item:has(.expand.on) .pills {
+    padding-right: 20px;
 }
 
 /* Справа внизу записи, зона 24×24 (в поле записи; не задевает чекбокс слева и 🗑 — она у таких записей сдвинута левее) */

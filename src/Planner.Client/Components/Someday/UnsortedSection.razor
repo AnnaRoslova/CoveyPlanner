@@ -15,9 +15,7 @@
     </div>
     @foreach (var task in Tasks)
     {
-        <ItemRow @key="task.Id" Title="@task.Title" Notes="@task.Notes" Marker="ItemMarker.Bullet" Highlight="@Search" Clamp="true"
-                 IsPending="task.Id < 0" DragKind="@(IsSearching || task.Id < 0 ? null : DragDropService.SomedayItem)" DragId="task.Id"
-                 OnClick="() => OpenTask(task.Id)" />
+        <FeedRow @key="task.Id" Item="task" Search="@Search" />
     }
 </div>
 

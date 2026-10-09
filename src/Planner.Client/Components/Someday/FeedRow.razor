@@ -1,0 +1,56 @@
+@* Строка ленты: квадратный чекбокс (нейтральный бирюзовый — у мыслей нет ролей, D1) — «выполнено в ленте» с плашкой (D2, D3);
+   у проекта — подпись «☑ 2/5» и стрелка справа внизу: развернуть шаги прямо под строкой (с датами «Чт 9 окт», R1, R5). Строка проекта —
+   ещё и место, куда бросить его шаг из дня (снять с дня, S20). Во время поиска проект с совпавшим шагом развёрнут. *@
+@inherits StateComponent
+@inject WindowHost Windows
+@inject ProjectFoldState Folds
+
+@{
+    var project = Item.Id > 0 ? State.ProjectOf(Item.Id) : null;
+    var expanded = project is not null && (StepMatches || Folds.IsOpen(Item.Id));
+}
+<ItemRow Title="@Item.Title" Notes="@Item.Notes" Highlight="@Search" Clamp="true"
+         Color="var(--b)"
+         IsPending="Item.Id < 0"
+         Expanded="@(project is null ? null : expanded)"
+         OnExpand="() => Folds.ToggleAsync(Item.Id)"
+         ProjectLabel="@PlannerState.ProjectLabel(project)"
+         DropZone="@(project is null || IsSearching ? null : DragDropService.ProjectZone)"
+         DropKey="@Item.Id.ToString()"
+         DropAccept="@DragDropService.StepsAccepts"
+         DropHint="снять с дня — в список шагов"
+         OnToggle="() => Item.Id > 0 ? State.CompleteInFeedAsync(Item.Id) : Task.CompletedTask"
+         DragKind="@(IsSearching || Item.Id < 0 ? null : DragDropService.SomedayItem)" DragId="Item.Id"
+         OnClick="() => Windows.OpenSomedayTask(Item.Id)" />
+@if (expanded)
+{
+    <ProjectSteps ParentId="Item.Id" LongDates="true" Highlight="@Search" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TaskDto Item { get; set; } = null!;
+
+    /// <summary>Текст поиска; пусто — поиска нет.</summary>
+    [Parameter]
+    public string? Search { get; set; }
+
+    private bool IsSearching => !string.IsNullOrEmpty(Search);
+
+    /// <summary>Во время поиска совпал шаг — проект раскрыт, совпадение подсвечено.</summary>
+    private bool StepMatches => IsSearching && State.StepsOf(Item.Id).Any(s => TextSearch.Contains(s.Title, Search!));
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Folds.Changed += OnFoldsChanged;
+    }
+
+    public override void Dispose()
+    {
+        Folds.Changed -= OnFoldsChanged;
+        base.Dispose();
+    }
+
+    private void OnFoldsChanged() => InvokeAsync(StateHasChanged);
+}

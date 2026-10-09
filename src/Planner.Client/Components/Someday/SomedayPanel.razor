@@ -17,7 +17,7 @@
     <QuickCapture />
 
     <div class="panel-scroll">
-        @{ var unsorted = State.SomedayIn(null).Where(t => !IsSearching || TextSearch.Contains(t.Title, Query)).ToList(); }
+        @{ var unsorted = State.SomedayIn(null).Where(t => !IsSearching || State.FeedMatches(t, Query)).ToList(); }
         <UnsortedSection Tasks="unsorted" Search="@Query" />
 
         @if (State.Categories.Count == 0 && !_creatingCategory && !IsSearching)
@@ -91,7 +91,7 @@
     private bool IsSearching => Query.Length > 0;
 
     private bool MatchesSearch(CategoryDto category, IReadOnlyList<TaskDto> tasks) =>
-        TextSearch.Contains(category.Name, Query) || tasks.Any(t => TextSearch.Contains(t.Title, Query));
+        TextSearch.Contains(category.Name, Query) || tasks.Any(t => State.FeedMatches(t, Query));
 
     private void OnSearchKey(KeyboardEventArgs e)
     {

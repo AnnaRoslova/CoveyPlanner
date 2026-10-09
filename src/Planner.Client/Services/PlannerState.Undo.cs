@@ -36,7 +36,7 @@ public partial class PlannerState
         }
         var pending = new PendingDelete(before, commit, reloadAfter);
         _pendingDelete = pending;
-        pending.ToastVersion = notifier.WithAction(what, "Вернуть", UndoDeleteAsync, UndoWindow);
+        pending.ToastVersion = notifier.WithAction(what, "Вернуть", UndoDeleteAsync, UndoWindow, nearTrash: true);
         NotifyChanged();
         _ = CommitLaterAsync(pending);
     }

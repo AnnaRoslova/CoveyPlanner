@@ -22,6 +22,14 @@ public class Notifier
 
     private Func<Task>? _action;
 
+    /// <summary>Вторая кнопка («выполнено · в корзину · вернуть»): надпись; null — её нет.</summary>
+    public string? SecondActionLabel { get; private set; }
+
+    private Func<Task>? _secondAction;
+
+    /// <summary>Плашка — про ленту и корзину («Удалено «…» · Вернуть», «выполнено»): показывается у значка корзины внизу ленты.</summary>
+    public bool IsNearTrash { get; private set; }
+
     /// <summary>Сколько сообщение висит на экране.</summary>
     public TimeSpan Duration { get; private set; } = DefaultDuration;
 
@@ -39,13 +47,25 @@ public class Notifier
     public static readonly TimeSpan ClipDuration = TimeSpan.FromSeconds(2.5);
 
     /// <summary>Сообщение с кнопкой. Возвращает номер сообщения — чтобы потом убрать именно его.</summary>
-    public int WithAction(string message, string actionLabel, Func<Task> action, TimeSpan duration) =>
-        Show(message, isError: false, actionLabel, action, duration);
+    public int WithAction(string message, string actionLabel, Func<Task> action, TimeSpan duration, bool nearTrash = false) =>
+        Show(message, isError: false, actionLabel, action, duration, nearTrash: nearTrash);
+
+    /// <summary>Сообщение с двумя кнопками («в корзину» · «вернуть»).</summary>
+    public int WithActions(
+        string message, string actionLabel, Func<Task> action, string secondLabel, Func<Task> secondAction, TimeSpan duration,
+        bool nearTrash = false)
+    {
+        var version = Show(message, isError: false, actionLabel, action, duration, nearTrash: nearTrash, silent: true);
+        SecondActionLabel = secondLabel;
+        _secondAction = secondAction;
+        Changed?.Invoke();
+        return version;
+    }
 
     /// <summary>Нажали кнопку: сообщение закрывается, действие выполняется (один раз).</summary>
-    public async Task RunActionAsync(int version)
+    public async Task RunActionAsync(int version, bool second = false)
     {
-        if (version != Version || _action is not { } action)
+        if (version != Version || (second ? _secondAction : _action) is not { } action)
         {
             return;
         }
@@ -61,13 +81,18 @@ public class Notifier
             Message = null;
             ActionLabel = null;
             _action = null;
+            SecondActionLabel = null;
+            _secondAction = null;
             Changed?.Invoke();
         }
     }
 
     private int Show(string message, bool isError, string? actionLabel = null, Func<Task>? action = null, TimeSpan? duration = null,
-        bool isClip = false)
+        bool isClip = false, bool nearTrash = false, bool silent = false)
     {
+        IsNearTrash = nearTrash;
+        SecondActionLabel = null;
+        _secondAction = null;
         Message = message;
         IsError = isError;
         IsClip = isClip;
@@ -75,7 +100,11 @@ public class Notifier
         _action = action;
         Duration = duration ?? DefaultDuration;
         Version++;
-        Changed?.Invoke();
+        if (!silent)
+        {
+            Changed?.Invoke();
+        }
+
         return Version;
     }
 }
