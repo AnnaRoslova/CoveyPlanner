@@ -5,7 +5,7 @@ using Planner.Core.Errors;
 namespace Planner.Core.Services;
 
 /// <summary>
-/// Шаги дела в его окне (один уровень; дело с шагами — проект): добавить в конец, переименовать, отметить, порядок, удалить.
+/// Шаги дела (один уровень; дело с шагами — проект): добавить в конец, переименовать, отметить, порядок; удаляется шаг как дело — в корзину.
 /// Шаг — полноценное дело (может стоять в дне, см. <see cref="TaskService"/>); новый шаг получает копию ролей родителя.
 /// Отметили последний шаг — родитель отмечается сам (<see cref="ProjectService"/>).
 /// </summary>
@@ -81,12 +81,6 @@ public class StepService(
             byId[orderedIds[i]].StepOrder = i;
         }
 
-        await unitOfWork.SaveChangesAsync(ct);
-    }
-
-    public async Task DeleteAsync(int stepId, CancellationToken ct = default)
-    {
-        tasks.Remove(await GetStepAsync(stepId, ct));
         await unitOfWork.SaveChangesAsync(ct);
     }
 

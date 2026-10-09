@@ -1,13 +1,20 @@
-@* Окно редактирования дела: название, роли (можно несколько), дата (другой день, другая неделя или «без даты» — в ленту),
-   время, квадрант, длительность, заметки; «в корзину».
+@* Окно редактирования дела: «↳ Проект» у шага (клик — окно проекта), название, роли (можно несколько), «Проект» (S6–S10),
+   дата (другой день, другая неделя или «без даты» — в ленту; у шага — в список проекта),
+   время, квадрант, длительность, заметки, шаги (у занятия — шаги цели); «в корзину».
    У занятия цели роли и квадрант — от цели (здесь только видны), а время, длительность и заметки могут быть «своими» —
    метка «своё» и кнопка «как у цели». Сделать дело занятием цели — перетащить его на строку цели в левой панели.
    Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
 @inject PlannerState State
+@inject WindowHost Windows
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
 <div class="editor" role="dialog" aria-label="Дело" tabindex="-1" @onkeydown="OnKeyDown">
+    @if (State.ParentTitleOf(EditedTask) is { } headerProject)
+    {
+        @* Шаг проекта: «↳ Ремонт» — клик открывает окно проекта *@
+        <button type="button" class="step-of" title="Открыть проект" @onclick="OpenProjectAsync">↳ <span>@headerProject</span></button>
+    }
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
@@ -29,6 +36,8 @@
         <RolePicker Roles="State.OrderedRoles" Value="RoleIds" ValueChanged="SetRoles"
                     Locked="Goal is not null" LockedHint="от цели" />
     </div>
+
+    <ProjectField Task="EditedTask" @bind-Value="_projectId" />
 
     @* Дата: любая (календарь) или быстрые кнопки; «без даты» — обратно в ленту *@
     <div class="field">
@@ -121,16 +130,7 @@
     }
     else if (EditedTask.Id > 0 && EditedTask.ParentId is null)
     {
-        <div class="field">
-            <div class="label-row">
-                <span class="label">Шаги</span>
-                @if (_stepCount.Total > 0)
-                {
-                    <span class="hint">@_stepCount.Done из @_stepCount.Total</span>
-                }
-            </div>
-            <StepsList TaskId="EditedTask.Id" OnCountChanged="c => _stepCount = c" />
-        </div>
+        <TaskStepsBlock TaskId="EditedTask.Id" />
     }
 
     <div class="buttons">
@@ -141,7 +141,7 @@
 </div>
 
 @code {
-    private (int Done, int Total) _stepCount;
+    private int _projectId; // 0 — без проекта
     private ElementReference _titleInput;
     private string _title = "";
     private string? _notes;
@@ -181,6 +181,7 @@
         _quadrant = EditedTask.Quadrant;
         _duration = EditedTask.DurationMinutes;
         _date = EditedTask.PlannedDate;
+        _projectId = EditedTask.ParentId ?? 0;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -234,11 +235,34 @@
         {
             await State.MoveTaskToDateAsync(task.Id, _date);
         }
+
+        if (_projectId != (task.ParentId ?? 0))
+        {
+            await State.SetParentAsync(task.Id, _projectId == 0 ? null : _projectId);
+        }
     }
 
     private async Task TrashAsync()
     {
         await OnClose.InvokeAsync();
         await State.TrashTaskAsync(EditedTask.Id);
+    }
+
+    /// <summary>«↳ Ремонт» — окно проекта (несохранённая правка этого окна теряется, как при «Отмена»).</summary>
+    private async Task OpenProjectAsync()
+    {
+        if (EditedTask.ParentId is not { } parentId || !await State.EnsureTaskAsync(parentId))
+        {
+            return;
+        }
+
+        if (State.FindTask(parentId) is { State: TaskStateDto.Someday })
+        {
+            Windows.OpenSomedayTask(parentId);
+        }
+        else
+        {
+            Windows.OpenTask(parentId);
+        }
     }
 }

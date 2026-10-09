@@ -1,0 +1,46 @@
+@* Шаги дела в его окне (этап 8): «Шаги ☑ 2/5», список как в развёрнутой строке (метка дня, клик — окно шага, порядок перетаскиванием,
+   🗑 при наведении — в корзину с «Вернуть»; крестика нет, S25), «+ шаг — Enter»; под ним — «12 занятий ▸» (занятия целей среди шагов,
+   S17): раскрывается списком «Чт 1 окт · Чтение», клик — окно занятия. Меняется сразу, без «Сохранить». *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+<div class="field task-steps">
+    <div class="label-row">
+        <span class="label">Шаги</span>
+        @if (State.ProjectOf(TaskId) is { StepsTotal: > 0 } summary)
+        {
+            <span class="hint">☑ @summary.StepsDone/@summary.StepsTotal</span>
+        }
+    </div>
+    <ProjectSteps ParentId="TaskId" LongDates="true" />
+    @if (Sessions.Count > 0)
+    {
+        <button type="button" class="sessions-line" aria-expanded="@(_sessionsOpen ? "true" : "false")"
+                @onclick="() => _sessionsOpen = !_sessionsOpen">
+            @PlannerState.SessionsWord(Sessions.Count(s => s.State == TaskStateDto.Done)) @(_sessionsOpen ? "▾" : "▸")
+        </button>
+        @if (_sessionsOpen)
+        {
+            <div class="sessions-list">
+                @foreach (var session in Sessions)
+                {
+                    var id = session.Id;
+                    <button type="button" class="session-row @(session.State == TaskStateDto.Done ? "done" : "")" @onclick="() => Windows.OpenTask(id)">
+                        @(session.PlannedDate is { } date ? RuDates.ShortDate(date) : "без дня") · @session.Title
+                    </button>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool _sessionsOpen;
+
+    [Parameter, EditorRequired]
+    public int TaskId { get; set; }
+
+    /// <summary>Занятия целей среди шагов — по дням.</summary>
+    private IReadOnlyList<TaskDto> Sessions =>
+        State.StepsOf(TaskId).Where(s => s.GoalId is not null).OrderBy(s => s.PlannedDate ?? DateOnly.MaxValue).ToList();
+}

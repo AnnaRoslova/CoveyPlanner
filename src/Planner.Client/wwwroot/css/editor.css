@@ -927,3 +927,59 @@ body.dragging .editor {
 .editor:focus {
     outline: none;
 }
+
+/* Шаги в окне дела: «12 занятий ▸» и их список */
+.editor .task-steps .sessions-line {
+    padding: 2px 0;
+    color: var(--faint);
+    font-size: 12px;
+}
+
+.editor .task-steps .sessions-line:hover {
+    color: var(--b-deep);
+}
+
+.editor .task-steps .sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 0 10px;
+}
+
+.editor .task-steps .session-row {
+    color: var(--soft);
+    font-size: 12px;
+    text-align: left;
+}
+
+.editor .task-steps .session-row.done {
+    color: var(--faint);
+    text-decoration: line-through;
+}
+
+.editor .task-steps .steps {
+    margin-left: 0;
+}
+
+/* «↳ Ремонт» в шапке окна шага */
+.editor .step-of {
+    margin: -4px 0 6px;
+    padding: 0;
+    color: var(--faint);
+    font-size: 12px;
+    text-align: left;
+}
+
+.editor .step-of span {
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+
+.editor .step-of:hover {
+    color: var(--b-deep);
+}
+
+.editor .select-field.off {
+    color: var(--faint);
+    cursor: default;
+}

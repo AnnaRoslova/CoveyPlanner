@@ -110,8 +110,8 @@ public class ProjectsApiTests : ApiTestBase
         await SetDoneAsync(a.Id);
         Assert.Equal(TaskStateDto.Planned, (await TaskAsync(session.Id)).State);
 
-        (await Client.DeleteAsync($"/api/steps/{a.Id}")).EnsureSuccessStatusCode();
-        (await Client.DeleteAsync($"/api/steps/{b.Id}")).EnsureSuccessStatusCode();
+        (await Client.DeleteAsync($"/api/tasks/{a.Id}")).EnsureSuccessStatusCode();
+        (await Client.DeleteAsync($"/api/tasks/{b.Id}")).EnsureSuccessStatusCode();
         Assert.Equal(TaskStateDto.Planned, (await TaskAsync(session.Id)).State);
 
         // Отмеченное дело: шаги его не открывают
@@ -119,7 +119,7 @@ public class ProjectsApiTests : ApiTestBase
         var c = await AddStepAsync(session.Id, "Вопросы");
         await SetDoneAsync(c.Id);
         await SetDoneAsync(c.Id, false);
-        (await Client.DeleteAsync($"/api/steps/{c.Id}")).EnsureSuccessStatusCode();
+        (await Client.DeleteAsync($"/api/tasks/{c.Id}")).EnsureSuccessStatusCode();
         Assert.Equal(TaskStateDto.Done, (await TaskAsync(session.Id)).State);
     }
 

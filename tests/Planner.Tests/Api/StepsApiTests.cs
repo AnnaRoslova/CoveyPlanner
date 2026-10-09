@@ -13,7 +13,7 @@ public class StepsApiTests : ApiTestBase
         PostAsync<StepDto>($"/api/tasks/{taskId}/steps", new StepRequest(title));
 
     [Fact]
-    public async Task Steps_CrudOrder_NotInDayFeedOrTrash()
+    public async Task Steps_CrudOrder_NotInDayOrFeed_DeletedToTrash()
     {
         var task = await CreateInDayAsync("Ремонт", Today);
         var a = await AddStepAsync(task.Id, "Обои");
@@ -30,9 +30,10 @@ public class StepsApiTests : ApiTestBase
         Assert.Equal(["Ремонт"], week.Tasks.Select(t => t.Title));
         Assert.Empty((await GetBoardAsync()).SomedayTasks);
 
-        (await Client.DeleteAsync($"/api/steps/{a.Id}")).EnsureSuccessStatusCode();
-        Assert.Single(await GetAsync<List<StepDto>>($"/api/tasks/{task.Id}/steps"));
-        Assert.Equal(0, (await GetBoardAsync()).TrashCount);
+        // Шаг удаляется как дело — в корзину (S25), отдельной строкой
+        (await Client.DeleteAsync($"/api/tasks/{a.Id}")).EnsureSuccessStatusCode();
+        Assert.Equal(1, (await GetBoardAsync()).TrashCount);
+        Assert.Equal(["Обои"], (await GetAsync<List<TaskDto>>("/api/trash")).Select(t => t.Title));
 
         // У шага своих шагов нет
         var nested = await Client.PostAsJsonAsync($"/api/tasks/{b.Id}/steps", new StepRequest("x"));

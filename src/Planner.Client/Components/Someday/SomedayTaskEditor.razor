@@ -1,11 +1,12 @@
-@* Окно дела ленты «Когда-нибудь»: название, подробное описание (заметки), категория; «в корзину».
+@* Окно дела ленты «Когда-нибудь»: название, подробное описание (заметки), категория, «Проект» (S6–S9: станет шагом — уйдёт из ленты),
+   шаги («☑ N/M», порядок, 🗑, «N занятий ▸»); «в корзину».
    Сменили категорию — дело встаёт наверх новой. Enter в названии — сохранить, Esc или клик мимо — отмена.
    Стили — css/editor.css (как у окна дела в дне). *@
 @inject PlannerState State
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
-<div class="editor" role="dialog" aria-label="Мысль" @onkeydown="OnKeyDown">
+<div class="editor" role="dialog" aria-label="Мысль" tabindex="-1" @onkeydown="OnKeyDown">
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
@@ -19,19 +20,12 @@
         <ChoiceField Items="CategoryChoices" @bind-Value="_categoryId" Label="Категория" />
     </div>
 
-    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить» *@
+    <ProjectField Task="EditedTask" @bind-Value="_projectId" />
+
+    @* Шаги — меняются сразу, без «Сохранить» *@
     @if (EditedTask.Id > 0)
     {
-        <div class="field">
-            <div class="label-row">
-                <span class="label">Шаги</span>
-                @if (_stepCount.Total > 0)
-                {
-                    <span class="hint">@_stepCount.Done из @_stepCount.Total</span>
-                }
-            </div>
-            <StepsList TaskId="EditedTask.Id" OnCountChanged="c => _stepCount = c" />
-        </div>
+        <TaskStepsBlock TaskId="EditedTask.Id" />
     }
 
     <div class="buttons">
@@ -42,7 +36,7 @@
 </div>
 
 @code {
-    private (int Done, int Total) _stepCount;
+    private int _projectId; // 0 — без проекта
     private ElementReference _titleInput;
     private string _title = "";
     private string? _notes;
@@ -109,6 +103,11 @@
         if (_categoryId != task.CategoryId)
         {
             await State.MoveTaskToFeedAsync(task.Id, _categoryId, 0);
+        }
+
+        if (_projectId != 0)
+        {
+            await State.SetParentAsync(task.Id, _projectId); // мысль становится шагом — уходит из ленты (S8)
         }
     }
 

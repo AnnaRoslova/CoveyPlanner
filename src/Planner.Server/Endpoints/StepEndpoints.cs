@@ -3,7 +3,7 @@ using Planner.Shared;
 
 namespace Planner.Server.Endpoints;
 
-/// <summary>Шаги дела в его окне: список, новый шаг, переименовать, отметить, порядок, удалить.</summary>
+/// <summary>Шаги дела: список, новый шаг, переименовать, отметить, порядок. Удаляется шаг как любое дело — в корзину (S25).</summary>
 public static class StepEndpoints
 {
     public static void MapStepEndpoints(this RouteGroupBuilder api)
@@ -32,11 +32,5 @@ public static class StepEndpoints
 
         steps.MapPut("/{id:int}/done", async (int id, SetDoneRequest request, StepService service, CancellationToken ct) =>
             (await service.SetDoneAsync(id, request.IsDone, ct)).Task.ToStepDto());
-
-        steps.MapDelete("/{id:int}", async (int id, StepService service, CancellationToken ct) =>
-        {
-            await service.DeleteAsync(id, ct);
-            return Results.NoContent();
-        });
     }
 }

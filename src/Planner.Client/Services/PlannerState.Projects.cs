@@ -145,6 +145,23 @@ public partial class PlannerState
             .OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
+    /// <summary>
+    /// «Проект» в окне дела (S6–S10): сделать дело шагом <paramref name="parentId"/> или убрать из проекта (null). Последствия разные
+    /// (мысль уходит из ленты, шаг без дня возвращается в ленту) — после ответа перечитываем экран.
+    /// </summary>
+    public async Task SetParentAsync(int taskId, int? parentId)
+    {
+        if (taskId < 0 || FindTask(taskId)?.ParentId == parentId)
+        {
+            return;
+        }
+
+        if (await SaveAsync(async () => _tasks[taskId] = await api.SetParentAsync(taskId, parentId)))
+        {
+            await ReloadAsync();
+        }
+    }
+
     /// <summary>Поиск по ленте: совпало название мысли или название одного из её шагов (проект тогда развёрнут, шаг подсвечен).</summary>
     public bool FeedMatches(TaskDto task, string query) =>
         TextSearch.Contains(task.Title, query) || StepsOf(task.Id).Any(s => TextSearch.Contains(s.Title, query));
