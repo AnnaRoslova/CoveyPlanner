@@ -162,6 +162,36 @@ public partial class PlannerState
         }
     }
 
+    /// <summary>«Выполненное» (V1–V6): группы по категориям; при ошибке — сообщение и пустой список.</summary>
+    public async Task<List<DoneGroupDto>> GetDoneAsync()
+    {
+        await CommitPendingDeleteAsync();
+        try
+        {
+            return await api.GetDoneAsync();
+        }
+        catch (ApiException ex)
+        {
+            notifier.Error(ex.Message);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Снять отметку в «Выполненном» (D6, D7): выполненное в ленте — обратно в ленту на своё место, выполненное в дне — остаётся в дне открытым.
+    /// false — не получилось.
+    /// </summary>
+    public async Task<bool> UncompleteDoneAsync(int taskId)
+    {
+        if (!await SaveAsync(async () => await api.SetTaskDoneAsync(taskId, false)))
+        {
+            return false;
+        }
+
+        await ReloadAsync();
+        return true;
+    }
+
     /// <summary>Поиск по ленте: совпало название мысли или название одного из её шагов (проект тогда развёрнут, шаг подсвечен).</summary>
     public bool FeedMatches(TaskDto task, string query) =>
         TextSearch.Contains(task.Title, query) || StepsOf(task.Id).Any(s => TextSearch.Contains(s.Title, query));

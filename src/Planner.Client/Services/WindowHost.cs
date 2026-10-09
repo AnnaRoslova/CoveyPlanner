@@ -26,6 +26,9 @@ public sealed class WindowHost
     /// <summary>Экран «Копилки» (кнопка 🫙 в шапке недели или пилюля у цели).</summary>
     public bool HabitsOpen { get; private set; }
 
+    /// <summary>Экран «Выполненное» (строка «✓ выполненное» внизу ленты).</summary>
+    public bool DoneOpen { get; private set; }
+
     /// <summary>Копилка, к которой экран «Копилки» прокручивается и которую подсвечивает (клик по пилюле у цели).</summary>
     public int? FocusHabitId { get; private set; }
 
@@ -45,6 +48,8 @@ public sealed class WindowHost
 
     public void OpenHabits(int? focusHabitId = null) => Open(habits: true, focusHabitId: focusHabitId);
 
+    public void OpenDone() => Open(done: true);
+
     /// <summary>Удалить цель: постоянную — сначала спросить (только эта неделя или с этой недели и дальше), разовую — сразу.</summary>
     public Task DeleteGoalAsync(PlannerState state, int goalId)
     {
@@ -60,9 +65,10 @@ public sealed class WindowHost
     public void Close() => Open();
 
     private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
-        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null)
+        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false)
     {
         HabitsOpen = habits;
+        DoneOpen = done;
         FocusHabitId = focusHabitId;
         GoalId = goalId;
         RoleId = roleId;

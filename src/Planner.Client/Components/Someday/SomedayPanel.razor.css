@@ -141,3 +141,20 @@ body.dragging .trash {
         animation: none;
     }
 }
+
+/* Низ ленты: «✓ выполненное» слева, корзина справа */
+.feed-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 16px;
+}
+
+.done-link {
+    color: var(--faint);
+    font-size: 12px;
+}
+
+.done-link:hover {
+    color: var(--b-deep);
+}

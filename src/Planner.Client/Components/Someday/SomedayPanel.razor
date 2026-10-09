@@ -3,6 +3,7 @@
    «+ категория» есть и внизу (новая — в конец). Над всем этим — «неразобранное» (мысли без категории).
    «Записать мысль» есть всегда: без категорий мысли просто копятся в «неразобранном». *@
 @inherits StateComponent
+@inject WindowHost Windows
 
 <aside class="panel someday">
     <div class="top">
@@ -67,12 +68,17 @@
         }
     </div>
 
-    @* Корзина — ещё и место, куда можно бросить запись (дело, мысль, цель): она удаляется, как из окна *@
-    <button class="trash" title="Корзина" @onclick="() => _trashOpen = !_trashOpen"
-            data-drop="@DragDropService.TrashZone" data-accept="@DragDropService.TrashAccepts" data-drop-index="0" data-drop-hover>
-        @* Что-то ушло в корзину — значок коротко «вздрагивает» (@key: анимация заново на каждое удаление) *@
-        <span @key="State.TrashPulse" class="trash-ico @(State.TrashPulse > 0 ? "shake" : "")"><Icon Name="trash" Size="15" /></span>
-    </button>
+    <div class="feed-foot">
+        @* «Выполненное» (V9): архив выполненных дел из ленты — тихая строка рядом с корзиной *@
+        <button type="button" class="done-link" @onclick="Windows.OpenDone">✓ выполненное</button>
+
+        @* Корзина — ещё и место, куда можно бросить запись (дело, мысль, цель): она удаляется, как из окна *@
+        <button class="trash" title="Корзина" @onclick="() => _trashOpen = !_trashOpen"
+                data-drop="@DragDropService.TrashZone" data-accept="@DragDropService.TrashAccepts" data-drop-index="0" data-drop-hover>
+            @* Что-то ушло в корзину — значок коротко «вздрагивает» (@key: анимация заново на каждое удаление) *@
+            <span @key="State.TrashPulse" class="trash-ico @(State.TrashPulse > 0 ? "shake" : "")"><Icon Name="trash" Size="15" /></span>
+        </button>
+    </div>
 
     @if (_trashOpen)
     {

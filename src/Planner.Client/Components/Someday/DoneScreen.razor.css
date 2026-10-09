@@ -1,0 +1,142 @@
+/* Экран «Выполненное» — поверх недели, как «Копилки» */
+.done-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: var(--overlay);
+}
+
+.done-screen {
+    position: fixed;
+    inset: 16px 16px auto; /* по высоте содержимого, длинный список — прокрутка */
+    z-index: 36;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(760px, calc(100vw - 32px));
+    margin: 0 auto;
+    overflow-y: auto;
+    padding: 20px 22px 24px;
+    border-radius: var(--panel-radius);
+    background: var(--t-panel);
+    box-shadow: var(--shadow-window);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    outline: none;
+}
+
+.done-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.close {
+    color: var(--soft);
+}
+
+.empty {
+    color: var(--soft);
+}
+
+.done-group h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 6px 0 4px;
+    padding: 0 8px; /* счёт по годам — над колонкой дат */
+    font-size: 15px;
+}
+
+.years {
+    color: var(--faint);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: pre;
+}
+
+.year {
+    margin: 8px 0 2px 4px;
+    color: var(--faint);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.done-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 8px;
+}
+
+.done-row:hover {
+    background: var(--b-soft);
+}
+
+.ck-hit {
+    flex: none;
+    padding: 1px 0 0;
+}
+
+.ck {
+    display: inline-flex;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    background: var(--b);
+}
+
+.tx {
+    flex: 1;
+    min-width: 0;
+}
+
+.title {
+    padding: 0;
+    color: var(--text);
+    font-size: 13.5px;
+    text-align: left;
+}
+
+.title:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.meta {
+    display: block;
+    padding: 0;
+    color: var(--faint);
+    font-size: 12px;
+    text-align: left;
+}
+
+.done-steps {
+    margin: 2px 0 0;
+    padding-left: 16px;
+    color: var(--soft);
+    font-size: 12px;
+}
+
+.done-steps .done {
+    color: var(--faint);
+    text-decoration: line-through;
+}
+
+.date {
+    flex: none;
+    color: var(--faint);
+    font-size: 12px;
+}

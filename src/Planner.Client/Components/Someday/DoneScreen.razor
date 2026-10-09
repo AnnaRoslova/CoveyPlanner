@@ -1,0 +1,148 @@
+@* Экран «Выполненное» (docs/specs/tasks-steps-done.md, V1–V9): выполненные дела, которые лежали в ленте, — по их категориям
+   (только вид, никаких связей); в заголовке группы — счёт по годам, внутри — свежие сверху, при нескольких годах — подзаголовки.
+   Строка: снятая галочка — вернуть (D6: в ленту на своё место, D7: открытое в своём дне), название — окно дела,
+   «14 шагов · 5 недель · 12 занятий» — раскрыть шаги, дата отметки. Вход — «✓ выполненное» внизу ленты; Esc или клик мимо — закрыть. *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+<div class="done-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="done-screen" role="dialog" aria-label="Выполненное" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="done-h">
+        <h2>✓ Выполненное</h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </header>
+
+    @if (_groups is null)
+    {
+        <p class="empty">Загрузка…</p>
+    }
+    else if (_groups.Count == 0)
+    {
+        <p class="empty">Здесь будут дела из ленты, которые вы сделали.</p>
+    }
+    else
+    {
+        @foreach (var group in _groups)
+        {
+            <section class="done-group">
+                <h3>
+                    <span class="name">@(group.Emoji is null ? "" : group.Emoji + " ")@group.Name</span>
+                    <span class="years">@string.Join("   ", group.Years.Select(y => $"{y.Year} · {y.Count}"))</span>
+                </h3>
+                @foreach (var year in group.Tasks.GroupBy(t => t.Date.Year))
+                {
+                    @if (group.Years.Count > 1)
+                    {
+                        <div class="year">@year.Key</div>
+                    }
+                    @foreach (var entry in year)
+                    {
+                        var id = entry.Task.Id;
+                        <div class="done-row">
+                            <button type="button" class="ck-hit" role="checkbox" aria-checked="true" title="Снять отметку"
+                                    @onclick="() => UncompleteAsync(id)"><span class="ck"></span></button>
+                            <div class="tx">
+                                <button type="button" class="title" @onclick="() => OpenAsync(id)">@entry.Task.Title</button>
+                                @if (Meta(entry) is { } meta)
+                                {
+                                    <button type="button" class="meta" aria-expanded="@(_open.Contains(id) ? "true" : "false")"
+                                            @onclick="() => Toggle(id)">@meta @(entry.Steps.Count > 0 ? _open.Contains(id) ? "▾" : "▸" : "")</button>
+                                }
+                                @if (_open.Contains(id))
+                                {
+                                    <ul class="done-steps">
+                                        @foreach (var step in entry.Steps)
+                                        {
+                                            <li class="@(step.IsDone ? "done" : "")">@step.Title</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                            <span class="date">@RuDates.DayMonthShort(entry.Date)</span>
+                        </div>
+                    }
+                }
+            </section>
+        }
+    }
+</section>
+
+@code {
+    private ElementReference _root;
+    private List<DoneGroupDto>? _groups;
+    private readonly HashSet<int> _open = [];
+
+    protected override async Task OnInitializedAsync() => _groups = await State.GetDoneAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync(); // Esc закрывает экран сразу
+        }
+    }
+
+    /// <summary>«14 шагов · 5 недель · 12 занятий» (V6); у дела без шагов — ничего.</summary>
+    private static string? Meta(DoneTaskDto entry)
+    {
+        if (entry.Project is not { } p)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+        if (p.StepsDone > 0)
+        {
+            parts.Add($"{p.StepsDone} {Plural(p.StepsDone, "шаг", "шага", "шагов")}");
+        }
+
+        if (entry.Weeks is { } weeks)
+        {
+            parts.Add($"{weeks} {Plural(weeks, "неделя", "недели", "недель")}");
+        }
+
+        if (p.SessionsDone > 0)
+        {
+            parts.Add(PlannerState.SessionsWord(p.SessionsDone));
+        }
+
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
+
+    private static string Plural(int n, string one, string few, string many) =>
+        n % 10 == 1 && n % 100 != 11 ? one : n % 10 is >= 2 and <= 4 && n % 100 is < 12 or > 14 ? few : many;
+
+    private void Toggle(int id)
+    {
+        if (!_open.Remove(id))
+        {
+            _open.Add(id);
+        }
+    }
+
+    private async Task UncompleteAsync(int id)
+    {
+        if (await State.UncompleteDoneAsync(id))
+        {
+            _groups = await State.GetDoneAsync();
+        }
+    }
+
+    /// <summary>Название — окно дела (экран при этом закрывается, как при открытии любого окна).</summary>
+    private async Task OpenAsync(int id)
+    {
+        if (await State.EnsureTaskAsync(id))
+        {
+            Windows.OpenTask(id);
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

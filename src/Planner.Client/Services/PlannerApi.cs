@@ -124,6 +124,11 @@ public class PlannerApi(HttpClient http)
     public Task<TaskDto> MoveGoalToSomedayAsync(int id, GoalToSomedayRequest request) =>
         SendAsync<TaskDto>(HttpMethod.Post, $"api/goals/{id}/to-someday", request);
 
+    // «Выполненное»
+
+    /// <summary>Выполненные дела из ленты по категориям, свежие сверху (только чтение).</summary>
+    public Task<List<DoneGroupDto>> GetDoneAsync() => GetAsync<List<DoneGroupDto>>("api/done");
+
     // Шаги дела
 
     public Task<StepDto> AddStepAsync(int taskId, string title) =>
