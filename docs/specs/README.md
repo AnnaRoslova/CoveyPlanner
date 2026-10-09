@@ -43,5 +43,5 @@ CLAUDE.md остаётся общим ТЗ и правилами проекта;
 | [tasks-steps-done-mockup.html](tasks-steps-done-mockup.html) | Макет к ней: день, лента, карточка, «Выполненное» | к утверждённой спеке |
 | [tasks-steps-done.plan.md](tasks-steps-done.plan.md) | План реализации по этапам | утверждён, в работе |
 | [tasks-steps-done.metrics.md](tasks-steps-done.metrics.md) | Журнал этапов: коммит, тесты, решения, правки, находки проверок | ведётся |
-| [next-batch.md](next-batch.md) | Следующая пачка: N1 подсветка неразложенного, N2 дело на дело = шаг, N3 анализ вложенности, N4 на следующую неделю без дня, N5 отчёт | черновик |
-| [next-batch.plan.md](next-batch.plan.md) · [next-batch.metrics.md](next-batch.metrics.md) | План и журнал следующей пачки | черновик |
+| [next-batch.md](next-batch.md) | Следующая пачка: N1 подсветка неразложенного, N2 дело на дело = шаг, N3 анализ вложенности, N4 на следующую неделю без дня, N5 отчёт | утверждена |
+| [next-batch.plan.md](next-batch.plan.md) · [next-batch.metrics.md](next-batch.metrics.md) | План и журнал следующей пачки | утверждена |
