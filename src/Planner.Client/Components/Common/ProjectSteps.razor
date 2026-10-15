@@ -19,6 +19,7 @@
                  OnTrash="() => id > 0 ? State.TrashTaskAsync(id) : Task.CompletedTask"
                  OnClick="() => id > 0 ? OpenStep(id) : Task.CompletedTask"
                  DragKind="@(id > 0 ? DragDropService.StepItem : null)"
+                 DragParent="ParentId"
                  DragId="id" />
     }
 

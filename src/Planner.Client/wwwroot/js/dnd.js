@@ -236,6 +236,8 @@ function updateTarget() {
     while (zone && (!accepts(zone) || atEdge(zone))) zone = zone.parentElement?.closest('[data-drop]');
 
     setHoverZone(zone?.hasAttribute('data-drop-hover') ? zone : null);
+    // Строка проекта под его же шагом — подсказка «снять с дня», а не «сделать шагом» (N2.5)
+    drag.hoverZone?.classList.toggle('own-step', !!drag.el.dataset.parent && drag.el.dataset.parent === drag.hoverZone.dataset.key);
     if (!zone) {
         drag.target = null;
         drag.line.hidden = true;
@@ -326,7 +328,10 @@ function setHoverZone(zone) {
 }
 
 function accepts(zone) {
-    return (zone.dataset.accept ?? '').split(' ').includes(drag.kind);
+    if (!(zone.dataset.accept ?? '').split(' ').includes(drag.kind)) return false;
+    // Строка дела («сделать шагом», N2): не сама себя и не для дела, которое шагом стать не может (проект, data-no-step)
+    if (zone.dataset.drop === 'task' && (zone === drag.el || drag.el.hasAttribute('data-no-step'))) return false;
+    return true;
 }
 
 // Зона, в списке которой стоит запись. Сама запись тоже может быть зоной (карточка роли —

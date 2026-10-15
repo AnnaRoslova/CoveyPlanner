@@ -32,6 +32,8 @@
         var expanded = project is not null && Folds.IsOpen(task.Id); // раскрытие — свойство строки (R1)
         var isStep = task.ParentId is not null;
         var stepOfOwnGoal = goal?.ProjectId is { } goalProject && task.ParentId == goalProject;
+        // N2: середина строки дела — сделать брошенное его шагом (не у шагов, занятий целей и выполненных)
+        var takesSteps = task.Id > 0 && !isStep && task.GoalId is null && task.State != TaskStateDto.Done;
         <ItemRow @key="task.Id" Title="@task.Title" Clamp="true"
                  Color="@roles.FirstOrDefault()?.Color"
                  RoleDots="@(roles.Count > 1 ? roles : null)"
@@ -49,10 +51,13 @@
                  StepsProgress="@PlannerState.ProgressOf(project)"
                  ParentCaption="@(stepOfOwnGoal ? null : State.ParentTitleOf(task))"
                  OnParentClick="() => OpenParentAsync(task.ParentId)"
-                 DropZone="@(project is null ? null : DragDropService.ProjectZone)"
-                 DropKey="@((host ?? task.Id).ToString())"
-                 DropAccept="@DragDropService.StepsAccepts"
-                 DropHint="снять с дня — в список шагов"
+                 DropZone="@(takesSteps ? DragDropService.TaskZone : project is null ? null : DragDropService.ProjectZone)"
+                 DropKey="@((takesSteps ? task.Id : host ?? task.Id).ToString())"
+                 DropAccept="@(takesSteps ? DragDropService.TaskAccepts : DragDropService.StepsAccepts)"
+                 DropHint="@(takesSteps ? $"сделать шагом «{task.Title}»" : "снять с дня — в список шагов")"
+                 DropHintOwn="снять с дня — в список шагов"
+                 DragParent="task.ParentId"
+                 NoStep="@(task.IsProject || (project is not null && host == task.Id))"
                  OnToggle="() => State.SetDoneAsync(task.Id, task.State != TaskStateDto.Done)"
                  OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
                  OnTrash="() => task.Id > 0 ? State.TrashTaskAsync(task.Id) : Task.CompletedTask"

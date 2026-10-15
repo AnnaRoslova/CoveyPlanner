@@ -5,9 +5,9 @@
 
 <div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(Unplaced is not null ? "unplaced" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
      style="@(Color is null ? null : $"--c: {Color}")" title="@Unplaced"
-     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate"
+     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate" data-no-step="@NoStep" data-parent="@DragParent"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
-     data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint"
+     data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint" data-drop-hint-own="@DropHintOwn"
      @onclick="OnClick">
     @if (Marker == ItemMarker.Check && OnToggle.HasDelegate)
     {
@@ -284,6 +284,18 @@
     /// <summary>Сводка проекта справа: «☑ 2/5», «12 занятий».</summary>
     [Parameter]
     public string? ProjectLabel { get; set; }
+
+    /// <summary>Проект шага (data-parent): над строкой своего проекта подсказка другая — <see cref="DropHintOwn"/> (N2.5, S20).</summary>
+    [Parameter]
+    public int? DragParent { get; set; }
+
+    /// <summary>Подсказка, когда на строку тащат её же шаг («снять с дня — в список шагов»).</summary>
+    [Parameter]
+    public string? DropHintOwn { get; set; }
+
+    /// <summary>Запись не может стать шагом другого дела (проект, шаг с шагами) — середина строк её не принимает (N2.4).</summary>
+    [Parameter]
+    public bool NoStep { get; set; }
 
     /// <summary>Цель недособрана (N1): тихая подсветка строки и подсказка «не разложено: 1 из 2»; null — подсветки нет.</summary>
     [Parameter]

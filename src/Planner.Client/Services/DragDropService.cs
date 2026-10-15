@@ -32,6 +32,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string ProjectZone = "project"; // строка проекта: шаг — снять с дня, в конец своего списка
     public const string StepsZone = "steps";     // раскрытый список шагов проекта: порядок, снять шаг с дня
     public const string ProjectsZone = "projects"; // группа «🛠 Проекты»: проект — в эту категорию (из дня — снять с дня)
+    public const string TaskZone = "task";       // середина строки дела: сделать брошенное его шагом (N2); свой шаг — снять с дня
 
     /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
     public const string UnsortedKey = "unsorted";
@@ -59,6 +60,9 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
 
     /// <summary>Группа «🛠 Проекты»: проекты из панели и из дней (не проекты — не принимаются при сбросе).</summary>
     public const string ProjectsAccepts = SomedayItem + " " + DayItem;
+
+    /// <summary>Середина строки дела (N2): дела ленты, дни, шаги. Запреты N2.4 — в js/dnd.js (data-no-step) и при сбросе.</summary>
+    public const string TaskAccepts = SomedayItem + " " + DayItem + " " + StepItem;
 
     /// <summary>Строка проекта и его раскрытый список: только шаги (своего проекта — проверяется при сбросе).</summary>
     public const string StepsAccepts = StepItem;
@@ -197,6 +201,11 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
 
             case { Kind: StepItem, Zone: StepsZone } when int.TryParse(drop.Key, out var parentId):
                 await state.MoveStepToListAsync(drop.Id, parentId, drop.Index);
+                break;
+
+            // Дело → середина строки другого дела: стать его шагом (N2); свой шаг — снять с дня (S20)
+            case { Kind: SomedayItem or DayItem or StepItem, Zone: TaskZone } when int.TryParse(drop.Key, out var targetId):
+                await state.DropOnTaskAsync(drop.Id, targetId);
                 break;
 
             // Проект → группа «🛠 Проекты»: в эту категорию, из дня — без дня (N6.10)

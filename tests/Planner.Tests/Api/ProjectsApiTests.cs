@@ -171,6 +171,18 @@ public class ProjectsApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task N2_4_SessionIsNeverParent()
+    {
+        var goal = await CreateGoalAsync("Работа", "Отчёт", Monday);
+        var session = await ScheduleAsync(goal, Thursday);
+        var call = await CreateInDayAsync("Звонок");
+
+        var response = await Client.PutAsJsonAsync($"/api/tasks/{call.Id}/parent", new SetParentRequest(session.Id));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task S10_ChangeProject_EndOfNewList_DayKept()
     {
         var repair = await CreateInDayAsync("Ремонт");

@@ -237,6 +237,11 @@
     box-shadow: inset 0 0 0 2px var(--a-deep);
 }
 
+/* На строку тащат её же шаг (N2.5): другая подсказка (класс own-step ставит js/dnd.js) */
+.item.drop-hover.own-step::after {
+    content: attr(data-drop-hint-own);
+}
+
 .item.drop-hover::after {
     content: attr(data-drop-hint);
     position: absolute;
