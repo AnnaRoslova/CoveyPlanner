@@ -43,15 +43,27 @@
     <div class="field">
         <div class="label">Дата</div>
         <div class="date-row">
-            <input type="date" @bind="_date" aria-label="Дата" />
+            <input type="date" @bind="_date" @bind:after="ClearWeekChoice" aria-label="Дата" />
             <div class="chips">
-                <button type="button" class="chip @(_date == RuDates.Today ? "on" : "")" @onclick="() => _date = RuDates.Today">сегодня</button>
-                <button type="button" class="chip @(_date == RuDates.Today.AddDays(1) ? "on" : "")" @onclick="() => _date = RuDates.Today.AddDays(1)">завтра</button>
-                <button type="button" class="chip @(_date == RuDates.Today.AddDays(7) ? "on" : "")" @onclick="() => _date = RuDates.Today.AddDays(7)">через неделю</button>
-                <button type="button" class="chip @(_date is null ? "on" : "")" @onclick="() => _date = null">без даты</button>
+                <button type="button" class="chip @(_date == RuDates.Today ? "on" : "")" @onclick="() => SetDate(RuDates.Today)">сегодня</button>
+                <button type="button" class="chip @(_date == RuDates.Today.AddDays(1) ? "on" : "")" @onclick="() => SetDate(RuDates.Today.AddDays(1))">завтра</button>
+                <button type="button" class="chip @(_date == RuDates.Today.AddDays(7) ? "on" : "")" @onclick="() => SetDate(RuDates.Today.AddDays(7))">через неделю</button>
+                @* N4.1: на неделю после показанной, без дня; у занятия цели нельзя — его неделя — неделя цели (N4.5) *@
+                <button type="button" class="chip next-week @(_nextWeek ? "on" : "")" disabled="@(Goal is not null)"
+                        title="@(Goal is not null ? "у занятия цели своя неделя — неделя цели" : "дело будет ждать на следующей неделе, день выберете потом")"
+                        @onclick="() => { _nextWeek = true; _keepWeek = false; _date = null; }">→ след. неделя, без дня</button>
+                <button type="button" class="chip @(_date is null && !_nextWeek && !_keepWeek ? "on" : "")" @onclick="() => SetDate(null)">без даты</button>
             </div>
         </div>
-        @if (_date is null && State.ParentTitleOf(EditedTask) is { } projectTitle)
+        @if (_nextWeek)
+        {
+            <div class="date-hint">на неделю @RuDates.WeekRange(State.WeekStart.AddDays(7)) — без дня, слева под ролью</div>
+        }
+        else if (_keepWeek && EditedTask.PlannedWeek is { } plannedWeek)
+        {
+            <div class="date-hint">на неделе @RuDates.WeekRange(plannedWeek), без дня</div>
+        }
+        else if (_date is null && State.ParentTitleOf(EditedTask) is { } projectTitle)
         {
             <div class="date-hint">останется в списке шагов «@projectTitle»</div>
         }
@@ -151,6 +163,22 @@
     private int? _duration;
     private DateOnly? _date;
 
+    // «→ след. неделя, без дня» выбрано (N4.1) / дело и так «на неделе» без дня и его не меняли
+    private bool _nextWeek;
+    private bool _keepWeek;
+
+    private void SetDate(DateOnly? date)
+    {
+        _date = date;
+        ClearWeekChoice();
+    }
+
+    private void ClearWeekChoice()
+    {
+        _nextWeek = false;
+        _keepWeek = false;
+    }
+
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;
 
@@ -181,6 +209,7 @@
         _quadrant = EditedTask.Quadrant;
         _duration = EditedTask.DurationMinutes;
         _date = EditedTask.PlannedDate;
+        _keepWeek = EditedTask is { PlannedWeek: not null, PlannedDate: null };
         _projectId = EditedTask.ParentId ?? 0;
     }
 
@@ -231,7 +260,11 @@
         var task = EditedTask;
         await OnClose.InvokeAsync();
         await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
-        if (_date != task.PlannedDate)
+        if (_nextWeek)
+        {
+            await State.MoveToNextWeekAsync(task.Id);
+        }
+        else if (_date != task.PlannedDate || (task.PlannedWeek is not null && !_keepWeek))
         {
             await State.MoveTaskToDateAsync(task.Id, _date);
         }

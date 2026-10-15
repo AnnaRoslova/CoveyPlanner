@@ -7,6 +7,7 @@ namespace Planner.Shared;
 [JsonDerivedType(typeof(SomedayTargetDto), "someday")]
 [JsonDerivedType(typeof(DayTargetDto), "day")]
 [JsonDerivedType(typeof(StepListTargetDto), "steps")]
+[JsonDerivedType(typeof(WeekTargetDto), "week")]
 public abstract record TaskTargetDto;
 
 /// <summary>В ленту: категория (null — «неразобранное») и позиция (0 — наверх).</summary>
@@ -17,6 +18,9 @@ public sealed record SomedayTargetDto(int? CategoryId, int Index) : TaskTargetDt
 /// Дела со временем всегда стоят первыми, по времени.
 /// </summary>
 public sealed record DayTargetDto(DateOnly Date, int Index) : TaskTargetDto;
+
+/// <summary>На неделю без дня (N4): WeekStart — любой день недели; RoleId — бросили на «на неделе» роли: дело получает и эту роль.</summary>
+public sealed record WeekTargetDto(DateOnly WeekStart, int? RoleId = null) : TaskTargetDto;
 
 /// <summary>В список шагов дела ParentId, без дня (на строку родителя или в его раскрытый список): позиция в списке.</summary>
 public sealed record StepListTargetDto(int ParentId, int Index) : TaskTargetDto;

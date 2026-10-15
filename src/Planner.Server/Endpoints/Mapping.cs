@@ -28,7 +28,8 @@ public static class Mapping
         parentTitle,
         t.IsFromSomeday,
         t.StepOrder,
-        t.IsProject);
+        t.IsProject,
+        t.PlannedWeek);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 
@@ -108,6 +109,7 @@ public static class Mapping
         SomedayTargetDto s => new SomedayTarget(s.CategoryId, s.Index),
         DayTargetDto d => new DayTarget(d.Date, d.Index),
         StepListTargetDto s => new StepListTarget(s.ParentId, s.Index),
+        WeekTargetDto w => new WeekTarget(w.WeekStart, w.RoleId),
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, "Неизвестное место назначения."),
     };
 

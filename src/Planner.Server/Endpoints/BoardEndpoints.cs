@@ -69,7 +69,10 @@ public static class BoardEndpoints
         // (удаление цели или перенос её в ленту сразу показывают это дело в ленте)
         var unscheduled = weekGoals.SelectMany(g => g.ActiveSessions).Where(t => t.State == TaskState.Planned && t.PlannedDate is null);
 
-        var shown = weekTasks.Concat(unscheduled).ToList();
+        // И дела «на неделе, без дня» (N4): в днях их нет, они — в левой панели под своей ролью
+        var withoutDay = await tasks.GetWithoutDayOnWeekAsync(monday, ct);
+
+        var shown = weekTasks.Concat(unscheduled).Concat(withoutDay).DistinctBy(t => t.Id).ToList();
         return new WeekDto(
             monday,
             weekGoals.Select(g => g.ToDto()).ToList(),

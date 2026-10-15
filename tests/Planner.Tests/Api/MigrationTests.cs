@@ -477,6 +477,25 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal(3, (await db.Tasks.SingleAsync(t => t.Id == 2)).CategoryId); // категория остаётся
     }
 
+    [Fact]
+    public async Task WeekWithoutDay_NewEmptyColumn_DataKept()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("Projects");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Tasks (Id, Title, State, PlannedDate, SortOrder, CreatedAt, IsFromSomeday, IsProject) VALUES
+                (1, 'Мысль', 'Someday', NULL, 0, '2026-10-01', 1, 0),
+                (2, 'Звонок', 'Planned', '2026-10-14', 0, '2026-10-01', 0, 0);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
+        Assert.All(tasks, t => Assert.Null(t.PlannedWeek));
+        Assert.Equal(new DateOnly(2026, 10, 14), tasks[1].PlannedDate);
+    }
+
     private static async Task<long> CountAsync(PlannerDbContext db, string table)
     {
         var connection = db.Database.GetDbConnection();

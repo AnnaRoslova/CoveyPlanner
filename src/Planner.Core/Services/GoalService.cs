@@ -418,9 +418,9 @@ public class GoalService(
 
         var goal = WeeklyGoal.Create(roleId, weekStart, task.Title);
         goal.CopyTemplateFrom(task);
-        if (task.State == TaskState.Someday)
+        if (task.State == TaskState.Someday || (task.PlannedDate is { } day && Week.StartOf(day) != Week.StartOf(weekStart)))
         {
-            task.PlanForWeek();
+            task.PlanForWeek(); // мысль из ленты или дело из дня другой недели — занятие без дня
         }
 
         goal.AddSession(task);

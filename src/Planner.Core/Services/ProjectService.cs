@@ -76,7 +76,7 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
         if (parentId is not { } id)
         {
             task.SetParent(null);
-            if (task is { State: TaskState.Planned, PlannedDate: null, IsSession: false })
+            if (task is { State: TaskState.Planned, PlannedDate: null, PlannedWeek: null, IsSession: false })
             {
                 await placer.ReturnToSomedayAsync(task, ct);
             }
@@ -229,7 +229,7 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
             await placer.MoveToEndOfDayAsync(task, ct);
         }
         else if (task.State == TaskState.Someday
-                 || task is { State: TaskState.Planned, PlannedDate: null, IsSession: false, IsStep: false })
+                 || task is { State: TaskState.Planned, PlannedDate: null, PlannedWeek: null, IsSession: false, IsStep: false })
         {
             await placer.ReturnToSomedayAsync(task, ct);
         }

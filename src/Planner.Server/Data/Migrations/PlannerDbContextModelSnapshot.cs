@@ -195,6 +195,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<DateOnly?>("PlannedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateOnly?>("PlannedWeek")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PreviousState")
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
@@ -233,6 +236,8 @@ namespace Planner.Server.Data.Migrations
                     b.HasIndex("ParentId");
 
                     b.HasIndex("State", "PlannedDate");
+
+                    b.HasIndex("State", "PlannedWeek");
 
                     b.HasIndex("State", "CategoryId", "SortOrder");
 

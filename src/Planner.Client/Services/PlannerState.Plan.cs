@@ -107,7 +107,8 @@ public partial class PlannerState
     /// </summary>
     public async Task MoveTaskToDateAsync(int taskId, DateOnly? date)
     {
-        if (taskId < 0 || FindTask(taskId) is not { } task || task.PlannedDate == date)
+        // То же место — ничего; но «без даты» у дела «на неделе» (N4) — это снять с недели
+        if (taskId < 0 || FindTask(taskId) is not { } task || (task.PlannedDate == date && (date is not null || task.PlannedWeek is null)))
         {
             return;
         }

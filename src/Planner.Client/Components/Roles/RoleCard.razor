@@ -6,7 +6,8 @@
    крестик — удалить, «+ цель» — новая цель в конец.
    «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки.
    Под целями — тихая строка «ещё дела: N ▸»: остальные дела недели с этой ролью; раскрывается в список
-   «Чт · название», клик по делу — его окно. Раскрытие запоминается (RoleTasksState). *@
+   «Чт · название», клик по делу — его окно. Раскрытие запоминается (RoleTasksState).
+   Над ним — «на неделе: N» (N4): дела недели без дня с этой ролью; во время перетаскивания — место, куда их бросить. *@
 @inject PlannerState State
 @inject WindowHost Windows
 @inject RoleTasksState RoleTasks
@@ -64,6 +65,8 @@
         <button class="add" @onclick="() => _adding = true">+ цель</button>
     }
 
+    <WeekNoDayBlock RoleId="Role.Id" />
+
     @if (OtherTasks.Count > 0)
     {
         var open = RoleTasks.IsOpen(Role.Id);
@@ -104,11 +107,11 @@
     [Parameter]
     public bool Folded { get; set; }
 
-    /// <summary>«☑ 1/3» — шаги проекта цели (R7), перед процентом; шагов нет — null. Меняется сразу: шаги лежат в состоянии экрана.</summary>
     /// <summary>N1: «не разложено: 1 из 2» у недособранной цели текущей или будущей недели; иначе подсветки нет.</summary>
     private static string? UnplacedHint(WeeklyGoalDto goal) =>
         goal.Id > 0 && PlannerState.UnplacedOf(goal, RuDates.Today) is > 0 and var n ? $"не разложено: {n} из {goal.TimesPerWeek}" : null;
 
+    /// <summary>«☑ 1/3» — шаги проекта цели (R7), перед процентом; шагов нет — null. Меняется сразу: шаги лежат в состоянии экрана.</summary>
     private string? StepsLabel(WeeklyGoalDto goal) =>
         State.StepsOfGoal(goal) is { Count: > 0 } steps ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
 

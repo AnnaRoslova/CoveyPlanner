@@ -30,6 +30,7 @@
 
     <div class="buttons">
         <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
+        <button type="button" class="btn quiet next-week" title="мысль будет ждать на следующей неделе, день выберете потом" @onclick="NextWeekAsync">→ на след. неделю</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
         <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
@@ -109,6 +110,19 @@
         {
             await State.SetParentAsync(task.Id, _projectId); // мысль становится шагом — уходит из ленты (S8)
         }
+    }
+
+    /// <summary>«→ на следующую неделю (без дня)» (N4.1): сохранить набранное и отправить мысль на неделю после показанной.</summary>
+    private async Task NextWeekAsync()
+    {
+        await OnClose.InvokeAsync();
+        var task = EditedTask;
+        if (!string.IsNullOrWhiteSpace(_title))
+        {
+            await State.UpdateTaskAsync(task.Id, _title, _notes, task.RoleIds, task.Quadrant, null, task.DurationMinutes);
+        }
+
+        await State.MoveToNextWeekAsync(task.Id);
     }
 
     private async Task TrashAsync()

@@ -39,6 +39,7 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
 
         builder.HasIndex(t => new { t.State, t.CategoryId, t.SortOrder });
         builder.HasIndex(t => new { t.State, t.PlannedDate });
+        builder.HasIndex(t => new { t.State, t.PlannedWeek }); // «на неделе, без дня» (N4)
 
         // Шаги дела: удалили дело насовсем — шаги вместе с ним
         builder.HasOne<TaskItem>().WithMany().HasForeignKey(t => t.ParentId).OnDelete(DeleteBehavior.Cascade);

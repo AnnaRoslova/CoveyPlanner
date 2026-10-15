@@ -1,0 +1,50 @@
+@* «На неделе: N ▸» (docs/specs/next-batch.md, N4.2) — дела показанной недели без дня: под ролью (с этой ролью) или внизу левой панели
+   (RoleId = null — без роли). Раскрыт, если есть дела; клик по делу — окно; дело тащат в день, в ленту, на цель, на роль.
+   Блок — место, куда бросить дело «на эту неделю без дня» (с этой ролью); пустой виден только во время перетаскивания дела —
+   в роли пилюлей «на неделе» в заголовке (вёрстку не сдвигает: иначе сдвинулись бы цели и роли под указателем). *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+@{ var tasks = State.WeekTasksWithoutDay(RoleId); }
+<div class="week-nd @(tasks.Count == 0 ? "empty" : "")"
+     data-drop="@DragDropService.WeekZone" data-key="@(RoleId?.ToString() ?? DragDropService.NoRoleKey)"
+     data-accept="@DragDropService.WeekAccepts" data-drop-index="2147483647" data-drop-hover>
+    <button type="button" class="wnd-h" aria-expanded="@(_closed ? "false" : "true")" @onclick="() => _closed = !_closed">
+        @(RoleId is null ? "на неделе без роли" : "на неделе")@(tasks.Count > 0 ? $": {tasks.Count}" : "")
+        @if (tasks.Count > 0)
+        {
+            <span class="chev @(_closed ? "" : "open")"><Icon Name="chevron-right" Size="10" /></span>
+        }
+    </button>
+    @if (!_closed)
+    {
+        @foreach (var task in tasks)
+        {
+            var id = task.Id;
+            var roles = State.RolesOf(task);
+            <ItemRow @key="id" Title="@task.Title" Compact="true" Clamp="true"
+                     Color="@roles.FirstOrDefault()?.Color"
+                     IsDone="task.State == TaskStateDto.Done"
+                     IsPending="id < 0"
+                     ParentCaption="@State.ParentTitleOf(task)"
+                     OnToggle="() => State.SetDoneAsync(id, task.State != TaskStateDto.Done)"
+                     OnClick="() => id > 0 ? Open(id) : Task.CompletedTask"
+                     DragKind="@(id < 0 ? null : task.ParentId is null ? DragDropService.DayItem : DragDropService.StepItem)"
+                     DragId="id" DragParent="task.ParentId" NoStep="task.IsProject" />
+        }
+    }
+</div>
+
+@code {
+    private bool _closed;
+
+    /// <summary>Роль блока; null — «без роли» внизу левой панели.</summary>
+    [Parameter]
+    public int? RoleId { get; set; }
+
+    private Task Open(int id)
+    {
+        Windows.OpenTask(id);
+        return Task.CompletedTask;
+    }
+}

@@ -47,7 +47,8 @@ public sealed record TaskDto(
     string? ParentTitle = null,
     bool IsFromSomeday = false,
     int? StepOrder = null,
-    bool IsProject = false);
+    bool IsProject = false,
+    DateOnly? PlannedWeek = null);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 

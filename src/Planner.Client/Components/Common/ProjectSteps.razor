@@ -62,7 +62,7 @@
 
     private string? DayLabel(TaskDto step) => step.PlannedDate is { } date
         ? LongDates || RuDates.WeekStartOf(date) != State.WeekStart ? RuDates.ShortDate(date) : RuDates.ShortDay(date)
-        : null;
+        : step.PlannedWeek is { } week ? $"нед. {RuDates.DayMonthShort(week)}" : null; // «на неделе, без дня» (N4.5)
 
     private Task OpenStep(int stepId)
     {

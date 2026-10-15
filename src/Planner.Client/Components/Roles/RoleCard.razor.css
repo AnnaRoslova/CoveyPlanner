@@ -163,3 +163,8 @@
     text-decoration: line-through;
 }
 
+
+/* Относительно карточки роли стоит пилюля «на неделе» во время перетаскивания дела (WeekNoDayBlock) */
+.role {
+    position: relative;
+}

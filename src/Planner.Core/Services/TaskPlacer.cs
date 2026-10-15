@@ -38,6 +38,16 @@ public class TaskPlacer(ITaskRepository tasks, ICategoryRepository categories)
 
                 break;
 
+            case WeekTarget week:
+                task.PlanForWeekWithoutDay(week.WeekStart);
+                if (week.RoleId is { } roleId && !task.RoleIds.Contains(roleId))
+                {
+                    task.SetRoles(task.RoleIds.Append(roleId));
+                }
+
+                SortOrdering.Place(await tasks.GetWithoutDayOnWeekAsync(task.PlannedWeek!.Value, ct), task, int.MaxValue);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(target), target, "Неизвестное место назначения.");
         }

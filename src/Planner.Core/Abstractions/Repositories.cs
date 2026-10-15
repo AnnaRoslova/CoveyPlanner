@@ -19,6 +19,9 @@ public interface ITaskRepository
     /// <summary>Открытые проекты в плане (с днём или без, любой недели) — для «🛠 Проекты» (N6.9); проекты ленты приходят с лентой.</summary>
     Task<List<TaskItem>> GetPlannedProjectsAsync(CancellationToken ct = default);
 
+    /// <summary>Дела «на неделе, без дня» (N4) недели <paramref name="weekStart"/> — в плане и выполненные, по порядку.</summary>
+    Task<List<TaskItem>> GetWithoutDayOnWeekAsync(DateOnly weekStart, CancellationToken ct = default);
+
     /// <summary>Дела ленты в категории; categoryId = null — «неразобранное».</summary>
     Task<List<TaskItem>> GetSomedayInCategoryAsync(int? categoryId, CancellationToken ct = default);
 

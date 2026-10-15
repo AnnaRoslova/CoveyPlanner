@@ -89,12 +89,12 @@ public partial class PlannerState
 
         var siblings = StepsOf(parentId).Where(s => s.Id != stepId).ToList();
         var current = StepsOf(parentId).ToList().FindIndex(s => s.Id == stepId);
-        if (step.PlannedDate is null && current == Math.Clamp(index, 0, siblings.Count))
+        if (step.PlannedDate is null && step.PlannedWeek is null && current == Math.Clamp(index, 0, siblings.Count))
         {
             return; // туда же, где лежал
         }
 
-        siblings.Insert(Math.Clamp(index, 0, siblings.Count), step with { PlannedDate = null, StartTime = null });
+        siblings.Insert(Math.Clamp(index, 0, siblings.Count), step with { PlannedDate = null, PlannedWeek = null, StartTime = null });
         for (var i = 0; i < siblings.Count; i++)
         {
             _tasks[siblings[i].Id] = siblings[i] with { StepOrder = i };

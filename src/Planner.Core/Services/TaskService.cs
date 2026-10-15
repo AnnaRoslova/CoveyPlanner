@@ -213,7 +213,7 @@ public class TaskService(
             }
 
             task.UnmakeProject();
-            if (task is { State: TaskState.Planned, PlannedDate: null, IsSession: false })
+            if (task is { State: TaskState.Planned, PlannedDate: null, PlannedWeek: null, IsSession: false })
             {
                 await placer.ReturnToSomedayAsync(task, ct);
             }

@@ -24,6 +24,12 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .OrderBy(t => t.PlannedDate).ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
+    public Task<List<TaskItem>> GetWithoutDayOnWeekAsync(DateOnly weekStart, CancellationToken ct = default) =>
+        db.Tasks.Where(t => t.PlannedWeek == weekStart && t.PlannedDate == null
+                            && (t.State == TaskState.Planned || t.State == TaskState.Done))
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
+            .ToListAsync(ct);
+
     public Task<List<TaskItem>> GetSomedayInCategoryAsync(int? categoryId, CancellationToken ct = default) =>
         db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId == categoryId && t.ParentId == null)
             .OrderBy(t => t.SortOrder)

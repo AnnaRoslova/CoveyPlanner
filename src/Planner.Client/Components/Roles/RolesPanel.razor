@@ -38,5 +38,8 @@
         </div>
 
         <button class="add" @onclick="Windows.OpenNewRole">+ роль</button>
+
+        @* Дела недели без дня и без роли (N4.2) *@
+        <WeekNoDayBlock RoleId="null" />
     </div>
 </aside>

@@ -80,6 +80,12 @@ public class TaskItem : ISortable
     /// </summary>
     public int? ClipSeriesId { get; private set; }
 
+    /// <summary>
+    /// «На неделе, без дня» (docs/specs/next-batch.md, N4): понедельник недели, на которую дело запланировано без дня.
+    /// Только у дела в плане (Planned/Done) без PlannedDate; занятия цели здесь не бывает — его неделя — неделя цели.
+    /// </summary>
+    public DateOnly? PlannedWeek { get; private set; }
+
     public TaskState State { get; private set; }
 
     /// <summary>Состояние до попадания в корзину — для возврата.</summary>
@@ -171,6 +177,7 @@ public class TaskItem : ISortable
     {
         _goalLinks.Add(link);
         ClipSeriesId = null;
+        PlannedWeek = null; // у занятия неделя — неделя его цели
     }
 
     /// <summary>Выполненное занятие удалённой цели серии <paramref name="seriesId"/> остаётся её скрепкой.</summary>
@@ -256,7 +263,7 @@ public class TaskItem : ISortable
     }
 
     /// <summary>Выполнено прямо в ленте: без дня, не занятие и не шаг. В ленте не видно — только в «Выполненном».</summary>
-    public bool IsDoneInSomeday => State == TaskState.Done && PlannedDate is null && !IsSession && !IsStep;
+    public bool IsDoneInSomeday => State == TaskState.Done && PlannedDate is null && PlannedWeek is null && !IsSession && !IsStep;
 
     internal void RemoveGoalLink(TaskGoal link) => _goalLinks.Remove(link);
 
@@ -311,6 +318,7 @@ public class TaskItem : ISortable
         CategoryId = categoryId;
         CompletedAt = null;
         PlannedDate = null;
+        PlannedWeek = null;
         StartTime = null;
     }
 
@@ -320,6 +328,7 @@ public class TaskItem : ISortable
         EnsureNotTrashed();
         MarkPlannedIfSomeday();
         PlannedDate = date;
+        PlannedWeek = null;
     }
 
     /// <summary>Запланировано на неделю без конкретного дня (дело привязано к цели).</summary>
@@ -328,7 +337,26 @@ public class TaskItem : ISortable
         EnsureNotTrashed();
         MarkPlannedIfSomeday();
         PlannedDate = null;
+        PlannedWeek = null;
         StartTime = null;
+    }
+
+    /// <summary>
+    /// «→ на следующую неделю (без дня)» (N4.1): на неделю <paramref name="weekStart"/> без дня — мысль уходит из ленты,
+    /// дело снимается с дня, время убирается. Занятие цели так нельзя (N4.5): у него неделя — неделя цели.
+    /// </summary>
+    public void PlanForWeekWithoutDay(DateOnly weekStart)
+    {
+        EnsureNotTrashed();
+        if (IsSession)
+        {
+            throw new DomainException("У занятия цели своя неделя — неделя цели.");
+        }
+
+        MarkPlannedIfSomeday();
+        PlannedDate = null;
+        StartTime = null;
+        PlannedWeek = Time.Week.StartOf(weekStart);
     }
 
     /// <summary>Отметить выполненным: в плане — остаётся на своём месте; в ленте — «выполнено в ленте» (категория сохраняется).</summary>
