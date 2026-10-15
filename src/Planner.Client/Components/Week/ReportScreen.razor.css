@@ -1,0 +1,206 @@
+/* Экран «📊 Отчёт» — поверх недели, как «Выполненное» (N5) */
+.report-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: var(--overlay);
+}
+
+.report-screen {
+    position: fixed;
+    inset: 16px 16px auto; /* по высоте содержимого, длинный отчёт — прокрутка */
+    z-index: 36;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(820px, calc(100vw - 32px));
+    margin: 0 auto;
+    overflow-y: auto;
+    padding: 20px 22px 24px;
+    border-radius: var(--panel-radius);
+    background: var(--t-panel);
+    box-shadow: var(--shadow-window);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    outline: none;
+}
+
+.report-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.close {
+    color: var(--soft);
+}
+
+.periods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.period {
+    padding: 4px 12px;
+    border-radius: 20px;
+    color: var(--soft);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.period:hover {
+    background: var(--b-soft);
+    color: var(--b-deep);
+}
+
+.period.on {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 1.5px var(--b);
+    color: var(--b-deep);
+}
+
+.range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.range-label {
+    min-width: 150px;
+    text-align: center;
+    font-family: var(--font-title);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.nav {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 50%;
+    color: var(--soft);
+}
+
+.nav:hover {
+    background: var(--b-soft);
+}
+
+.range input,
+.range select {
+    padding: 3px 6px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.months-n {
+    color: var(--soft);
+}
+
+.csv {
+    margin-left: auto;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.csv:hover {
+    box-shadow: inset 0 0 0 1.5px var(--b);
+}
+
+.empty {
+    color: var(--soft);
+}
+
+h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 8px 0 0;
+    font-size: 15px;
+}
+
+.sub {
+    color: var(--faint);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.series {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.srow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.srow:hover {
+    background: var(--b-soft);
+}
+
+.sname {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.roles {
+    color: var(--faint);
+    font-size: 11.5px;
+}
+
+.fact {
+    color: var(--soft);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.pct {
+    min-width: 54px;
+    padding: 0 6px;
+    border-radius: 20px;
+    background: var(--glass-lo);
+    color: var(--soft);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.pct.full {
+    color: var(--b-deep);
+}
+
+.streak {
+    min-width: 34px;
+    font-size: 12px;
+}
+
+.dgroup {
+    margin: 2px 0;
+    font-size: 13px;
+    line-height: 1.5;
+}

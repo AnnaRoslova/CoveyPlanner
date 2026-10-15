@@ -42,6 +42,7 @@ api.MapGoalEndpoints();
 api.MapHabitEndpoints();
 api.MapStepEndpoints();
 api.MapDoneEndpoints();
+api.MapReportEndpoints();
 api.MapBackupEndpoints();
 
 // Неизвестные /api/... — 404, а не index.html

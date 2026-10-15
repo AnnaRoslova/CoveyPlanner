@@ -231,3 +231,20 @@ public sealed record TaskDoneResultDto(TaskDto Task, TaskDto? Parent, TaskDto? S
 
 /// <summary>«+ шаг» цели: цель (с проектом), новый шаг и проект, если его создали этим шагом (иначе null).</summary>
 public sealed record GoalStepResultDto(WeeklyGoalDto Goal, TaskDto Step, TaskDto? CreatedProject);
+
+/// <summary>Отчёт за период (N5): WeeksCount — недель, чей четверг в периоде; серии, разовые цели одной строкой, «Выполненное».</summary>
+public sealed record ReportDto(
+    DateOnly From, DateOnly To, int WeeksCount, IReadOnlyList<ReportSeriesDto> Series, ReportOneOffDto OneOff, IReadOnlyList<ReportDoneGroupDto> Done);
+
+/// <summary>Привычка или постоянная цель за период: план (сумма норм недель), факт (скрепки), процент; 🔥 и ⚠ — на конец периода (у привычек).</summary>
+public sealed record ReportSeriesDto(
+    int Id, string Title, IReadOnlyList<string> Roles, bool IsHabit, int Plan, int Fact, int Percent, int? WeekStreak, bool Paused);
+
+/// <summary>Разовые цели периода: «камней N, выполнено M».</summary>
+public sealed record ReportOneOffDto(int Goals, int Done);
+
+/// <summary>«Выполненное» за период — группа категории.</summary>
+public sealed record ReportDoneGroupDto(int? CategoryId, string Name, string? Emoji, IReadOnlyList<ReportDoneTaskDto> Tasks);
+
+/// <summary>Выполненное дело: день отметки и сколько шагов сделано.</summary>
+public sealed record ReportDoneTaskDto(int Id, string Title, DateOnly Date, int StepsDone);

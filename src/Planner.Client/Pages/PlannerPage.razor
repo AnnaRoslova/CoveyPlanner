@@ -58,6 +58,10 @@
     {
         <DoneScreen />
     }
+    else if (Windows.ReportOpen)
+    {
+        <ReportScreen />
+    }
 }
 else if (State.LoadError is not null)
 {

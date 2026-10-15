@@ -149,7 +149,8 @@ body[data-drag-kind="step"] .flip-zone {
 
 /* 🫙 — экран «Копилки» (рядом с палитрой тем) */
 .jar-b,
-.projects-b {
+.projects-b,
+.report-b {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -161,7 +162,8 @@ body[data-drag-kind="step"] .flip-zone {
 }
 
 .jar-b:hover,
-.projects-b:hover {
+.projects-b:hover,
+.report-b:hover {
     background: var(--b-soft);
 }
 

@@ -133,6 +133,12 @@ public class PlannerApi(HttpClient http)
     /// <summary>Выполненные дела из ленты по категориям, свежие сверху (только чтение).</summary>
     public Task<List<DoneGroupDto>> GetDoneAsync() => GetAsync<List<DoneGroupDto>>("api/done");
 
+    public Task<ReportDto> GetReportAsync(DateOnly from, DateOnly to) =>
+        GetAsync<ReportDto>($"api/report?from={Format(from)}&to={Format(to)}");
+
+    /// <summary>Адрес CSV отчёта — для ссылки «Скачать CSV» (файл отдаёт сервер).</summary>
+    public static string ReportCsvUrl(DateOnly from, DateOnly to) => $"api/report.csv?from={Format(from)}&to={Format(to)}";
+
     // Шаги дела
 
     public Task<StepDto> AddStepAsync(int taskId, string title) =>

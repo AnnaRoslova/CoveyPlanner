@@ -57,6 +57,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<HabitService>();
         services.AddScoped<StepService>();
         services.AddScoped<DoneArchiveService>();
+        services.AddScoped<ReportService>();
         services.AddScoped<TaskViews>();
 
         return services;

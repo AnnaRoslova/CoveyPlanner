@@ -1,0 +1,270 @@
+@* Экран «📊 Отчёт» (docs/specs/next-batch.md, N5): что сделано за период — привычки и постоянные цели (план и факт), разовые цели
+   одной строкой, «Выполненное» по категориям — и «Скачать CSV» для Excel. Только чтение. Период: неделя (показанная), месяц
+   (по умолчанию — текущий), N месяцев (последние, 2…12), год, свой (с — по); стрелки листают. Недели — по четвергу (N5.3).
+   Вход — «📊» в шапке недели; Esc или клик мимо — закрыть. *@
+@inherits StateComponent
+@inject WindowHost Windows
+@inject PlannerApi Api
+@inject Notifier Notifier
+
+<div class="report-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="report-screen" role="dialog" aria-label="Отчёт" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="report-h">
+        <h2>📊 Отчёт</h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </header>
+
+    <div class="periods" role="tablist">
+        @foreach (var (mode, label) in Modes)
+        {
+            <button type="button" role="tab" class="period @(_mode == mode ? "on" : "")" aria-selected="@(_mode == mode ? "true" : "false")"
+                    @onclick="() => SetModeAsync(mode)">@label</button>
+        }
+    </div>
+
+    <div class="range">
+        @if (_mode == PeriodMode.Custom)
+        {
+            <label>с <input type="date" value="@Iso(_from)" @onchange="e => SetCustomAsync(e.Value, null)" /></label>
+            <label>по <input type="date" value="@Iso(_to)" @onchange="e => SetCustomAsync(null, e.Value)" /></label>
+        }
+        else
+        {
+            <button type="button" class="nav" title="Раньше" aria-label="Раньше" @onclick="() => ShiftAsync(-1)"><Icon Name="chevron-left" /></button>
+            <span class="range-label">@RangeLabel</span>
+            <button type="button" class="nav" title="Позже" aria-label="Позже" @onclick="() => ShiftAsync(1)"><Icon Name="chevron-right" /></button>
+            @if (_mode == PeriodMode.Months)
+            {
+                <label class="months-n">месяцев:
+                    <select value="@_months" @onchange="SetMonthsAsync">
+                        @for (var n = 2; n <= 12; n++)
+                        {
+                            <option value="@n">@n</option>
+                        }
+                    </select>
+                </label>
+            }
+        }
+        <a class="csv" href="@PlannerApi.ReportCsvUrl(_from, _to)" download>Скачать CSV</a>
+    </div>
+
+    @if (_report is null)
+    {
+        <p class="empty">Загрузка…</p>
+    }
+    else if (_report.Series.Count == 0 && _report.OneOff.Goals == 0 && _report.Done.Count == 0)
+    {
+        <p class="empty">За этот период ничего нет.</p>
+    }
+    else
+    {
+        @if (_report.Series.Count > 0 || _report.OneOff.Goals > 0)
+        {
+            <h3>Привычки и постоянные цели <span class="sub">недель: @_report.WeeksCount</span></h3>
+            <div class="series">
+                @foreach (var row in _report.Series)
+                {
+                    <div class="srow">
+                        <div class="sname">
+                            <span class="title">@row.Title</span>
+                            <span class="roles">@string.Join(", ", row.Roles)</span>
+                        </div>
+                        <span class="fact" title="факт / план — выполненные занятия от суммы «раз в неделю» за недели периода">@row.Fact / @row.Plan</span>
+                        <span class="pct @(row.Percent >= 100 ? "full" : "")">@(row.Percent >= 100 ? "100% ✓" : $"{row.Percent}%")</span>
+                        <span class="streak" title="серия недель на конец периода">@StreakLabel(row)</span>
+                    </div>
+                }
+                @if (_report.OneOff.Goals > 0)
+                {
+                    <div class="srow oneoff">
+                        <div class="sname"><span class="title">разовые цели</span></div>
+                        <span class="fact">камней: @_report.OneOff.Goals, выполнено: @_report.OneOff.Done</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_report.Done.Count > 0)
+        {
+            <h3>Выполненное <span class="sub">@_report.Done.Sum(g => g.Tasks.Count)</span></h3>
+            @foreach (var group in _report.Done)
+            {
+                <p class="dgroup">
+                    <b>@(group.Emoji is null ? "" : group.Emoji + " ")@group.Name — @group.Tasks.Count:</b>
+                    @string.Join(", ", group.Tasks.Select(t => t.Title))
+                </p>
+            }
+        }
+    }
+</section>
+
+@code {
+    private enum PeriodMode { Week, Month, Months, Year, Custom }
+
+    private static readonly (PeriodMode Mode, string Label)[] Modes =
+    [
+        (PeriodMode.Week, "неделя"), (PeriodMode.Month, "месяц"), (PeriodMode.Months, "N месяцев"), (PeriodMode.Year, "год"), (PeriodMode.Custom, "свой"),
+    ];
+
+    private ElementReference _root;
+    private PeriodMode _mode = PeriodMode.Month;
+    private int _months = 3;
+    private DateOnly _from;
+    private DateOnly _to;
+    private ReportDto? _report;
+    private int _version;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SetRange(PeriodMode.Month, RuDates.Today);
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync(); // Esc закрывает экран сразу
+        }
+    }
+
+    /// <summary>Период режима, в который попадает дата <paramref name="anchor"/>.</summary>
+    private void SetRange(PeriodMode mode, DateOnly anchor)
+    {
+        _mode = mode;
+        switch (mode)
+        {
+            case PeriodMode.Week:
+                _from = RuDates.WeekStartOf(anchor);
+                _to = _from.AddDays(6);
+                break;
+            case PeriodMode.Month:
+                _from = new DateOnly(anchor.Year, anchor.Month, 1);
+                _to = _from.AddMonths(1).AddDays(-1);
+                break;
+            case PeriodMode.Months:
+                _to = new DateOnly(anchor.Year, anchor.Month, 1).AddMonths(1).AddDays(-1);
+                _from = new DateOnly(anchor.Year, anchor.Month, 1).AddMonths(1 - _months);
+                break;
+            case PeriodMode.Year:
+                _from = new DateOnly(anchor.Year, 1, 1);
+                _to = new DateOnly(anchor.Year, 12, 31);
+                break;
+        }
+    }
+
+    private async Task SetModeAsync(PeriodMode mode)
+    {
+        if (mode == _mode)
+        {
+            return;
+        }
+
+        if (mode == PeriodMode.Custom)
+        {
+            _mode = mode; // «свой» начинается с того, что было на экране
+        }
+        else
+        {
+            SetRange(mode, mode == PeriodMode.Week ? State.WeekStart : RuDates.Today);
+        }
+
+        // Кнопки периода меняются (стрелки ↔ поля дат) — фокус мог пропасть вместе с ними; без него Esc не закрыл бы экран
+        await _root.FocusAsync();
+        await LoadAsync();
+    }
+
+    private async Task ShiftAsync(int direction)
+    {
+        var anchor = _mode switch
+        {
+            PeriodMode.Week => _from.AddDays(7 * direction),
+            PeriodMode.Year => _from.AddYears(direction),
+            PeriodMode.Months => _to.AddMonths(direction),
+            _ => _from.AddMonths(direction),
+        };
+        SetRange(_mode, anchor);
+        await LoadAsync();
+    }
+
+    private async Task SetMonthsAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var n) && n is >= 2 and <= 12)
+        {
+            _months = n;
+            SetRange(PeriodMode.Months, _to);
+            await LoadAsync();
+        }
+    }
+
+    private async Task SetCustomAsync(object? from, object? to)
+    {
+        if (DateOnly.TryParse(from?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var f))
+        {
+            _from = f;
+        }
+
+        if (DateOnly.TryParse(to?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var t))
+        {
+            _to = t;
+        }
+
+        if (_to < _from)
+        {
+            (_from, _to) = (_to, _from);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var version = ++_version;
+        _report = null;
+        try
+        {
+            var report = await Api.GetReportAsync(_from, _to);
+            if (version == _version)
+            {
+                _report = report; // пока ждали, могли перелистнуть — старый ответ не нужен
+            }
+        }
+        catch (ApiException ex)
+        {
+            Notifier.Error(ex.Message);
+            if (version == _version)
+            {
+                _report = new ReportDto(_from, _to, 0, [], new ReportOneOffDto(0, 0), []);
+            }
+        }
+    }
+
+    private string RangeLabel => _mode switch
+    {
+        PeriodMode.Week => RuDates.WeekRange(_from),
+        PeriodMode.Month => $"{Capitalize(RuDates.Month(_from))} {_from.Year}",
+        PeriodMode.Year => _from.Year.ToString(),
+        _ => $"{RuDates.DayMonth(_from)} {_from.Year} — {RuDates.DayMonth(_to)} {_to.Year}",
+    };
+
+    private static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0]) + s[1..];
+
+    private static string StreakLabel(ReportSeriesDto row) => row switch
+    {
+        { IsHabit: false } => "",
+        { Paused: true } => "⚠",
+        { WeekStreak: > 0 } r => $"🔥{r.WeekStreak}",
+        _ => "",
+    };
+
+    private static string Iso(DateOnly date) => date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

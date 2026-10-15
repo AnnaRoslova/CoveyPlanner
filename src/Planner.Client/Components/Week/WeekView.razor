@@ -33,6 +33,7 @@
         <button type="button" class="projects-b @(RightPanel.IsProjects ? "on" : "")" title="Проекты" aria-label="Проекты"
                 aria-pressed="@(RightPanel.IsProjects ? "true" : "false")" @onclick="RightPanel.ToggleAsync">🛠</button>
         <button type="button" class="jar-b" title="Копилки привычек" aria-label="Копилки привычек" @onclick="() => Windows.OpenHabits()">🫙</button>
+        <button type="button" class="report-b" title="Отчёт за период" aria-label="Отчёт за период" @onclick="Windows.OpenReport">📊</button>
         <ThemePicker />
     </div>
 
