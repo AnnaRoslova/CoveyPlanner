@@ -1,0 +1,133 @@
+@* «🛠 Проекты» на месте ленты (docs/specs/next-batch.md, N6.8–N6.11): все открытые проекты — из ленты и из плана любой недели.
+   Группы — по категориям в порядке ленты, «без категории» в конце; фильтр «все категории ▾» оставляет одну группу.
+   Сверху «+ проект» (в категорию фильтра). Группа — место, куда бросить проект из дня: снять с дня, в эту категорию.
+   Ручного порядка нет: без дня — в порядке ленты, с днём — по дате. *@
+@inherits StateComponent
+@inject RightPanelState RightPanel
+
+<div class="projects-h">
+    <span class="ph-title">🛠 Проекты</span>
+    <button type="button" class="to-feed" title="Показать ленту «Когда-нибудь»" @onclick="RightPanel.ShowFeedAsync">← лента</button>
+</div>
+
+<div class="projects-tools">
+    <ChoiceField TValue="string" Items="FilterChoices" Value="@(RightPanel.CategoryFilter ?? AllKey)" ValueChanged="SetFilter" Label="Категория" />
+</div>
+
+<div class="panel-scroll">
+    @if (_adding)
+    {
+        <Dismissable OnDismiss="StopAdding" OnClickOutside="SaveAndCloseAsync">
+            <InlineInput @bind-Value="_newTitle" Placeholder="Новый проект — Enter" MaxLength="500"
+                         OnSubmit="AddAsync" OnCancel="StopAdding" CancelOnEmptyBlur="false" />
+        </Dismissable>
+    }
+    else
+    {
+        <button type="button" class="add add-project" @onclick="() => _adding = true">+ проект</button>
+    }
+
+    @{ var any = false; }
+    @foreach (var group in Groups)
+    {
+        var projects = State.ProjectsIn(group.CategoryId, Query);
+        if (projects.Count == 0 && (IsSearching || RightPanel.CategoryFilter is null))
+        {
+            continue;
+        }
+
+        any = true;
+        <section class="pgroup" data-drop="@DragDropService.ProjectsZone" data-key="@group.Key"
+                 data-accept="@DragDropService.ProjectsAccepts" data-drop-index="0" data-drop-hover>
+            <div class="pg-h">
+                @if (group.Emoji is not null)
+                {
+                    <span class="emoji">@group.Emoji</span>
+                }
+                <span class="name">@group.Name</span>
+                <span class="cnt">@projects.Count</span>
+            </div>
+            @foreach (var project in projects)
+            {
+                <ProjectRow @key="project.Id" Item="project" Search="@Query" />
+            }
+        </section>
+    }
+
+    @if (!any)
+    {
+        <div class="nothing">
+            @if (IsSearching)
+            {
+                <text>Ничего не нашлось</text>
+            }
+            else
+            {
+                <text>Проектов пока нет. «+ проект» здесь или «🛠 сделать проектом» в окне мысли.</text>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private const string AllKey = "all";
+
+    private bool _adding;
+    private string _newTitle = "";
+
+    [Parameter]
+    public string? Query { get; set; }
+
+    private bool IsSearching => !string.IsNullOrWhiteSpace(Query);
+
+    private sealed record Group(int? CategoryId, string Key, string Name, string? Emoji);
+
+    /// <summary>Категории в порядке ленты, «без категории» — в конце; с фильтром — одна группа.</summary>
+    private IEnumerable<Group> Groups
+    {
+        get
+        {
+            var all = State.OrderedCategories.Select(c => new Group(c.Id, c.Id.ToString(), c.Name, c.Emoji))
+                .Append(new Group(null, DragDropService.UnsortedKey, "без категории", null));
+            return RightPanel.CategoryFilter is { } filter ? all.Where(g => g.Key == filter) : all;
+        }
+    }
+
+    private IReadOnlyList<Choice<string>> FilterChoices =>
+    [
+        new(AllKey, "все категории"),
+        .. State.OrderedCategories.Select(c => new Choice<string>(c.Id.ToString(), (c.Emoji is null ? "" : c.Emoji + " ") + c.Name)),
+        new(DragDropService.UnsortedKey, "без категории"),
+    ];
+
+    private void SetFilter(string key) => RightPanel.CategoryFilter = key == AllKey ? null : key;
+
+    /// <summary>Категория нового проекта — категория фильтра (без фильтра — без категории).</summary>
+    private int? NewProjectCategory =>
+        int.TryParse(RightPanel.CategoryFilter, out var id) && State.FindCategory(id) is not null ? id : null;
+
+    private async Task AddAsync(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        _newTitle = "";
+        await State.CreateProjectAsync(title, NewProjectCategory);
+    }
+
+    /// <summary>Клик мимо: набранное сохраняется, пустое поле просто закрывается.</summary>
+    private async Task SaveAndCloseAsync()
+    {
+        var title = _newTitle;
+        StopAdding();
+        await AddAsync(title);
+    }
+
+    private void StopAdding()
+    {
+        _adding = false;
+        _newTitle = "";
+    }
+}

@@ -54,12 +54,12 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
 
     public IEnumerable<CategoryDto> OrderedCategories => Categories.OrderBy(c => c.SortOrder).ThenBy(c => c.Id);
 
-    /// <summary>Дела ленты в категории; categoryId = null — «неразобранное».</summary>
+    /// <summary>Мысли ленты в категории; categoryId = null — «неразобранное». Проекты в ленте не показываются (N6.2).</summary>
     public IEnumerable<TaskDto> SomedayIn(int? categoryId) =>
-        _tasks.Values.Where(t => t.State == TaskStateDto.Someday && t.CategoryId == categoryId).OrderBy(t => t.SortOrder);
+        _tasks.Values.Where(t => t.State == TaskStateDto.Someday && !t.IsProject && t.CategoryId == categoryId).OrderBy(t => t.SortOrder);
 
     public int SomedayCount(int? categoryId) =>
-        _tasks.Values.Count(t => t.State == TaskStateDto.Someday && t.CategoryId == categoryId);
+        _tasks.Values.Count(t => t.State == TaskStateDto.Someday && !t.IsProject && t.CategoryId == categoryId);
 
     /// <summary>Дела дня: сначала со временем (по времени), затем без времени (ручной порядок).</summary>
     public IEnumerable<TaskDto> TasksOn(DateOnly date) =>
@@ -201,28 +201,33 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         Categories = [.. board.Categories];
         TrashCount = board.TrashCount;
 
-        // Лента и шаги её проектов (шаги проектов из плана приходят с неделей)
-        foreach (var id in _tasks.Values.Where(t => t.State == TaskStateDto.Someday || IsFeedStep(t)).Select(t => t.Id).ToList())
+        // Лента, открытые проекты плана любой недели («🛠 Проекты», N6.9) и их шаги
+        foreach (var id in _tasks.Values.Where(IsBoardTask).Select(t => t.Id).ToList())
         {
             _tasks.Remove(id);
         }
 
-        foreach (var task in board.SomedayTasks.Concat(board.Steps ?? []))
+        foreach (var task in board.SomedayTasks.Concat(board.PlannedProjects ?? []).Concat(board.Steps ?? []))
         {
             _tasks[task.Id] = task;
         }
     }
 
-    /// <summary>Шаг проекта, который лежит в ленте (такие шаги приходят с лентой, а не с неделей).</summary>
-    private bool IsFeedStep(TaskDto task) =>
-        task.ParentId is { } parentId && _tasks.GetValueOrDefault(parentId) is { State: TaskStateDto.Someday };
+    /// <summary>
+    /// Дело приходит с доской, а не с неделей: мысль или проект ленты, открытый проект плана (любой недели) и шаги таких проектов.
+    /// </summary>
+    private bool IsBoardTask(TaskDto task) =>
+        task.State == TaskStateDto.Someday
+        || task is { IsProject: true, State: TaskStateDto.Planned, ParentId: null }
+        || (task.ParentId is { } parentId && _tasks.GetValueOrDefault(parentId) is { } parent && parent.ParentId is null
+            && (parent.State == TaskStateDto.Someday || parent is { IsProject: true, State: TaskStateDto.Planned }));
 
     private void ApplyWeek(WeekDto week)
     {
         // Дела плана храним только для показанной недели (и дело, которое перетаскивают через недели);
-        // шаги проектов ленты остаются — они не от недели
+        // дела доски (лента, проекты и их шаги) остаются — они не от недели
         foreach (var id in _tasks.Values
-                     .Where(t => t.State != TaskStateDto.Someday && t.Id != _draggedTaskId && !IsFeedStep(t))
+                     .Where(t => !IsBoardTask(t) && t.Id != _draggedTaskId)
                      .Select(t => t.Id).ToList())
         {
             _tasks.Remove(id);

@@ -22,12 +22,17 @@ public class TaskService(
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>Новое дело: в ленту (обычно наверх категории, Index = 0) или в день.</summary>
-    public async Task<TaskItem> CreateAsync(string title, TaskTarget target, CancellationToken ct = default)
+    /// <summary>Новое дело: в ленту (обычно наверх категории, Index = 0) или в день; isProject — сразу проект («+ проект», N6.11).</summary>
+    public async Task<TaskItem> CreateAsync(string title, TaskTarget target, CancellationToken ct = default, bool isProject = false)
     {
         var task = target is SomedayTarget someday
             ? TaskItem.CreateSomeday(title, someday.CategoryId, Now)
             : TaskItem.CreatePlanned(title, Now);
+        if (isProject)
+        {
+            task.MakeProject();
+        }
+
         await placer.PlaceAsync(task, target, ct);
         tasks.Add(task);
         await unitOfWork.SaveChangesAsync(ct);
@@ -188,6 +193,37 @@ public class TaskService(
         await unitOfWork.SaveChangesAsync(ct);
         return task;
     }
+
+    /// <summary>
+    /// «🛠 Сделать проектом» / «🛠 больше не проект» (N6.3, N6.7). Перестать быть проектом можно только без шагов (корзина не в счёт);
+    /// проект без дня тогда — снова мысль ленты (уже в ленте — на своём месте; из плана без дня — в свою категорию).
+    /// </summary>
+    public async Task<TaskItem> SetProjectAsync(int id, bool isProject, CancellationToken ct = default)
+    {
+        var task = await GetAsync(id, ct);
+        if (isProject)
+        {
+            task.MakeProject();
+        }
+        else if (task.IsProject)
+        {
+            if ((await tasks.GetStepsAsync(task.Id, ct)).Any(s => s.State != TaskState.Trashed))
+            {
+                throw new DomainException(ProjectHasStepsMessage);
+            }
+
+            task.UnmakeProject();
+            if (task is { State: TaskState.Planned, PlannedDate: null, IsSession: false })
+            {
+                await placer.ReturnToSomedayAsync(task, ct);
+            }
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return task;
+    }
+
+    public const string ProjectHasStepsMessage = "У проекта есть шаги — сначала уберите их.";
 
     /// <summary>
     /// В корзину. Занятие цели остаётся связанным с ней, но в прогресс не входит; вернули из корзины — снова засчитывается.

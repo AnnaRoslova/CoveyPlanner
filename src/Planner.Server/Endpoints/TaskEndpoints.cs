@@ -13,7 +13,7 @@ public static class TaskEndpoints
 
         tasks.MapPost("/", async (CreateTaskRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
         {
-            var task = await service.CreateAsync(request.Title, request.Target.ToCore(), ct);
+            var task = await service.CreateAsync(request.Title, request.Target.ToCore(), ct, request.IsProject);
             return Results.Created($"/api/tasks/{task.Id}", await views.ToDtoAsync(task, ct));
         });
 
@@ -49,6 +49,10 @@ public static class TaskEndpoints
         // «Проект» в карточке: сделать дело шагом другого дела или убрать из проекта
         tasks.MapPut("/{id:int}/parent", async (int id, SetParentRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
             await views.ToDtoAsync(await service.SetParentAsync(id, request.ParentId, ct), ct));
+
+        // «🛠 Сделать проектом» / «🛠 больше не проект» (N6): без шагов — снова мысль ленты
+        tasks.MapPut("/{id:int}/project", async (int id, SetProjectRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.SetProjectAsync(id, request.IsProject, ct), ct));
 
         // Удаление = в корзину
         tasks.MapDelete("/{id:int}", async (int id, TaskService service, CancellationToken ct) =>

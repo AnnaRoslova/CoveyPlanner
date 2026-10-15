@@ -190,10 +190,15 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
     /// </summary>
     public async Task RestoreAsync(TaskItem task, CancellationToken ct = default)
     {
-        if (task.ParentId is { } parentId && await tasks.FindAsync(parentId, ct) is { State: TaskState.Trashed } parent)
+        if (task.ParentId is { } parentId && await tasks.FindAsync(parentId, ct) is { } parent)
         {
-            parent.Restore();
-            await PlaceRestoredAsync(parent, ct);
+            if (parent.State == TaskState.Trashed)
+            {
+                parent.Restore();
+                await PlaceRestoredAsync(parent, ct);
+            }
+
+            parent.MarkAsProject(); // шаг вернулся — у дела снова есть шаг (N6.6)
         }
 
         var trashedAt = task.TrashedAt;

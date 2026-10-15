@@ -42,6 +42,10 @@ public partial class PlannerState
         _ => null,
     };
 
+    /// <summary>Доля сделанных шагов для полоски проекта (N6.16); шагов в счёте нет — null.</summary>
+    public static double? ProgressOf(ProjectSummaryDto? project) =>
+        project is { StepsTotal: > 0 } p ? (double)p.StepsDone / p.StepsTotal : null;
+
     /// <summary>«1 занятие», «3 занятия», «12 занятий».</summary>
     public static string SessionsWord(int n) =>
         $"{n} " + (n % 10 == 1 && n % 100 != 11 ? "занятие"
@@ -113,9 +117,18 @@ public partial class PlannerState
             SortOrder: 0, TrashedAt: null, ParentId: parentId, ParentTitle: parent.Title, StepOrder: int.MaxValue);
         _tasks[temp.Id] = temp;
 
+        // Первый шаг делает дело проектом (N6.3): мысль уходит из ленты в «🛠 Проекты»
+        var becomesProject = !parent.IsProject && parent.GoalId is null;
+        if (becomesProject)
+        {
+            _tasks[parentId] = parent with { IsProject = true };
+        }
+
+        int? stepId = null;
         var ok = await SaveAsync(async () =>
         {
             var step = await api.AddStepAsync(parentId, title);
+            stepId = step.Id;
             _tasks.Remove(temp.Id);
             _tasks[step.Id] = await api.GetTaskAsync(step.Id);
         });
@@ -123,6 +136,11 @@ public partial class PlannerState
         if (!ok && _tasks.Remove(temp.Id))
         {
             NotifyChanged();
+        }
+
+        if (ok && becomesProject)
+        {
+            OfferProjectUndo(parent, stepId);
         }
 
         return ok;
@@ -136,11 +154,12 @@ public partial class PlannerState
         : task.ParentId is null ? task.Id : null;
 
     /// <summary>
-    /// Кого можно выбрать проектом (S6–S7, P1): открытые дела без родителя, не занятия целей — из ленты и показанной недели, по названию.
+    /// Кого можно выбрать проектом (S6–S7, P1, N6.13): открытые проекты — из ленты и плана любой недели, по названию.
+    /// Обычное дело проектом через чужое поле не становится.
     /// </summary>
     public IReadOnlyList<TaskDto> ProjectCandidates() =>
         _tasks.Values
-            .Where(t => t.Id > 0 && t.ParentId is null && t.GoalId is null
+            .Where(t => t.Id > 0 && t.IsProject && t.ParentId is null && t.GoalId is null
                         && t.State is TaskStateDto.Someday or TaskStateDto.Planned)
             .OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -217,7 +236,12 @@ public partial class PlannerState
             var result = await api.AddGoalStepAsync(goalId, title);
             if (result.CreatedProject is { } project)
             {
-                _tasks[project.Id] = project; // новый проект — в «неразобранном» ленты
+                _tasks[project.Id] = project; // новый проект — сразу в «🛠 Проекты» (N6.4)
+                notifier.WithAction($"Проект «{project.Title}» — в 🛠 Проектах", "🛠 Проекты", () =>
+                {
+                    RequestProjects(project.Id);
+                    return Task.CompletedTask;
+                }, Notifier.DefaultDuration);
             }
 
             _tasks[result.Step.Id] = result.Step;

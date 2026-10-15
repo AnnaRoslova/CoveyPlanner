@@ -108,6 +108,15 @@ public sealed class LayoutState(IJSRuntime js) : IAsyncDisposable
         Changed?.Invoke();
     }
 
+    /// <summary>Показать панель, если она свёрнута (например, «🛠 Проекты» из шапки недели или с плашки).</summary>
+    public async Task ShowAsync(PanelSide side)
+    {
+        if (ModeOf(side) != PanelMode.Open && _peek != side)
+        {
+            await ToggleAsync(side);
+        }
+    }
+
     /// <summary>Закрыть панель, показанную поверх недели (клик мимо неё).</summary>
     public void ClosePeek()
     {

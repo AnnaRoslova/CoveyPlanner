@@ -1,5 +1,5 @@
 // Один список шагов на цель (docs/specs/tasks-steps-done.md, G1–G10, e2e п. 27–31): первый «+ шаг» в окне цели создаёт проект
-// в «неразобранном»; у всех занятий цели — шаги проекта («▸ … ☑ N/M»), «+ шаг» в окне занятия — туда же; шаг из окна цели — в день;
+// в «🛠 Проекты» (N6.4); у всех занятий цели — шаги проекта («▸ … ☑ N/M»), «+ шаг» в окне занятия — туда же; шаг из окна цели — в день;
 // отметка шагов не трогает занятие и цель; постоянная цель — тот же список на следующей неделе, удаление «только на этой неделе» —
 // проект остаётся. Данные — через API (чистая база).
 import puppeteer from 'puppeteer-core';
@@ -68,15 +68,18 @@ const goal = await api('POST', 'goals', { roleId: work.id, weekStart: dayIso(0),
 await load();
 
 let projectId;
-await check('27. цель без проекта: «+ шаг» в окне цели — проект «Подготовка к собесу» в «неразобранном», он в поле «Проект»', async () => {
+await check('27. цель без проекта: «+ шаг» в окне цели — проект «Подготовка к собесу» в «🛠 Проекты» (N6.4), он в поле «Проект»', async () => {
   await openGoal(GOAL);
   assert(await page.$eval('.editor .goal-steps', e => e.textContent.includes('первый шаг создаст проект')), 'нет подсказки G3');
   await addStepInEditor('Задачи');
   assert(JSON.stringify(await editorSteps()) === '["Задачи"]', JSON.stringify(await editorSteps()));
   assert(await projectField() === GOAL, `поле «Проект»: ${await projectField()}`);
   await closeEditor();
+  // Проект цели — сразу в «🛠 Проекты», без категории, не в ленте (N6.4)
   const feed = await page.$$eval('.someday .item .title', ts => ts.map(t => t.textContent.trim()));
-  assert(feed.includes(GOAL), JSON.stringify(feed));
+  assert(!feed.includes(GOAL), JSON.stringify(feed));
+  const created = (await api('GET', 'board')).somedayTasks.find(t => t.title === GOAL);
+  assert(created?.isProject && created.categoryId === null, JSON.stringify(created));
   projectId = (await api('GET', `week/${dayIso(0)}`)).goals.find(g => g.id === goal.id).projectId;
   assert(projectId, 'у цели нет проекта на сервере');
 });
@@ -144,8 +147,8 @@ await check('31. постоянная цель: следующая неделя 
   assert(next.projectId === added.createdProject.id, JSON.stringify(next));
   await api('DELETE', `goals/${reading.id}`);
   await load();
-  const feed = await page.$$eval('.someday .item .title', ts => ts.map(t => t.textContent.trim()));
-  assert(feed.includes('Чтение'), JSON.stringify(feed));
+  const left = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Чтение');
+  assert(left?.isProject, JSON.stringify(left)); // проект остался — в «🛠 Проекты»
   assert((await api('GET', `tasks/${added.createdProject.id}/steps`)).length === 1, 'шаги проекта пропали');
 });
 

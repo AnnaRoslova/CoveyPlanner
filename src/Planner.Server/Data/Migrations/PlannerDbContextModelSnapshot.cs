@@ -182,6 +182,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<bool>("IsFromSomeday")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsProject")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
@@ -437,7 +440,7 @@ namespace Planner.Server.Data.Migrations
 
             modelBuilder.Entity("Planner.Core.Entities.WeeklyGoal", b =>
                 {
-                    b.HasOne("Planner.Core.Entities.TaskItem", null)
+                    b.HasOne("Planner.Core.Entities.TaskItem", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -473,6 +476,8 @@ namespace Planner.Server.Data.Migrations
                                 .OnDelete(DeleteBehavior.Cascade)
                                 .IsRequired();
                         });
+
+                    b.Navigation("Project");
 
                     b.Navigation("Roles");
 

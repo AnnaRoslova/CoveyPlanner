@@ -46,7 +46,8 @@ public sealed record TaskDto(
     int? ParentId = null,
     string? ParentTitle = null,
     bool IsFromSomeday = false,
-    int? StepOrder = null);
+    int? StepOrder = null,
+    bool IsProject = false);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -119,7 +120,8 @@ public sealed record BoardDto(
     IReadOnlyList<CategoryDto> Categories,
     IReadOnlyList<TaskDto> SomedayTasks,
     int TrashCount,
-    IReadOnlyList<TaskDto>? Steps = null);
+    IReadOnlyList<TaskDto>? Steps = null,
+    IReadOnlyList<TaskDto>? PlannedProjects = null);
 
 /// <summary>
 /// Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).

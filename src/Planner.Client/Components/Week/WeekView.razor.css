@@ -148,7 +148,8 @@ body[data-drag-kind="step"] .flip-zone {
 }
 
 /* 🫙 — экран «Копилки» (рядом с палитрой тем) */
-.jar-b {
+.jar-b,
+.projects-b {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -159,6 +160,17 @@ body[data-drag-kind="step"] .flip-zone {
     font-size: 15px;
 }
 
-.jar-b:hover {
+.jar-b:hover,
+.projects-b:hover {
     background: var(--b-soft);
+}
+
+/* «🛠 Проекты»: рядом с 🫙, ближе к ней; нажата — мягкая подложка */
+.projects-b + .jar-b {
+    margin-left: 2px;
+}
+
+.projects-b.on {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 1.5px var(--b);
 }

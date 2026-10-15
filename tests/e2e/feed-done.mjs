@@ -57,11 +57,17 @@ for (const t of ['А', 'Б', 'В']) await api('POST', 'tasks', { title: t, targe
 const repair = await api('POST', 'tasks', { title: 'Ремонт', target: { kind: 'someday', categoryId: shop.id, index: 0 } });
 await api('POST', `tasks/${repair.id}/steps`, { title: 'Купить краску' });
 await api('POST', `tasks/${repair.id}/steps`, { title: 'Валики' });
+await api('POST', 'tasks', { title: 'Хлеб', target: { kind: 'someday', categoryId: shop.id, index: 99 } });
+// Шаг «Купить краску» стоит сегодня — его тащат из дня в ленту (S21): проекты в ленте не показываются (N6.2)
+const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+const paintStep = (await api('GET', `tasks/${repair.id}/steps`)).find(s => s.title === 'Купить краску');
+await api('POST', `tasks/${paintStep.id}/move`, { kind: 'day', date: today, index: 0 });
 await load();
 
-await check('D1: у каждой мысли ленты — квадратный чекбокс', async () => {
+await check('D1: у каждой мысли ленты — квадратный чекбокс; проекта «Ремонт» в ленте нет (N6.2)', async () => {
   const n = await page.$$eval('.someday .cat-b > .item', items => items.map(i => !!i.querySelector('.ck-hit')));
   assert(n.length >= 4 && n.every(Boolean), JSON.stringify(n));
+  assert(!(await feed('Покупки')).includes('Ремонт'), JSON.stringify(await feed('Покупки')));
   await (await page.$('.someday')).screenshot({ path: `${SHOTS}/feed-done.png` });
 });
 
@@ -88,21 +94,18 @@ await check('«в корзину» на плашке — в корзине; ве
   assert(!(await feed('Идеи')).includes('Б'), 'вернулась в ленту, а не в «Выполненное»');
 });
 
-await check('поиск по шагу: «валик» — «Ремонт» в «Покупках» развёрнут, шаг подсвечен', async () => {
+await check('поиск по шагу: «валик» — в ленте мыслей нет, строка «🛠 в проектах: 1» (N6.12)', async () => {
   await page.type('.someday .search input', 'валик'); await settle();
   const r = await page.evaluate(() => ({
     rows: [...document.querySelectorAll('.someday .cat-b > .item .title')].map(t => t.textContent.trim()),
-    steps: [...document.querySelectorAll('.someday .steps .item .title')].map(t => t.textContent.trim()),
-    hit: [...document.querySelectorAll('.someday .steps mark.hit')].map(m => m.textContent),
+    line: document.querySelector('.someday .in-projects')?.textContent.trim() ?? null,
   }));
-  assert(JSON.stringify(r.rows) === '["Ремонт"]' && r.steps.includes('Валики') && r.hit.length > 0, JSON.stringify(r));
+  assert(r.rows.length === 0 && r.line === '🛠 в проектах: 1', JSON.stringify(r));
   await page.click('.someday .search input', { clickCount: 3 }); await page.keyboard.press('Backspace'); await settle();
 });
 
-await check('S21: шаг из раскрытого списка на «Идеи» — стал мыслью там; плашка «больше не шаг · Вернуть» — снова шаг', async () => {
-  const row = (await feedRow('Покупки', 'Ремонт')).asElement();
-  await (await row.$('.expand')).click(); await settle();
-  const step = (await page.evaluateHandle(() => [...document.querySelectorAll('.someday .steps .item')].find(i => i.querySelector('.title').textContent.trim() === 'Купить краску'))).asElement();
+await check('S21: шаг из дня на «Идеи» — стал мыслью там; плашка «больше не шаг · Вернуть» — снова шаг (и снова в дне)', async () => {
+  const step = (await page.evaluateHandle(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === 'Купить краску'))).asElement();
   const from = await step.boundingBox();
   const header = await (await page.evaluateHandle(() => [...document.querySelectorAll('.cat-h')].find(h => h.querySelector('.name')?.textContent.trim() === 'Идеи'))).asElement().boundingBox();
   const sx = from.x + from.width / 2, sy = from.y + 8, tx = header.x + header.width / 2, ty = header.y + header.height / 2;
@@ -114,7 +117,7 @@ await check('S21: шаг из раскрытого списка на «Идеи�
   await toastAction('Вернуть'); await settle();
   assert(!(await feed('Идеи')).includes('Купить краску'), 'осталась мыслью');
   const steps = await api('GET', `tasks/${repair.id}/steps`);
-  assert(steps.some(s => s.title === 'Купить краску'), JSON.stringify(steps.map(s => s.title)));
+  assert(steps.some(s => s.title === 'Купить краску' && s.plannedDate === today), JSON.stringify(steps));
 });
 
 await check('удаление — плашка «Удалено «…» · Вернуть» тоже у значка корзины', async () => {

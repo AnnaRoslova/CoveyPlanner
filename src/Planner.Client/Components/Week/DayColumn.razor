@@ -45,6 +45,8 @@
                  Expanded="@(project is null ? null : expanded)"
                  OnExpand="() => Folds.ToggleAsync(task.Id)"
                  ProjectLabel="@PlannerState.ProjectLabel(project)"
+                 IsProject="task.IsProject"
+                 StepsProgress="@PlannerState.ProgressOf(project)"
                  ParentCaption="@(stepOfOwnGoal ? null : State.ParentTitleOf(task))"
                  OnParentClick="() => OpenParentAsync(task.ParentId)"
                  DropZone="@(project is null ? null : DragDropService.ProjectZone)"

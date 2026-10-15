@@ -27,6 +27,7 @@ public static class BoardEndpoints
         var allRoles = await roles.GetAllAsync(ct);
         var allCategories = await categories.GetAllAsync(ct);
         var someday = await tasks.GetSomedayAsync(ct);
+        var plannedProjects = await tasks.GetPlannedProjectsAsync(ct);
         var trashed = await tasks.GetTrashedAsync(ct);
 
         return new BoardDto(
@@ -36,7 +37,8 @@ public static class BoardEndpoints
             allCategories.Select(c => c.ToDto()).ToList(),
             someday.Select(t => t.ToDto()).ToList(),
             trashed.Count,
-            await views.StepsOfAsync(someday, ct));
+            await views.StepsOfAsync(someday.Concat(plannedProjects), ct),
+            await views.ToDtosAsync(plannedProjects, ct));
     }
 
     /// <summary>Неделя по любой её дате (приводится к понедельнику).</summary>

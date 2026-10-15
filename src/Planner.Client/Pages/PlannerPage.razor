@@ -9,6 +9,7 @@
 @inject RoleTasksState RoleTasks
 @inject GoalFoldState GoalFold
 @inject ProjectFoldState ProjectFold
+@inject RightPanelState RightPanel
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -19,7 +20,7 @@
             <RolesPanel />
         </SidePanel>
         <WeekView />
-        <SidePanel Side="PanelSide.Right" Title="Когда-нибудь">
+        <SidePanel Side="PanelSide.Right" Title="@(RightPanel.IsProjects ? "Проекты" : "Когда-нибудь")">
             <SomedayPanel />
         </SidePanel>
     </div>
@@ -75,9 +76,10 @@ else
     {
         Layout.Changed += OnLayoutChanged;
         Windows.Changed += OnLayoutChanged;
+        RightPanel.Changed += OnLayoutChanged;
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), GoalFold.InitAsync(), ProjectFold.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), GoalFold.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(),
             WatchLongTitlesAsync());
     }
 
@@ -99,6 +101,7 @@ else
     {
         Layout.Changed -= OnLayoutChanged;
         Windows.Changed -= OnLayoutChanged;
+        RightPanel.Changed -= OnLayoutChanged;
         base.Dispose();
     }
 

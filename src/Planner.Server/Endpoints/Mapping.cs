@@ -27,7 +27,8 @@ public static class Mapping
         t.ParentId,
         parentTitle,
         t.IsFromSomeday,
-        t.StepOrder);
+        t.StepOrder,
+        t.IsProject);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 

@@ -1,11 +1,27 @@
 @* Правая зона: лента «Когда-нибудь» — поиск, быстрый ввод, категории-аккордеон, корзина.
    Сверху над категориями — «+ категория» (новая встаёт в начало) и «свернуть / развернуть всё»;
    «+ категория» есть и внизу (новая — в конец). Над всем этим — «неразобранное» (мысли без категории).
-   «Записать мысль» есть всегда: без категорий мысли просто копятся в «неразобранном». *@
+   «Записать мысль» есть всегда: без категорий мысли просто копятся в «неразобранном».
+   Кнопка 🛠 в шапке недели показывает здесь же «🛠 Проекты» (N6.8): проекты в ленте не живут (N6.2). *@
 @inherits StateComponent
 @inject WindowHost Windows
+@inject RightPanelState RightPanel
 
-<aside class="panel someday">
+<aside class="panel someday @(RightPanel.IsProjects ? "projects-mode" : "")">
+    @if (RightPanel.IsProjects)
+    {
+        <div class="top">
+            <PanelToggle />
+            <div class="search">
+                <Icon Name="search" Size="14" />
+                <input type="search" placeholder="Поиск по проектам" value="@RightPanel.ProjectQuery"
+                       @oninput="e => RightPanel.ProjectQuery = e.Value?.ToString() ?? string.Empty" @onkeydown="OnProjectSearchKey" />
+            </div>
+        </div>
+        <ProjectsList Query="@RightPanel.ProjectQuery" />
+    }
+    else
+    {
     <div class="top">
         <PanelToggle />
         <div class="search">
@@ -58,6 +74,12 @@
             <div class="nothing">Ничего не нашлось</div>
         }
 
+        @* Проекты в ленте не показываются — совпавшие найдутся в «🛠 Проекты» (N6.12) *@
+        @if (IsSearching && State.ProjectsMatching(Query) is > 0 and var inProjects)
+        {
+            <button type="button" class="in-projects" @onclick="() => RightPanel.ShowProjectsAsync(Query)">🛠 в проектах: @inProjects</button>
+        }
+
         @if (_creatingCategory)
         {
             <CategoryEditor OnClose="() => _creatingCategory = false" />
@@ -67,6 +89,7 @@
             <button class="add" @onclick="() => _creatingCategory = true">+ категория</button>
         }
     </div>
+    }
 
     <div class="feed-foot">
         @* «Выполненное» (V9): архив выполненных дел из ленты — тихая строка рядом с корзиной *@
@@ -96,8 +119,30 @@
 
     private bool IsSearching => Query.Length > 0;
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        RightPanel.Changed += OnPanelChanged;
+    }
+
+    public override void Dispose()
+    {
+        RightPanel.Changed -= OnPanelChanged;
+        base.Dispose();
+    }
+
+    private void OnPanelChanged() => InvokeAsync(StateHasChanged);
+
     private bool MatchesSearch(CategoryDto category, IReadOnlyList<TaskDto> tasks) =>
         TextSearch.Contains(category.Name, Query) || tasks.Any(t => State.FeedMatches(t, Query));
+
+    private void OnProjectSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            RightPanel.ProjectQuery = "";
+        }
+    }
 
     private void OnSearchKey(KeyboardEventArgs e)
     {

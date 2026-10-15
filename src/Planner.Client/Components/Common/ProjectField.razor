@@ -1,14 +1,14 @@
-@* Поле «Проект: [▾]» в окне дела (S6–S10): выбор родителя — открытые дела без родителя и не занятия целей (из ленты и показанной недели,
-   с поиском), «— нет» — убрать из проекта. У дела со своими шагами поле неактивно: «у дела есть шаги — оно само проект» (S7, один уровень).
+@* Поле «Проект: [▾]» в окне дела (S6–S10, N6.13): выбор родителя — открытые проекты (из ленты и плана любой недели, с поиском),
+   «— нет» — убрать из проекта. У проекта поле неактивно: «это проект — проект не бывает шагом» (S7, N6.6, один уровень).
    Значение применяется по «Сохранить» окна. *@
 @inject PlannerState State
 
 <div class="field">
     <div class="project-row">
         <span class="label">Проект</span>
-        @if (HasOwnSteps)
+        @if (IsProject)
         {
-            <span class="select-field off" title="Один уровень: проект не бывает шагом">у дела есть шаги — оно само проект</span>
+            <span class="select-field off" title="Один уровень: проект не бывает шагом">это проект — проект не бывает шагом</span>
         }
         else
         {
@@ -29,7 +29,7 @@
     [Parameter]
     public EventCallback<int> ValueChanged { get; set; }
 
-    private bool HasOwnSteps => Task.Id > 0 && State.StepsOf(Task.Id).Count > 0;
+    private bool IsProject => Task.Id > 0 && ((State.FindTask(Task.Id) ?? Task).IsProject || State.StepsOf(Task.Id).Count > 0);
 
     private IReadOnlyList<Choice<int>> Choices
     {

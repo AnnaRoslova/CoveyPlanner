@@ -21,7 +21,11 @@ public sealed record DayTargetDto(DateOnly Date, int Index) : TaskTargetDto;
 /// <summary>В список шагов дела ParentId, без дня (на строку родителя или в его раскрытый список): позиция в списке.</summary>
 public sealed record StepListTargetDto(int ParentId, int Index) : TaskTargetDto;
 
-public sealed record CreateTaskRequest(string Title, TaskTargetDto Target);
+/// <summary>Новое дело; IsProject — сразу проект («+ проект» в «🛠 Проекты»).</summary>
+public sealed record CreateTaskRequest(string Title, TaskTargetDto Target, bool IsProject = false);
+
+/// <summary>«🛠 Сделать проектом» (true) / «🛠 больше не проект» (false).</summary>
+public sealed record SetProjectRequest(bool IsProject);
 
 /// <summary>«Проект» в карточке дела: ParentId — дело-проект, null — убрать из проекта.</summary>
 public sealed record SetParentRequest(int? ParentId);

@@ -221,6 +221,7 @@ public class GoalService(
             throw new DomainException(ProjectService.SessionNotProjectMessage);
         }
 
+        project.MakeProject(); // выбран проектом цели — её занятия и шаги будут его шагами (N6.6)
         return project;
     }
 
@@ -236,6 +237,7 @@ public class GoalService(
         if (goal.Project is not { State: not TaskState.Trashed } project)
         {
             project = TaskItem.CreateSomeday(goal.Title, null, Now);
+            project.MakeProject(); // сразу в «🛠 Проекты», не в «неразобранное» (N6.4)
             project.SetRoles(goal.RoleIds);
             await placer.PlaceAsync(project, new SomedayTarget(null, 0), ct);
             tasks.Add(project);

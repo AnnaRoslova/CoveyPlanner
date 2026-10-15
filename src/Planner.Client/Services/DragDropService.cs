@@ -31,6 +31,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string GoalZone = "goal";       // строка цели: сделать дело её занятием
     public const string ProjectZone = "project"; // строка проекта: шаг — снять с дня, в конец своего списка
     public const string StepsZone = "steps";     // раскрытый список шагов проекта: порядок, снять шаг с дня
+    public const string ProjectsZone = "projects"; // группа «🛠 Проекты»: проект — в эту категорию (из дня — снять с дня)
 
     /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
     public const string UnsortedKey = "unsorted";
@@ -55,6 +56,9 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
 
     /// <summary>Корзина: дела ленты и плана, цели — удалить, как из окна (с «Вернуть»).</summary>
     public const string TrashAccepts = SomedayItem + " " + DayItem + " " + GoalItem + " " + StepItem;
+
+    /// <summary>Группа «🛠 Проекты»: проекты из панели и из дней (не проекты — не принимаются при сбросе).</summary>
+    public const string ProjectsAccepts = SomedayItem + " " + DayItem;
 
     /// <summary>Строка проекта и его раскрытый список: только шаги (своего проекта — проверяется при сбросе).</summary>
     public const string StepsAccepts = StepItem;
@@ -193,6 +197,11 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
 
             case { Kind: StepItem, Zone: StepsZone } when int.TryParse(drop.Key, out var parentId):
                 await state.MoveStepToListAsync(drop.Id, parentId, drop.Index);
+                break;
+
+            // Проект → группа «🛠 Проекты»: в эту категорию, из дня — без дня (N6.10)
+            case { Kind: SomedayItem or DayItem, Zone: ProjectsZone } when TryFeedKey(drop.Key, out var categoryId):
+                await state.MoveProjectToGroupAsync(drop.Id, categoryId);
                 break;
 
             // Роль → список ролей: порядок

@@ -61,7 +61,8 @@ const newSession = (goal, date) => api('POST', `goals/${goal.id}/schedule`, { ki
 
 await load();
 const books = await api('POST', 'categories', { name: 'Книги' });
-const book = await api('POST', 'tasks', { title: BOOK, target: { kind: 'someday', categoryId: books.id, index: 0 } });
+// Книга — проект (N6.13: в поле «Проект» только проекты)
+const book = await api('POST', 'tasks', { title: BOOK, target: { kind: 'someday', categoryId: books.id, index: 0 }, isProject: true });
 const mind = (await api('GET', 'board')).roles.find(r => r.name === 'Ум');
 const reading = await api('POST', 'goals', { roleId: mind.id, weekStart: dayIso(0), title: GOAL, isRecurring: true });
 await load();
@@ -87,11 +88,13 @@ await check('20. окно цели: «Проект: Атомные привыч�
   assert(row, 'нет занятия в среде');
   assert(!(await row.$('.parent-of')), 'у занятия своего проекта есть «↳» (G4)');
   await (await row.$('.ck-hit')).click(); await settle();
-  await (await (await page.evaluateHandle(t => [...document.querySelectorAll('.someday .cat-b > .item')].find(i => i.querySelector('.title')?.textContent.trim() === t), BOOK)).asElement().$('.title')).click();
+  await page.click('.projects-b'); await settle(); // проекты — в «🛠 Проекты» (N6)
+  await (await (await page.evaluateHandle(t => [...document.querySelectorAll('.someday .pgroup > .item')].find(i => i.querySelector('.title')?.textContent.trim() === t), BOOK)).asElement().$('.title')).click();
   await settle();
   const line = await page.$eval('.editor .task-steps .sessions-line', e => e.textContent.trim());
   assert(line.startsWith('1 занятие'), `строка занятий: ${line}`);
   await closeEditor();
+  await page.click('.projects-b'); await settle();
 });
 
 await check('21. постоянная цель: на следующей неделе — тот же проект; новое занятие там — шаг книги', async () => {

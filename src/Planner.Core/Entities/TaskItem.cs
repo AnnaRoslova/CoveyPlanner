@@ -58,6 +58,13 @@ public class TaskItem : ISortable
 
     public bool IsStep => ParentId is not null;
 
+    /// <summary>
+    /// Проект (docs/specs/next-batch.md, N6): дело, которое явно сделали проектом — кнопкой «Сделать проектом» или появлением
+    /// первого шага. Проекты живут в «🛠 Проекты», а не в ленте. Пока у дела есть шаги, флаг не снимается; шаг и занятие цели
+    /// проектом не бывают. Все шаги удалили — дело остаётся проектом, пока его явно не сделали снова делом.
+    /// </summary>
+    public bool IsProject { get; private set; }
+
     /// <summary>Место шага в списке шагов родителя (у шага в дне <see cref="SortOrder"/> — его место в дне).</summary>
     public int? StepOrder { get; set; }
 
@@ -135,6 +142,7 @@ public class TaskItem : ISortable
             throw new DomainException("Дело в корзине — сначала верните его.");
         }
 
+        parent.IsProject = true;
         return new TaskItem
         {
             Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название шага"),
@@ -198,12 +206,52 @@ public class TaskItem : ISortable
             throw new DomainException("Проект в корзине — сначала верните его.");
         }
 
+        if (IsProject)
+        {
+            throw new DomainException(ProjectNotStepMessage);
+        }
+
+        parent.IsProject = true;
         ParentId = parent.Id;
         if (State == TaskState.Someday)
         {
             State = TaskState.Planned; // из ленты — шаг без дня
             PlannedDate = null;
             StartTime = null;
+        }
+    }
+
+    public const string ProjectNotStepMessage = "Это проект — проект не бывает шагом.";
+
+    /// <summary>«🛠 Сделать проектом» (N6.3). Шаг и занятие цели проектом не бывают (один уровень, G4).</summary>
+    public void MakeProject()
+    {
+        EnsureNotTrashed();
+        if (IsStep)
+        {
+            throw new DomainException("Шаг не бывает проектом — у шага не бывает своих шагов.");
+        }
+
+        if (IsSession)
+        {
+            throw new DomainException("Занятие цели не бывает проектом — шаги цели живут в её проекте.");
+        }
+
+        IsProject = true;
+    }
+
+    /// <summary>
+    /// «🛠 больше не проект» (N6.7): только у проекта без шагов (шаги в корзине не в счёте) — проверяет вызывающий,
+    /// дело своих шагов не знает. Место дела не меняется (проект без дня возвращает в ленту вызывающий).
+    /// </summary>
+    public void UnmakeProject() => IsProject = false;
+
+    /// <summary>У дела снова появился шаг (вернули из корзины) — оно проект (инвариант N6.6).</summary>
+    public void MarkAsProject()
+    {
+        if (!IsStep && !IsSession)
+        {
+            IsProject = true;
         }
     }
 

@@ -473,3 +473,36 @@ body.dragging .trash-btn {
 .item:has(> .expand) {
     position: relative;
 }
+
+/* Проект (N6.16): маленькая 🛠 перед «☑ 2/5» и тонкая полоска прогресса внизу строки */
+.proj-mark {
+    display: inline-block;
+    margin: 1px 0 0;
+    font-size: 10px;
+    line-height: 15px;
+    vertical-align: top;
+}
+
+.item.is-project {
+    position: relative;
+}
+
+.proj-bar {
+    position: absolute;
+    left: 30px;
+    right: 10px;
+    bottom: 2px;
+    height: 2px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--b-deep) 14%, transparent);
+    pointer-events: none;
+}
+
+.proj-bar::after {
+    content: "";
+    display: block;
+    width: var(--p);
+    height: 100%;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--b-deep) 65%, transparent);
+}

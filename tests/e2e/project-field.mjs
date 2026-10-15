@@ -73,7 +73,7 @@ const walls = await api('POST', `tasks/${repair.id}/steps`, { title: 'Стены
 await api('POST', `tasks/${repair.id}/steps`, { title: 'Полы' });
 await api('POST', `tasks/${walls.id}/move`, { kind: 'day', date: dayIso(3), index: 0 });
 await api('POST', 'tasks', { title: 'Краска', target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
-const book = await api('POST', 'tasks', { title: 'Атомные привычки', target: { kind: 'someday', categoryId: ideas.id, index: 1 } });
+const book = await api('POST', 'tasks', { title: 'Атомные привычки', target: { kind: 'someday', categoryId: ideas.id, index: 1 }, isProject: true });
 await load();
 
 await check('9. мысль «Краска»: «Проект: Ремонт» (поиск) — ушла из ленты, в шагах «Ремонта»; «— нет» — снова в «Идеях»', async () => {
@@ -96,7 +96,7 @@ await check('9. мысль «Краска»: «Проект: Ремонт» (п�
 
 await check('10. у дела со своими шагами поле «Проект» неактивно; в списке проектов нет шагов и самого дела', async () => {
   await openDay(0, 'Ремонт');
-  assert((await page.$eval('.editor .project-row', e => e.textContent)).includes('у дела есть шаги'), 'поле активно');
+  assert((await page.$eval('.editor .project-row', e => e.textContent)).includes('это проект'), 'поле активно');
   await closeEditor();
   await openFeed('Идеи', 'Краска');
   await page.click('.editor .project-row .select-field'); await sleep(300);
@@ -151,7 +151,9 @@ await check('11. занятие «Чтения» → «Проект: Атомн�
   await openDay(2, 'Чтение');
   await chooseProject('Атомные привычки', 'атом');
   await save(); await settle();
-  await openFeed('Идеи', 'Атомные привычки');
+  await page.click('.projects-b'); await settle(); // книга — проект, она в «🛠 Проекты» (N6)
+  await (await (await page.evaluateHandle(() => [...document.querySelectorAll('.someday .pgroup > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Атомные привычки'))).asElement().$('.title')).click();
+  await settle();
   const line = await page.$eval('.editor .task-steps .sessions-line', e => e.textContent.trim());
   assert(line.startsWith('1 занятие'), `строка занятий: ${line}`);
   await page.click('.editor .task-steps .sessions-line'); await sleep(200);

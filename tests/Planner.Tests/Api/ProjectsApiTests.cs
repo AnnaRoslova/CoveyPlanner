@@ -338,7 +338,8 @@ public class ProjectsApiTests : ApiTestBase
         var inDay = week.Tasks.Single(t => t.Id == boards.Id);
         Assert.Equal((shed.Id, "Сарай"), (inDay.ParentId!.Value, inDay.ParentTitle));
         Assert.Equal([paint.Id], week.Steps!.Select(s => s.Id)); // шаги проекта «Ремонт», стоящего в дне
-        Assert.Equal([boards.Id], (await GetBoardAsync()).Steps!.Select(s => s.Id)); // шаги проекта из ленты
+        // Шаги проекта из ленты и (N6.9) открытых проектов плана любой недели
+        Assert.Equal([boards.Id, paint.Id], (await GetBoardAsync()).Steps!.Select(s => s.Id).Order());
 
         var stepDto = (await StepsAsync(shed.Id)).Single();
         Assert.Equal(Thursday, stepDto.PlannedDate);

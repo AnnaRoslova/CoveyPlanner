@@ -450,6 +450,33 @@ public sealed class MigrationTests : IDisposable
         Assert.All(tasks, t => Assert.Null(t.ClipSeriesId));
     }
 
+    [Fact]
+    public async Task Projects_FlagOnTasksWithSteps_AndGoalProjects()
+    {
+        await using var db = CreateContext();
+
+        // Мысль; проект ленты с шагом; проект в дне только с шагом в корзине; проект цели без шагов; шаг сам проектом не становится
+        await db.GetService<IMigrator>().MigrateAsync("TasksStepsDone");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Categories (Id, Name, SortOrder, IsExpanded) VALUES (3, 'Дом', 0, 1);
+            INSERT INTO Tasks (Id, Title, State, PreviousState, PlannedDate, SortOrder, CreatedAt, CategoryId, ParentId, IsFromSomeday) VALUES
+                (1, 'Мысль', 'Someday', NULL, NULL, 0, '2026-10-01', 3, NULL, 1),
+                (2, 'Ремонт', 'Someday', NULL, NULL, 1, '2026-10-01', 3, NULL, 1),
+                (3, 'Стены', 'Planned', NULL, NULL, 0, '2026-10-01', NULL, 2, 0),
+                (4, 'Переезд', 'Planned', NULL, '2026-10-02', 0, '2026-10-01', NULL, NULL, 0),
+                (5, 'Коробки', 'Trashed', 'Planned', NULL, 0, '2026-10-01', NULL, 4, 0),
+                (6, 'Атомные привычки', 'Someday', NULL, NULL, 2, '2026-10-01', 3, NULL, 1);
+            INSERT INTO GoalSeries (Id, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, GeneratedThrough, JarSize, StartCount, IsHabit, ProjectId)
+                VALUES (1, 'Чтение', 3, 0, 1, '2026-09-28', '2026-10-05', 30, 0, 1, 6);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var projects = await db.Tasks.Where(t => t.IsProject).OrderBy(t => t.Id).Select(t => t.Id).ToListAsync();
+        Assert.Equal([2, 4, 6], projects);
+        Assert.Equal(3, (await db.Tasks.SingleAsync(t => t.Id == 2)).CategoryId); // категория остаётся
+    }
+
     private static async Task<long> CountAsync(PlannerDbContext db, string table)
     {
         var connection = db.Database.GetDbConnection();

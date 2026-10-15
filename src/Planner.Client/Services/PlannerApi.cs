@@ -23,8 +23,12 @@ public class PlannerApi(HttpClient http)
 
     // Дела
 
-    public Task<TaskDto> CreateTaskAsync(string title, TaskTargetDto target) =>
-        SendAsync<TaskDto>(HttpMethod.Post, "api/tasks", new CreateTaskRequest(title, target));
+    public Task<TaskDto> CreateTaskAsync(string title, TaskTargetDto target, bool isProject = false) =>
+        SendAsync<TaskDto>(HttpMethod.Post, "api/tasks", new CreateTaskRequest(title, target, isProject));
+
+    /// <summary>«🛠 Сделать проектом» / «🛠 больше не проект» (N6).</summary>
+    public Task<TaskDto> SetProjectAsync(int id, bool isProject) =>
+        SendAsync<TaskDto>(HttpMethod.Put, $"api/tasks/{id}/project", new SetProjectRequest(isProject));
 
 
     public Task<TaskDto> UpdateTaskAsync(int id, UpdateTaskRequest request) =>

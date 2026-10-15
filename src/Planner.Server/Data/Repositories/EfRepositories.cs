@@ -19,6 +19,11 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .OrderBy(t => t.CategoryId).ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
+    public Task<List<TaskItem>> GetPlannedProjectsAsync(CancellationToken ct = default) =>
+        db.Tasks.Where(t => t.IsProject && t.State == TaskState.Planned && t.ParentId == null)
+            .OrderBy(t => t.PlannedDate).ThenBy(t => t.SortOrder)
+            .ToListAsync(ct);
+
     public Task<List<TaskItem>> GetSomedayInCategoryAsync(int? categoryId, CancellationToken ct = default) =>
         db.Tasks.Where(t => t.State == TaskState.Someday && t.CategoryId == categoryId && t.ParentId == null)
             .OrderBy(t => t.SortOrder)

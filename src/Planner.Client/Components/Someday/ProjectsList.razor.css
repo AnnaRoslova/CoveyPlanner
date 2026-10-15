@@ -1,0 +1,100 @@
+/* «🛠 Проекты» на месте ленты (N6.8): заголовок, фильтр по категории, группы как категории ленты */
+.projects-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 4px 14px 2px 12px;
+}
+
+.ph-title {
+    font-family: var(--font-title);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.to-feed {
+    padding: 2px 4px;
+    color: var(--soft);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.to-feed:hover {
+    color: var(--b-deep);
+}
+
+.projects-tools {
+    margin: 2px 14px 6px 12px;
+    font-size: 12.5px;
+}
+
+.panel-scroll {
+    position: relative;
+}
+
+.add-project {
+    margin: 0 0 6px;
+}
+
+.pgroup {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 0 8px;
+    padding: 0 0 4px;
+    border-radius: 12px;
+}
+
+/* Под перетаскиваемым проектом группа подсвечена (класс ставит js/dnd.js) */
+.pgroup.drop-hover {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 2px var(--b);
+}
+
+.pg-h {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 6px 4px;
+    font-weight: 700;
+}
+
+.emoji {
+    flex: none;
+}
+
+.name {
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: break-word;
+    line-height: 1.25;
+}
+
+.cnt {
+    min-width: 14px;
+    margin-left: auto;
+    padding-left: 4px;
+    color: var(--faint);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.pgroup ::deep .item {
+    background: var(--glass-mid);
+}
+
+.pgroup ::deep .item:hover {
+    background: var(--b-soft);
+}
+
+.pgroup ::deep .steps {
+    padding-left: 12px;
+}
+
+.nothing {
+    padding: 10px 6px;
+    color: var(--faint);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
