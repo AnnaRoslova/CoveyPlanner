@@ -30,6 +30,7 @@
     {
         <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone" Compact="Folded"
                  Progress="@(Folded ? null : Progress(goal))" Days="@(Folded ? null : Days(goal))" Percent="goal.Percent" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
+                 Unplaced="@UnplacedHint(goal)"
                  OnToggle="() => State.ToggleGoalAsync(goal.Id)"
                  OnClick="() => OpenGoal(goal.Id)"
                  DragKind="@(goal.Id > 0 ? DragDropService.GoalItem : null)" DragId="goal.Id"
@@ -104,6 +105,10 @@
     public bool Folded { get; set; }
 
     /// <summary>«☑ 1/3» — шаги проекта цели (R7), перед процентом; шагов нет — null. Меняется сразу: шаги лежат в состоянии экрана.</summary>
+    /// <summary>N1: «не разложено: 1 из 2» у недособранной цели текущей или будущей недели; иначе подсветки нет.</summary>
+    private static string? UnplacedHint(WeeklyGoalDto goal) =>
+        goal.Id > 0 && PlannerState.UnplacedOf(goal, RuDates.Today) is > 0 and var n ? $"не разложено: {n} из {goal.TimesPerWeek}" : null;
+
     private string? StepsLabel(WeeklyGoalDto goal) =>
         State.StepsOfGoal(goal) is { Count: > 0 } steps ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
 

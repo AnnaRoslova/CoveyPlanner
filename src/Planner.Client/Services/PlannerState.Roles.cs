@@ -5,6 +5,23 @@ namespace Planner.Client.Services;
 // Левая панель: роли (и измерения пилы) и их цели на неделю
 public partial class PlannerState
 {
+    /// <summary>
+    /// Не разложено (N1): «раз в неделю» минус занятия в днях недели цели и выполненные без дня (корзина не в счёт), не меньше 0.
+    /// Выполненная цель и цель прошедшей недели — 0 (подсветки нет, N1.1, N1.4). Только вид: считается по занятиям цели.
+    /// </summary>
+    public static int UnplacedOf(WeeklyGoalDto goal, DateOnly today)
+    {
+        var weekEnd = goal.WeekStart.AddDays(6);
+        if (goal.IsDone || weekEnd < today)
+        {
+            return 0;
+        }
+
+        var placed = goal.Sessions.Count(s =>
+            s.PlannedDate is { } date ? date >= goal.WeekStart && date <= weekEnd : s.IsDone);
+        return Math.Max(0, goal.TimesPerWeek - placed);
+    }
+
     /// <summary>Цвет для новой роли: следующий по кругу палитры.</summary>
     public string NextRoleColor =>
         RolePalette.Count == 0 ? "#9fd3bd" : RolePalette[UserRoles.Count() % RolePalette.Count];

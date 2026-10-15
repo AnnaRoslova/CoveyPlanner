@@ -199,6 +199,24 @@ for (const theme of THEMES) {
     assert(m.ring >= 2, `обводка ${m.ring.toFixed(2)}:1`);
     assert(m.bgDiff >= 6, `фон отличается на ${m.bgDiff}`);
   });
+  await check(`${theme}: N1 — недособранная цель: подсветка на месте, полоска слева от фона панели не ниже 1.5:1`, async () => {
+    const m = await page.evaluate(() => {
+      const row = document.querySelector('.role .item.unplaced');
+      if (!row) return null;
+      const ctx = document.createElement('canvas').getContext('2d');
+      const rgb = c => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };
+      const ch = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const lum = c => 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2]);
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const page = rgb(getComputedStyle(document.documentElement).getPropertyValue('--page-color'));
+      const flat = (c, under) => c[3] === 255 ? c : [0, 1, 2].map(i => Math.round(c[i] * c[3] / 255 + under[i] * (1 - c[3] / 255))).concat(255);
+      const panel = flat(rgb(getComputedStyle(row.closest('.panel')).backgroundColor), page);
+      const bar = flat(rgb(getComputedStyle(row).getPropertyValue('--unplaced-bar')), panel);
+      return { bar: ratio(bar, panel) };
+    });
+    assert(m, 'на экране нет недособранной цели');
+    assert(m.bar >= 1.5, `полоска ${m.bar.toFixed(2)}:1`);
+  });
   await check(`${theme}: окно дела`, async () => {
     await clickItem('.day', 'Созвон с заказчиком');
     await page.waitForSelector('.editor[aria-label="Дело"]');

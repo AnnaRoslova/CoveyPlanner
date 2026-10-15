@@ -506,3 +506,13 @@ body.dragging .trash-btn {
     border-radius: 2px;
     background: color-mix(in srgb, var(--b-deep) 65%, transparent);
 }
+
+/* Цель недособрана (N1): не все занятия стоят в днях — мягкая подложка и тонкая полоска слева, без тревожных цветов */
+.item.unplaced {
+    background: var(--unplaced-bg);
+    box-shadow: inset 3px 0 0 var(--unplaced-bar);
+}
+
+.item.unplaced:hover {
+    background: color-mix(in srgb, var(--unplaced-bg), var(--b-soft));
+}

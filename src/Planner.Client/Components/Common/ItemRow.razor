@@ -3,8 +3,8 @@
    Clamp: название не длиннее двух строк, с «…»; полный текст — в подсказке при наведении (только у обрезанных:
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
-<div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
-     style="@(Color is null ? null : $"--c: {Color}")"
+<div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(Unplaced is not null ? "unplaced" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
+     style="@(Color is null ? null : $"--c: {Color}")" title="@Unplaced"
      data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
      data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint"
@@ -284,6 +284,10 @@
     /// <summary>Сводка проекта справа: «☑ 2/5», «12 занятий».</summary>
     [Parameter]
     public string? ProjectLabel { get; set; }
+
+    /// <summary>Цель недособрана (N1): тихая подсветка строки и подсказка «не разложено: 1 из 2»; null — подсветки нет.</summary>
+    [Parameter]
+    public string? Unplaced { get; set; }
 
     /// <summary>Запись — проект (N6.16): 🛠 перед подписью и полоска прогресса <see cref="StepsProgress"/> внизу строки.</summary>
     [Parameter]

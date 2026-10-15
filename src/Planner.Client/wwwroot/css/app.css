@@ -77,6 +77,10 @@
     --today-bg: color-mix(in srgb, var(--a) 20%, var(--paper));
     --today-ring: color-mix(in srgb, var(--a-deep) 70%, var(--surface));
 
+    /* Цель недособрана (N1): тихая подложка строки цветом акцента (слабее «сегодня») и тонкая полоска слева */
+    --unplaced-bg: color-mix(in srgb, var(--a) 14%, transparent);
+    --unplaced-bar: color-mix(in srgb, var(--a-deep) 75%, transparent);
+
     /* Точечная сетка на страницах-днях */
     --dot: color-mix(in srgb, var(--b) 50%, var(--paper));
 }
