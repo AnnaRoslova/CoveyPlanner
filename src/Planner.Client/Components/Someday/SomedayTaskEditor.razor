@@ -34,7 +34,7 @@
     <div class="buttons">
         <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
-        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
+        <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
 </div>
 

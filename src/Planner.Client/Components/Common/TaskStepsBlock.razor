@@ -15,13 +15,13 @@
         @* Одна и та же кнопка меняет надпись — фокус остаётся в окне, Esc по-прежнему его закрывает *@
         @if (ToggleLabel is { } toggle)
         {
-            <button type="button" class="project-toggle" @onclick="ToggleProjectAsync">@toggle</button>
+            <button type="button" class="btn small project-toggle" @onclick="ToggleProjectAsync">@toggle</button>
         }
     </div>
     <ProjectSteps ParentId="TaskId" LongDates="true" />
     @if (Sessions.Count > 0)
     {
-        <button type="button" class="sessions-line" aria-expanded="@(_sessionsOpen ? "true" : "false")"
+        <button type="button" class="btn small sessions-line" aria-expanded="@(_sessionsOpen ? "true" : "false")"
                 @onclick="() => _sessionsOpen = !_sessionsOpen">
             @PlannerState.SessionsWord(Sessions.Count(s => s.State == TaskStateDto.Done)) @(_sessionsOpen ? "▾" : "▸")
         </button>

@@ -79,7 +79,7 @@
                 @if (Goal is { } timeGoal && OwnTime(timeGoal))
                 {
                     <span class="own">своё</span>
-                    <button type="button" class="as-goal" @onclick="() => _time = timeGoal.StartTime">как у цели</button>
+                    <button type="button" class="btn small as-goal" @onclick="() => _time = timeGoal.StartTime">как у цели</button>
                 }
             </div>
             <TimePicker @bind-Value="_time" />
@@ -111,7 +111,7 @@
             @if (Goal is { } durGoal && OwnDuration(durGoal))
             {
                 <span class="own">своё</span>
-                <button type="button" class="as-goal" @onclick="() => _duration = durGoal.DurationMinutes">как у цели</button>
+                <button type="button" class="btn small as-goal" @onclick="() => _duration = durGoal.DurationMinutes">как у цели</button>
             }
         </div>
         <DurationPicker @bind-Value="_duration" />
@@ -123,7 +123,7 @@
             @if (Goal is { } notesGoal && OwnNotes(notesGoal))
             {
                 <span class="own">своё</span>
-                <button type="button" class="as-goal" @onclick="() => _notes = notesGoal.Notes">как у цели</button>
+                <button type="button" class="btn small as-goal" @onclick="() => _notes = notesGoal.Notes">как у цели</button>
             }
         </div>
         <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
@@ -147,7 +147,7 @@
     <div class="buttons">
         <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
-        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
+        <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
 </div>
 

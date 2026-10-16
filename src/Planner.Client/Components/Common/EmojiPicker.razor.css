@@ -46,24 +46,6 @@
     border-color: var(--b);
 }
 
-.use,
-.none {
-    padding: 2px 8px;
-    border-radius: 8px;
-    color: var(--soft);
-    font-size: 11.5px;
-    font-weight: 700;
-}
-
-.use {
-    background: var(--b-soft);
-    color: var(--b-deep);
-}
-
 .none {
     margin-left: auto;
-}
-
-.none:hover {
-    color: var(--a-ink);
 }

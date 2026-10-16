@@ -16,18 +16,21 @@
         @if (Notifier.ActionLabel is { } label)
         {
             <span class="sep">·</span>
-            <button type="button" class="action" @onclick="() => Notifier.RunActionAsync(version)" @onclick:stopPropagation="true">@label</button>
+            <button type="button" class="action @(IsDanger(label) ? "danger" : "")" @onclick="() => Notifier.RunActionAsync(version)" @onclick:stopPropagation="true">@label</button>
         }
         @if (Notifier.SecondActionLabel is { } second)
         {
             <span class="sep">·</span>
-            <button type="button" class="action" @onclick="() => Notifier.RunActionAsync(version, second: true)" @onclick:stopPropagation="true">@second</button>
+            <button type="button" class="action @(IsDanger(second) ? "danger" : "")" @onclick="() => Notifier.RunActionAsync(version, second: true)" @onclick:stopPropagation="true">@second</button>
         }
     </div>
 }
 
 @code {
     private int _shownVersion;
+
+    /// <summary>«в корзину» на плашке — опасная пилюля (D1), остальные действия — обычные.</summary>
+    private static bool IsDanger(string label) => label == "в корзину";
 
     protected override void OnInitialized() => Notifier.Changed += OnChanged;
 

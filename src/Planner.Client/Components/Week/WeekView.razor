@@ -33,10 +33,12 @@
             }
         </div>
         @* «🛠 Проекты» — на месте ленты (N6.8); нажата — показаны проекты *@
-        <button type="button" class="projects-b @(RightPanel.IsProjects ? "on" : "")" title="Проекты" aria-label="Проекты"
+        <button type="button" class="icon-b projects-b @(RightPanel.IsProjects ? "on" : "")" title="Проекты" aria-label="Проекты"
                 aria-pressed="@(RightPanel.IsProjects ? "true" : "false")" @onclick="RightPanel.ToggleAsync">🛠</button>
-        <button type="button" class="jar-b" title="Копилки привычек" aria-label="Копилки привычек" @onclick="() => Windows.OpenHabits()">🫙</button>
-        <button type="button" class="report-b" title="Отчёт за период" aria-label="Отчёт за период" @onclick="Windows.OpenReport">📊</button>
+        @* «✓ Выполненное» — в одном ряду с 🛠 🫙 📊 (fixes-2026-10.md, D3) *@
+        <button type="button" class="icon-b done-b" title="Выполненное" aria-label="Выполненное" @onclick="Windows.OpenDone">✓</button>
+        <button type="button" class="icon-b jar-b" title="Копилки привычек" aria-label="Копилки привычек" @onclick="() => Windows.OpenHabits()">🫙</button>
+        <button type="button" class="icon-b report-b" title="Отчёт за период" aria-label="Отчёт за период" @onclick="Windows.OpenReport">📊</button>
         <ThemePicker />
     </div>
 

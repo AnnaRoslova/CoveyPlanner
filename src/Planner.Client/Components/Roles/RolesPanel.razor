@@ -11,7 +11,7 @@
             <div class="sub">большие камни этой недели</div>
         </div>
         <div class="head-tools">
-            <button type="button" class="fold" aria-pressed="@(GoalFold.IsFolded ? "true" : "false")"
+            <button type="button" class="icon-b fold" aria-pressed="@(GoalFold.IsFolded ? "true" : "false")"
                     title="@(GoalFold.IsFolded ? "Развернуть все цели" : "Свернуть все цели")" @onclick="GoalFold.ToggleAsync">
                 <Icon Name="@(GoalFold.IsFolded ? "unfold" : "fold")" Size="14" />
             </button>

@@ -32,18 +32,4 @@
     gap: 2px;
 }
 
-/* «Свернуть / развернуть все цели» — тихая круглая кнопка, как шторка панели рядом */
-.fold {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    color: var(--faint);
-}
-
-.fold:hover {
-    background: var(--b-soft);
-    color: var(--b-deep);
-}
+/* «Свернуть / развернуть все цели» — общая кнопка-значок .icon-b (app.css), как шторка панели рядом */

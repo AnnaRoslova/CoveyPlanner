@@ -126,7 +126,7 @@ await check('пилюли не переносятся, в тексте нет а
   assert(hyphens === 'manual', `hyphens: ${hyphens}`);
 });
 
-await check('фокус с клавиатуры — мятное кольцо, без чёрной рамки', async () => {
+await check('фокус с клавиатуры — бирюзовое кольцо 2px (fixes-2026-10 D2.3), не чёрная рамка браузера', async () => {
   await at(1600);
   const add = await page.$('.role .add');
   await add.focus();
@@ -134,10 +134,10 @@ await check('фокус с клавиатуры — мятное кольцо, �
   const style = await page.evaluate(() => {
     const el = document.activeElement;
     const s = getComputedStyle(el);
-    return { tag: el.className, outline: s.outlineStyle, shadow: s.boxShadow };
+    return { tag: el.className, outline: s.outlineStyle, width: parseFloat(s.outlineWidth), color: s.outlineColor };
   });
-  assert(style.outline === 'none', `outline ${style.outline}`);
-  assert(style.shadow.includes('rgba') || style.shadow.includes('rgb'), `кольца нет: ${style.shadow} (${style.tag})`);
+  assert(style.outline === 'solid' && style.width >= 2, `кольцо: ${JSON.stringify(style)}`);
+  assert(style.color !== "rgb(0, 0, 0)", `чёрная рамка: ${style.color}`);
 });
 
 await browser.close();

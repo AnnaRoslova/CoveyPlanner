@@ -12,15 +12,6 @@
     margin: 0 0 2px;
 }
 
-.fold {
-    padding: 4px;
-    color: var(--faint);
-    font-size: 12.5px;
-}
-
-.fold:hover {
-    color: var(--b-deep);
-}
 
 /* Относительно прокручиваемой части лежит пустое «неразобранное» во время перетаскивания (app.css) */
 .panel-scroll {
@@ -142,33 +133,15 @@ body.dragging .trash {
     }
 }
 
-/* Низ ленты: «✓ выполненное» слева, корзина справа */
+/* Низ ленты: корзина справа («✓ Выполненное» — значком в шапке недели, D3) */
 .feed-foot {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding-left: 16px;
-}
-
-.done-link {
-    color: var(--faint);
-    font-size: 12px;
-}
-
-.done-link:hover {
-    color: var(--b-deep);
 }
 
 /* Поиск ленты нашёл проекты — тихая строка «🛠 в проектах: N» (N6.12) */
 .in-projects {
-    display: block;
-    margin: 4px 0;
-    padding: 6px;
-    color: var(--soft);
-    font-size: 12.5px;
-    font-weight: 700;
-}
-
-.in-projects:hover {
-    color: var(--b-deep);
+    margin: 6px 0;
 }

@@ -18,10 +18,11 @@ const MOCKUP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 const THEMES = ['lotus', 'peony', 'platinum', 'obsidian'];
 const MUST_PASS_AA = ['obsidian'];
 const LIGHT = ['lotus', 'peony', 'platinum'];
-// Второстепенный текст: «+ …» и «свернуть всё», счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
-const SECONDARY = ['.add', '.others-h', '.other .d', '.other .sep', '.other.done', '.fold', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
-  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category', '.strip-label', '.m.before', '.legend',
-  '.done-link', '.parent-of', '.project-label', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
+// Второстепенный текст: счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
+// Кнопки системы («+ …», «свернуть всё», «ещё дела», значки — fixes-2026-10.md, D4) — как основной текст: их в этом списке нет
+const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
+  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
+  '.parent-of', '.project-label', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
   '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)'].join(', ');
 const results = [];
 const consoleErrors = [];
@@ -200,6 +201,23 @@ for (const theme of THEMES) {
     assert(m.ring >= 2, `обводка ${m.ring.toFixed(2)}:1`);
     assert(m.bgDiff >= 6, `фон отличается на ${m.bgDiff}`);
   });
+  await check(`${theme}: D4 — обводка кнопок от фона под ними не ниже 1.5:1 (обычная, «+ …», значки)`, async () => {
+    const weak = await page.evaluate(() => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      const rgb = c => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };
+      const ch = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const lum = c => 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2]);
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const over = (c, under) => [0, 1, 2].map(i => Math.round(c[i] * c[3] / 255 + under[i] * (1 - c[3] / 255))).concat(255);
+      const page = rgb(getComputedStyle(document.documentElement).getPropertyValue('--page-color'));
+      const behind = el => { const chain = []; for (let e = el.parentElement; e; e = e.parentElement) chain.unshift(e); return chain.reduce((acc, e) => over(rgb(getComputedStyle(e).backgroundColor), acc), page); };
+      return [...document.querySelectorAll('.btn:not(.primary):not(.danger):not(.pink), .add, .icon-b')]
+        .filter(b => b.getBoundingClientRect().width > 0 && !b.closest('[aria-hidden="true"]'))
+        .map(b => ({ t: (b.textContent.trim() || b.title).slice(0, 24), r: ratio(over(rgb(getComputedStyle(b).borderTopColor), behind(b)), behind(b)) }))
+        .filter(x => x.r < 1.5);
+    });
+    assert(weak.length === 0, JSON.stringify(weak.slice(0, 6)));
+  });
   await check(`${theme}: N1 — недособранная цель: подсветка на месте, полоска слева от фона панели не ниже 1.5:1`, async () => {
     const m = await page.evaluate(() => {
       const row = document.querySelector('.role .item.unplaced');
@@ -276,7 +294,7 @@ for (const theme of THEMES) {
     await escape(); await escape();
   });
   await check(`${theme}: экран «Выполненное»`, async () => {
-    await page.click('.someday .done-link'); await page.waitForSelector('.done-screen .done-row');
+    await page.click('.week-h .done-b'); await page.waitForSelector('.done-screen .done-row');
     await page.mouse.move(5, 5); await sleep(400);
     await shot('done');
     windows.push(['выполненное', await audit(theme, 'done', '.done-screen')]);

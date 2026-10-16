@@ -3,20 +3,9 @@
     margin-left: 14px; /* отдельно от «камней» */
 }
 
+/* Кнопка-палитра — общая .icon-b (app.css) */
 .palette-b {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    color: var(--soft);
-}
-
-.palette-b:hover,
-.palette-b[aria-expanded="true"] {
-    background: var(--b-soft);
-    color: var(--b-deep);
+    margin-left: 6px;
 }
 
 /* Клик мимо сетки закрывает её */

@@ -72,7 +72,7 @@
     @if (OtherTasks.Count > 0)
     {
         var open = RoleTasks.IsOpen(Role.Id);
-        <button type="button" class="others-h" aria-expanded="@(open ? "true" : "false")"
+        <button type="button" class="btn small others-h" aria-expanded="@(open ? "true" : "false")"
                 @onclick="() => RoleTasks.ToggleAsync(Role.Id)">
             ещё дела: @OtherTasks.Count <span class="chev @(open ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
         </button>

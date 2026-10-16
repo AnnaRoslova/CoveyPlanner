@@ -67,7 +67,7 @@ else if (State.LoadError is not null)
 {
     <div class="app-message">
         <p>Не удалось загрузить данные: @State.LoadError</p>
-        <button class="add" @onclick="State.LoadAsync">Повторить</button>
+        <button class="btn primary" @onclick="State.LoadAsync">Повторить</button>
     </div>
 }
 else

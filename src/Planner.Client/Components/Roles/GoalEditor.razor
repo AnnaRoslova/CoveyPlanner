@@ -112,7 +112,7 @@
     @if (_recurring && _habit && State.HabitOfGoal(EditedGoal) is { } habit)
     {
         <div class="field habit-of-goal">
-            <button type="button" class="habit-line" title="Открыть на экране «Копилки»" @onclick="() => OpenHabitAsync(habit.Id)">
+            <button type="button" class="btn habit-line" title="Открыть на экране «Копилки»" @onclick="() => OpenHabitAsync(habit.Id)">
                 🫙 привычка: @habit.Stats.Total @HabitCard.ClipsWord(habit.Stats.Total) · @(habit.Stats.WeekPaused ? "⚠" : $"🔥{habit.Stats.WeekStreak}")
             </button>
             <div class="row">
@@ -158,7 +158,7 @@
     <div class="buttons">
         <button type="button" class="btn danger trash" @onclick="DeleteAsync">удалить цель</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
-        <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
+        <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
 </div>
 

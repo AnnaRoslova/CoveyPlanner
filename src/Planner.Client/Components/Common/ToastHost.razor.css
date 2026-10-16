@@ -24,17 +24,33 @@
     color: var(--faint);
 }
 
-/* «Вернуть», «Показать» — розовый акцент, как ссылка */
+/* «Вернуть», «Показать», «в корзину» — маленькие пилюли (fixes-2026-10.md, D1): обычная и опасная из системы кнопок */
 .action {
-    padding: 0;
-    color: var(--a-ink);
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 1px 10px;
+    border: 1px solid var(--btn-line);
+    border-radius: 20px;
+    background: var(--btn-bg);
+    color: var(--btn-ink);
+    font-size: 12px;
     font-weight: 800;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    vertical-align: middle;
 }
 
 .action:hover {
-    color: var(--b-deep);
+    background: var(--btn-hover);
+}
+
+.action.danger {
+    border-color: var(--btn-danger-line);
+    background: var(--btn-danger-bg);
+    color: var(--btn-danger-ink);
+}
+
+.action.danger:hover {
+    background: var(--btn-danger-hover);
 }
 
 /* «📎 +1 в «Тренировки»»: скрепка падает и чуть подпрыгивает */

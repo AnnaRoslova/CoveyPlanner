@@ -12,16 +12,6 @@
     font-weight: 600;
 }
 
-.to-feed {
-    padding: 2px 4px;
-    color: var(--soft);
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.to-feed:hover {
-    color: var(--b-deep);
-}
 
 .projects-tools {
     margin: 2px 14px 6px 12px;

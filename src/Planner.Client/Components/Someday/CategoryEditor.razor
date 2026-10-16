@@ -25,7 +25,7 @@
         <div class="confirm">
             <span>Удалить «@Category!.Name»? В ней @TaskCount @TasksWord(TaskCount).</span>
             <div class="choices">
-                <button type="button" class="btn" @onclick="() => DeleteAsync(keepTasks: true)">Переложить в неразобранное</button>
+                <button type="button" class="btn primary" @onclick="() => DeleteAsync(keepTasks: true)">Переложить в неразобранное</button>
                 <button type="button" class="btn danger" @onclick="() => DeleteAsync(keepTasks: false)">Удалить вместе с делами</button>
                 <button type="button" class="btn quiet" @onclick="() => _confirmDelete = false">Отмена</button>
             </div>
@@ -36,10 +36,10 @@
         <div class="buttons">
             @if (Category is not null)
             {
-                <button type="button" class="btn quiet delete" @onclick="AskDeleteAsync">удалить</button>
+                <button type="button" class="btn danger delete" @onclick="AskDeleteAsync">удалить</button>
             }
             <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
-            <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="() => SaveAsync(_name)">
+            <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="() => SaveAsync(_name)">
                 @(Category is null ? "Создать" : "Сохранить")
             </button>
         </div>

@@ -49,7 +49,7 @@ const screen = () => page.evaluate(() => {
     })),
   }));
 });
-const openScreen = async () => { await page.click('.someday .done-link'); await page.waitForSelector('.done-screen'); await settle(); };
+const openScreen = async () => { await page.click('.week-h .done-b'); await page.waitForSelector('.done-screen'); await settle(); };
 const doneRow = title => page.evaluateHandle(t => [...document.querySelectorAll('.done-screen .done-row')].find(r => r.querySelector('.title').textContent.trim() === t), title);
 
 await load();
@@ -70,13 +70,13 @@ for (const t of ['Стены', 'Полы']) {
 await load();
 const lolita = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Лолита');
 
-await check('V9: внизу ленты — «✓ выполненное» рядом с корзиной; пусто — подсказка', async () => {
+await check('V9 (fixes-2026-10 D3): вход — значок «✓» в шапке недели рядом с 🛠 и 🫙; внизу ленты строки нет', async () => {
   const r = await page.evaluate(() => {
-    const l = document.querySelector('.someday .done-link')?.getBoundingClientRect();
-    const t = document.querySelector('.someday .trash').getBoundingClientRect();
-    return l && { sameLine: Math.abs((l.top + l.bottom) / 2 - (t.top + t.bottom) / 2) < 8, text: document.querySelector('.someday .done-link').textContent.trim() };
+    const b = document.querySelector('.week-h .done-b');
+    return b && { text: b.textContent.trim(), title: b.title, prev: b.previousElementSibling?.textContent.trim(), next: b.nextElementSibling?.textContent.trim(),
+      inFeed: !!document.querySelector('.someday .done-link') };
   });
-  assert(r?.sameLine && r.text === '✓ выполненное', JSON.stringify(r));
+  assert(r && r.text === '✓' && r.title === 'Выполненное' && r.prev === '🛠' && r.next === '🫙' && !r.inFeed, JSON.stringify(r));
 });
 
 await check('п. 14: отметили «Лолиту» в ленте — в группе «📚 Книги», счёт по годам, дата — сегодня', async () => {

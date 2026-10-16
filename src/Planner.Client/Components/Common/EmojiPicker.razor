@@ -13,9 +13,9 @@
                @onkeydown="OnCustomKey" />
         @if (!string.IsNullOrWhiteSpace(_custom))
         {
-            <button type="button" class="use" @onclick="PickCustom">ок</button>
+            <button type="button" class="btn primary small use" @onclick="PickCustom">ок</button>
         }
-        <button type="button" class="none" @onclick="() => OnPick.InvokeAsync(string.Empty)">без иконки</button>
+        <button type="button" class="btn small none" @onclick="() => OnPick.InvokeAsync(string.Empty)">без иконки</button>
     </div>
 </div>
 

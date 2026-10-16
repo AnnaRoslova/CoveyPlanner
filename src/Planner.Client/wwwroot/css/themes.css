@@ -218,3 +218,8 @@
 :root[data-theme="obsidian"] .quick {
     border-color: #3a3c42;
 }
+
+/* Кнопки (fixes-2026-10.md, D2): у светлой серебряной заливки главной кнопки — тёмный текст, как на других залитых акцентах */
+[data-theme="obsidian"] {
+    --btn-primary-ink: var(--on-accent);
+}

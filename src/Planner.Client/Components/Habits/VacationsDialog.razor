@@ -35,7 +35,7 @@
 
     <div class="buttons">
         <button type="button" class="btn quiet" @onclick="OnClose">Закрыть</button>
-        <button type="button" class="btn pink" disabled="@(_to < _from)" @onclick="SaveAsync">Сохранить</button>
+        <button type="button" class="btn primary" disabled="@(_to < _from)" @onclick="SaveAsync">Сохранить</button>
     </div>
 
     @if (State.Vacations.Count > 0)

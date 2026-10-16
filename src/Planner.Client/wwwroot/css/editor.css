@@ -201,14 +201,7 @@
 }
 
 .editor .as-goal {
-    color: var(--soft);
-    font-size: 11px;
-    text-decoration: underline dotted;
-    text-underline-offset: 2px;
-}
-
-.editor .as-goal:hover {
-    color: var(--b-deep);
+    margin-left: 4px;
 }
 
 /* Роль и квадрант занятия задаются у цели — показываем без выбора */
@@ -752,18 +745,8 @@
 }
 
 .editor .wheels .wheel-none {
-    align-self: stretch;
+    align-self: center;
     margin-left: 4px;
-    padding: 0 10px;
-    border-radius: 10px;
-    color: var(--soft);
-    font-size: 12.5px;
-    font-weight: 700;
-}
-
-.editor .wheels .wheel-none:hover {
-    background: var(--b-soft);
-    color: var(--b-deep);
 }
 
 /* Окно поверх экрана «Копилки»: «настроить» привычку, каникулы */
@@ -795,16 +778,6 @@
 /* Окно цели-привычки: строка «🫙 привычка: 102 скрепки · 🔥13» (клик — экран «Копилки») и банка */
 .editor .habit-line {
     align-self: flex-start;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: var(--b-soft);
-    color: var(--b-deep);
-    font-size: 12.5px;
-    font-weight: 700;
-}
-
-.editor .habit-line:hover {
-    background: color-mix(in srgb, var(--b) 35%, var(--surface));
 }
 
 /* Шаги дела (StepsList): квадратик, название (клик — переименовать), × при наведении, «+ шаг» */
@@ -930,13 +903,8 @@ body.dragging .editor {
 
 /* Шаги в окне дела: «12 занятий ▸» и их список */
 .editor .task-steps .sessions-line {
-    padding: 2px 0;
-    color: var(--faint);
-    font-size: 12px;
-}
-
-.editor .task-steps .sessions-line:hover {
-    color: var(--b-deep);
+    align-self: flex-start;
+    margin-top: 4px;
 }
 
 .editor .task-steps .sessions-list {
@@ -987,14 +955,12 @@ body.dragging .editor {
 /* «🛠 сделать проектом» / «🛠 больше не проект» — тихая кнопка справа от «Шаги» (N6.3, N6.7) */
 .editor .task-steps .project-toggle {
     margin-left: auto;
-    padding: 1px 8px;
-    border-radius: 20px;
-    color: var(--soft);
-    font-size: 11.5px;
-    font-weight: 700;
 }
 
-.editor .task-steps .project-toggle:hover {
-    background: var(--b-soft);
-    color: var(--b-deep);
+/* «→ на след. неделю» (fixes-2026-10.md, B1) — пилюля по своей ширине, подсказка у занятия цели — рядом */
+.editor .next-week-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
 }

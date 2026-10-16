@@ -55,7 +55,7 @@
 
     @if (Archived.Count > 0)
     {
-        <button type="button" class="archived-h" aria-expanded="@(_showArchived ? "true" : "false")" @onclick="() => _showArchived = !_showArchived">
+        <button type="button" class="btn small archived-h" aria-expanded="@(_showArchived ? "true" : "false")" @onclick="() => _showArchived = !_showArchived">
             в архиве: @Archived.Count <span class="chev @(_showArchived ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
         </button>
         @if (_showArchived)

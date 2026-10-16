@@ -83,7 +83,10 @@
 /* «+ дело» — сразу под последним делом */
 .day .add {
     width: max-content;
-    padding: 4px 8px;
-    border-radius: 8px;
+    margin-top: 2px;
     background: var(--paper);
+}
+
+.day .add:hover {
+    background: var(--btn-hover);
 }
