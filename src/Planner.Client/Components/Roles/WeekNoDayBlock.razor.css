@@ -1,30 +1,11 @@
-/* «На неделе: N» (N4.2) — тихий блок под целями роли. Пустой не виден; пока тащат дело — проступает как место, куда бросить:
-   в роли — маленькой пилюлей «на неделе» в заголовке (поверх, вёрстку не сдвигает), без роли — строкой внизу панели */
+/* «На неделе · N» (N4.2, B2) — список под целями роли: виден, только если в нём есть дела, и всегда раскрыт */
 .week-nd {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    margin: 2px 0 0;
+    margin: 4px 0 0;
+    padding: 2px 0;
     border-radius: 10px;
-}
-
-.week-nd.empty {
-    display: none;
-}
-
-:is(body[data-drag-kind="day"], body[data-drag-kind="someday"], body[data-drag-kind="step"]) .week-nd.empty {
-    display: flex;
-    border: 1.5px dashed color-mix(in srgb, var(--b) 70%, transparent);
-}
-
-:is(body[data-drag-kind="day"], body[data-drag-kind="someday"], body[data-drag-kind="step"]) .role .week-nd.empty {
-    position: absolute;
-    top: 6px;
-    right: 30px;
-    z-index: 2;
-    margin: 0;
-    border-radius: 20px;
-    background: var(--surface);
 }
 
 .week-nd.drop-hover {
@@ -33,29 +14,8 @@
 }
 
 .wnd-h {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    align-self: flex-start;
     padding: 2px 6px;
-    color: var(--faint);
+    color: var(--b-deep);
     font-size: 12px;
     font-weight: 700;
-}
-
-.empty .wnd-h {
-    padding: 1px 8px;
-}
-
-.wnd-h:hover {
-    color: var(--b-deep);
-}
-
-.chev {
-    display: inline-flex;
-    transition: transform 0.2s;
-}
-
-.chev.open {
-    transform: rotate(90deg);
 }

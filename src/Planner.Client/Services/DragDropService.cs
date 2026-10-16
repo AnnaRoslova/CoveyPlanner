@@ -36,7 +36,6 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
     public const string TaskZone = "task";       // середина строки дела: сделать брошенное его шагом (N2); свой шаг — снять с дня
 
     /// <summary>data-key «на неделе без роли» (N4).</summary>
-    public const string NoRoleKey = "none";
 
     /// <summary>data-key зоны «неразобранное» (дела ленты без категории).</summary>
     public const string UnsortedKey = "unsorted";
@@ -215,7 +214,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
                 await state.DropOnTaskAsync(drop.Id, targetId);
                 break;
 
-            // Дело → «на неделе» роли или «без роли»: на показанную неделю без дня (с этой ролью), N4.3
+            // Дело → заголовок роли или её «на неделе»: на показанную неделю без дня с этой ролью (N4.3, B5)
             case { Kind: SomedayItem or DayItem or StepItem, Zone: WeekZone }:
                 await state.MoveToWeekWithoutDayAsync(drop.Id, int.TryParse(drop.Key, out var weekRoleId) ? weekRoleId : null);
                 break;

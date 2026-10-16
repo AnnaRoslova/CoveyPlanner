@@ -1,6 +1,6 @@
-// N4 (docs/specs/next-batch.md, вариант Б): «→ на следующую неделю (без дня)». Кнопка в окне дела и мысли; дело исчезло из дня/ленты,
-// видно слева на следующей неделе «на неделе: 1» под своей ролью, без роли — «на неделе без роли»; перетаскивание оттуда в день;
-// бросок на «на неделе» роли; «›» + роль = камень, дело из дня теряет день (исправление дыры). Данные — через API (чистая база).
+// «→ на след. неделю» (docs/specs/next-batch.md, N4; доработка — docs/specs/fixes-2026-10.md, B1–B5): заметная кнопка в окнах дела и мысли;
+// дело с ролью — на следующей неделе слева под ролью (список не свёрнут), плашка «… → след. неделя, «Роль» · Показать · Вернуть»;
+// без роли — меню ролей (и «в ленту» у дела); бросок на заголовок роли — то же; между целями — по-прежнему новая цель. Данные — через API.
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -40,13 +40,13 @@ const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6)
 const dayIso = i => { const d = new Date(monday); d.setDate(monday.getDate() + i); return iso(d); };
 
 const dayTitles = i => page.evaluate(i => [...document.querySelectorAll('.day')[i].querySelectorAll(':scope > .item')].map(it => it.querySelector('.title').textContent.trim()), i);
-/** «На неделе» под ролью (null — без роли): подпись и названия дел. */
+/** «На неделе» под ролью (null — без роли): подпись и названия дел; списка нет — null. */
 const weekBlock = role => page.evaluate(r => {
   const block = r
     ? [...document.querySelectorAll('.role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === r)?.querySelector('.week-nd')
     : [...document.querySelectorAll('.week-nd')].find(b => b.querySelector('.wnd-h')?.textContent.includes('без роли'));
   if (!block) return null;
-  return { empty: block.classList.contains('empty'), head: block.querySelector('.wnd-h').textContent.replace(/\s+/g, ' ').trim(),
+  return { head: block.querySelector('.wnd-h').textContent.replace(/\s+/g, ' ').trim(),
     tasks: [...block.querySelectorAll('.item .title')].map(t => t.textContent.trim()) };
 }, role);
 const toast = () => page.evaluate(() => document.querySelector('.toast')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
@@ -58,71 +58,124 @@ async function drag(from, tx, ty) {
   for (let i = 1; i <= 16; i++) { await page.mouse.move(sx + (tx - sx) * i / 16, sy + (ty - sy) * i / 16); await sleep(16); }
   await sleep(200); await page.mouse.up(); await settle();
 }
+const openDayTask = (i, t) => page.evaluate((i, t) => [...document.querySelectorAll('.day')[i].querySelectorAll(':scope > .item')]
+  .find(x => x.querySelector('.title').textContent.trim() === t).querySelector('.title').click(), i, t);
+const roleHeader = name => page.evaluate(n => {
+  const r = [...document.querySelectorAll('.role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === n).querySelector('.role-h').getBoundingClientRect();
+  return { x: r.x + r.width / 3, y: r.y + r.height / 2 };
+}, name);
+const menuItems = () => page.$$eval('.next-week-menu .option-name', os => os.map(o => o.textContent.trim()));
+const giftBody = roleId => ({ title: 'Купить подарок', notes: null, roleIds: [roleId], quadrant: null, startTime: '15:00:00', durationMinutes: null });
 
 await load();
-const family = (await api('GET', 'board')).roles.find(r => r.name === 'Семья');
-const work = (await api('GET', 'board')).roles.find(r => r.name === 'Работа');
+const board = await api('GET', 'board');
+const family = board.roles.find(r => r.name === 'Семья');
+const work = board.roles.find(r => r.name === 'Работа');
 const gift = await api('POST', 'tasks', { title: 'Купить подарок', target: { kind: 'day', date: dayIso(1), index: 0 } });
-await api('PUT', `tasks/${gift.id}`, { title: 'Купить подарок', notes: null, roleIds: [family.id], quadrant: null, startTime: null, durationMinutes: null });
+await api('PUT', `tasks/${gift.id}`, giftBody(family.id));
+await api('POST', 'tasks', { title: 'Чай', target: { kind: 'day', date: dayIso(1), index: 0 } });
+await api('POST', 'tasks', { title: 'Почта', target: { kind: 'day', date: dayIso(3), index: 0 } });
 const ideas = await api('POST', 'categories', { name: 'Идеи' });
 await api('POST', 'tasks', { title: 'Шкаф', target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
 await load();
 
-await check('N4.1: окно дела — «→ след. неделя, без дня» → дело ушло из дня; плашка «Перенесено на неделю … · Показать»', async () => {
-  await page.evaluate(() => [...document.querySelectorAll('.day')[1].querySelectorAll(':scope > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Купить подарок').querySelector('.title').click());
-  await settle();
-  await page.click('.editor .chip.next-week'); await sleep(200);
-  assert((await page.$eval('.editor .date-hint', e => e.textContent)).includes('без дня'), 'нет подсказки');
-  await page.evaluate(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить').click()); await settle();
+await check('B1, B4: окно дела с ролью — кнопка «→ на след. неделю» → дела нет в дне; плашка «… → след. неделя, «Семья» · Показать · Вернуть»', async () => {
+  await openDayTask(1, 'Купить подарок'); await settle();
+  assert(!(await page.$('.editor .chip.next-week')), 'чип в «Дата» остался');
+  await page.click('.editor .next-week-row .btn.next-week'); await settle();
+  assert(!(await page.$('.editor')), 'окно не закрылось');
   assert(!(await dayTitles(1)).includes('Купить подарок'), 'осталось в дне');
-  assert((await toast())?.includes('Перенесено на неделю'), JSON.stringify(await toast()));
+  const t = await toast();
+  assert(t?.includes('«Купить подарок» → след. неделя, «Семья»') && t.includes('Показать') && t.includes('Вернуть'), JSON.stringify(t));
 });
 
-await check('N4.2: «Показать» — следующая неделя: слева под «Семьёй» «на неделе: 1» с делом; в днях его нет', async () => {
+await check('B2: «Показать» — следующая неделя: под «Семьёй» «на неделе · 1» и само дело (без сворачивания); в днях его нет', async () => {
   await toastAction('Показать'); await settle();
   const b = await weekBlock('Семья');
-  assert(b && !b.empty && b.head.startsWith('на неделе: 1') && JSON.stringify(b.tasks) === '["Купить подарок"]', JSON.stringify(b));
+  assert(b && b.head === 'на неделе · 1' && JSON.stringify(b.tasks) === '["Купить подарок"]', JSON.stringify(b));
+  assert(!(await page.$('.week-nd button.wnd-h')), 'заголовок «на неделе» сворачивает список');
   for (let i = 0; i < 7; i++) assert(!(await dayTitles(i)).includes('Купить подарок'), `в дне ${i}`);
   await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/next-week.png` });
 });
 
-await check('N4.2: из «на неделе» перетащили в среду — встало в день, блок опустел', async () => {
-  const row = (await page.evaluateHandle(() => [...document.querySelectorAll('.week-nd .item')].find(i => i.querySelector('.title').textContent.trim() === 'Купить подарок'))).asElement();
-  const wed = await (await page.evaluateHandle(() => document.querySelectorAll('.day')[2])).asElement().boundingBox();
-  await drag(row, wed.x + wed.width / 2, wed.y + wed.height - 60);
-  assert((await dayTitles(2)).includes('Купить подарок'), JSON.stringify(await dayTitles(2)));
-  assert((await weekBlock('Семья'))?.empty, JSON.stringify(await weekBlock('Семья')));
+await check('B4: «Вернуть» — дело снова во вторнике, на своём месте и с 15:00', async () => {
+  await api('POST', `tasks/${gift.id}/move`, { kind: 'day', date: dayIso(1), index: 0 });
+  await api('PUT', `tasks/${gift.id}`, giftBody(family.id));
+  await load();
+  await openDayTask(1, 'Купить подарок'); await settle();
+  await page.click('.editor .btn.next-week'); await settle();
+  await toastAction('Вернуть'); await settle();
+  const t = await api('GET', `tasks/${gift.id}`);
+  assert(t.plannedDate === dayIso(1) && t.startTime?.startsWith('15:00') && t.plannedWeek === null, JSON.stringify(t));
+  assert((await dayTitles(1)).includes('Купить подарок'), JSON.stringify(await dayTitles(1)));
 });
 
-await check('N4.1: мысль без роли — «→ на след. неделю» в окне мысли — на следующей неделе в «на неделе без роли»', async () => {
-  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+await check('B3: мысль без роли — меню ролей без «в ленту»; «в роль: Дом» → ушла из ленты, на следующей неделе под «Домом»', async () => {
   await page.evaluate(() => [...document.querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Шкаф').querySelector('.title').click());
   await settle();
-  await page.click('.editor .next-week'); await settle();
+  await page.click('.editor .btn.next-week'); await sleep(300);
+  const items = await menuItems();
+  assert(items.includes('в роль: Дом') && !items.includes('в ленту'), JSON.stringify(items));
+  await page.evaluate(() => [...document.querySelectorAll('.next-week-menu .option')].find(o => o.textContent.includes('в роль: Дом')).click()); await settle();
   assert(!(await page.$$eval('.cat-b > .item .title', ts => ts.map(t => t.textContent.trim()))).includes('Шкаф'), 'осталась в ленте');
+  assert((await toast())?.includes('«Шкаф» → след. неделя, «Дом»'), JSON.stringify(await toast()));
   await page.click('.nav[title="Следующая неделя"]'); await settle();
-  const b = await weekBlock(null);
-  assert(b && JSON.stringify(b.tasks) === '["Шкаф"]', JSON.stringify(b));
+  assert(JSON.stringify((await weekBlock('Дом'))?.tasks) === '["Шкаф"]', JSON.stringify(await weekBlock('Дом')));
+  assert(!(await weekBlock(null)), 'появился блок «без роли»');
+  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
 });
 
-await check('N4.3: дело из дня бросили на «на неделе» роли (пустой виден при перетаскивании) — без дня, получило роль', async () => {
-  const call = await api('POST', 'tasks', { title: 'Звонок', target: { kind: 'day', date: dayIso(10), index: 0 } });
-  await load(); await page.click('.nav[title="Следующая неделя"]'); await settle();
-  const row = (await page.evaluateHandle(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === 'Звонок'))).asElement();
+await check('B3: дело в дне без роли — в меню есть «в ленту» → дело в ленте', async () => {
+  await openDayTask(1, 'Чай'); await settle();
+  await page.click('.editor .btn.next-week'); await sleep(300);
+  assert((await menuItems()).includes('в ленту'), JSON.stringify(await menuItems()));
+  await page.evaluate(() => document.querySelector('.next-week-menu .option.to-feed').click()); await settle();
+  assert(!(await dayTitles(1)).includes('Чай'), 'осталось в дне');
+  assert((await api('GET', 'board')).somedayTasks.some(t => t.title === 'Чай'), 'не в ленте');
+});
+
+await check('B5: дело тащат на «›» (неделя листается), потом на заголовок роли — на той неделе под ролью, плашка B4', async () => {
+  const row = (await page.evaluateHandle(() => [...document.querySelectorAll('.day')[3].querySelectorAll(':scope > .item')]
+    .find(i => i.querySelector('.title').textContent.trim() === 'Почта'))).asElement();
   const a = await row.boundingBox();
+  const next = await (await page.$('.nav[title="Следующая неделя"]')).boundingBox();
+  const nx = next.x + next.width / 2, ny = next.y + next.height / 2;
   await page.mouse.move(a.x + a.width / 2, a.y + 8); await page.mouse.down();
-  await page.mouse.move(a.x + a.width / 2 - 30, a.y + 20, { steps: 4 }); await sleep(100);
-  const zone = await page.evaluate(() => {
-    const role = [...document.querySelectorAll('.role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === 'Работа');
-    const r = role.querySelector('.week-nd').getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height };
-  });
-  assert(zone.h > 10, `пустой блок не виден при перетаскивании: ${JSON.stringify(zone)}`);
-  for (let i = 1; i <= 16; i++) { await page.mouse.move(a.x + (zone.x - a.x) * i / 16, a.y + (zone.y - a.y) * i / 16); await sleep(16); }
+  for (let i = 1; i <= 12; i++) { await page.mouse.move(a.x + (nx - a.x) * i / 12, a.y + (ny - a.y) * i / 12); await sleep(16); }
+  await sleep(800); // ~0,5 с над «›» — неделя перелистнулась
+  const h = await roleHeader('Работа');
+  for (let i = 1; i <= 12; i++) { await page.mouse.move(nx + (h.x - nx) * i / 12, ny + (h.y - ny) * i / 12); await sleep(16); }
+  const hint = await page.evaluate(() => getComputedStyle(document.querySelector('.role-h'), '::after').content);
+  assert(hint.includes('на неделе'), `нет подписи на заголовке роли: ${hint}`);
   await sleep(200); await page.mouse.up(); await settle();
-  const t = await api('GET', `tasks/${call.id}`);
-  assert(t.plannedDate === null && t.plannedWeek === dayIso(7) && t.roleIds.includes(work.id), JSON.stringify(t));
-  assert((await weekBlock('Работа'))?.tasks.includes('Звонок'), JSON.stringify(await weekBlock('Работа')));
+  const t = (await api('GET', `week/${dayIso(7)}`)).tasks.find(x => x.title === 'Почта');
+  assert(t && t.plannedDate === null && t.plannedWeek === dayIso(7) && t.roleIds.includes(work.id), JSON.stringify(t));
+  assert((await weekBlock('Работа'))?.tasks.includes('Почта'), JSON.stringify(await weekBlock('Работа')));
+  assert((await toast())?.includes('«Почта» → след. неделя, «Работа»'), JSON.stringify(await toast()));
+});
+
+await check('B5: мысль, брошенная у нижнего края строки цели, — по-прежнему новая цель', async () => {
+  await api('POST', 'goals', { roleId: work.id, weekStart: dayIso(7), title: 'Квартальный план', isRecurring: false });
+  await api('POST', 'tasks', { title: 'Созвон', target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
+  await load(); await page.click('.nav[title="Следующая неделя"]'); await settle();
+  const row = (await page.evaluateHandle(() => [...document.querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Созвон'))).asElement();
+  const target = await page.evaluate(() => {
+    const r = [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === 'Квартальный план').getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.bottom - 2 };
+  });
+  await drag(row, target.x, target.y);
+  const goals = (await api('GET', `week/${dayIso(7)}`)).goals.map(g => g.title);
+  assert(goals.includes('Созвон'), JSON.stringify(goals));
+});
+
+await check('N4.5: окно занятия цели — кнопка неактивна, подсказка', async () => {
+  const g = (await api('GET', `week/${dayIso(7)}`)).goals.find(x => x.title === 'Квартальный план');
+  await api('POST', `goals/${g.id}/schedule`, { kind: 'day', date: dayIso(9), index: 0 });
+  await load(); await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await openDayTask(2, 'Квартальный план'); await settle();
+  assert(await page.$eval('.editor .btn.next-week', b => b.disabled), 'кнопка активна');
+  assert((await page.$eval('.editor .next-week-row', e => e.textContent)).includes('своя неделя'), 'нет подсказки');
+  await page.keyboard.press('Escape'); await settle();
 });
 
 await check('N4: дыра закрыта — дело из дня, ставшее целью другой недели, теряет день', async () => {

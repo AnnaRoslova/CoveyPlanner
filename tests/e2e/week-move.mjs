@@ -62,7 +62,7 @@ async function setDate(d) {
   }, iso(d));
   await settle();
 }
-const save = async () => { await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(900); };
+const save = async () => { await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(900); };
 async function goToday() {
   if (await page.$('.today-b')) { await page.click('.today-b'); await sleep(900); }
 }
@@ -81,11 +81,11 @@ async function moveSmooth(from, to, steps = 14) {
 
 await load();
 
-await check('в окне дела — поле «Дата» с кнопками «сегодня», «завтра», «через неделю», «→ след. неделя, без дня» (N4), «без даты»', async () => {
+await check('в окне дела — поле «Дата» с кнопками «сегодня», «завтра», «через неделю», «без даты» (кнопка «→ на след. неделю» — отдельно, fixes-2026-10 B1)', async () => {
   await openTask(0, 'Оплатить интернет');
   assert(await page.$eval('.editor input[type="date"]', i => i.value) === iso(day(0, 0)), 'в поле не дата дела');
   const chips = await page.$$eval('.editor .date-row .chip', cs => cs.map(c => c.textContent.trim()));
-  assert(JSON.stringify(chips) === '["сегодня","завтра","через неделю","→ след. неделя, без дня","без даты"]', `кнопки: ${chips}`);
+  assert(JSON.stringify(chips) === '["сегодня","завтра","через неделю","без даты"]', `кнопки: ${chips}`);
   await page.screenshot({ path: `${SHOTS}/week-move-editor.png` });
 });
 

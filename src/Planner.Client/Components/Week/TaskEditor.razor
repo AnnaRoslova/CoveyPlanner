@@ -48,18 +48,10 @@
                 <button type="button" class="chip @(_date == RuDates.Today ? "on" : "")" @onclick="() => SetDate(RuDates.Today)">сегодня</button>
                 <button type="button" class="chip @(_date == RuDates.Today.AddDays(1) ? "on" : "")" @onclick="() => SetDate(RuDates.Today.AddDays(1))">завтра</button>
                 <button type="button" class="chip @(_date == RuDates.Today.AddDays(7) ? "on" : "")" @onclick="() => SetDate(RuDates.Today.AddDays(7))">через неделю</button>
-                @* N4.1: на неделю после показанной, без дня; у занятия цели нельзя — его неделя — неделя цели (N4.5) *@
-                <button type="button" class="chip next-week @(_nextWeek ? "on" : "")" disabled="@(Goal is not null)"
-                        title="@(Goal is not null ? "у занятия цели своя неделя — неделя цели" : "дело будет ждать на следующей неделе, день выберете потом")"
-                        @onclick="() => { _nextWeek = true; _keepWeek = false; _date = null; }">→ след. неделя, без дня</button>
-                <button type="button" class="chip @(_date is null && !_nextWeek && !_keepWeek ? "on" : "")" @onclick="() => SetDate(null)">без даты</button>
+                <button type="button" class="chip @(_date is null && !_keepWeek ? "on" : "")" @onclick="() => SetDate(null)">без даты</button>
             </div>
         </div>
-        @if (_nextWeek)
-        {
-            <div class="date-hint">на неделю @RuDates.WeekRange(State.WeekStart.AddDays(7)) — без дня, слева под ролью</div>
-        }
-        else if (_keepWeek && EditedTask.PlannedWeek is { } plannedWeek)
+        @if (_keepWeek && EditedTask.PlannedWeek is { } plannedWeek)
         {
             <div class="date-hint">на неделе @RuDates.WeekRange(plannedWeek), без дня</div>
         }
@@ -76,6 +68,9 @@
             <div class="date-hint">на той неделе станет занятием цели «@dateGoal.Title» (появится, если её там нет)</div>
         }
     </div>
+
+    @* B1: заметная кнопка — на неделю после показанной, без дня, слева под ролью; без роли — меню ролей и «в ленту» (B3); у занятия цели нельзя (N4.5) *@
+    <NextWeekButton RoleIds="RoleIds" Disabled="Goal is not null" OnChoose="NextWeekAsync" />
 
     <div class="row">
         <div class="field">
@@ -167,8 +162,7 @@
     private int? _duration;
     private DateOnly? _date;
 
-    // «→ след. неделя, без дня» выбрано (N4.1) / дело и так «на неделе» без дня и его не меняли
-    private bool _nextWeek;
+    // Дело «на неделе» без дня (N4) и дату не меняли
     private bool _keepWeek;
 
     private void SetDate(DateOnly? date)
@@ -177,11 +171,7 @@
         ClearWeekChoice();
     }
 
-    private void ClearWeekChoice()
-    {
-        _nextWeek = false;
-        _keepWeek = false;
-    }
+    private void ClearWeekChoice() => _keepWeek = false;
 
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;
@@ -264,11 +254,7 @@
         var task = EditedTask;
         await OnClose.InvokeAsync();
         await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
-        if (_nextWeek)
-        {
-            await State.MoveToNextWeekAsync(task.Id);
-        }
-        else if (_date != task.PlannedDate || (task.PlannedWeek is not null && !_keepWeek))
+        if (_date != task.PlannedDate || (task.PlannedWeek is not null && !_keepWeek))
         {
             await State.MoveTaskToDateAsync(task.Id, _date);
         }
@@ -276,6 +262,35 @@
         if (_projectId != (task.ParentId ?? 0))
         {
             await State.SetParentAsync(task.Id, _projectId == 0 ? null : _projectId);
+        }
+    }
+
+    /// <summary>
+    /// «→ на след. неделю» (B1–B3): сохранить набранное в окне и сразу перенести — с ролью из меню, если у дела ролей нет;
+    /// «в ленту» — как «без даты».
+    /// </summary>
+    private async Task NextWeekAsync(NextWeekButton.NextWeekChoice choice)
+    {
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            return;
+        }
+
+        var task = EditedTask;
+        await OnClose.InvokeAsync();
+        await State.UpdateTaskAsync(task.Id, _title, _notes, [.. _roleIds], _quadrant, _time, _duration);
+        if (_projectId != (task.ParentId ?? 0))
+        {
+            await State.SetParentAsync(task.Id, _projectId == 0 ? null : _projectId);
+        }
+
+        if (choice.ToFeed)
+        {
+            await State.MoveTaskToDateAsync(task.Id, null);
+        }
+        else
+        {
+            await State.MoveToNextWeekAsync(task.Id, choice.RoleId);
         }
     }
 

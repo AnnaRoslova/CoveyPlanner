@@ -7,7 +7,7 @@
    «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки.
    Под целями — тихая строка «ещё дела: N ▸»: остальные дела недели с этой ролью; раскрывается в список
    «Чт · название», клик по делу — его окно. Раскрытие запоминается (RoleTasksState).
-   Над ним — «на неделе: N» (N4): дела недели без дня с этой ролью; во время перетаскивания — место, куда их бросить. *@
+   Над ним — «на неделе · N» (N4, B2): дела недели без дня с этой ролью. Дело, брошенное на заголовок роли, — туда же (B5). *@
 @inject PlannerState State
 @inject WindowHost Windows
 @inject RoleTasksState RoleTasks
@@ -15,7 +15,9 @@
 <div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
      data-drop="@DragDropService.RoleZone" data-key="@Role.Id" data-accept="@DragDropService.RoleAccepts"
      data-drag="@(Role.IsSharpenSaw ? null : DragDropService.RoleItem)" data-id="@Role.Id">
-    <div class="role-h" data-list-head>
+    @* Заголовок роли — место, куда бросить дело «на эту неделю без дня» с этой ролью (B5); между целями — новая цель *@
+    <div class="role-h" data-list-head data-drop="@DragDropService.WeekZone" data-key="@Role.Id" data-accept="@DragDropService.WeekAccepts"
+         data-drop-index="2147483647" data-drop-hover>
         <span class="dot"></span>
         <span class="name">@Role.Name</span>
         <button type="button" class="menu" title="Изменить роль" @onclick="() => Windows.OpenRole(Role.Id)">

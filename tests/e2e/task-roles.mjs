@@ -43,7 +43,7 @@ async function pickRoles(...names) {
 async function clearRoles() {
   while (await page.$('.editor .tag-x')) { await page.click('.editor .tag-x'); await settle(); }
 }
-const save = async () => { await page.click('.editor .btn:not(.quiet):not(.danger)'); await settle(); };
+const save = async () => { await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle(); };
 // Цвет роли по имени — из её точки в левой панели
 const roleColor = name => page.evaluate(n => getComputedStyle([...document.querySelectorAll('.role')]
   .find(r => r.querySelector('.role-h .name')?.textContent.trim() === n).querySelector('.role-h .dot')).backgroundColor, name);

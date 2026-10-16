@@ -89,7 +89,7 @@ await check('дело ленты: окно — название, подробн�
   assert(JSON.stringify(labels) === '["Подробно","Категория","Проект","Шаги"]', `поля: ${labels}`); // «Проект» (S6) и шаги — дело-чеклист
   await page.type(`${editor} textarea`, 'Базилик, мята, розмарин');
   await chooseCategory('Дом');
-  await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();
+  await page.click(`${editor} .buttons .btn:not(.quiet):not(.danger)`); await settle();
   assert(!(await page.$(editor)), 'окно не закрылось');
   if (!(await page.$$eval('.someday .cat', cs => cs.find(c => c.textContent.includes('Дом')).classList.contains('open')))) {
     await page.evaluate(() => [...document.querySelectorAll('.someday .cat-h')].find(h => h.textContent.includes('Дом')).click()); await settle();
@@ -198,7 +198,7 @@ await check('«неразобранное» — сверху ленты, над 
 await check('окно мысли: «неразобранное» в списке категорий переносит в «неразобранное»', async () => {
   await (await (await feedItem('Научиться печь хлеб на закваске')).$('.tx')).click(); await settle();
   await chooseCategory('неразобранное');
-  await page.click(`${editor} .btn:not(.quiet):not(.danger)`); await settle();
+  await page.click(`${editor} .buttons .btn:not(.quiet):not(.danger)`); await settle();
   assert((await unsortedTitles())[0] === 'Научиться печь хлеб на закваске', `неразобранное: ${await unsortedTitles()}`);
 });
 

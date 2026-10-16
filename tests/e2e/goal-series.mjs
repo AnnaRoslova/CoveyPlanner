@@ -159,7 +159,7 @@ await check('выключить «каждую неделю» — со след�
   await openGoal('100 страниц');
   await page.click('.editor .switch-row'); await settle();
   assert(!(await switchOn()), 'переключатель не выключился');
-  await page.click('.editor .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
   await openGoal('100 страниц');
   assert(!(await switchOn()), 'после сохранения включено');
   await page.keyboard.press('Escape'); await settle();
@@ -207,7 +207,7 @@ await check('дни Пн, Ср, Пт: «раз в неделю» = 3 (забло
   assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '3', 'не 3');
   assert(!(await page.$('.editor .times-per-week .step')), 'степпер не заблокирован');
   await page.screenshot({ path: `${SHOTS}/goal-series-days.png` });
-  await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(1200);
+  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1200);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,2,4]', `эта неделя: ${await sessionDays('Увидеться с Олей')}`);
   await goWeek(1);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,2,4]', `следующая: ${await sessionDays('Увидеться с Олей')}`);
@@ -219,7 +219,7 @@ await check('сменить дни на Вт, Чт: лишние — в корз
   await chooseDays('Пн', 'Ср', 'Пт', 'Вт', 'Чт'); // сняли Пн, Ср, Пт и выбрали Вт, Чт
   assert(JSON.stringify(await dayDots()) === '["Вт","Чт"]', `выбрано: ${await dayDots()}`);
   assert(await repeat() === 'свои дни', `повтор: ${await repeat()}`);
-  await page.click('.editor .btn:not(.quiet):not(.danger)'); await sleep(1500);
+  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1500);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[1,3]', `после смены: ${await sessionDays('Увидеться с Олей')}`);
   const t = await toast();
   // По 3 занятия (Пн, Ср, Пт) на этой неделе и на каждой уже открытой следующей

@@ -168,3 +168,35 @@
 .role {
     position: relative;
 }
+
+/* B5: пока тащат дело, на заголовке роли проступает «на неделе ↓» — бросить сюда = на эту неделю без дня с этой ролью */
+.role-h {
+    margin: -2px -4px 0;
+    padding: 2px 4px;
+    border-radius: 9px;
+}
+
+:is(body[data-drag-kind="day"], body[data-drag-kind="someday"], body[data-drag-kind="step"]) .role-h::after {
+    content: "на неделе ↓";
+    position: absolute; /* поверх: вёрстка ролей и целей под указателем не сдвигается */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    padding: 0 8px;
+    background: var(--surface);
+    border: 1px dashed color-mix(in srgb, var(--b-deep) 55%, transparent);
+    border-radius: 20px;
+    color: var(--b-deep);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+:is(body[data-drag-kind="day"], body[data-drag-kind="someday"], body[data-drag-kind="step"]) .role-h .n {
+    visibility: hidden;
+}
+
+.role-h.drop-hover {
+    background: var(--b-soft);
+    box-shadow: inset 0 0 0 2px var(--b);
+}

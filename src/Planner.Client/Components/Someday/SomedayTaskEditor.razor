@@ -20,6 +20,9 @@
         <ChoiceField Items="CategoryChoices" @bind-Value="_categoryId" Label="Категория" />
     </div>
 
+    @* B1: на неделю после показанной, без дня; у мысли без роли — меню ролей (B3), «в ленту» не нужен — она и так в ленте *@
+    <NextWeekButton RoleIds="EditedTask.RoleIds" ShowFeed="false" OnChoose="NextWeekAsync" />
+
     <ProjectField Task="EditedTask" @bind-Value="_projectId" />
 
     @* Шаги — меняются сразу, без «Сохранить» *@
@@ -30,7 +33,6 @@
 
     <div class="buttons">
         <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
-        <button type="button" class="btn quiet next-week" title="мысль будет ждать на следующей неделе, день выберете потом" @onclick="NextWeekAsync">→ на след. неделю</button>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
         <button type="button" class="btn" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
@@ -112,8 +114,8 @@
         }
     }
 
-    /// <summary>«→ на следующую неделю (без дня)» (N4.1): сохранить набранное и отправить мысль на неделю после показанной.</summary>
-    private async Task NextWeekAsync()
+    /// <summary>«→ на следующую неделю (без дня)» (N4.1, B1–B3): сохранить набранное и отправить мысль на неделю после показанной (с ролью из меню).</summary>
+    private async Task NextWeekAsync(NextWeekButton.NextWeekChoice choice)
     {
         await OnClose.InvokeAsync();
         var task = EditedTask;
@@ -122,7 +124,7 @@
             await State.UpdateTaskAsync(task.Id, _title, _notes, task.RoleIds, task.Quadrant, null, task.DurationMinutes);
         }
 
-        await State.MoveToNextWeekAsync(task.Id);
+        await State.MoveToNextWeekAsync(task.Id, choice.RoleId);
     }
 
     private async Task TrashAsync()
