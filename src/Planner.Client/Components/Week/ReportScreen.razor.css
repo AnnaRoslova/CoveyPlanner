@@ -77,8 +77,11 @@ h2 {
 }
 
 .range-label {
-    min-width: 150px;
-    text-align: center;
+    width: 15em;
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--font-title);
     font-size: 15px;
     font-weight: 600;

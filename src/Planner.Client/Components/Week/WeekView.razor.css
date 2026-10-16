@@ -9,10 +9,23 @@
     padding: 14px 18px 4px;
 }
 
+.week-nav {
+    display: flex;
+    flex: none;
+    gap: 2px;
+}
+
+/* C2: подпись периода — фиксированной ширины (под самую длинную: «28 сентября — 4 октября 2027»), в одну строку, цифры одной ширины */
 .wt {
+    flex: 0 1 17em;
+    min-width: 0;
+    overflow: hidden;
     font-family: var(--font-title);
     font-size: 18px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .nav {

@@ -31,9 +31,10 @@
         }
         else
         {
+            @* C3: стрелки рядом, подпись после них — фиксированной ширины (fixes-2026-10.md) *@
             <button type="button" class="nav" title="Раньше" aria-label="Раньше" @onclick="() => ShiftAsync(-1)"><Icon Name="chevron-left" /></button>
-            <span class="range-label">@RangeLabel</span>
             <button type="button" class="nav" title="Позже" aria-label="Позже" @onclick="() => ShiftAsync(1)"><Icon Name="chevron-right" /></button>
+            <span class="range-label">@RangeLabel</span>
             @if (_mode == PeriodMode.Months)
             {
                 <label class="months-n">месяцев:
