@@ -131,7 +131,7 @@ public class ProjectFlagApiTests : ApiTestBase
     public async Task N6_4_GoalStepCreatesProject_FlaggedAndUnsorted()
     {
         var roleId = (await GetBoardAsync()).Roles.First().Id;
-        var goal = await PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(roleId, Monday, "Подготовка к собесу"));
+        var goal = await PostAsync<WeeklyGoalDto>("/api/goals", new CreateGoalRequest(roleId, Monday, "Подготовка к собесу", false)); // разовая: G3 — только у разовых (fixes-2026-10 A1)
 
         var result = await PostAsync<GoalStepResultDto>($"/api/goals/{goal.Id}/steps", new StepRequest("Резюме"));
 

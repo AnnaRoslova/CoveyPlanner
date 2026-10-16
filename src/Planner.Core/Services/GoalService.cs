@@ -24,6 +24,9 @@ public class GoalService(
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
+    public const string RecurringNeedsChosenProjectMessage =
+        "У постоянной цели проект сам не создаётся — выберите проект в поле «Проект».";
+
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
     /// <summary>
@@ -229,6 +232,7 @@ public class GoalService(
     /// «+ шаг» цели (G1–G4): шаг — в конец списка проекта цели. Проекта нет или он в корзине — сначала проект (G3, G9): дело с названием
     /// и ролями цели наверху «неразобранного», выбранное в цели (у постоянной — с этой недели и дальше, как выбор в поле «Проект»).
     /// Выполненный проект остаётся выполненным (G8, S13). Возвращает цель, шаг и проект, если его создали сейчас.
+    /// У постоянной цели проект сам не создаётся (fixes-2026-10.md, A1): привычка — не проект, её проект — только выбранный в поле «Проект».
     /// </summary>
     public async Task<GoalStep> AddStepAsync(int id, string title, CancellationToken ct = default)
     {
@@ -236,6 +240,11 @@ public class GoalService(
         TaskItem? created = null;
         if (goal.Project is not { State: not TaskState.Trashed } project)
         {
+            if (goal.RepeatsAfterThisWeek)
+            {
+                throw new DomainException(RecurringNeedsChosenProjectMessage);
+            }
+
             project = TaskItem.CreateSomeday(goal.Title, null, Now);
             project.MakeProject(); // сразу в «🛠 Проекты», не в «неразобранное» (N6.4)
             project.SetRoles(goal.RoleIds);

@@ -58,6 +58,12 @@ async function addStepInEditor(title) {
 async function closeEditor() {
   for (let i = 0; i < 3 && await page.$('.editor'); i++) { await page.keyboard.press('Escape'); await settle(); }
 }
+/** Проект, выбранный в поле «Проект» цели (через API): новое дело-проект в ленте. */
+async function chooseProjectByApi(g, title) {
+  const project = await api('POST', 'tasks', { title, target: { kind: 'someday', categoryId: null, index: 0 }, isProject: true });
+  await api('PUT', `goals/${g.id}`, { title: g.title, roleIds: g.roles.map(r => r.roleId), timesPerWeek: g.timesPerWeek, isRecurring: g.isRecurring, projectId: project.id });
+  return project;
+}
 const editorSteps = () => page.$$eval('.editor .goal-steps .steps .item .title', ts => ts.map(t => t.textContent.trim()));
 const projectField = () => page.evaluate(() => [...document.querySelectorAll('.editor .project-row')]
   .find(r => r.querySelector('.label')?.textContent.trim() === 'Проект')?.querySelector('.select-label')?.textContent.trim() ?? null);
@@ -141,15 +147,61 @@ await check('30. отметили шаг у занятия — занятие и
 await check('31. постоянная цель: следующая неделя — тот же список; удалили «только на этой неделе» — проект с шагами в ленте', async () => {
   const mind = (await api('GET', 'board')).roles.find(r => r.name === 'Ум');
   const reading = await api('POST', 'goals', { roleId: mind.id, weekStart: dayIso(0), title: 'Чтение', isRecurring: true });
+  // У постоянной цели проект — только выбранный (fixes-2026-10 A2)
+  const book = await chooseProjectByApi(reading, 'Атомные привычки');
   const added = await api('POST', `goals/${reading.id}/steps`, { title: 'Глава 1' });
+  assert(added.createdProject === null && added.step.parentId === book.id, JSON.stringify(added));
   const nextMonday = dayIso(7);
   const next = (await api('GET', `week/${nextMonday}`)).goals.find(g => g.seriesId === reading.seriesId);
-  assert(next.projectId === added.createdProject.id, JSON.stringify(next));
+  assert(next.projectId === book.id, JSON.stringify(next));
   await api('DELETE', `goals/${reading.id}`);
   await load();
-  const left = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Чтение');
+  const left = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Атомные привычки');
   assert(left?.isProject, JSON.stringify(left)); // проект остался — в «🛠 Проекты»
-  assert((await api('GET', `tasks/${added.createdProject.id}/steps`)).length === 1, 'шаги проекта пропали');
+  assert((await api('GET', `tasks/${book.id}/steps`)).length === 1, 'шаги проекта пропали');
+});
+
+// ---------- fixes-2026-10, A: привычка ≠ проект ----------
+await check('A1: постоянная цель без проекта — в окне нет блока «Шаги», подсказка про выбранный проект (400 на «+ шаг» — в API-тестах)', async () => {
+  const body = (await api('GET', 'board')).roles.find(r => r.name === 'Тело');
+  await api('POST', 'goals', { roleId: body.id, weekStart: dayIso(0), title: 'Бег', isRecurring: true });
+  await load();
+  await openGoal('Бег');
+  assert(!(await page.$('.editor .goal-steps')), 'у постоянной цели без проекта есть блок «Шаги»');
+  const hint = await page.$eval('.editor .project-row', r => r.parentElement.querySelector('.date-hint')?.textContent.trim());
+  assert(hint?.includes('у привычки проект — только выбранный'), `подсказка: ${hint}`);
+  await closeEditor();
+  assert(!(await api('GET', 'board')).somedayTasks.some(t => t.title === 'Бег'), 'проект «Бег» создан');
+});
+
+await check('A1: окно занятия постоянной цели без проекта — нет «Шаги цели»; выбрали проект — блок есть и в окне цели, и в окне занятия', async () => {
+  const run = (await api('GET', `week/${dayIso(0)}`)).goals.find(g => g.title === 'Бег');
+  await api('POST', `goals/${run.id}/schedule`, { kind: 'day', date: dayIso(3), index: 0 });
+  await load();
+  await (await (await dayRow(3, 'Бег')).asElement().$('.title')).click(); await settle();
+  assert(await page.$('.editor[aria-label="Дело"]'), 'окно занятия не открылось');
+  assert(!(await page.$('.editor .goal-steps')), 'у занятия привычки без проекта есть «Шаги цели»');
+  await closeEditor();
+  await chooseProjectByApi(run, 'Марафон');
+  await load();
+  await openGoal('Бег');
+  assert(await page.$('.editor .goal-steps'), 'с выбранным проектом нет блока «Шаги»');
+  await closeEditor();
+  await (await (await dayRow(3, 'Бег')).asElement().$('.title')).click(); await settle();
+  assert(await page.$('.editor .goal-steps'), 'в окне занятия нет «Шаги цели» при выбранном проекте');
+  await closeEditor();
+});
+
+await check('A2: разовая цель — подсказка «в «🛠 Проектах»»; включили «каждую неделю» — блок «Шаги» пропал (до «Сохранить»)', async () => {
+  await api('POST', 'goals', { roleId: work.id, weekStart: dayIso(0), title: 'Отчёт', isRecurring: false });
+  await load();
+  await openGoal('Отчёт');
+  const hint = await page.$eval('.editor .goal-steps', e => e.textContent);
+  assert(hint.includes('в «🛠 Проектах»'), `подсказка: ${hint}`);
+  await page.evaluate(() => [...document.querySelectorAll('.editor .switch-row')].find(r => r.textContent.includes('каждую неделю')).querySelector('input').click());
+  await settle();
+  assert(!(await page.$('.editor .goal-steps')), 'после «каждую неделю» блок «Шаги» остался');
+  await closeEditor();
 });
 
 // ---------- Этап 6в: R1, R3, R4 ----------

@@ -87,15 +87,19 @@
         </div>
     }
 
-    @* Проект цели (P1): новые занятия — его шаги; его шаги — шаги цели, один список (G1–G2) *@
+    @* Проект цели (P1): новые занятия — его шаги; его шаги — шаги цели, один список (G1–G2).
+       У постоянной цели проект — только выбранный, сам он не создаётся (fixes-2026-10.md, A1–A2): без проекта блока «Шаги» нет *@
     <div class="field">
         <div class="project-row">
             <span class="label">Проект</span>
             <ChoiceField TValue="int" Items="ProjectChoices" Value="ShownProjectId" ValueChanged="SetProject" Label="Проект" Searchable="true" />
         </div>
-        <div class="date-hint">новые занятия — шаги проекта</div>
+        <div class="date-hint">@(ShowsSteps ? "новые занятия — шаги проекта" : "у привычки проект — только выбранный: книга, курс…")</div>
     </div>
-    <GoalStepsBlock Goal="@(State.FindGoal(EditedGoal.Id) ?? EditedGoal)" />
+    @if (ShowsSteps)
+    {
+        <GoalStepsBlock Goal="@(State.FindGoal(EditedGoal.Id) ?? EditedGoal)" />
+    }
 
     <label class="switch-row">
         <input type="checkbox" role="switch" @bind="_several" />
@@ -186,7 +190,7 @@
             var list = new List<Choice<int>> { new(0, "— нет") };
             if (current.ProjectId is { } id && ShownProjectId == id)
             {
-                list.Add(new(id, (current.ProjectTitle ?? "проект") + (current.ProjectIsOpen ? "" : " (выполнен)")));
+                list.Add(new(id, (current.ProjectTitle ?? "проект") + (current.ProjectIsTrashed ? " (в корзине)" : current.ProjectIsOpen ? "" : " (выполнен)")));
             }
 
             list.AddRange(State.ProjectCandidates()
@@ -198,6 +202,13 @@
 
     /// <summary>Что в поле: выбранное здесь, а пока не трогали — проект цели (его мог только что создать «+ шаг», G3).</summary>
     private int ShownProjectId => _projectChanged ? _projectId : (State.FindGoal(EditedGoal.Id) ?? EditedGoal).ProjectId ?? 0;
+
+    /// <summary>
+    /// Блок «Шаги»: у разовой цели — всегда (первый шаг создаст проект, G3); у постоянной (здесь или уже на сервере) — только при выбранном
+    /// проекте не в корзине (A2). Выбор в поле до «Сохранить» блок не показывает: шаги — того проекта, что уже выбран у цели.
+    /// </summary>
+    private bool ShowsSteps =>
+        !(_recurring || EditedGoal.IsRecurring) || (State.FindGoal(EditedGoal.Id) ?? EditedGoal) is { ProjectId: not null, ProjectIsTrashed: false };
 
     private void SetProject(int projectId)
     {

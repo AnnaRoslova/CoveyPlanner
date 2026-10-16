@@ -21,6 +21,15 @@ public class GoalStepsApiTests : ApiTestBase
     private async Task<TaskDto> ScheduleAsync(WeeklyGoalDto goal, DateOnly day) =>
         (await PostTargetAsync<GoalResultDto>($"/api/goals/{goal.Id}/schedule", new DayTargetDto(day, 0))).Task!;
 
+    /// <summary>Проект, выбранный в поле «Проект» цели (у постоянной цели — только так, fixes-2026-10.md A1–A2).</summary>
+    private async Task<int> ChooseProjectAsync(WeeklyGoalDto goal, string title)
+    {
+        var project = await PostAsync<TaskDto>("/api/tasks", new CreateTaskRequest(title, new SomedayTargetDto(null, 0), IsProject: true));
+        await PutAsync<GoalUpdateResultDto>($"/api/goals/{goal.Id}",
+            new UpdateGoalRequest(goal.Title, goal.RoleIds, goal.TimesPerWeek, null, null, null, null, IsRecurring: goal.IsRecurring, ProjectId: project.Id));
+        return project.Id;
+    }
+
     private Task<List<StepDto>> StepsAsync(int taskId) => GetAsync<List<StepDto>>($"/api/tasks/{taskId}/steps");
 
     private async Task<WeeklyGoalDto> GoalAsync(int id, DateOnly? week = null) =>
@@ -94,7 +103,8 @@ public class GoalStepsApiTests : ApiTestBase
     public async Task G1_G7_K32_K33_RecurringGoal_SameProjectNextWeek_DeleteThisWeekKeepsProject()
     {
         var goal = await CreateGoalAsync("Чтение", recurring: true, role: "Ум");
-        var projectId = (await AddGoalStepAsync(goal.Id, "Глава 1")).Step.ParentId!.Value;
+        var projectId = await ChooseProjectAsync(goal, "Атомные привычки");
+        Assert.Equal(projectId, (await AddGoalStepAsync(goal.Id, "Глава 1")).Step.ParentId);
 
         var next = (await GetWeekAsync(Monday.AddDays(7))).Goals.Single(g => g.SeriesId == goal.SeriesId);
         Assert.Equal(projectId, next.ProjectId);
@@ -107,7 +117,7 @@ public class GoalStepsApiTests : ApiTestBase
         Assert.Equal(projectId, (await GetWeekAsync(Monday.AddDays(14))).Goals.Single(g => g.SeriesId == goal.SeriesId).ProjectId);
     }
 
-    /// <summary>R2: будущие недели постоянной цели созданы раньше, чем у неё появился проект, — проект проставляется и им.</summary>
+    /// <summary>R2: будущие недели постоянной цели созданы раньше, чем у неё выбрали проект, — проект проставляется и им.</summary>
     [Fact]
     public async Task R2_FutureWeeksGeneratedBefore_GetProjectOnFirstStep()
     {
@@ -116,7 +126,8 @@ public class GoalStepsApiTests : ApiTestBase
         await GetWeekAsync(Monday.AddDays(14)); // и эту неделю — тоже заранее
         Assert.Null(next.ProjectId);
 
-        var projectId = (await AddGoalStepAsync(goal.Id, "Глава 1")).Step.ParentId!.Value;
+        var projectId = await ChooseProjectAsync(goal, "Атомные привычки");
+        await AddGoalStepAsync(goal.Id, "Глава 1");
 
         foreach (var week in new[] { Monday.AddDays(7), Monday.AddDays(14) })
         {

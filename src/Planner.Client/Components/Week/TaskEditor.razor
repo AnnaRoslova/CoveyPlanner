@@ -138,7 +138,11 @@
        у занятия цели — шаги цели (её проекта), один список на все занятия (G4) *@
     @if (EditedTask.Id > 0 && Goal is { } stepsGoal)
     {
-        <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" ViaSessionId="EditedTask.Id" />
+        @* У занятия постоянной цели без выбранного проекта шагов нет: привычка — не проект (fixes-2026-10.md, A2) *@
+        @if (!stepsGoal.IsRecurring || stepsGoal is { ProjectId: not null, ProjectIsTrashed: false })
+        {
+                <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" ViaSessionId="EditedTask.Id" />
+        }
     }
     else if (EditedTask.Id > 0 && EditedTask.ParentId is null)
     {

@@ -496,6 +496,61 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal(new DateOnly(2026, 10, 14), tasks[1].PlannedDate);
     }
 
+    /// <summary>
+    /// fixes-2026-10.md A3: авто-проект привычки (название серии, только занятия и удалённый шаг) — отвязан и в корзине;
+    /// книга с другим названием, проект с настоящим шагом и проект разовой цели — не тронуты.
+    /// </summary>
+    [Fact]
+    public async Task HabitsAreNotProjects_AutoProjectOfRecurringSeries_UnlinkedAndTrashed_OthersKept()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("WeekWithoutDay");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Ум', '#a9cde8', 0, 'Mind');
+            INSERT INTO Tasks (Id, Title, State, PreviousState, PlannedDate, SortOrder, CreatedAt, ParentId, StepOrder, IsFromSomeday, IsProject) VALUES
+                (1, 'Чтение', 'Someday', NULL, NULL, 0, '2026-10-01', NULL, NULL, 1, 1),
+                (2, 'Чтение', 'Done', NULL, '2026-10-08', 0, '2026-10-01', 1, 0, 0, 0),
+                (3, 'Чтение', 'Planned', NULL, '2026-10-16', 0, '2026-10-01', 1, 1, 0, 0),
+                (4, 'пвпа', 'Trashed', 'Planned', NULL, 0, '2026-10-01', 1, 2, 0, 0),
+                (5, 'Атомные привычки', 'Someday', NULL, NULL, 1, '2026-10-01', NULL, NULL, 1, 1),
+                (6, 'Бег', 'Someday', NULL, NULL, 2, '2026-10-01', NULL, NULL, 1, 1),
+                (7, 'Кроссовки', 'Planned', NULL, NULL, 0, '2026-10-01', 6, 0, 0, 0),
+                (8, 'Собес', 'Someday', NULL, NULL, 3, '2026-10-01', NULL, NULL, 1, 1);
+            INSERT INTO GoalSeries (Id, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, GeneratedThrough, JarSize, StartCount, IsHabit, ProjectId) VALUES
+                (1, 'Чтение', 3, 0, 1, '2026-10-05', '2026-10-19', 30, 0, 1, 1),
+                (2, 'Чтение книги', 3, 0, 1, '2026-10-05', '2026-10-12', 30, 0, 1, 5),
+                (3, 'Бег', 2, 0, 1, '2026-10-05', '2026-10-12', 30, 0, 1, 6),
+                (4, 'Собес', 1, 0, 0, '2026-10-12', '2026-10-12', 30, 0, 0, 8);
+            INSERT INTO WeeklyGoals (Id, WeekStart, Title, TimesPerWeek, AllowSeveralPerDay, SeriesId, ProjectId) VALUES
+                (1, '2026-10-05', 'Чтение', 3, 0, 1, 1),
+                (2, '2026-10-12', 'Чтение', 3, 0, 1, 1),
+                (3, '2026-10-19', 'Чтение', 3, 0, 1, 1),
+                (4, '2026-10-12', 'Собес', 1, 0, 4, 8);
+            INSERT INTO GoalRoles (GoalId, RoleId, SortOrder) VALUES (1, 1, 0), (2, 1, 0), (3, 1, 0), (4, 1, 1);
+            INSERT INTO TaskGoals (TaskId, GoalId, Position) VALUES (2, 1, 0), (3, 2, 0);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToDictionaryAsync(t => t.Id);
+        Assert.Equal(Planner.Core.Enums.TaskState.Trashed, tasks[1].State);
+        Assert.Equal(Planner.Core.Enums.TaskState.Someday, tasks[1].PreviousState);
+        Assert.NotNull(tasks[1].TrashedAt);
+        Assert.All([tasks[2], tasks[3]], t => Assert.Null(t.ParentId)); // занятия отвязаны, остались в днях
+        Assert.Equal(new DateOnly(2026, 10, 8), tasks[2].PlannedDate);
+        Assert.Equal(Planner.Core.Enums.TaskState.Done, tasks[2].State);
+        Assert.Equal(1, tasks[4].ParentId); // удалённый шаг — при проекте в корзине
+        Assert.Equal([5, 6, 8], tasks.Values.Where(t => t.IsProject && t.State != Planner.Core.Enums.TaskState.Trashed).Select(t => t.Id));
+        Assert.Equal(6, tasks[7].ParentId);
+
+        var series = await db.GoalSeries.OrderBy(s => s.Id).Select(s => s.ProjectId).ToListAsync();
+        Assert.Equal([null, 5, 6, 8], series);
+        var goals = await db.WeeklyGoals.OrderBy(g => g.Id).Select(g => g.ProjectId).ToListAsync();
+        Assert.Equal([null, null, null, 8], goals);
+        Assert.Equal(2, await CountAsync(db, "TaskGoals")); // занятия — по-прежнему занятия
+    }
+
     private static async Task<long> CountAsync(PlannerDbContext db, string table)
     {
         var connection = db.Database.GetDbConnection();
