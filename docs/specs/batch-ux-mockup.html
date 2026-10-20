@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пачка UX — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Caveat:wght@500;700&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Макет к docs/specs/batch-ux.md. Тема «Лотос» — значения из src/Planner.Client/wwwroot/css/app.css; кнопки — система D (fixes-2026-10.md) */
+:root{
+  --sky0:#fff5f9;--sky1:#e3f2ec;--sky2:#d3ece4;--sky3:#b9e0d6;--paper:#fffcfc;--surface:#fff;
+  --text:#3e4d52;--soft:#657579;--faint:#828f92;--line:#efe6e7;
+  --a:#f9d0e0;--a-soft:#fff5f9;--a-deep:#c4769a;--a-ink:#a5587c;--b:#9fd6c9;--b-soft:#e8f6f2;--b-deep:#327b6e;
+  --warn:#f3e3a6;--warn-soft:#fbf3d6;--warn-ink:#75601e;
+  --btn-line:color-mix(in srgb,var(--b-deep) 38%,#fff);--btn-hover:color-mix(in srgb,var(--b) 32%,#fff);
+  --r-body:#9fd3bd;--r-mind:#a9cde8;--r-spirit:#c9b8ec;--r-social:#f9d0e0;--r-me:#dcb8e6;--r-fam:#b9d3b0;--r-work:#8fb4e3;--r-home:#f3e3a6;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 Nunito,system-ui,sans-serif;color:var(--text);
+  background:linear-gradient(165deg,var(--sky0) 0%,var(--sky1) 30%,var(--sky2) 62%,var(--sky3) 100%);background-attachment:fixed;padding:20px 16px 48px}
+h1{font:600 22px Lora,serif;margin:0 0 4px}
+h2.sec{font:600 18px Lora,serif;margin:34px 0 4px}
+.lead{color:var(--soft);margin:0 0 14px;max-width:1000px}
+.lead b{color:var(--text)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;max-width:1320px;align-items:start}
+.col h3{font:700 12px Nunito;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);margin:0 0 8px}
+.cap{font-size:12px;color:var(--soft);margin:8px 2px 0;max-width:460px}
+.cap b{color:var(--text)}
+.f12{font-size:12px}.faint{color:var(--faint)}.soft{color:var(--soft)}
+.mark-new{outline:2px dashed var(--a-deep);outline-offset:3px;border-radius:12px}
+
+/* кнопки D */
+.btn{display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:3px 12px;border-radius:999px;border:1px solid var(--btn-line);background:#fff;color:var(--b-deep);font:700 12.5px Nunito;white-space:nowrap}
+.btn.small{min-height:24px;padding:1px 9px;font-size:12px}
+.btn.primary{background:var(--b);border-color:transparent;color:var(--text)}
+.btn.danger{background:var(--a-soft);border-color:var(--a);color:var(--a-ink)}
+.add{display:inline-flex;align-items:center;min-height:24px;padding:1px 10px;border-radius:999px;border:1px dashed var(--btn-line);color:var(--b-deep);font:700 12px Nunito;width:max-content}
+.icon-b{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1px solid var(--btn-line);background:#fff}
+.seg{display:inline-flex;border:1px solid var(--btn-line);border-radius:999px;padding:2px;background:#fff;gap:2px}
+.seg span{padding:2px 12px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--b-deep);white-space:nowrap}
+.seg span.on{background:var(--b);color:var(--text)}
+.seg span .n{font-weight:600;color:var(--soft)}
+.seg span.on .n{color:var(--text)}
+.toast{background:var(--text);color:#fff;border-radius:12px;padding:6px 12px;font-size:13px;display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.toast .a{background:#fff;color:var(--b-deep);border-radius:999px;padding:0 9px;font-weight:700;font-size:12px}
+.toast.warn{background:var(--warn-soft);color:var(--warn-ink);border:1px solid var(--warn)}
+.toast.warn .a{border:1px solid var(--warn)}
+
+/* правая колонка */
+.rpanel{background:color-mix(in srgb,var(--b) 10%,color-mix(in srgb,#fff 78%,transparent));border-radius:22px;padding:12px;max-width:290px;display:flex;flex-direction:column;gap:8px}
+.search{background:#fff;border-radius:999px;padding:5px 12px;color:var(--faint);font-size:13px;border:1px solid var(--line)}
+.capture{display:flex;gap:6px;align-items:center;background:#fff;border:1px dashed var(--btn-line);border-radius:14px;padding:5px 5px 5px 12px}
+.capture .in{flex:1;color:var(--faint);font-size:13px}
+.emo{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--btn-line);font-size:14px;background:#fff}
+.cat{font-weight:700;display:flex;gap:6px;align-items:center;padding:4px 4px 2px;font-size:13.5px}
+.cat .n{margin-left:auto;color:var(--faint);font-weight:600;font-size:12px}
+.th{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:10px;font-size:13px;background:color-mix(in srgb,#fff 60%,transparent)}
+.th .cb{flex:none;width:15px;height:15px;border-radius:4px;border:2px solid #b8d9d1;margin-top:2px}
+.th .t{flex:1}
+.age{font-size:12px;color:var(--faint);white-space:nowrap}
+.age.old{color:var(--a-ink)}
+.empty{background:#fff;border-radius:16px;padding:14px;font-size:13px;color:var(--soft);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.empty b{color:var(--text)}
+
+/* окна */
+.win{background:#fff;border-radius:18px;padding:16px;box-shadow:0 16px 48px rgba(60,90,90,.2);display:flex;flex-direction:column;gap:11px;max-width:420px}
+.ttl{font:600 17px Lora,serif;border-bottom:1.5px dashed var(--line);padding:2px 2px 4px}
+.line{display:grid;grid-template-columns:100px 1fr;gap:8px;align-items:center;font-size:13px}
+.line > .k{font-size:12px;font-weight:700;color:var(--soft)}
+.sel{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px 4px 10px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:13px;width:max-content}
+.sel::after{content:"▾";color:var(--soft);font-size:11px}
+.ta{border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12.5px;min-height:44px}
+.btns{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+.btns .left{margin-right:auto}
+.more{width:30px;padding:0;justify-content:center;font-size:16px}
+.projbtn{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+
+/* экран поверх недели */
+.screen{background:color-mix(in srgb,#fff 90%,transparent);border-radius:22px;padding:16px 18px 20px;box-shadow:0 16px 48px rgba(60,90,90,.16);max-width:1100px}
+.sh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sh h4{font:600 19px Lora,serif;margin:0}
+.sh .sp{flex:1}
+.x{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:var(--soft);border:1px solid var(--line);background:#fff}
+.bar-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.nav{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:var(--b-deep);border:1px solid var(--line);background:#fff;font-size:13px}
+.period{font:600 15px Lora,serif;min-width:9em}
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:#fff;border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card h5{margin:0;font:700 13px Nunito;display:flex;gap:8px;align-items:center}
+.card h5 .sp{flex:1}
+.heat{display:grid;grid-template-columns:26px repeat(9,16px);grid-auto-rows:16px;gap:3px;font-size:11.5px;color:var(--faint)}
+.heat .c{border-radius:4px;background:#f3f1f1}
+.heat .c.l1{background:color-mix(in srgb,var(--b) 40%,#fff)}
+.heat .c.l2{background:color-mix(in srgb,var(--b) 75%,#fff)}
+.heat .c.l3{background:var(--b-deep)}
+.heat .c.vac{background:repeating-linear-gradient(45deg,#eef0fb 0 3px,#fff 3px 6px)}
+.stats{display:flex;gap:16px;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column}
+.stat b{font:600 20px Lora,serif}
+.stat span{font-size:12px;color:var(--soft)}
+.hbar{display:grid;grid-template-columns:96px 1fr 30px;gap:8px;align-items:center;font-size:12.5px}
+.hbar .tr{height:10px;border-radius:999px;background:#f3f1f1;overflow:hidden}
+.hbar .tr i{display:block;height:100%;border-radius:999px;background:var(--c)}
+.hbar .v{text-align:right;color:var(--soft);font-size:12px}
+.grp-l{font-size:12px;font-weight:700;color:var(--soft);margin-top:4px}
+.cols{display:flex;gap:10px;align-items:flex-end;height:120px;padding-top:8px}
+.cols .w{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--faint);flex:1}
+.cols .w i{display:block;width:100%;max-width:28px;border-radius:7px 7px 3px 3px;background:var(--b)}
+.cols .w b{font-size:12px;color:var(--b-deep)}
+.old-l{display:flex;gap:8px;font-size:13px;align-items:baseline}
+.old-l .t{flex:1}
+
+/* недельный обзор */
+.steps{display:flex;gap:6px;align-items:center}
+.steps .s{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--faint)}
+.steps .d{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--btn-line);font-weight:700;color:var(--b-deep);background:#fff}
+.steps .s.on .d{background:var(--b);border-color:transparent;color:var(--text)}
+.steps .s.on{color:var(--text);font-weight:700}
+.steps .s.done .d{background:var(--b-soft)}
+.steps .ln{width:18px;height:1px;background:var(--line)}
+.rv-day{font:700 20px Caveat,cursive;color:var(--b-deep);margin:8px 0 2px}
+.rv{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:12px;background:#fff;margin-bottom:5px;flex-wrap:wrap}
+.rv .t{flex:1;min-width:150px;font-size:13px}
+.rv .dot{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block;margin-right:6px}
+.rv .rh{color:var(--a-deep);font-size:11px}
+.choice{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;background:#fff}
+.choice span{padding:1px 9px;border-radius:999px;font-size:12px;color:var(--soft);font-weight:700;white-space:nowrap}
+.choice span.on{background:var(--b-soft);color:var(--b-deep);outline:1px solid var(--btn-line)}
+.choice span.dng.on{background:var(--a-soft);color:var(--a-ink);outline-color:var(--a)}
+.rv-foot{display:flex;gap:8px;justify-content:space-between;margin-top:14px}
+.rolebox{background:#fff;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.rolebox .rn{font-weight:700;font-size:13.5px;display:flex;gap:6px;align-items:center}
+.rolebox .rn .dt{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.rolebox .g{font-size:13px;padding-left:15px}
+.rolebox .hint{font-size:12px;color:var(--a-ink);padding-left:15px}
+.vision{font-size:12px;color:var(--soft);font-style:italic;padding-left:15px}
+
+/* миссия */
+.mission{font:500 15px/1.6 Lora,serif;background:#fff;border-radius:14px;padding:12px 14px;white-space:pre-line;border:1px solid var(--line)}
+.vrow{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;font-size:13px}
+.vrow .rn{font-weight:700;display:flex;gap:6px;align-items:center}
+.vrow .rn i{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block}
+.vrow .in{border:1px solid var(--line);border-radius:10px;padding:5px 10px;background:#fff}
+.vrow .in.empty-in{color:var(--faint)}
+.lpanel{background:color-mix(in srgb,var(--b) 7%,color-mix(in srgb,#fff 69%,transparent));border-radius:22px;padding:14px 12px;max-width:270px}
+.lpanel h4{font:600 17px Lora,serif;margin:0 0 8px}
+.mblock{background:color-mix(in srgb,#fff 70%,transparent);border-radius:12px;padding:6px 10px;font-size:12.5px;color:var(--soft)}
+.mblock b{color:var(--b-deep)}
+.sect{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--b-deep);margin:12px 4px 6px}
+.rhh{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:8px;font-weight:700;font-size:13.5px;position:relative}
+.rhh.hover{background:var(--btn-hover)}
+.rhh .d{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.tip{position:absolute;left:30px;top:30px;background:var(--text);color:#fff;font-size:12px;font-weight:400;border-radius:10px;padding:6px 10px;width:220px;z-index:2;box-shadow:0 8px 30px rgba(60,90,90,.16)}
+.tip b{color:var(--a)}
+
+/* поиск */
+.palette{background:#fff;border-radius:18px;box-shadow:0 16px 48px rgba(60,90,90,.2);max-width:520px;padding:10px}
+.palette .q{border:1px solid var(--btn-line);border-radius:12px;padding:7px 12px;font-size:14px}
+.palette .g{font-size:12px;font-weight:700;color:var(--soft);margin:10px 6px 4px}
+.palette .r{display:flex;gap:8px;padding:5px 8px;border-radius:9px;font-size:13px;align-items:baseline}
+.palette .r.hl{background:var(--btn-hover)}
+.palette .r .m{margin-left:auto;font-size:12px;color:var(--faint);white-space:nowrap}
+kbd{font:700 11.5px Nunito;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 5px;background:#fff;color:var(--soft)}
+</style>
+</head>
+<body>
+
+<h1>Пачка UX — макет</h1>
+<p class="lead">К <b>docs/specs/batch-ux.md</b>. Тема «Лотос», кнопки — система D. Пунктирная розовая рамка — то, что появилось нового.</p>
+
+<!-- ===================================================================== 1. МЫСЛИ | ПРОЕКТЫ -->
+<h2 class="sec">1. Вкладки «Мысли | Проекты» (BP)</h2>
+<p class="lead">Вместо 🛠 в шапке — переключатель над правой колонкой. Мысль становится проектом только кнопкой; метки возраста — тихо справа (BS).</p>
+<div class="grid">
+  <div class="col">
+    <h3>Правая колонка · вкладка «Мысли»</h3>
+    <div class="rpanel">
+      <div class="seg mark-new" style="align-self:flex-start"><span class="on">Мысли <span class="n">· 46</span></span><span>Проекты <span class="n">· 3</span></span></div>
+      <div class="search">Поиск по мыслям</div>
+      <div class="capture"><span class="in">Записать мысль…</span><span class="emo" title="неразобранное">📥</span></div>
+      <div class="cat">💡 Идеи <span class="n">3</span></div>
+      <div class="th"><span class="cb"></span><span class="t">Сделать фотокнигу за лето</span></div>
+      <div class="th"><span class="cb"></span><span class="t">Научиться печь хлеб на закваске</span><span class="age mark-new">2 мес</span></div>
+      <div class="th"><span class="cb"></span><span class="t">Сад с травами на балконе</span><span class="age old mark-new" title="лежит дольше срока (3 мес)">8 мес</span></div>
+      <div class="cat">📚 Книги и фильмы <span class="n">3</span></div>
+      <div class="th"><span class="cb"></span><span class="t">«7 навыков» — перечитать главу 3</span><span class="age">1 мес</span></div>
+    </div>
+    <p class="cap">Число на вкладке — открытые мысли / открытые проекты. Метка возраста — с 1 месяца, старше срока — розовая (BS3).</p>
+  </div>
+
+  <div class="col">
+    <h3>Окно мысли · «Сделать проектом»</h3>
+    <div class="win">
+      <div class="ttl">Ремонт на кухне</div>
+      <div class="line"><span class="k">Категория</span><span class="sel">🏠 Дом</span></div>
+      <div class="line"><span class="k">Дата</span><span class="sel">в ленте</span></div>
+      <div class="projbtn mark-new"><span class="btn">🛠 Сделать проектом</span><span class="f12 faint">добавить шаги и раскладывать их по дням</span></div>
+      <div style="background:var(--b-soft);border-radius:12px;padding:6px 10px;font-size:12.5px;font-weight:700;color:var(--b-deep)">Подробнее <span style="font-weight:400;color:var(--soft)">заметки, проект</span> ▾</div>
+      <div class="btns"><span class="btn more left">⋯</span><span class="btn">Отмена</span><span class="btn primary">Сохранить</span></div>
+    </div>
+    <div style="margin-top:12px"><span class="toast mark-new">Теперь в «Проектах» <span class="a">Показать</span> <span class="a">Вернуть</span></span></div>
+    <p class="cap">У мысли нет «+ шаг» — только явная кнопка. «Показать» — вкладка «Проекты», проект раскрыт со строкой «+ шаг».</p>
+  </div>
+
+  <div class="col">
+    <h3>Вкладка «Проекты» пустая · и автоотметка</h3>
+    <div class="rpanel">
+      <div class="seg" style="align-self:flex-start"><span>Мысли <span class="n">· 46</span></span><span class="on">Проекты <span class="n">· 0</span></span></div>
+      <div class="empty mark-new"><span><b>Проект</b> — дело из нескольких шагов, например «Ремонт» или книга. Шаги можно раскладывать по дням.</span><span class="add">+ проект</span></div>
+    </div>
+    <div style="margin-top:12px"><span class="toast mark-new">«Ремонт» выполнен → в «Выполненном» <span class="a">Показать</span> <span class="a">Вернуть</span></span></div>
+    <p class="cap">Плашка после того, как отметили последний шаг (BP5). «Показать» — «📈 Итоги · Выполненное».</p>
+  </div>
+</div>
+
+<!-- ===================================================================== 2. ИТОГИ + ДАШБОРД -->
+<h2 class="sec">2. «📈 Итоги» · вкладка «Отчёт» → «Дашборд» (BI, BD)</h2>
+<p class="lead">Один экран вместо «Копилок», «Выполненного» и «Отчёта». Графики — свои, на SVG/CSS, цвета темы и ролей. Период — общий для списка и дашборда.</p>
+<div class="screen">
+  <div class="sh">
+    <h4>Итоги</h4>
+    <div class="seg mark-new"><span>Привычки</span><span>Выполненное</span><span class="on">Отчёт</span></div>
+    <span class="sp"></span>
+    <span class="btn mark-new">🗓 Недельный обзор</span>
+    <span class="x">✕</span>
+  </div>
+  <div class="bar-row">
+    <span class="sel">месяц</span><span class="nav">‹</span><span class="nav">›</span><span class="period">октябрь 2026</span>
+    <span class="sp" style="flex:1"></span>
+    <div class="seg mark-new"><span>Список</span><span class="on">Дашборд</span></div>
+    <span class="btn small">Скачать CSV</span>
+  </div>
+  <div class="dash">
+    <div class="card">
+      <h5>Привычки по дням <span class="sp"></span><span class="sel" style="font-weight:400">все привычки</span></h5>
+      <div class="heat" id="heat"></div>
+      <div class="stats">
+        <div class="stat"><b>58</b><span>скрепок за месяц</span></div>
+        <div class="stat"><b>🔥 3</b><span>серия сейчас, недель</span></div>
+        <div class="stat"><b>5</b><span>лучшая серия</span></div>
+      </div>
+      <div class="f12 faint">штриховка — каникулы · подсказка ячейки: «Чт 22 окт · Бег, 10к шагов»</div>
+    </div>
+
+    <div class="card">
+      <h5>Колесо пилы <span class="sp"></span><span class="f12 faint" style="font-weight:400">выполненные занятия</span></h5>
+      <svg viewBox="0 0 220 180" width="100%" height="180" role="img" aria-label="Тело 24, Ум 11, Дух 3, Общение 9">
+        <title>Тело 24 · Ум 11 · Дух 3 · Общение 9</title>
+        <circle cx="110" cy="90" r="70" fill="none" stroke="#efe6e7"/>
+        <circle cx="110" cy="90" r="35" fill="none" stroke="#efe6e7" stroke-dasharray="3 3"/>
+        <path d="M110 90 L110 20 A70 70 0 0 1 180 90 Z" fill="#9fd3bd" opacity=".9"/>
+        <path d="M110 90 L142 90 A32 32 0 0 1 110 122 Z" fill="#a9cde8" opacity=".9"/>
+        <path d="M110 90 L110 99 A9 9 0 0 1 101 90 Z" fill="#c9b8ec" opacity=".9"/>
+        <path d="M110 90 L84 90 A26 26 0 0 1 110 64 Z" fill="#f9d0e0" opacity=".95"/>
+        <text x="150" y="40" font-size="12" font-family="Nunito" fill="#3e4d52" font-weight="700">Тело 24</text>
+        <text x="150" y="140" font-size="12" font-family="Nunito" fill="#3e4d52" font-weight="700">Ум 11</text>
+        <text x="20" y="140" font-size="12" font-family="Nunito" fill="#3e4d52" font-weight="700">Дух 3</text>
+        <text x="8" y="40" font-size="12" font-family="Nunito" fill="#3e4d52" font-weight="700">Общение 9</text>
+      </svg>
+      <div class="f12 faint">лепесток — доля от самого большого; видно, какое измерение «проседает»</div>
+    </div>
+
+    <div class="card">
+      <h5>Выполненное по ролям</h5>
+      <div class="grp-l">Затачивание пилы</div>
+      <div class="hbar"><span>Тело</span><span class="tr"><i style="width:80%;--c:var(--r-body)"></i></span><span class="v">24</span></div>
+      <div class="hbar"><span>Ум</span><span class="tr"><i style="width:37%;--c:var(--r-mind)"></i></span><span class="v">11</span></div>
+      <div class="hbar"><span>Дух</span><span class="tr"><i style="width:10%;--c:var(--r-spirit)"></i></span><span class="v">3</span></div>
+      <div class="hbar"><span>Общение</span><span class="tr"><i style="width:30%;--c:var(--r-social)"></i></span><span class="v">9</span></div>
+      <div class="grp-l">Роли</div>
+      <div class="hbar"><span>Работа</span><span class="tr"><i style="width:100%;--c:var(--r-work)"></i></span><span class="v">30</span></div>
+      <div class="hbar"><span>Семья</span><span class="tr"><i style="width:40%;--c:var(--r-fam)"></i></span><span class="v">12</span></div>
+      <div class="hbar"><span>Дом</span><span class="tr"><i style="width:23%;--c:var(--r-home)"></i></span><span class="v">7</span></div>
+      <div class="hbar"><span class="faint">без роли</span><span class="tr"><i style="width:13%;--c:#c9ced0"></i></span><span class="v">4</span></div>
+    </div>
+
+    <div class="card">
+      <h5>Доля II квадранта <span class="sp"></span><span class="f12 faint" style="font-weight:400">важно, не срочно</span></h5>
+      <div class="cols">
+        <div class="w"><b>40%</b><i style="height:40px"></i><span>5 окт</span><span>из 5</span></div>
+        <div class="w"><b>57%</b><i style="height:57px"></i><span>12 окт</span><span>из 7</span></div>
+        <div class="w"><b>25%</b><i style="height:25px"></i><span>19 окт</span><span>из 4</span></div>
+        <div class="w"><b>—</b><i style="height:2px;background:var(--line)"></i><span>26 окт</span><span>из 0</span></div>
+      </div>
+      <div class="f12 faint">среди дел с отмеченным квадрантом; подсказка столбика — «без квадранта: 12»</div>
+    </div>
+
+    <div class="card">
+      <h5>Давно лежат <span class="sp"></span><span class="f12" style="color:var(--a-ink);font-weight:700">7 мыслей старше 3 мес</span></h5>
+      <div class="old-l"><span class="t">Сад с травами на балконе</span><span class="age old">8 мес</span></div>
+      <div class="old-l"><span class="t">Курс по акварели</span><span class="age old">7 мес</span></div>
+      <div class="old-l"><span class="t">Разобрать фото 2019</span><span class="age old">6 мес</span></div>
+      <div class="old-l"><span class="t">Поехать в Карелию</span><span class="age old">5 мес</span></div>
+      <div class="old-l"><span class="t">Научиться печь хлеб</span><span class="age old">4 мес</span></div>
+      <div class="f12 faint">клик — окно мысли</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================== 3. НЕДЕЛЬНЫЙ ОБЗОР -->
+<h2 class="sec">3. Недельный обзор (BR)</h2>
+<p class="lead">Пять шагов; каждое действие — обычное (перенос, корзина, «+ цель») со своей плашкой «Вернуть». Вход — из «Итогов», клавиша W, напоминание в воскресенье.</p>
+<div class="grid">
+  <div class="col" style="grid-column:span 2">
+    <div class="screen">
+      <div class="sh"><h4>Недельный обзор · 19 — 25 октября</h4><span class="sp"></span><span class="x">✕</span></div>
+      <div class="steps">
+        <span class="s on"><span class="d">1</span>Не сделано</span><span class="ln"></span>
+        <span class="s"><span class="d">2</span>Привычки</span><span class="ln"></span>
+        <span class="s"><span class="d">3</span>Давно лежат</span><span class="ln"></span>
+        <span class="s"><span class="d">4</span>Миссия</span><span class="ln"></span>
+        <span class="s"><span class="d">5</span>Камни</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 2px"><b>Не сделано на неделе · 5</b><span class="btn small">Отложить всё на след. неделю</span></div>
+      <div class="rv-day">Ср 21</div>
+      <div class="rv"><span class="t"><span class="dot" style="--c:var(--r-me)"></span>Записаться к стоматологу</span>
+        <span class="choice"><span>на след. неделю</span><span>в ленту</span><span class="dng">в корзину</span><span class="on">оставить</span></span></div>
+      <div class="rv"><span class="t"><span class="dot" style="--c:var(--r-home)"></span>Оплатить интернет</span>
+        <span class="choice"><span class="on">на след. неделю</span><span>в ленту</span><span class="dng">в корзину</span><span>оставить</span></span></div>
+      <div class="rv-day">На неделе, без дня</div>
+      <div class="rv"><span class="t"><span class="dot" style="--c:var(--r-fam)"></span>Купить подарок маме</span>
+        <span class="choice"><span>на след. неделю</span><span class="on">в ленту</span><span class="dng">в корзину</span><span>оставить</span></span></div>
+      <div class="rv-day">Камни</div>
+      <div class="rv"><span class="t"><span class="dot" style="--c:var(--r-work)"></span>Демо для команды <span class="rh">◆</span> <span class="f12 faint">разовая цель · 0 из 1</span></span>
+        <span class="choice"><span>на след. неделю</span><span class="dng">в корзину</span><span class="on">оставить</span></span></div>
+      <div class="rv"><span class="t"><span class="dot" style="--c:var(--r-body)"></span>Бег <span class="rh">◆</span> <span class="f12 faint">каждую неделю · 1 из 3</span></span>
+        <span class="choice"><span class="dng">в корзину</span><span class="on">оставить</span></span></div>
+      <div class="rv-foot"><span class="btn">Назад</span><span class="btn primary">Дальше: привычки</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <h3>Шаг 5 · Камни на следующую неделю</h3>
+    <div class="screen" style="display:flex;flex-direction:column;gap:8px">
+      <div class="rolebox" style="--c:var(--r-body)"><div class="rn"><span class="dt"></span>Тело</div><div class="g">Бег · каждую неделю</div><span class="add" style="margin-left:15px">+ цель</span></div>
+      <div class="rolebox" style="--c:var(--r-work)"><div class="rn"><span class="dt"></span>Работа</div><div class="vision">«спокойный профессионал, который доводит до конца»</div><div class="g">Демо для команды · перенесено</div><span class="add" style="margin-left:15px">+ цель</span></div>
+      <div class="rolebox mark-new" style="--c:var(--r-home)"><div class="rn"><span class="dt"></span>Дом</div><div class="hint">у роли «Дом» нет камней</div><span class="add" style="margin-left:15px">+ цель</span></div>
+      <div class="rv-foot"><span class="btn">Назад</span><span class="btn primary">Готово → след. неделя</span></div>
+    </div>
+    <div style="margin-top:12px"><span class="toast">Неделя заканчивается <span class="a">Недельный обзор</span></span></div>
+    <p class="cap">Напоминание — в воскресенье после 12:00, раз в неделю.</p>
+  </div>
+</div>
+
+<!-- ===================================================================== 4. МИССИЯ -->
+<h2 class="sec">4. Миссия (BM)</h2>
+<p class="lead">Страница «Моя миссия» — свободный текст и строка «кем я хочу быть» у каждой роли. Видна тихо: подсказка на роли, шаг 4 обзора, по желанию — блок вверху левой панели.</p>
+<div class="grid">
+  <div class="col" style="grid-column:span 2">
+    <div class="screen">
+      <div class="sh"><h4>Моя миссия</h4><span class="sp"></span><span class="f12 faint">сохраняется само</span><span class="x">✕</span></div>
+      <div class="mission">Жить спокойно и бережно: к себе, к близким, к делу.
+Каждый день — немного движения, немного тишины, немного нового.
+Доводить начатое до конца и не забывать, ради чего.</div>
+      <div style="margin:16px 0 8px;font-weight:700;color:var(--soft);font-size:12px">КЕМ Я ХОЧУ БЫТЬ В КАЖДОЙ РОЛИ</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="vrow" style="--c:var(--r-body)"><span class="rn"><i></i>Тело</span><span class="in">сильной и выносливой, без надрыва</span></div>
+        <div class="vrow" style="--c:var(--r-mind)"><span class="rn"><i></i>Ум</span><span class="in">любопытной: каждую неделю — новое</span></div>
+        <div class="vrow" style="--c:var(--r-fam)"><span class="rn"><i></i>Семья</span><span class="in">той, к кому приходят с радостью</span></div>
+        <div class="vrow" style="--c:var(--r-work)"><span class="rn"><i></i>Работа</span><span class="in">спокойным профессионалом, который доводит до конца</span></div>
+        <div class="vrow" style="--c:var(--r-home)"><span class="rn"><i></i>Дом</span><span class="in empty-in">кем я хочу быть в этой роли…</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <h3>Левая панель · блок и подсказка на роли</h3>
+    <div class="lpanel">
+      <h4>Роли и цели</h4>
+      <div class="mblock mark-new">✦ <b>Моя миссия</b> ▸ <span class="f12">«Жить спокойно и бережно…»</span></div>
+      <div class="sect">▾ Роли</div>
+      <div class="rhh hover" style="--c:var(--r-work)">▾ <span class="d"></span>Работа
+        <div class="tip mark-new">кем я хочу быть: <b>«спокойным профессионалом, который доводит до конца»</b></div></div>
+      <div style="height:64px"></div>
+      <div class="rhh" style="--c:var(--r-home)">▾ <span class="d"></span>Дом</div>
+    </div>
+    <p class="cap">Блок миссии — включается в «⚙ Настройки» (по умолчанию выключен, вопрос BM-b), раскрывается текстом миссии.</p>
+  </div>
+</div>
+
+<!-- ===================================================================== 5. ПОИСК И СВЯЗЬ -->
+<h2 class="sec">5. Быстрый поиск и «нет связи» (BK, BN)</h2>
+<div class="grid">
+  <div class="col">
+    <h3>Ctrl+K или /</h3>
+    <div class="palette">
+      <div class="q">ремонт</div>
+      <div class="g">Дела</div>
+      <div class="r hl">Купить плитку для ремонта <span class="m">Чт 29 окт</span></div>
+      <div class="g">Проекты</div>
+      <div class="r">🛠 Ремонт на кухне <span class="m">☑ 2/5</span></div>
+      <div class="g">Мысли</div>
+      <div class="r">Ремонт балкона весной <span class="m">🏠 Дом · 4 мес</span></div>
+      <div class="g">Цели</div>
+      <div class="r">Закончить ремонт ванной <span class="m">нед. 12 окт</span></div>
+      <div class="f12 faint" style="margin:8px 6px 2px"><kbd>↑</kbd> <kbd>↓</kbd> выбрать · <kbd>Enter</kbd> открыть · <kbd>Esc</kbd> закрыть</div>
+    </div>
+  </div>
+  <div class="col">
+    <h3>Нет связи · связь восстановлена</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+      <span class="toast warn mark-new">⚠ Нет связи — изменения не сохранены (3), повторю попытку <span class="a">Повторить сейчас</span></span>
+      <span class="toast">Связь восстановлена — сохранено 3</span>
+    </div>
+    <p class="cap">Плашка «нет связи» не исчезает сама; правки остаются на экране и уходят по порядку, когда связь вернётся (BN1–BN3).</p>
+  </div>
+</div>
+
+<script>
+// Тепловая карта: 9 недель × 7 дней, условные данные (только иллюстрация)
+const heat = document.getElementById('heat');
+const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const lv = [
+  [1,2,2,3,2,1,0,1,2],[0,1,2,2,3,1,1,0,2],[2,2,1,3,2,2,0,1,1],[1,3,2,2,3,2,1,2,2],[1,1,0,2,2,1,0,1,1],[0,0,1,1,1,'v','v',0,1],[0,1,0,1,0,'v','v',0,0]];
+heat.insertAdjacentHTML('beforeend', '<span></span>' + ['31','7','14','21','28','5','12','19','26'].map(x => `<span style="text-align:center">${x}</span>`).join(''));
+days.forEach((d, r) => {
+  heat.insertAdjacentHTML('beforeend', `<span>${d}</span>`);
+  lv[r].forEach(v => heat.insertAdjacentHTML('beforeend', `<span class="c ${v === 'v' ? 'vac' : v ? 'l' + v : ''}"></span>`));
+});
+</script>
+</body>
+</html>
