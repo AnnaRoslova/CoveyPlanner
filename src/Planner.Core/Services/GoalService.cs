@@ -184,6 +184,22 @@ public class GoalService(
         }
     }
 
+    /// <summary>
+    /// Что уберёт выключение «каждую неделю» у цели (E1.2): уже созданные цели серии на следующих неделях и их невыполненные занятия.
+    /// Цель не постоянная — (0, 0).
+    /// </summary>
+    public async Task<(int Goals, int OpenSessions)> SeriesEndPreviewAsync(int id, CancellationToken ct = default)
+    {
+        var goal = await GetAsync(id, ct);
+        if (!goal.RepeatsAfterThisWeek)
+        {
+            return (0, 0);
+        }
+
+        var later = await LaterInSeriesAsync(goal, ct);
+        return (later.Count, later.Sum(g => g.ActiveSessions.Count(t => t.State == TaskState.Planned)));
+    }
+
     /// <summary>Уже созданные цели той же серии на следующих неделях.</summary>
     private async Task<List<WeeklyGoal>> LaterInSeriesAsync(WeeklyGoal goal, CancellationToken ct) =>
         goal.SeriesId is { } seriesId

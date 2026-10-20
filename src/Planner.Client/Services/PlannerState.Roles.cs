@@ -66,6 +66,22 @@ public partial class PlannerState
     }
 
     /// <summary>
+    /// Что уберёт выключение «каждую неделю» у цели (fixes-2026-10.md, E1.2) — для вопроса перед «Сохранить».
+    /// Сервер не ответил — null: окно сохраняется без вопроса (ошибку покажет само сохранение).
+    /// </summary>
+    public async Task<SeriesEndPreviewDto?> SeriesEndPreviewAsync(int goalId)
+    {
+        try
+        {
+            return await api.GetSeriesEndPreviewAsync(goalId);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Сохранить окно цели. Цель меняется сразу; занятия в днях (по шаблону у них могли поменяться
     /// название, время, квадрант, заметки, длительность, роль) — по ответу сервера, он решает, какие поля «свои».
     /// </summary>

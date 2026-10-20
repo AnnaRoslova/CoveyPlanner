@@ -137,6 +137,9 @@ public sealed record WeekDto(
 /// </summary>
 public sealed record GoalUpdateResultDto(WeeklyGoalDto Goal, IReadOnlyList<TaskDto> Sessions, IReadOnlyList<int>? RemovedSessionIds = null);
 
+/// <summary>Что уберёт выключение «каждую неделю» (fixes-2026-10.md, E1.2): уже созданные цели следующих недель и их невыполненные занятия.</summary>
+public sealed record SeriesEndPreviewDto(int Goals, int OpenSessions);
+
 /// <summary>Результат операции с целью: сама цель и занятие, которое поменялось.</summary>
 public sealed record GoalResultDto(WeeklyGoalDto Goal, TaskDto? Task);
 

@@ -2,13 +2,14 @@
    Изменения расходятся по невыполненным занятиям недели (кроме полей, которые у занятия свои);
    роль и квадрант — по всем занятиям. Постоянная цель пилы — привычка: строка «🫙 привычка: 102 скрепки · 🔥13»
    (клик — экран «Копилки» на ней) и настройки банки. Enter в названии — сохранить, Esc или клик мимо — отмена.
+   Выключили «каждую неделю», а на следующих неделях уже есть цели, — перед сохранением вопрос «Закончить серию?» (SeriesEndDialog, E1.2).
    Стили — css/editor.css. *@
 @inherits StateComponent
 @inject WindowHost Windows
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
-<div class="editor" role="dialog" aria-label="Цель недели" tabindex="-1" @onkeydown="OnKeyDown">
+<div @ref="_root" class="editor" role="dialog" aria-label="Цель недели" tabindex="-1" @onkeydown="OnKeyDown">
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Цель на неделю"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
@@ -162,6 +163,11 @@
     </div>
 </div>
 
+@if (_endQuestion is { } preview)
+{
+    <SeriesEndDialog Title="@_title.Trim()" Preview="preview" OnConfirm="ConfirmEndAsync" OnCancel="CancelEnd" />
+}
+
 @code {
     private const int MaxTimesPerWeek = 7;
 
@@ -177,6 +183,10 @@
     private bool _habit;
     private int _projectId; // 0 — без проекта
     private bool _projectChanged;
+    private SeriesEndPreviewDto? _endQuestion; // вопрос «Закончить серию?» (E1.2) открыт
+    private bool _endConfirmed;
+    private bool _refocus; // вопрос закрыли «Отмена» — фокус обратно в окно (иначе Esc его не закроет)
+    private ElementReference _root;
 
     /// <summary>
     /// Кого можно выбрать проектом (P1, S7): открытые дела без родителя, не занятия целей — из ленты и из показанной недели;
@@ -318,6 +328,18 @@
         {
             await _titleInput.FocusAsync();
         }
+        else if (_refocus)
+        {
+            _refocus = false;
+            await _root.FocusAsync();
+        }
+    }
+
+    /// <summary>«Отмена» в вопросе E1.2: окно цели остаётся как набрано.</summary>
+    private void CancelEnd()
+    {
+        _endQuestion = null;
+        _refocus = true;
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -342,8 +364,16 @@
 
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(_title))
+        if (string.IsNullOrWhiteSpace(_title) || _endQuestion is not null)
         {
+            return;
+        }
+
+        // Выключили «каждую неделю», а на следующих неделях уже есть цели — сначала вопрос (E1.2)
+        if (EditedGoal.IsRecurring && !_recurring && !_endConfirmed
+            && await State.SeriesEndPreviewAsync(EditedGoal.Id) is { Goals: > 0 } preview)
+        {
+            _endQuestion = preview;
             return;
         }
 
@@ -358,6 +388,14 @@
         {
             await State.UpdateHabitAsync(habit.Id, _startCount, _jarSize);
         }
+    }
+
+    /// <summary>«Закончить серию» в вопросе E1.2 — сохранить окно как набрано.</summary>
+    private async Task ConfirmEndAsync()
+    {
+        _endQuestion = null;
+        _endConfirmed = true;
+        await SaveAsync();
     }
 
     /// <summary>Пилюля «🫙 привычка: …» — экран «Копилки» на этой привычке (несохранённая правка окна теряется, как при «Отмена»).</summary>

@@ -24,6 +24,13 @@ public static class GoalEndpoints
                 request.AllowSeveralPerDay, (Weekdays?)request.Days, request.IsHabit, request.ProjectId), ct))
             .ToUpdateResultDto());
 
+        // Выключить «каждую неделю»: сколько уже созданных целей следующих недель и их невыполненных занятий уберётся (E1.2)
+        goals.MapGet("/{id:int}/series-end", async (int id, GoalService service, CancellationToken ct) =>
+        {
+            var (later, open) = await service.SeriesEndPreviewAsync(id, ct);
+            return new SeriesEndPreviewDto(later, open);
+        });
+
         // Клик по отметке цели: отметить ближайшее занятие или снять отметку с последнего
         goals.MapPost("/{id:int}/toggle", async (int id, ToggleGoalRequest request, GoalService service, CancellationToken ct) =>
             (await service.ToggleDoneAsync(id, request.Today, ct)).ToResultDto());

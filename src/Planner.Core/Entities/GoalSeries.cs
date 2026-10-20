@@ -190,11 +190,19 @@ public class GoalSeries
         return _roles.Count > 0;
     }
 
-    /// <summary>Серия заканчивается на неделе <paramref name="week"/> (её цель остаётся, следующих не будет).</summary>
+    /// <summary>
+    /// Серия заканчивается на неделе <paramref name="week"/> (её цель остаётся, следующих не будет). Уже созданные цели после неё
+    /// удаляет вызывающий — значит, они больше не созданы: <see cref="GeneratedThrough"/> откатывается на эту неделю,
+    /// и снова включённая серия создаст их заново (fixes-2026-10.md, E1.1).
+    /// </summary>
     public void StopAfter(DateOnly week)
     {
         EnsureWeekStart(week);
         LastWeek = week;
+        if (GeneratedThrough > week)
+        {
+            GeneratedThrough = week;
+        }
     }
 
     /// <summary>

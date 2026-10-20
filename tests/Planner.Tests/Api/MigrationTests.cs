@@ -551,6 +551,47 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal(2, await CountAsync(db, "TaskGoals")); // занятия — по-прежнему занятия
     }
 
+    /// <summary>
+    /// fixes-2026-10.md E1.3: у «Тренировки со скакалкой» — цели 12, 19, 26 окт по шаблону серии, в конец списка роли, без занятий;
+    /// существующие недели не тронуты; у законченной серии GeneratedThrough = LastWeek; другие серии — без изменений.
+    /// </summary>
+    [Fact]
+    public async Task RestoreStoppedSeriesWeeks_JumpRopeGapFilled_EndedSeriesReset()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("HabitsAreNotProjects");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Тело', '#9fd3bd', 0, 'Body');
+            INSERT INTO GoalSeries (Id, Title, TimesPerWeek, AllowSeveralPerDay, IsRecurring, FirstWeek, LastWeek, GeneratedThrough, JarSize, StartCount, IsHabit, Quadrant, Days) VALUES
+                (6, 'Тренировка со скакалкой', 7, 0, 1, '2026-09-28', NULL, '2026-11-09', 30, 0, 1, 2, NULL),
+                (3, 'Общаться с Алиной', 3, 1, 1, '2026-09-28', '2026-09-28', '2026-10-26', 30, 0, 1, 2, NULL),
+                (5, '10к шагов', 6, 0, 1, '2026-09-28', NULL, '2026-11-09', 30, 0, 1, 2, 63);
+            INSERT INTO GoalSeriesRoles (SeriesId, RoleId) VALUES (6, 1), (3, 1), (5, 1);
+            INSERT INTO WeeklyGoals (Id, WeekStart, Title, TimesPerWeek, AllowSeveralPerDay, SeriesId, Quadrant) VALUES
+                (16, '2026-10-05', 'Тренировка со скакалкой', 7, 0, 6, 2),
+                (55, '2026-11-02', 'Тренировка со скакалкой', 7, 0, 6, 2),
+                (23, '2026-10-12', '10к шагов', 6, 0, 5, 2);
+            INSERT INTO GoalRoles (GoalId, RoleId, SortOrder) VALUES (16, 1, 1), (55, 1, 2), (23, 1, 4);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var jumpRope = await db.WeeklyGoals.Where(g => g.SeriesId == 6).OrderBy(g => g.WeekStart).ToListAsync();
+        Assert.Equal(
+            ["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"],
+            jumpRope.Select(g => g.WeekStart.ToString("yyyy-MM-dd")));
+        var restored = jumpRope.Where(g => g.Id is not (16 or 55)).ToList();
+        Assert.All(restored, g => Assert.Equal((7, Planner.Core.Enums.Quadrant.NotUrgentImportant, "Тренировка со скакалкой"), (g.TimesPerWeek, g.Quadrant!.Value, g.Title)));
+        Assert.Equal([5, 0, 0], restored.Select(g => g.RoleLink(1)!.SortOrder)); // после «10к шагов» (4) — 5; на пустых неделях — 0
+        Assert.Equal(0, await CountAsync(db, "TaskGoals"));
+
+        var series = await db.GoalSeries.OrderBy(s => s.Id).ToDictionaryAsync(s => s.Id);
+        Assert.Equal(new DateOnly(2026, 9, 28), series[3].GeneratedThrough);
+        Assert.Equal(new DateOnly(2026, 11, 9), series[6].GeneratedThrough);
+        Assert.Equal(1, await db.WeeklyGoals.CountAsync(g => g.SeriesId == 5)); // у серии с выбранными днями — без изменений
+    }
+
     private static async Task<long> CountAsync(PlannerDbContext db, string table)
     {
         var connection = db.Database.GetDbConnection();

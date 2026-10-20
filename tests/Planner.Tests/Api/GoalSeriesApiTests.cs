@@ -158,6 +158,75 @@ public class GoalSeriesApiTests : ApiTestBase
     }
 
     [Fact]
+    public async Task TurnOff_ThenOnInSameWindow_LaterWeeksComeBack() // E1.1 (fixes-2026-10.md): «Тренировка со скакалкой»
+    {
+        var body = await RoleAsync("Тело");
+        var goal = await CreateGoalAsync(body.Id, "Скакалка");
+        await GetWeekAsync(Week(3)); // следующие недели уже открывали — их цели созданы
+
+        var off = (await UpdateAsync(goal, f => f with { IsRecurring = false })).Goal;
+        Assert.Empty(await TitlesAsync(1, body.Id));
+        await UpdateAsync(off, f => f with { IsRecurring = true });
+
+        foreach (var w in new[] { 1, 2, 3, 4 })
+        {
+            Assert.Equal(["Скакалка"], await TitlesAsync(w, body.Id));
+        }
+    }
+
+    [Fact]
+    public async Task DeleteFromThisWeekOn_ThenTurnOnWeekBefore_LaterWeeksComeBack() // E1.1
+    {
+        var body = await RoleAsync("Тело");
+        await CreateGoalAsync(body.Id, "Скакалка");
+        await GetWeekAsync(Week(3));
+
+        await DeleteAsync(await GoalAsync(1, "Скакалка"), series: true);
+        await UpdateAsync(await GoalAsync(0, "Скакалка"), f => f with { IsRecurring = true });
+
+        foreach (var w in new[] { 1, 2, 3 })
+        {
+            Assert.Equal(["Скакалка"], await TitlesAsync(w, body.Id));
+        }
+    }
+
+    [Fact]
+    public async Task TurnOnLater_WeeksBetweenEndAndRestart_StayEmpty() // E1.1: пропущенные недели не заполняются
+    {
+        var body = await RoleAsync("Тело");
+        await CreateGoalAsync(body.Id, "Скакалка");
+        await GetWeekAsync(Week(3));
+        await DeleteAsync(await GoalAsync(1, "Скакалка"), series: true);
+
+        // Через неделю на третьей неделе цель той же серии появилась переносом занятия — включили там
+        var source = await GoalAsync(0, "Скакалка");
+        var session = (await PostTargetAsync<GoalResultDto>($"/api/goals/{source.Id}/schedule", new DayTargetDto(Monday, 0))).Task!;
+        await MoveTaskAsync(session.Id, new DayTargetDto(Week(3), 0));
+        await UpdateAsync(await GoalAsync(3, "Скакалка"), f => f with { IsRecurring = true });
+
+        Assert.Empty(await TitlesAsync(1, body.Id));
+        Assert.Empty(await TitlesAsync(2, body.Id));
+        Assert.Equal(["Скакалка"], await TitlesAsync(4, body.Id));
+    }
+
+    [Fact]
+    public async Task SeriesEndPreview_CountsLaterGoalsAndTheirOpenSessions() // E1.2: для вопроса «Закончить серию?»
+    {
+        var body = await RoleAsync("Тело");
+        var goal = await CreateGoalAsync(body.Id, "Скакалка");
+        await GetWeekAsync(Week(2));
+        var next = await GoalAsync(1, "Скакалка");
+        await PostTargetAsync<GoalResultDto>($"/api/goals/{next.Id}/schedule", new DayTargetDto(Week(1), 0));
+        var done = (await PostTargetAsync<GoalResultDto>($"/api/goals/{next.Id}/schedule", new DayTargetDto(Week(1).AddDays(1), 0))).Task!;
+        await SetTaskDoneAsync(done.Id, true);
+
+        Assert.Equal(new SeriesEndPreviewDto(2, 1), await GetAsync<SeriesEndPreviewDto>($"/api/goals/{goal.Id}/series-end"));
+
+        var oneOff = await CreateGoalAsync(body.Id, "Марафон", recurring: false);
+        Assert.Equal(new SeriesEndPreviewDto(0, 0), await GetAsync<SeriesEndPreviewDto>($"/api/goals/{oneOff.Id}/series-end"));
+    }
+
+    [Fact]
     public async Task DeleteRole_RemovesItsSeries()
     {
         var role = await PostAsync<RoleDto>("/api/roles", new CreateRoleRequest("Спорт", null));

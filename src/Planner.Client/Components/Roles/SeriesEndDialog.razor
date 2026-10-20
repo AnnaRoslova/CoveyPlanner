@@ -1,0 +1,47 @@
+@* Выключили «каждую неделю» у цели, у которой на следующих неделях уже есть цели (fixes-2026-10.md, E1.2), — вопрос перед «Сохранить»:
+   «Закончить «…» после этой недели? Уберутся цели: N, занятий: M». «Закончить серию» — сохранить окно цели; «Отмена» (Esc, клик мимо) —
+   вопрос закрывается, окно цели остаётся как было набрано. Поверх окна цели (классы nested). Стили — css/editor.css. *@
+
+<div class="editor-backdrop nested" @onclick="OnCancel"></div>
+
+<div class="editor confirm-delete series-end nested" role="alertdialog" aria-label="Закончить серию" tabindex="-1"
+     @ref="_dialog" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="true">
+    <div class="question">Закончить «@Title» после этой недели?</div>
+    <div class="explain">Уберутся цели: @Preview.Goals, занятий: @Preview.OpenSessions@(Preview.OpenSessions > 0 ? " (в корзину)" : "")</div>
+    <div class="buttons">
+        <button type="button" class="btn danger" @onclick="OnConfirm">Закончить серию</button>
+        <button type="button" class="btn" @onclick="OnCancel">Отмена</button>
+    </div>
+</div>
+
+@code {
+    private ElementReference _dialog;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public SeriesEndPreviewDto Preview { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _dialog.FocusAsync(); // чтобы Esc закрывал вопрос, а не окно цели
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+}

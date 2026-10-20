@@ -109,6 +109,8 @@ public class PlannerApi(HttpClient http)
     public Task<GoalUpdateResultDto> UpdateGoalAsync(int id, UpdateGoalRequest request) =>
         SendAsync<GoalUpdateResultDto>(HttpMethod.Put, $"api/goals/{id}", request);
 
+    public Task<SeriesEndPreviewDto> GetSeriesEndPreviewAsync(int id) => GetAsync<SeriesEndPreviewDto>($"api/goals/{id}/series-end");
+
     public Task<GoalResultDto> ToggleGoalAsync(int id, ToggleGoalRequest request) =>
         SendAsync<GoalResultDto>(HttpMethod.Post, $"api/goals/{id}/toggle", request);
 

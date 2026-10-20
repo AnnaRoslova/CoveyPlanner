@@ -1,6 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
 // Постоянные цели («каждую неделю»): переключатель в окне цели (у пилы включён по умолчанию), цель сама появляется
 // на следующей неделе (без занятий; если выбраны дни — с занятиями в эти дни), удаление — вопрос «Только на этой неделе» / «С этой недели и дальше» / «Отмена», с «Вернуть».
+// Выключение «каждую неделю» при уже созданных следующих неделях — вопрос «Закончить серию» (fixes-2026-10.md, E1.2); снова включили — недели вернулись (E1.1).
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -154,17 +155,57 @@ await check('«Только на этой неделе» — на следующ
   assert(!(await goalsOf('Тело')).includes('Теннис'), 'на этой неделе вернулась');
 });
 
-await check('выключить «каждую неделю» — со следующей недели цели нет; в окне выключено', async () => {
+await check('выключить «каждую неделю» (E1.2): вопрос «Закончить … после этой недели?» с числом целей; «Отмена» — окно на месте', async () => {
+  await goWeek(1); // цель следующей недели уже создана
+  assert((await goalsOf('Ум')).includes('100 страниц'), 'на следующей неделе нет');
   await goWeek(0);
   await openGoal('100 страниц');
   await page.click('.editor .switch-row'); await settle();
   assert(!(await switchOn()), 'переключатель не выключился');
   await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  const q = await page.$eval('.series-end', e => e.textContent.replace(/\s+/g, ' ').trim()).catch(() => null);
+  assert(q?.includes('Закончить «100 страниц» после этой недели?') && /Уберутся цели: \d+, занятий: \d+/.test(q)
+    && q.includes('Закончить серию') && q.includes('Отмена'), JSON.stringify(q));
+  await page.screenshot({ path: `${SHOTS}/goal-series-end.png` });
+  await page.click('.series-end .btn:not(.danger)'); await settle();
+  assert(!(await page.$('.series-end')), 'вопрос не закрылся');
+  assert(await page.$('.editor[aria-label="Цель недели"]') && !(await switchOn()), 'окно цели закрылось или переключатель сброшен');
+  await page.keyboard.press('Escape'); await settle();
+  await goWeek(1);
+  assert((await goalsOf('Ум')).includes('100 страниц'), 'после «Отмена» цели следующей недели нет');
+});
+
+await check('«Закончить серию» — со следующей недели цели нет; в окне выключено', async () => {
+  await goWeek(0);
+  await openGoal('100 страниц');
+  await page.click('.editor .switch-row'); await settle();
+  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.series-end .btn.danger'); await settle();
+  assert(!(await page.$('.editor')), 'окна не закрылись');
   await openGoal('100 страниц');
   assert(!(await switchOn()), 'после сохранения включено');
   await page.keyboard.press('Escape'); await settle();
   await goWeek(1);
   assert(!(await goalsOf('Ум')).includes('100 страниц'), 'на следующей неделе есть');
+});
+
+await check('E1.1: снова включить «каждую неделю» — цель следующей недели вернулась (без вопроса)', async () => {
+  await goWeek(0);
+  await openGoal('100 страниц');
+  await page.click('.editor .switch-row'); await settle();
+  assert(await switchOn(), 'переключатель не включился');
+  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  assert(!(await page.$('.series-end')), 'вопрос при включении');
+  await goWeek(1);
+  assert((await goalsOf('Ум')).includes('100 страниц'), 'на следующей неделе не вернулась');
+  await goWeek(2);
+  assert((await goalsOf('Ум')).includes('100 страниц'), 'через неделю нет');
+  // Дальше сценарий ждёт законченную серию — выключаем снова
+  await goWeek(0);
+  await openGoal('100 страниц');
+  await page.click('.editor .switch-row'); await settle();
+  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.series-end .btn.danger'); await settle();
 });
 
 await check('разовую цель удаляют без вопроса', async () => {
