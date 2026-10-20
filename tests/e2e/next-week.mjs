@@ -1,6 +1,7 @@
 // «→ на след. неделю» (docs/specs/next-batch.md, N4; доработка — docs/specs/fixes-2026-10.md, B1–B5): заметная кнопка в окнах дела и мысли;
 // дело с ролью — на следующей неделе слева под ролью (список не свёрнут), плашка «… → след. неделя, «Роль» · Показать · Вернуть»;
 // без роли — меню ролей (и «в ленту» у дела); бросок на заголовок роли — то же; между целями — по-прежнему новая цель. Данные — через API.
+// E2 (fixes-2026-10.md): дело «на неделе» без дня на текущей и будущих неделях подсвечено «не назначено на день».
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -183,6 +184,33 @@ await check('N4: дыра закрыта — дело из дня, ставше�
   await api('POST', 'goals/from-task', { taskId: report.id, roleId: work.id, weekStart: dayIso(7), index: 0 });
   const t = await api('GET', `tasks/${report.id}`);
   assert(t.plannedDate === null && t.goalId, JSON.stringify(t));
+});
+
+await check('E2: дело «на неделе» текущей недели подсвечено «не назначено на день»; отметили — нет; прошлая неделя — нет; на день — ушло из списка', async () => {
+  const gym = await api('POST', 'tasks', { title: 'Записаться в зал', target: { kind: 'week', weekStart: dayIso(0), roleId: family.id } });
+  const past = await api('POST', 'tasks', { title: 'Старое', target: { kind: 'week', weekStart: dayIso(-7), roleId: family.id } });
+  await load();
+  const row = t => page.evaluate(t => {
+    const el = [...document.querySelectorAll('.week-nd .item')].find(i => i.querySelector('.title')?.textContent.trim() === t);
+    return el ? { unplaced: el.classList.contains('unplaced'), hint: el.getAttribute('title') } : null;
+  }, t);
+  let s = await row('Записаться в зал');
+  assert(s?.unplaced && s.hint === 'не назначено на день', JSON.stringify(s));
+  await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/week-unassigned.png` });
+  await api('PUT', `tasks/${gym.id}/done`, { isDone: true }); await load();
+  s = await row('Записаться в зал');
+  assert(s && !s.unplaced && !s.hint, `выполненное: ${JSON.stringify(s)}`);
+  await api('PUT', `tasks/${gym.id}/done`, { isDone: false }); await load();
+  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+  s = await row('Старое');
+  assert(s && !s.unplaced, `прошлая неделя: ${JSON.stringify(s)}`);
+  await page.click('.nav[title="Следующая неделя"]'); await settle();
+  const el = (await page.evaluateHandle(() => [...document.querySelectorAll('.week-nd .item')].find(i => i.querySelector('.title')?.textContent.trim() === 'Записаться в зал'))).asElement();
+  const day = await (await page.evaluateHandle(() => document.querySelectorAll('.day')[4])).asElement().boundingBox();
+  await drag(el, day.x + day.width / 2, day.y + day.height - 60);
+  assert(!(await row('Записаться в зал')), 'осталось в «на неделе»');
+  assert((await dayTitles(4)).includes('Записаться в зал'), JSON.stringify(await dayTitles(4)));
+  await api('DELETE', `tasks/${past.id}`);
 });
 
 await check('в консоли нет ошибок', async () => {

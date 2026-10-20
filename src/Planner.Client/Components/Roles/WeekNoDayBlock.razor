@@ -1,6 +1,7 @@
 @* «На неделе · N» (docs/specs/next-batch.md, N4.2; fixes-2026-10.md, B2) — дела показанной недели без дня: под ролью (с этой ролью) или внизу
    левой панели (RoleId = null — без роли: бывает, когда у такого дела убрали роли или удалили роль, B3a). Виден, только если дела есть,
    и всегда раскрыт; клик по делу — окно; дело тащат в день, в ленту, на цель, на роль.
+   Невыполненное дело текущей или будущей недели подсвечено, как недособранная цель: «не назначено на день» (E2).
    Список под ролью — ещё и место, куда бросить дело «на эту неделю без дня» с этой ролью (как на заголовок роли, B5); «без роли» — нет. *@
 @inherits StateComponent
 @inject WindowHost Windows
@@ -22,6 +23,7 @@
                      IsPending="id < 0"
                      IsFlashing="State.FlashTaskId == id"
                      ParentCaption="@State.ParentTitleOf(task)"
+                     Unplaced="@(PlannerState.IsUnassigned(task, State.WeekStart, RuDates.Today) ? "не назначено на день" : null)"
                      OnToggle="() => State.SetDoneAsync(id, task.State != TaskStateDto.Done)"
                      OnClick="() => id > 0 ? Open(id) : Task.CompletedTask"
                      DragKind="@(id < 0 ? null : task.ParentId is null ? DragDropService.DayItem : DragDropService.StepItem)"

@@ -16,6 +16,13 @@ public partial class PlannerState
             .ToList();
 
     /// <summary>
+    /// E2 (fixes-2026-10.md): дело «на неделе» без дня подсвечено, как недособранная цель (N1), — пока не выполнено и неделя
+    /// <paramref name="week"/> не прошла. Только вид.
+    /// </summary>
+    public static bool IsUnassigned(TaskDto task, DateOnly week, DateOnly today) =>
+        task.PlannedDate is null && task.State == TaskStateDto.Planned && week.AddDays(6) >= today;
+
+    /// <summary>
     /// «→ на след. неделю» (N4.1, B1–B3): на неделю после показанной, без дня; мысль уходит из ленты, дело — с дня.
     /// <paramref name="roleId"/> — роль из меню у дела без роли (дело её получает и встаёт под неё).
     /// </summary>

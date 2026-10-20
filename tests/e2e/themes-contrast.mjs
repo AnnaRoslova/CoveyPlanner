@@ -167,6 +167,10 @@ await page.evaluate(async () => {
   const board = await (await fetch('/api/board')).json();
   const thought = board.somedayTasks.find(t => t.categoryId !== null);
   if (thought) await post(`/api/tasks/${thought.id}/done`, { isDone: true }, 'PUT');
+  // E2: дело «на неделе» без дня — подсвечено «не назначено на день»
+  const body = board.roles.find(r => r.name === 'Тело');
+  const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  await post('/api/tasks', { title: 'Записаться к врачу', target: { kind: 'week', weekStart: iso(monday), roleId: body.id } });
 });
 
 for (const theme of THEMES) {
@@ -220,7 +224,7 @@ for (const theme of THEMES) {
   });
   await check(`${theme}: N1 — недособранная цель: подсветка на месте, полоска слева от фона панели не ниже 1.5:1`, async () => {
     const m = await page.evaluate(() => {
-      const row = document.querySelector('.role .item.unplaced');
+      const row = document.querySelector('.role .item.unplaced:not(.week-nd *)');
       if (!row) return null;
       const ctx = document.createElement('canvas').getContext('2d');
       const rgb = c => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };
@@ -234,6 +238,29 @@ for (const theme of THEMES) {
       return { bar: ratio(bar, panel) };
     });
     assert(m, 'на экране нет недособранной цели');
+    assert(m.bar >= 1.5, `полоска ${m.bar.toFixed(2)}:1`);
+  });
+  await check(`${theme}: E2 — дело «на неделе» без дня: подсветка, подсказка, текст на подложке AA, полоска от фона панели не ниже 1.5:1`, async () => {
+    const m = await page.evaluate(() => {
+      const row = document.querySelector('.week-nd .item.unplaced');
+      if (!row) return null;
+      const ctx = document.createElement('canvas').getContext('2d');
+      const rgb = c => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data]; };
+      const ch = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const lum = c => 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2]);
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const page = rgb(getComputedStyle(document.documentElement).getPropertyValue('--page-color'));
+      const flat = (c, under) => c[3] === 255 ? c : [0, 1, 2].map(i => Math.round(c[i] * c[3] / 255 + under[i] * (1 - c[3] / 255))).concat(255);
+      const chain = []; for (let e = row; e; e = e.parentElement) chain.unshift(e);
+      const under = chain.reduce((acc, e) => flat(rgb(getComputedStyle(e).backgroundColor), acc), page);
+      const panel = chain.slice(0, chain.indexOf(row.closest('.panel')) + 1).reduce((acc, e) => flat(rgb(getComputedStyle(e).backgroundColor), acc), page);
+      const bar = flat(rgb(getComputedStyle(row).getPropertyValue('--unplaced-bar')), panel);
+      const title = row.querySelector('.title');
+      return { hint: row.getAttribute('title'), text: ratio(flat(rgb(getComputedStyle(title).color), under), under), bar: ratio(bar, panel) };
+    });
+    assert(m, 'на экране нет подсвеченного дела «на неделе»');
+    assert(m.hint === 'не назначено на день', m.hint);
+    assert(m.text >= 4.5, `текст ${m.text.toFixed(2)}:1`);
     assert(m.bar >= 1.5, `полоска ${m.bar.toFixed(2)}:1`);
   });
   await check(`${theme}: окно дела`, async () => {
