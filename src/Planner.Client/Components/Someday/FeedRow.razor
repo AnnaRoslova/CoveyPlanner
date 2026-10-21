@@ -1,6 +1,7 @@
 @* Строка ленты: квадратный чекбокс (нейтральный бирюзовый — у мыслей нет ролей, D1) — «выполнено в ленте» с плашкой (D2, D3);
    у проекта — подпись «☑ 2/5» и стрелка справа внизу: развернуть шаги прямо под строкой (с датами «Чт 9 окт», R1, R5). Строка проекта —
-   ещё и место, куда бросить его шаг из дня (снять с дня, S20). Во время поиска проект с совпавшим шагом развёрнут. *@
+   ещё и место, куда бросить его шаг из дня (снять с дня, S20). Во время поиска проект с совпавшим шагом развёрнут.
+   Возраст мысли (batch-ux.md, BS3): подсказка «лежит 2 мес · с 14 авг» у всех мыслей, метка «8 мес» — только у старше срока. *@
 @inherits StateComponent
 @inject WindowHost Windows
 @inject ProjectFoldState Folds
@@ -22,7 +23,9 @@
          DropHintOwn="снять с дня — в список шагов"
          OnToggle="() => Item.Id > 0 ? State.CompleteInFeedAsync(Item.Id) : Task.CompletedTask"
          DragKind="@(IsSearching || Item.Id < 0 ? null : DragDropService.SomedayItem)" DragId="Item.Id"
-         OnClick="() => Windows.OpenSomedayTask(Item.Id)" />
+         OnClick="() => Windows.OpenSomedayTask(Item.Id)"
+         RowTitle="@AgeTitle"
+         AgeLabel="@(State.IsStale(Item) ? ThoughtAge.Label(Since!.Value, RuDates.Today) : null)" />
 @if (expanded)
 {
     <ProjectSteps ParentId="Item.Id" LongDates="true" Highlight="@Search" />
@@ -37,6 +40,11 @@
     public string? Search { get; set; }
 
     private bool IsSearching => !string.IsNullOrEmpty(Search);
+
+    /// <summary>Возраст — от последнего изменения; у проекта и шага его нет.</summary>
+    private DateOnly? Since => PlannerState.IsThought(Item) && Item.UpdatedAt is { } updated ? ThoughtAge.LocalDay(updated) : null;
+
+    private string? AgeTitle => Since is { } since ? ThoughtAge.Tooltip(since, RuDates.Today) : null;
 
     /// <summary>Во время поиска совпал шаг — проект раскрыт, совпадение подсвечено.</summary>
     private bool StepMatches => IsSearching && State.StepsOf(Item.Id).Any(s => TextSearch.Contains(s.Title, Search!));

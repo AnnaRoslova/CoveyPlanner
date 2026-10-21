@@ -21,6 +21,7 @@ public static class BoardEndpoints
         IRoleRepository roles,
         ICategoryRepository categories,
         ITaskRepository tasks,
+        ISettingsRepository settings,
         TaskViews views,
         CancellationToken ct)
     {
@@ -38,7 +39,8 @@ public static class BoardEndpoints
             someday.Select(t => t.ToDto()).ToList(),
             trashed.Count,
             await views.StepsOfAsync(someday.Concat(plannedProjects), ct),
-            await views.ToDtosAsync(plannedProjects, ct));
+            await views.ToDtosAsync(plannedProjects, ct),
+            (await settings.GetAsync(ct)).StaleMonths);
     }
 
     /// <summary>Неделя по любой её дате (приводится к понедельнику).</summary>

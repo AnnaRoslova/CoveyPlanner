@@ -55,7 +55,7 @@ public static class ReportEndpoints
         d.Roles.Select(RoleCount).ToList(),
         d.Quadrants.Select(q => new DashboardQuadrantDto(q.WeekStart, q.Second, q.Marked, q.Unmarked)).ToList(),
         new DashboardStaleDto(d.Stale.Months, d.Stale.Count,
-            d.Stale.Oldest.Select(t => new DashboardThoughtDto(t.Id, t.Title, DateTime.SpecifyKind(t.CreatedAt, DateTimeKind.Utc))).ToList()));
+            d.Stale.Oldest.Select(t => new DashboardThoughtDto(t.Id, t.Title, DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc))).ToList()));
 
     private static DashboardRoleDto RoleCount(DashboardRoleCount c) =>
         new(c.Role?.Id, c.Role?.Name ?? "без роли", c.Role?.Color ?? NoRoleColor, c.Role?.IsSharpenSaw ?? false, c.Count);

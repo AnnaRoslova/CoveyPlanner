@@ -2,7 +2,8 @@
    Сверху над категориями — «+ категория» (новая встаёт в начало) и «свернуть / развернуть всё»;
    «+ категория» есть и внизу (новая — в конец). Над всем этим — «неразобранное» (мысли без категории).
    «Записать мысль» есть всегда: без категорий мысли просто копятся в «неразобранном».
-   Сверху — вкладки «Мысли · N | Проекты · N» (batch-ux.md, BP1): «🛠 Проекты» здесь же, проекты в ленте не живут (N6.2). *@
+   Сверху — вкладки «Мысли · N | Проекты · N» (batch-ux.md, BP1): «🛠 Проекты» здесь же, проекты в ленте не живут (N6.2).
+   Режим «давно лежат» (BS4, «Посмотреть» на плашке): вместо категорий — старые мысли, самые давние сверху; крестик — обычная лента. *@
 @inherits StateComponent
 @inject WindowHost Windows
 @inject RightPanelState RightPanel
@@ -52,7 +53,25 @@
     </div>
 
     <div class="panel-scroll">
-        @{ var unsorted = State.SomedayIn(null).Where(t => !IsSearching || State.FeedMatches(t, Query)).ToList(); }
+        @if (RightPanel.IsStaleMode)
+        {
+            var stale = State.StaleThoughts();
+            <div class="stale-h">
+                <span>Давно лежат <span class="cnt">· @stale.Count</span></span>
+                <button type="button" class="close" title="Обычная лента" aria-label="Обычная лента" @onclick="RightPanel.ExitStale"><Icon Name="x" Size="14" /></button>
+            </div>
+            @foreach (var task in stale)
+            {
+                <FeedRow @key="task.Id" Item="task" />
+            }
+            @if (stale.Count == 0)
+            {
+                <div class="nothing">Мыслей старше @State.StaleMonths мес нет</div>
+            }
+        }
+        else
+        {
+        var unsorted = State.SomedayIn(null).Where(t => !IsSearching || State.FeedMatches(t, Query)).ToList();
         <UnsortedSection Tasks="unsorted" Search="@Query" />
 
         @if (State.Categories.Count == 0 && !_creatingCategory && !IsSearching)
@@ -95,6 +114,7 @@
         else if (State.Categories.Count > 0 && !IsSearching)
         {
             <button class="add" @onclick="() => _creatingCategory = true">+ категория</button>
+        }
         }
     </div>
     }

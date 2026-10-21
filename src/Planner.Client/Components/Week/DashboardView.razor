@@ -156,8 +156,8 @@ else
                     @foreach (var t in _data.Stale.Oldest)
                     {
                         <li>
-                            <button type="button" class="stale-t" title="записано @CreatedLabel(t)" @onclick="() => Windows.OpenSomedayTask(t.Id)">
-                                <span class="stale-title">@t.Title</span> · @AgeLabel(t.CreatedAt)
+                            <button type="button" class="stale-t" title="@ThoughtAge.Tooltip(ThoughtAge.LocalDay(t.Since), RuDates.Today)" @onclick="() => Windows.OpenSomedayTask(t.Id)">
+                                <span class="stale-title">@t.Title</span> · @ThoughtAge.Label(ThoughtAge.LocalDay(t.Since), RuDates.Today)
                             </button>
                         </li>
                     }
@@ -289,20 +289,6 @@ else
 
     private string Q2Summary => string.Join("; ", _data!.Quadrants.Select(Q2Title));
 
-    private static string CreatedLabel(DashboardThoughtDto t)
-    {
-        var day = DateOnly.FromDateTime(t.CreatedAt.ToLocalTime());
-        return $"{RuDates.DayMonth(day)} {day.Year}";
-    }
-
-    /// <summary>«8 мес», больше года — «1 г 3 мес».</summary>
-    private static string AgeLabel(DateTime createdUtc)
-    {
-        var created = DateOnly.FromDateTime(createdUtc.ToLocalTime());
-        var today = RuDates.Today;
-        var months = (today.Year - created.Year) * 12 + today.Month - created.Month - (today.Day < created.Day ? 1 : 0);
-        return months < 12 ? $"{months} мес" : months % 12 == 0 ? $"{months / 12} г" : $"{months / 12} г {months % 12} мес";
-    }
 
     private static string Plural(int n, string one, string few, string many) =>
         (n % 100 is >= 11 and <= 14) ? many

@@ -155,6 +155,15 @@ public class TaskGoalConfiguration : IEntityTypeConfiguration<TaskGoal>
     }
 }
 
+public class AppSettingsConfiguration : IEntityTypeConfiguration<AppSettings>
+{
+    public void Configure(EntityTypeBuilder<AppSettings> builder)
+    {
+        builder.ToTable("AppSettings");
+        builder.Property(s => s.Id).ValueGeneratedNever(); // одна строка, Id = 1
+    }
+}
+
 public class VacationConfiguration : IEntityTypeConfiguration<Vacation>
 {
     public void Configure(EntityTypeBuilder<Vacation> builder)

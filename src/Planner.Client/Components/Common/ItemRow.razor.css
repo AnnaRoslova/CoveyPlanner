@@ -412,6 +412,17 @@ body.dragging .trash-btn {
     white-space: nowrap;
 }
 
+/* Возраст давно лежащей мысли (BS3): мелкий розовый текст справа */
+.age-mark {
+    flex: none;
+    align-self: flex-start;
+    color: var(--a-ink);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 17px;
+    white-space: nowrap;
+}
+
 
 /* ---------- Одна «⌄» (R5): развернуть запись целиком — текст и шаги ---------- */
 

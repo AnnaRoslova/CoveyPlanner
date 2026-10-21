@@ -95,6 +95,12 @@ else
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
         await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), Totals.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(),
             WatchLongTitlesAsync());
+
+        // Мысли, перешагнувшие срок «давно лежат», — плашкой (batch-ux.md, BS4)
+        if (State.IsLoaded)
+        {
+            await State.CheckStaleAsync();
+        }
     }
 
     /// <summary>Длинные названия записей: «…» и подсказка с полным текстом (js/clamp.js).</summary>

@@ -21,12 +21,16 @@ public sealed class RightPanelState : IDisposable
         _layout = layout;
         _state = state;
         _state.ProjectsRequested += OnProjectsRequested;
+        _state.StaleRequested += OnStaleRequested;
     }
 
     public event Action? Changed;
 
     /// <summary>Показаны проекты (иначе — лента).</summary>
     public bool IsProjects { get; private set; }
+
+    /// <summary>Лента в режиме «давно лежат» (batch-ux.md, BS4): только старые мысли, самые давние сверху; до перезагрузки.</summary>
+    public bool IsStaleMode { get; private set; }
 
     /// <summary>Поиск в панели проектов.</summary>
     public string ProjectQuery { get; set; } = "";
@@ -66,6 +70,23 @@ public sealed class RightPanelState : IDisposable
 
     public Task ShowFeedAsync() => SetModeAsync(false);
 
+    /// <summary>«Посмотреть» на плашке: лента со старыми мыслями.</summary>
+    public async Task ShowStaleAsync()
+    {
+        IsStaleMode = true;
+        await SetModeAsync(false);
+        await _layout.ShowAsync(PanelSide.Right);
+    }
+
+    /// <summary>Крестик режима «давно лежат» — обычная лента.</summary>
+    public void ExitStale()
+    {
+        IsStaleMode = false;
+        Changed?.Invoke();
+    }
+
+    private async void OnStaleRequested() => await ShowStaleAsync();
+
     /// <summary>Плашка «🛠 Проекты»: панель на этом проекте — без фильтров, проект коротко подсвечен.</summary>
     private async void OnProjectsRequested(int? projectId)
     {
@@ -92,5 +113,9 @@ public sealed class RightPanelState : IDisposable
         }
     }
 
-    public void Dispose() => _state.ProjectsRequested -= OnProjectsRequested;
+    public void Dispose()
+    {
+        _state.ProjectsRequested -= OnProjectsRequested;
+        _state.StaleRequested -= OnStaleRequested;
+    }
 }

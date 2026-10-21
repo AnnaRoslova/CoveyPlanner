@@ -17,6 +17,19 @@ namespace Planner.Server.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("Planner.Core.Entities.AppSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("StaleMonths")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppSettings", (string)null);
+                });
+
             modelBuilder.Entity("Planner.Core.Entities.Category", b =>
                 {
                     b.Property<int>("Id")
@@ -185,6 +198,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<bool>("IsProject")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("KeptAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(10000)
                         .HasColumnType("TEXT");
@@ -208,6 +224,9 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("StaleNotifiedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<TimeOnly?>("StartTime")
                         .HasColumnType("TEXT");
 
@@ -225,6 +244,9 @@ namespace Planner.Server.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("TrashedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

@@ -29,7 +29,9 @@ public static class Mapping
         t.IsFromSomeday,
         t.StepOrder,
         t.IsProject,
-        t.PlannedWeek);
+        t.PlannedWeek,
+        DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc),
+        t.KeptAt is { } kept ? DateTime.SpecifyKind(kept, DateTimeKind.Utc) : null);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 

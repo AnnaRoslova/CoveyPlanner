@@ -44,6 +44,7 @@ api.MapStepEndpoints();
 api.MapDoneEndpoints();
 api.MapReportEndpoints();
 api.MapBackupEndpoints();
+api.MapSettingsEndpoints(app.Environment);
 
 // Неизвестные /api/... — 404, а не index.html
 api.MapFallback(() => Results.NotFound());

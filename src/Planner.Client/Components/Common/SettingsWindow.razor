@@ -1,6 +1,7 @@
 @* «⚙ Настройки» (docs/specs/batch-ux.md, BI5) — небольшое окно поверх недели: тема оформления (список с превью, сразу применяется),
-   ссылка «Как это устроено». Срок «старых мыслей» (BS2) и миссия (BM) — тоже здесь. Esc или клик мимо — закрыть. *@
+   ссылка «Как это устроено». Срок «давно лежат» (BS2) и миссия (BM) — тоже здесь. Esc или клик мимо — закрыть. *@
 @inject WindowHost Windows
+@inject PlannerState State
 
 <div class="editor-backdrop" @onclick="Windows.Close"></div>
 
@@ -15,7 +16,19 @@
         <ThemePicker Inline="true" />
     </div>
 
-    @ChildContent
+    @* BS2: срок «давно лежат» — 1 / 3 / 6 / 12 мес или своё (1–36); хранится на сервере *@
+    <div class="field stale-term">
+        <div class="label">Мысль «давно лежит» через</div>
+        <div class="stale-row">
+            <ChoiceField TValue="int" Items="TermChoices" Value="TermChoice" ValueChanged="SetTermAsync" Label="Срок" />
+            @if (_custom || !Presets.Contains(State.StaleMonths))
+            {
+                <label class="custom-term"><input type="number" min="1" max="36" value="@State.StaleMonths" aria-label="Своё число месяцев"
+                       @onchange="SetCustomAsync" /> мес</label>
+            }
+        </div>
+        <div class="hint">Старше срока — розовая метка в ленте и одно напоминание.</div>
+    </div>
 
     <div class="settings-links">
         <button type="button" class="btn small help-link" @onclick="Windows.OpenHelp"><Icon Name="help" Size="14" /> Как это устроено</button>
@@ -23,11 +36,35 @@
 </div>
 
 @code {
-    private ElementReference _root;
+    private static readonly int[] Presets = [1, 3, 6, 12];
 
-    /// <summary>Остальные настройки (срок старых мыслей, миссия) — их рисует страница.</summary>
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
+    /// <summary>«своё…» в списке — 0.</summary>
+    private const int Custom = 0;
+
+    private static readonly IReadOnlyList<Choice<int>> TermChoices =
+        [.. Presets.Select(m => new Choice<int>(m, $"{m} мес")), new(Custom, "своё…")];
+
+    private ElementReference _root;
+    private bool _custom;
+
+    private int TermChoice => _custom || !Presets.Contains(State.StaleMonths) ? Custom : State.StaleMonths;
+
+    private async Task SetTermAsync(int months)
+    {
+        _custom = months == Custom;
+        if (!_custom)
+        {
+            await State.SetStaleMonthsAsync(months);
+        }
+    }
+
+    private async Task SetCustomAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var months))
+        {
+            await State.SetStaleMonthsAsync(Math.Clamp(months, 1, 36));
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

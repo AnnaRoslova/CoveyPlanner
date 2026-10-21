@@ -189,6 +189,21 @@ public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
             .ToListAsync(ct);
 }
 
+public class EfSettingsRepository(PlannerDbContext db) : ISettingsRepository
+{
+    public async Task<AppSettings> GetAsync(CancellationToken ct = default)
+    {
+        var settings = await db.AppSettings.FirstOrDefaultAsync(ct);
+        if (settings is null)
+        {
+            settings = AppSettings.CreateDefault();
+            db.AppSettings.Add(settings);
+        }
+
+        return settings;
+    }
+}
+
 public class EfVacationRepository(PlannerDbContext db) : IVacationRepository
 {
     public Task<Vacation?> FindAsync(int id, CancellationToken ct = default) =>

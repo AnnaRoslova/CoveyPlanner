@@ -60,11 +60,12 @@ public class BoardApiTests : ApiTestBase
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>Настроек сетки часов больше нет; /api/settings — только срок «давно лежат» (batch-ux.md, BS2).</summary>
     [Fact]
-    public async Task SettingsEndpoint_IsGone()
+    public async Task SettingsEndpoint_OnlyStaleTerm_NoHourGrid()
     {
-        var response = await Client.GetAsync("/api/settings");
+        var json = await Client.GetStringAsync("/api/settings");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("{\"staleMonths\":3}", json);
     }
 }

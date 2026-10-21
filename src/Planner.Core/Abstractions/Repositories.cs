@@ -142,3 +142,10 @@ public interface IVacationRepository
 
     void Remove(Vacation vacation);
 }
+
+/// <summary>Настройки приложения (одна строка).</summary>
+public interface ISettingsRepository
+{
+    /// <summary>Настройки; строки ещё нет — создаётся со значениями по умолчанию (сохранит вызывающий).</summary>
+    Task<AppSettings> GetAsync(CancellationToken ct = default);
+}

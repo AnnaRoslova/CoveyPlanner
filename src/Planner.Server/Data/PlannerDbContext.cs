@@ -19,6 +19,8 @@ public class PlannerDbContext(DbContextOptions<PlannerDbContext> options) : DbCo
 
     public DbSet<Vacation> Vacations => Set<Vacation>();
 
+    public DbSet<AppSettings> AppSettings => Set<AppSettings>();
+
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken ct) => await SaveChangesAsync(ct);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>

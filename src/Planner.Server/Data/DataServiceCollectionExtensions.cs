@@ -28,6 +28,7 @@ public static class DataServiceCollectionExtensions
         {
             var path = ResolveDatabasePath(sp.GetRequiredService<IConfiguration>());
             options.UseSqlite($"Data Source={path}");
+            options.AddInterceptors(new TaskTouchInterceptor(sp.GetRequiredService<TimeProvider>()));
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PlannerDbContext>());
@@ -38,11 +39,14 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<IGoalSeriesRepository, EfGoalSeriesRepository>();
         services.AddScoped<IHabitRepository, EfHabitRepository>();
         services.AddScoped<IVacationRepository, EfVacationRepository>();
+        services.AddScoped<ISettingsRepository, EfSettingsRepository>();
 
         services.AddScoped(sp => ResolveBackupOptions(sp.GetRequiredService<IConfiguration>()));
         services.AddScoped<BackupService>();
 
-        services.AddSingleton(TimeProvider.System);
+        // Часы сервера; в Development их можно сдвинуть (POST /api/dev/clock — для e2e «давно лежат»)
+        services.AddSingleton<ShiftableTimeProvider>();
+        services.AddSingleton<TimeProvider>(sp => sp.GetRequiredService<ShiftableTimeProvider>());
         services.AddScoped<TaskPlacer>();
         services.AddScoped<ProjectService>();
         services.AddScoped<GoalRemover>();
@@ -58,6 +62,8 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<StepService>();
         services.AddScoped<DoneArchiveService>();
         services.AddScoped<ReportService>();
+        services.AddScoped<SettingsService>();
+        services.AddScoped<StaleThoughtService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<TaskViews>();
 

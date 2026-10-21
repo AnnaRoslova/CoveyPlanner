@@ -208,6 +208,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     public async Task OnTodayChangedAsync(DateOnly previous, DateOnly today)
     {
         _ = RefreshHabitsAsync(); // новая неделя или месяц — у копилок новые итоги
+        _ = CheckStaleAsync(); // за ночь мысли могли перешагнуть срок (BS4)
         var wasCurrentWeek = WeekStart == RuDates.WeekStartOf(previous);
         if (wasCurrentWeek && RuDates.WeekStartOf(today) != WeekStart)
         {
@@ -226,6 +227,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         Roles = [.. board.Roles];
         Categories = [.. board.Categories];
         TrashCount = board.TrashCount;
+        StaleMonths = board.StaleMonths;
 
         // Лента, открытые проекты плана любой недели («🛠 Проекты», N6.9) и их шаги
         foreach (var id in _tasks.Values.Where(IsBoardTask).Select(t => t.Id).ToList())

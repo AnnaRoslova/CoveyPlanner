@@ -497,6 +497,35 @@ public sealed class MigrationTests : IDisposable
     }
 
     /// <summary>
+    /// batch-ux.md BS4a: UpdatedAt = CreatedAt (возраст честный); мыслям, уже старым при установке, — StaleNotifiedAt (плашек о них нет);
+    /// свежая мысль, проект и дело плана не помечены; срок в AppSettings — 3 мес.
+    /// </summary>
+    [Fact]
+    public async Task StaleThoughts_AgeFromCreation_AlreadyStaleThoughtsGetNoNotice()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("RestoreStoppedSeriesWeeks");
+        var old = DateTime.UtcNow.AddMonths(-5).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
+        var recent = DateTime.UtcNow.AddMonths(-1).ToString("yyyy-MM-dd HH:mm:ss.fffffff");
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO Tasks (Id, Title, State, SortOrder, CreatedAt, IsFromSomeday, IsProject) VALUES
+                (1, 'Сад на балконе', 'Someday', 0, {old}, 1, 0),
+                (2, 'Свежая мысль', 'Someday', 1, {recent}, 1, 0),
+                (3, 'Ремонт', 'Someday', 2, {old}, 1, 1),
+                (4, 'Звонок', 'Planned', 0, {old}, 0, 0);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var tasks = await db.Tasks.OrderBy(t => t.Id).ToListAsync();
+        Assert.All(tasks, t => Assert.Equal(t.CreatedAt, t.UpdatedAt));
+        Assert.Equal([true, false, false, false], tasks.Select(t => t.StaleNotifiedAt is not null).ToArray());
+        Assert.All(tasks, t => Assert.Null(t.KeptAt));
+        Assert.Equal(3, (await db.AppSettings.SingleAsync()).StaleMonths);
+    }
+
+    /// <summary>
     /// fixes-2026-10.md A3: авто-проект привычки (название серии, только занятия и удалённый шаг) — отвязан и в корзине;
     /// книга с другим названием, проект с настоящим шагом и проект разовой цели — не тронуты.
     /// </summary>

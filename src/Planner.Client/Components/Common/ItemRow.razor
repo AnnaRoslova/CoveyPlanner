@@ -4,7 +4,7 @@
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
 <div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(Unplaced is not null ? "unplaced" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
-     style="@(Color is null ? null : $"--c: {Color}")" title="@Unplaced"
+     style="@(Color is null ? null : $"--c: {Color}")" title="@(Unplaced ?? RowTitle)"
      data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate" data-no-step="@NoStep" data-parent="@DragParent"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
      data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint" data-drop-hint-own="@DropHintOwn"
@@ -112,6 +112,10 @@
     @if (DayLabel is not null)
     {
         <span class="day-mark">@DayLabel</span>
+    }
+    @if (AgeLabel is not null)
+    {
+        <span class="age-mark">@AgeLabel</span>
     }
     @if (Percent is { } percent)
     {
@@ -318,6 +322,14 @@
     /// <summary>Цель недособрана (N1): тихая подсветка строки и подсказка «не разложено: 1 из 2»; null — подсветки нет.</summary>
     [Parameter]
     public string? Unplaced { get; set; }
+
+    /// <summary>Возраст давно лежащей мысли («8 мес», batch-ux.md BS3) — розовым справа в строке названия.</summary>
+    [Parameter]
+    public string? AgeLabel { get; set; }
+
+    /// <summary>Подсказка строки при наведении (возраст мысли в ленте, batch-ux.md BS3); у недособранной цели — <see cref="Unplaced"/>.</summary>
+    [Parameter]
+    public string? RowTitle { get; set; }
 
     /// <summary>Запись — проект (N6.16): 🛠 перед подписью и полоска прогресса <see cref="StepsProgress"/> внизу строки.</summary>
     [Parameter]

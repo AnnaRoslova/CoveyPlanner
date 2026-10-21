@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 using Planner.Server.Data;
 using Planner.Shared;
 
@@ -60,6 +61,9 @@ public abstract class ApiTestBase : IAsyncLifetime
     }
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
+
+    /// <summary>Сдвинуть часы сервера (мысли «из прошлого», batch-ux.md BS); TimeSpan.Zero — вернуть.</summary>
+    protected void ShiftClock(TimeSpan shift) => _factory.Services.GetRequiredService<ShiftableTimeProvider>().Shift = shift;
 
     protected async Task<T> ReadAsync<T>(HttpResponseMessage response)
     {

@@ -48,7 +48,9 @@ public sealed record TaskDto(
     bool IsFromSomeday = false,
     int? StepOrder = null,
     bool IsProject = false,
-    DateOnly? PlannedWeek = null);
+    DateOnly? PlannedWeek = null,
+    DateTime? UpdatedAt = null,
+    DateTime? KeptAt = null);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -122,7 +124,8 @@ public sealed record BoardDto(
     IReadOnlyList<TaskDto> SomedayTasks,
     int TrashCount,
     IReadOnlyList<TaskDto>? Steps = null,
-    IReadOnlyList<TaskDto>? PlannedProjects = null);
+    IReadOnlyList<TaskDto>? PlannedProjects = null,
+    int StaleMonths = 3);
 
 /// <summary>
 /// Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).
@@ -278,5 +281,11 @@ public sealed record DashboardQuadrantDto(DateOnly WeekStart, int Second, int Ma
 /// <summary>«Давно лежат»: срок в месяцах, сколько мыслей старше, самые старые.</summary>
 public sealed record DashboardStaleDto(int Months, int Count, IReadOnlyList<DashboardThoughtDto> Oldest);
 
-/// <summary>Давняя мысль: когда записана.</summary>
-public sealed record DashboardThoughtDto(int Id, string Title, DateTime CreatedAt);
+/// <summary>Давняя мысль: с какого момента лежит без изменений (UpdatedAt, BS1).</summary>
+public sealed record DashboardThoughtDto(int Id, string Title, DateTime Since);
+
+/// <summary>Настройки на сервере (batch-ux.md, BS2): срок «давно лежат», месяцев.</summary>
+public sealed record SettingsDto(int StaleMonths);
+
+/// <summary>Плашка о мыслях, перешагнувших срок (BS4): срок и сами мысли (самые старые сверху); пусто — плашки нет.</summary>
+public sealed record StaleNoticeDto(int Months, IReadOnlyList<TaskDto> Thoughts);

@@ -19,3 +19,27 @@ h2 {
     display: flex;
     gap: 8px;
 }
+
+.stale-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-term {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--soft);
+    font-size: 13px;
+}
+
+.custom-term input {
+    width: 4.5em;
+}
+
+.hint {
+    margin-top: 4px;
+    color: var(--faint);
+    font-size: 12px;
+}

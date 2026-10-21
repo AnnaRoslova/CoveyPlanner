@@ -110,6 +110,18 @@ public class TaskItem : ISortable
 
     public DateTime? CompletedAt { get; private set; }
 
+    /// <summary>
+    /// Последнее изменение по существу (batch-ux.md, BS1): название, заметки, категория, проект/шаг, состояние (возврат в ленту,
+    /// снятие отметки). Порядок перетаскиванием не считается. Ставит хранилище при сохранении (<see cref="Touch"/>). От него — возраст мысли.
+    /// </summary>
+    public DateTime UpdatedAt { get; private set; }
+
+    /// <summary>«Оставить» (BS4): мысль снова «свежая» на один срок; возраст по-прежнему от <see cref="UpdatedAt"/>.</summary>
+    public DateTime? KeptAt { get; private set; }
+
+    /// <summary>Когда показали плашку «лежит уже N мес» (BS4): снова — только если мысль перешагнула срок позже.</summary>
+    public DateTime? StaleNotifiedAt { get; private set; }
+
     public DateTime? TrashedAt { get; private set; }
 
     public bool IsInPlan => State is TaskState.Planned or TaskState.Done;
@@ -125,6 +137,7 @@ public class TaskItem : ISortable
         State = TaskState.Someday,
         IsFromSomeday = true,
         CreatedAt = now,
+        UpdatedAt = now,
     };
 
     /// <summary>Новое дело сразу в плане (без категории). Размещение — через PlanForDay/PlanForWeek.</summary>
@@ -133,6 +146,7 @@ public class TaskItem : ISortable
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название дела"),
         State = TaskState.Planned,
         CreatedAt = now,
+        UpdatedAt = now,
     };
 
     /// <summary>Новый шаг дела <paramref name="parent"/> (в конце его списка — порядок задаёт вызывающий).</summary>
@@ -155,6 +169,7 @@ public class TaskItem : ISortable
             ParentId = parent.Id,
             State = TaskState.Planned, // шаг «в работе», пока не отмечен
             CreatedAt = now,
+            UpdatedAt = now,
         };
     }
 
@@ -282,6 +297,15 @@ public class TaskItem : ISortable
             }
         }
     }
+
+    /// <summary>Изменение по существу в момент <paramref name="now"/> (BS1).</summary>
+    public void Touch(DateTime now) => UpdatedAt = now;
+
+    /// <summary>«Оставить» давно лежащую мысль (BS4).</summary>
+    public void Keep(DateTime now) => KeptAt = now;
+
+    /// <summary>Плашку о том, что мысль лежит давно, показали (BS4).</summary>
+    public void MarkStaleNotified(DateTime now) => StaleNotifiedAt = now;
 
     public void Rename(string title) =>
         Title = TextRules.Required(title, TextRules.TitleMaxLength, "Название дела");

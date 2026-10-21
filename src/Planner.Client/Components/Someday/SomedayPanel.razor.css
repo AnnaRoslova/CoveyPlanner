@@ -145,3 +145,32 @@ body.dragging .trash {
 .in-projects {
     margin: 6px 0;
 }
+
+/* Режим «давно лежат» (BS4): заголовок с числом и крестиком */
+.stale-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 6px 6px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.stale-h .cnt {
+    color: var(--faint);
+    font-weight: 700;
+}
+
+.stale-h .close {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: var(--soft);
+}
+
+.stale-h .close:hover {
+    background: var(--btn-hover);
+}

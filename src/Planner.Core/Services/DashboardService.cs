@@ -35,11 +35,9 @@ public class DashboardService(
     IHabitRepository habits,
     IVacationRepository vacations,
     HabitService habitService,
+    StaleThoughtService staleThoughts,
     TimeProvider clock)
 {
-    /// <summary>Срок «давно лежат» по умолчанию, месяцев (BS; потом — из настроек).</summary>
-    public const int DefaultStaleMonths = 3;
-
     /// <summary>Сколько самых старых мыслей показывать (BD6).</summary>
     public const int StaleTop = 5;
 
@@ -105,17 +103,13 @@ public class DashboardService(
             .ToList();
 
         return new Dashboard(from, to, weeks, dashboardHabits, periodVacations, saw, roleCounts, quadrants,
-            await GetStaleAsync(DefaultStaleMonths, ct));
+            await GetStaleAsync(ct));
     }
 
-    /// <summary>BD6: мысли ленты (не проекты), записанные раньше, чем <paramref name="months"/> месяцев назад; самые старые сверху.</summary>
-    private async Task<DashboardStale> GetStaleAsync(int months, CancellationToken ct)
+    /// <summary>BD6: старые мысли (BS5) — сколько и самые старые.</summary>
+    private async Task<DashboardStale> GetStaleAsync(CancellationToken ct)
     {
-        var border = clock.GetUtcNow().UtcDateTime.AddMonths(-months);
-        var stale = (await tasks.GetSomedayAsync(ct))
-            .Where(t => !t.IsProject && t.CreatedAt < border)
-            .OrderBy(t => t.CreatedAt).ThenBy(t => t.Id)
-            .ToList();
+        var (months, stale) = await staleThoughts.GetStaleAsync(ct);
         return new DashboardStale(months, stale.Count, stale.Take(StaleTop).ToList());
     }
 

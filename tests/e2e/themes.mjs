@@ -93,7 +93,7 @@ await check('Esc закрывает меню сразу после открыт�
 
 await check('клик мимо закрывает меню, тема не меняется', async () => {
   await openMenu();
-  await page.mouse.click(700, 600); await sleep(300);
+  await page.mouse.click(12, 880); await sleep(300); // угол экрана — заведомо мимо окна «Настройки»
   assert(!(await isOpen()), 'не закрылось');
   assert(await theme() === 'lotus', 'тема поменялась');
 });

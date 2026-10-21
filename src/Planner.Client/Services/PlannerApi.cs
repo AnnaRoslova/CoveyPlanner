@@ -135,6 +135,12 @@ public class PlannerApi(HttpClient http)
     /// <summary>Выполненные дела из ленты по категориям, свежие сверху (только чтение).</summary>
     public Task<List<DoneGroupDto>> GetDoneAsync() => GetAsync<List<DoneGroupDto>>("api/done");
 
+    public Task<SettingsDto> SetSettingsAsync(int staleMonths) => SendAsync<SettingsDto>(HttpMethod.Put, "api/settings", new UpdateSettingsRequest(staleMonths));
+
+    public Task<TaskDto> KeepTaskAsync(int id) => SendAsync<TaskDto>(HttpMethod.Post, $"api/tasks/{id}/keep");
+
+    public Task<StaleNoticeDto> TakeStaleNoticesAsync() => SendAsync<StaleNoticeDto>(HttpMethod.Post, "api/thoughts/stale-notices");
+
     public Task<DashboardDto> GetDashboardAsync(DateOnly from, DateOnly to) =>
         GetAsync<DashboardDto>($"api/dashboard?from={Format(from)}&to={Format(to)}");
 

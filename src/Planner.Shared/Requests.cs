@@ -109,3 +109,9 @@ public sealed record CreateVacationRequest(DateOnly From, DateOnly To, IReadOnly
 
 /// <summary>Новый шаг (в конец) или новое название шага.</summary>
 public sealed record StepRequest(string Title);
+
+/// <summary>Срок «давно лежат» (1–36 мес).</summary>
+public sealed record UpdateSettingsRequest(int StaleMonths);
+
+/// <summary>Сдвиг часов сервера (только Development, e2e).</summary>
+public sealed record ShiftClockRequest(double Days);
