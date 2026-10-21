@@ -43,6 +43,9 @@ public interface ITaskRepository
     /// <summary>Выполненные дела (и шаги), отмеченные в промежутке [fromUtc, toUtc) — для дашборда (BD).</summary>
     Task<List<TaskItem>> GetCompletedAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
 
+    /// <summary>Все дела не в корзине — для быстрого поиска (BK2).</summary>
+    Task<List<TaskItem>> GetNotTrashedAsync(CancellationToken ct = default);
+
     /// <summary>Корзина, свежие сверху.</summary>
     Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default);
 
@@ -86,6 +89,9 @@ public interface IGoalRepository
 
     /// <summary>Цели с этой ролью за все недели (для удаления роли).</summary>
     Task<List<WeeklyGoal>> GetAllForRoleAsync(int roleId, CancellationToken ct = default);
+
+    /// <summary>Цели всех недель — для быстрого поиска (BK2).</summary>
+    Task<List<WeeklyGoal>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>Цели серии с недели <paramref name="fromWeek"/> включительно, по неделям.</summary>
     Task<List<WeeklyGoal>> GetInSeriesAsync(int seriesId, DateOnly fromWeek, CancellationToken ct = default);

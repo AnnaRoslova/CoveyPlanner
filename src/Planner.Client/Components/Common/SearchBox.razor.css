@@ -1,0 +1,129 @@
+/* Быстрый поиск (BK2) — окно по центру сверху */
+.search-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: var(--overlay);
+}
+
+.search-box {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    z-index: 41;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 110px);
+    padding: 12px;
+    border-radius: var(--panel-radius);
+    background: var(--t-panel);
+    box-shadow: var(--shadow-window);
+    transform: translateX(-50%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.search-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--soft);
+}
+
+.search-field input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    outline: none;
+}
+
+kbd {
+    padding: 0 6px;
+    border: 1px solid var(--btn-line);
+    border-radius: 6px;
+    color: var(--soft);
+    font: inherit;
+    font-size: 11.5px;
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.group {
+    margin: 8px 8px 2px;
+    color: var(--text); /* --soft на полупрозрачной панели «Пиона» не дотягивает до AA */
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: lowercase;
+}
+
+.hit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 13.5px;
+    text-align: left;
+}
+
+.hit.on {
+    background: var(--b-soft);
+}
+
+.hit:focus-visible {
+    outline: 2px solid var(--focus-ring);
+}
+
+.hit.done .hit-title {
+    color: var(--faint);
+    text-decoration: line-through;
+}
+
+.dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.hit-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+mark {
+    border-radius: 3px;
+    background: var(--a-soft);
+    color: inherit;
+}
+
+.hit-meta {
+    flex: none;
+    color: var(--faint);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.nothing {
+    margin: 6px 10px;
+    color: var(--soft);
+    font-size: 13px;
+}

@@ -141,6 +141,8 @@ public class PlannerApi(HttpClient http)
 
     public Task<StaleNoticeDto> TakeStaleNoticesAsync() => SendAsync<StaleNoticeDto>(HttpMethod.Post, "api/thoughts/stale-notices");
 
+    public Task<SearchResultDto> SearchAsync(string query) => GetAsync<SearchResultDto>($"api/search?q={Uri.EscapeDataString(query)}");
+
     public Task<DashboardDto> GetDashboardAsync(DateOnly from, DateOnly to) =>
         GetAsync<DashboardDto>($"api/dashboard?from={Format(from)}&to={Format(to)}");
 

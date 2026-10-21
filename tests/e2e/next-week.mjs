@@ -122,10 +122,10 @@ await check('B3: мысль без роли — меню ролей без «в 
   await page.evaluate(() => [...document.querySelectorAll('.date-menu .option')].find(o => o.textContent.includes('в роль: Дом')).click()); await settle();
   assert(!(await page.$$eval('.cat-b > .item .title', ts => ts.map(t => t.textContent.trim()))).includes('Шкаф'), 'осталась в ленте');
   assert((await toast())?.includes('«Шкаф» → след. неделя, «Дом»'), JSON.stringify(await toast()));
-  await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await page.click('.nav[title^="Следующая неделя"]'); await settle();
   assert(JSON.stringify((await weekBlock('Дом'))?.tasks) === '["Шкаф"]', JSON.stringify(await weekBlock('Дом')));
   assert(!(await weekBlock(null)), 'появился блок «без роли»');
-  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+  await page.click('.nav[title^="Предыдущая неделя"]'); await settle();
 });
 
 await check('B3: дело в дне без роли — в меню есть «в ленту» → дело в ленте', async () => {
@@ -141,7 +141,7 @@ await check('B5: дело тащат на «›» (неделя листаетс
   const row = (await page.evaluateHandle(() => [...document.querySelectorAll('.day')[3].querySelectorAll(':scope > .item')]
     .find(i => i.querySelector('.title').textContent.trim() === 'Почта'))).asElement();
   const a = await row.boundingBox();
-  const next = await (await page.$('.nav[title="Следующая неделя"]')).boundingBox();
+  const next = await (await page.$('.nav[title^="Следующая неделя"]')).boundingBox();
   const nx = next.x + next.width / 2, ny = next.y + next.height / 2;
   await page.mouse.move(a.x + a.width / 2, a.y + 8); await page.mouse.down();
   for (let i = 1; i <= 12; i++) { await page.mouse.move(a.x + (nx - a.x) * i / 12, a.y + (ny - a.y) * i / 12); await sleep(16); }
@@ -160,7 +160,7 @@ await check('B5: дело тащат на «›» (неделя листаетс
 await check('B5: мысль, брошенная у нижнего края строки цели, — по-прежнему новая цель', async () => {
   await api('POST', 'goals', { roleId: work.id, weekStart: dayIso(7), title: 'Квартальный план', isRecurring: false });
   await api('POST', 'tasks', { title: 'Созвон', target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
-  await load(); await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await load(); await page.click('.nav[title^="Следующая неделя"]'); await settle();
   const row = (await page.evaluateHandle(() => [...document.querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Созвон'))).asElement();
   const target = await page.evaluate(() => {
     const r = [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === 'Квартальный план').getBoundingClientRect();
@@ -174,7 +174,7 @@ await check('B5: мысль, брошенная у нижнего края ст�
 await check('N4.5: окно занятия цели — пункт неактивен, подсказка', async () => {
   const g = (await api('GET', `week/${dayIso(7)}`)).goals.find(x => x.title === 'Квартальный план');
   await api('POST', `goals/${g.id}/schedule`, { kind: 'day', date: dayIso(9), index: 0 });
-  await load(); await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await load(); await page.click('.nav[title^="Следующая неделя"]'); await settle();
   await openDayTask(2, 'Квартальный план'); await settle();
   await page.click('.editor .date-field'); await sleep(300);
   assert(await page.$eval('.date-menu .option.next-week', b => b.disabled), 'пункт активен');
@@ -204,10 +204,10 @@ await check('E2: дело «на неделе» текущей недели по
   s = await row('Записаться в зал');
   assert(s && !s.unplaced && !s.hint, `выполненное: ${JSON.stringify(s)}`);
   await api('PUT', `tasks/${gym.id}/done`, { isDone: false }); await load();
-  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+  await page.click('.nav[title^="Предыдущая неделя"]'); await settle();
   s = await row('Старое');
   assert(s && !s.unplaced, `прошлая неделя: ${JSON.stringify(s)}`);
-  await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await page.click('.nav[title^="Следующая неделя"]'); await settle();
   const el = (await page.evaluateHandle(() => [...document.querySelectorAll('.week-nd .item')].find(i => i.querySelector('.title')?.textContent.trim() === 'Записаться в зал'))).asElement();
   const day = await (await page.evaluateHandle(() => document.querySelectorAll('.day')[4])).asElement().boundingBox();
   await drag(el, day.x + day.width / 2, day.y + day.height - 60);

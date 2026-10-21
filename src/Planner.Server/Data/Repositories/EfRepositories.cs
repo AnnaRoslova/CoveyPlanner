@@ -53,6 +53,9 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
     /// <summary>
     /// Корзина: дела и шаги, удалённые отдельно; шаги, ушедшие в корзину вместе с проектом (тот же TrashedAt), — в его строке.
     /// </summary>
+    public Task<List<TaskItem>> GetNotTrashedAsync(CancellationToken ct = default) =>
+        db.Tasks.AsNoTracking().Where(t => t.State != TaskState.Trashed).ToListAsync(ct);
+
     public Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default) =>
         db.Tasks.Where(t => t.State == TaskState.Trashed
                             && (t.ParentId == null
@@ -133,6 +136,8 @@ public class EfGoalRepository(PlannerDbContext db) : IGoalRepository
 
     public Task<List<WeeklyGoal>> GetAllForRoleAsync(int roleId, CancellationToken ct = default) =>
         Goals.Where(g => g.Roles.Any(r => r.RoleId == roleId)).ToListAsync(ct);
+
+    public Task<List<WeeklyGoal>> GetAllAsync(CancellationToken ct = default) => Goals.ToListAsync(ct);
 
     public Task<List<WeeklyGoal>> GetInSeriesAsync(int seriesId, DateOnly fromWeek, CancellationToken ct = default) =>
         Goals.Where(g => g.SeriesId == seriesId && g.WeekStart >= fromWeek).OrderBy(g => g.WeekStart).ToListAsync(ct);

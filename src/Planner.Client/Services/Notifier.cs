@@ -62,6 +62,25 @@ public class Notifier
         return version;
     }
 
+    /// <summary>Ctrl+Z (batch-ux.md, BK): нажать «Вернуть» на видимой плашке. false — такой кнопки нет.</summary>
+    public async Task<bool> UndoAsync()
+    {
+        if (Message is null)
+        {
+            return false;
+        }
+
+        if (IsUndo(ActionLabel) || IsUndo(SecondActionLabel))
+        {
+            await RunActionAsync(Version, second: !IsUndo(ActionLabel));
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsUndo(string? label) => string.Equals(label, "Вернуть", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Нажали кнопку: сообщение закрывается, действие выполняется (один раз).</summary>
     public async Task RunActionAsync(int version, bool second = false)
     {

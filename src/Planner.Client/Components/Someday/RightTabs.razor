@@ -4,12 +4,27 @@
 @inject RightPanelState RightPanel
 
 <div class="right-tabs" role="tablist" aria-label="Правая колонка">
-    <button type="button" role="tab" class="rt @(RightPanel.IsProjects ? "" : "on")" aria-selected="@(RightPanel.IsProjects ? "false" : "true")"
+    <button type="button" role="tab" title="Мысли ⇄ Проекты (P)" class="rt @(RightPanel.IsProjects ? "" : "on")" aria-selected="@(RightPanel.IsProjects ? "false" : "true")"
             @onclick="RightPanel.ShowFeedAsync">Мысли <span class="n">· @Thoughts</span></button>
-    <button type="button" role="tab" class="rt @(RightPanel.IsProjects ? "on" : "")" aria-selected="@(RightPanel.IsProjects ? "true" : "false")"
+    <button type="button" role="tab" title="Мысли ⇄ Проекты (P)" class="rt @(RightPanel.IsProjects ? "on" : "")" aria-selected="@(RightPanel.IsProjects ? "true" : "false")"
             @onclick="() => RightPanel.ShowProjectsAsync()">Проекты <span class="n">· @State.OpenProjects().Count(t => t.Id > 0)</span></button>
 </div>
 
 @code {
+    // Режим меняют и не отсюда (клавиша P, плашки) — перерисовываемся сами
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        RightPanel.Changed += OnPanelChanged;
+    }
+
+    public override void Dispose()
+    {
+        RightPanel.Changed -= OnPanelChanged;
+        base.Dispose();
+    }
+
+    private void OnPanelChanged() => InvokeAsync(StateHasChanged);
+
     private int Thoughts => State.SomedayCount(null) + State.Categories.Sum(c => State.SomedayCount(c.Id));
 }

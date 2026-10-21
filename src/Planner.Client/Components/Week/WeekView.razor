@@ -9,11 +9,11 @@
     <div class="week-h">
         @* C1: «‹» и «›» рядом, подпись — после них: при листании подряд стрелки не «убегают» из-под курсора (fixes-2026-10.md, C) *@
         <div class="week-nav">
-            <button class="nav" title="Предыдущая неделя" @onclick="State.PreviousWeekAsync"
+            <button class="nav" title="Предыдущая неделя (←)" @onclick="State.PreviousWeekAsync"
                     data-flip="-1" data-flip-accept="@DragDropService.FlipAccepts">
                 <Icon Name="chevron-left" />
             </button>
-            <button class="nav" title="Следующая неделя" @onclick="State.NextWeekAsync"
+            <button class="nav" title="Следующая неделя (→)" @onclick="State.NextWeekAsync"
                     data-flip="1" data-flip-accept="@DragDropService.FlipAccepts">
                 <Icon Name="chevron-right" />
             </button>
@@ -21,7 +21,7 @@
         <span class="wt">@RuDates.WeekRange(State.WeekStart)</span>
         @if (!IsCurrentWeek)
         {
-            <button class="today-b" @onclick="State.TodayAsync">Сегодня</button>
+            <button class="today-b" title="К сегодня (T)" @onclick="State.TodayAsync">Сегодня</button>
         }
         <div class="tools">
             @if (State.RocksTotal > 0)

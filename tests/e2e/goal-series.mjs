@@ -55,7 +55,7 @@ const switchOn = () => page.$eval('.editor .switch-row input', i => i.checked);
 // Листать неделю и дождаться, что заголовок сменился и неделя загрузилась
 async function flip(title) {
   const before = await page.$eval('.wt', e => e.textContent);
-  await page.click(`.nav[title="${title}"]`);
+  await page.click(`.nav[title^="${title}"]`);
   await page.waitForFunction(b => document.querySelector('.wt').textContent !== b, { timeout: 3000 }, before);
   await sleep(700);
 }

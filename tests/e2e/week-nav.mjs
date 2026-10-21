@@ -44,7 +44,7 @@ await check('C2: 12 недель вперёд и 12 назад — стрелк�
   const seen = [];
   for (const [title, n] of [['Следующая неделя', 12], ['Предыдущая неделя', 12]]) {
     for (let i = 0; i < n; i++) {
-      await page.click(`.week-h .nav[title="${title}"]`); await sleep(250);
+      await page.click(`.week-h .nav[title^="${title}"]`); await sleep(250);
       const now = await arrows('.week-h .nav', '.week-h .wt');
       seen.push(now.text);
       assert(same(now.boxes, start.boxes), `после «${title}» №${i + 1} (${now.text}): ${JSON.stringify(now.boxes)} ≠ ${JSON.stringify(start.boxes)}`);

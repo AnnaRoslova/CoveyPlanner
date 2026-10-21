@@ -4,7 +4,7 @@
 @inherits StateComponent
 
 <div class="quick">
-    <input placeholder="Записать мысль…" maxlength="500"
+    <input placeholder="Записать мысль…" title="Записать мысль (N)" maxlength="500"
            @bind="_text" @bind:event="oninput" @onkeydown="OnKeyDown" />
     @* Видна только иконка категории; сам select прозрачный поверх неё — список раскрывается с названиями *@
     @{ var selected = State.FindCategory(SelectedCategoryId); }

@@ -1,0 +1,213 @@
+@* Быстрый поиск по всему (docs/specs/batch-ux.md, BK2): Ctrl+K или «/». Окно по центру сверху, поле и группы
+   «Дела · Мысли · Проекты · Цели» (до 8 в группе; дела — с датой, выполненные — зачёркнуты). ↑↓ — выбор, Enter — открыть:
+   дело — его неделя и окно, мысль — вкладка «Мысли» и окно, проект — вкладка «Проекты» и окно, цель — её неделя и окно цели.
+   Esc или клик мимо — закрыть. *@
+@inject WindowHost Windows
+@inject PlannerState State
+@inject PlannerApi Api
+@inject RightPanelState RightPanel
+@inject Notifier Notifier
+@implements IDisposable
+
+<div class="search-backdrop" @onclick="Windows.Close"></div>
+
+<section class="search-box" role="dialog" aria-label="Быстрый поиск">
+    <div class="search-field">
+        <Icon Name="search" Size="16" />
+        <input @ref="_input" type="search" placeholder="Найти дело, мысль, проект или цель" aria-label="Быстрый поиск"
+               value="@_query" @oninput="OnInput" @onkeydown="OnKeyDown" @onkeydown:preventDefault="_preventKey" />
+        <kbd>Esc</kbd>
+    </div>
+
+    @if (_result is { } result)
+    {
+        @if (_hits.Count == 0)
+        {
+            <p class="nothing">Ничего не нашлось</p>
+        }
+        else
+        {
+            <div class="results" role="listbox" aria-label="Найдено">
+                @foreach (var group in _hits.GroupBy(h => h.Group))
+                {
+                    <p class="group">@group.Key</p>
+                    @foreach (var hit in group)
+                    {
+                        var index = _hits.IndexOf(hit);
+                        <button type="button" class="hit @(index == _selected ? "on" : "") @(hit.Done ? "done" : "")" role="option"
+                                aria-selected="@(index == _selected ? "true" : "false")"
+                                @onclick="() => OpenAsync(hit)" @onmousemove="() => _selected = index">
+                            @if (hit.Color is { } color)
+                            {
+                                <span class="dot" style="background: @color"></span>
+                            }
+                            <span class="hit-title">@foreach (var segment in TextSearch.Split(hit.Title, _query.Trim()))
+                            {
+                                if (segment.IsMatch)
+                                {
+                                    <mark>@segment.Text</mark>
+                                }
+                                else
+                                {
+                                    @segment.Text
+                                }
+                            }</span>
+                            @if (hit.Meta is not null)
+                            {
+                                <span class="hit-meta">@hit.Meta</span>
+                            }
+                        </button>
+                    }
+                }
+            </div>
+        }
+    }
+    else if (_query.Trim().Length == 0)
+    {
+        <p class="nothing">Ищет по названиям и заметкам на всех неделях, в ленте и в проектах.</p>
+    }
+</section>
+
+@code {
+    private enum HitKind { Task, Thought, Project, Goal }
+
+    private sealed record Hit(HitKind Kind, string Group, int Id, string Title, string? Meta, bool Done, string? Color, DateOnly? Week);
+
+    /// <summary>Пауза после набора перед запросом.</summary>
+    private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(200);
+
+    private ElementReference _input;
+    private string _query = "";
+    private SearchResultDto? _result;
+    private List<Hit> _hits = [];
+    private int _selected;
+    private bool _preventKey;
+    private CancellationTokenSource? _pending;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _input.FocusAsync();
+        }
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        _pending?.Cancel();
+        var pending = _pending = new CancellationTokenSource();
+        if (_query.Trim().Length == 0)
+        {
+            _result = null;
+            _hits = [];
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(Debounce, pending.Token);
+            var result = await Api.SearchAsync(_query.Trim());
+            if (!pending.IsCancellationRequested)
+            {
+                _result = result;
+                _hits = ToHits(result);
+                _selected = 0;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Набрали дальше — ждём следующий запрос
+        }
+        catch (ApiException ex)
+        {
+            Notifier.Error(ex.Message);
+        }
+    }
+
+    private List<Hit> ToHits(SearchResultDto result) =>
+    [
+        .. result.Tasks.Select(t => new Hit(HitKind.Task, "Дела", t.Id, t.Title, TaskMeta(t), t.State == TaskStateDto.Done,
+            State.FindRole(t.RoleIds.FirstOrDefault())?.Color, t.PlannedDate ?? t.PlannedWeek)),
+        .. result.Thoughts.Select(t => new Hit(HitKind.Thought, "Мысли", t.Id, t.Title, State.FindCategory(t.CategoryId)?.Name ?? "неразобранное",
+            false, null, null)),
+        .. result.Projects.Select(t => new Hit(HitKind.Project, "Проекты", t.Id, "🛠 " + t.Title,
+            t.PlannedDate is { } day ? RuDates.ShortDate(day) : null, t.State == TaskStateDto.Done, null, t.PlannedDate)),
+        .. result.Goals.Select(g => new Hit(HitKind.Goal, "Цели", g.Id, g.Title, RuDates.WeekRange(g.WeekStart), false,
+            State.FindRole(g.RoleIds.FirstOrDefault())?.Color, g.WeekStart)),
+    ];
+
+    /// <summary>«Чт 22 окт»; на неделе без дня — «неделя 19 окт»; шаг — ещё и «↳ Ремонт».</summary>
+    private static string? TaskMeta(TaskDto task)
+    {
+        var when = task.PlannedDate is { } day ? RuDates.ShortDate(day)
+            : task.PlannedWeek is { } week ? $"неделя {RuDates.DayMonthShort(week)}"
+            : null;
+        var parent = task.ParentTitle is { } p ? $"↳ {p}" : null;
+        return string.Join(" · ", new[] { when, parent }.Where(x => x is not null)) is { Length: > 0 } meta ? meta : null;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        _preventKey = e.Key is "ArrowDown" or "ArrowUp";
+        switch (e.Key)
+        {
+            case "Escape":
+                Windows.Close();
+                break;
+            case "ArrowDown" when _hits.Count > 0:
+                _selected = (_selected + 1) % _hits.Count;
+                break;
+            case "ArrowUp" when _hits.Count > 0:
+                _selected = (_selected - 1 + _hits.Count) % _hits.Count;
+                break;
+            case "Enter" when _hits.Count > 0:
+                await OpenAsync(_hits[Math.Clamp(_selected, 0, _hits.Count - 1)]);
+                break;
+        }
+    }
+
+    private async Task OpenAsync(Hit hit)
+    {
+        switch (hit.Kind)
+        {
+            case HitKind.Task:
+                if (hit.Week is { } date)
+                {
+                    await State.GoToWeekAsync(date);
+                }
+
+                if (await State.EnsureTaskAsync(hit.Id))
+                {
+                    Windows.OpenTask(hit.Id);
+                }
+
+                break;
+            case HitKind.Thought:
+                await RightPanel.ShowFeedAsync();
+                Windows.OpenSomedayTask(hit.Id);
+                break;
+            case HitKind.Project:
+                await RightPanel.ShowProjectsAsync();
+                if (await State.EnsureTaskAsync(hit.Id))
+                {
+                    if (State.FindTask(hit.Id) is { State: TaskStateDto.Someday })
+                    {
+                        Windows.OpenSomedayTask(hit.Id);
+                    }
+                    else
+                    {
+                        Windows.OpenTask(hit.Id);
+                    }
+                }
+
+                break;
+            case HitKind.Goal:
+                await State.GoToWeekAsync(hit.Week!.Value);
+                Windows.OpenGoal(hit.Id);
+                break;
+        }
+    }
+
+    public void Dispose() => _pending?.Cancel();
+}

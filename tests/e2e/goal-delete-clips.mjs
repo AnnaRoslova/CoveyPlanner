@@ -50,7 +50,7 @@ await check('24. прошлая неделя: занятие отмечено г
   const before = await total();
   assert(before === 1, `скрепок до удаления: ${before}`);
 
-  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+  await page.click('.nav[title^="Предыдущая неделя"]'); await settle();
   const row = (await page.evaluateHandle(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === t), GOAL)).asElement();
   assert(row, 'нет цели на прошлой неделе');
   await row.hover();

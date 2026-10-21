@@ -150,7 +150,7 @@ await check('перетаскивание: задержать над «›» —
   await goToday();
   const before = await weekTitle();
   const from = center(await boxOf(`[...document.querySelectorAll('.day')[5].querySelectorAll('.item')].find(i => i.querySelector('.title').textContent.trim() === 'Кофе с Олей')`));
-  const next = center(await boxOf(`document.querySelector('.nav[title="Следующая неделя"]')`));
+  const next = center(await boxOf(`document.querySelector('.nav[title^="Следующая неделя"]')`));
   await page.mouse.move(from.x, from.y); await page.mouse.down();
   await moveSmooth(from, next);
   await sleep(300);
@@ -176,7 +176,7 @@ await check('перетаскивание: долго держать над «�
   const before = await weekTitle();
   const sat = await dayTitles(5);
   const from = center(await boxOf(`[...document.querySelectorAll('.day')[5].querySelectorAll('.item')].find(i => i.querySelector('.title').textContent.trim() === 'Поход в парк с детьми')`));
-  const next = center(await boxOf(`document.querySelector('.nav[title="Следующая неделя"]')`));
+  const next = center(await boxOf(`document.querySelector('.nav[title^="Следующая неделя"]')`));
   await page.mouse.move(from.x, from.y); await page.mouse.down();
   await moveSmooth(from, next);
   await sleep(1500); // ~две недели
@@ -191,7 +191,7 @@ await check('перетаскивание: долго держать над «�
 await check('камень перетаскиванием на следующую неделю — занятие той же цели там', async () => {
   await goToday();
   const from = center(await boxOf(`[...document.querySelectorAll('.day')[2].querySelectorAll('.item')].find(i => i.querySelector('.title').textContent.trim() === 'Записаться к стоматологу')`));
-  const next = center(await boxOf(`document.querySelector('.nav[title="Следующая неделя"]')`));
+  const next = center(await boxOf(`document.querySelector('.nav[title^="Следующая неделя"]')`));
   await page.mouse.move(from.x, from.y); await page.mouse.down();
   await moveSmooth(from, next);
   await sleep(1000);

@@ -289,3 +289,10 @@ public sealed record SettingsDto(int StaleMonths);
 
 /// <summary>Плашка о мыслях, перешагнувших срок (BS4): срок и сами мысли (самые старые сверху); пусто — плашки нет.</summary>
 public sealed record StaleNoticeDto(int Months, IReadOnlyList<TaskDto> Thoughts);
+
+/// <summary>Быстрый поиск (batch-ux.md, BK2): дела, мысли, проекты, цели — до 8 в группе.</summary>
+public sealed record SearchResultDto(
+    IReadOnlyList<TaskDto> Tasks, IReadOnlyList<TaskDto> Thoughts, IReadOnlyList<TaskDto> Projects, IReadOnlyList<SearchGoalDto> Goals);
+
+/// <summary>Найденная цель: её неделя и роли (точка цвета первой роли).</summary>
+public sealed record SearchGoalDto(int Id, string Title, DateOnly WeekStart, IReadOnlyList<int> RoleIds);

@@ -64,7 +64,7 @@ await check('в полночь на воскресенье → понедель�
 
 await check('смотрю прошлую неделю — в полночь она остаётся на экране', async () => {
   await openAt(sundayNight);
-  await page.click('.week-h .nav[title="Предыдущая неделя"]'); await sleep(600);
+  await page.click('.week-h .nav[title^="Предыдущая неделя"]'); await sleep(600);
   const shown = await firstDayKey();
   assert(shown === iso(addDays(monday, -7)), `неделя: ${shown}`);
   await sleep(8000);

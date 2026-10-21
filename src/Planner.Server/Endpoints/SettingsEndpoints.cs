@@ -4,7 +4,7 @@ using Planner.Shared;
 
 namespace Planner.Server.Endpoints;
 
-/// <summary>Настройки и давно лежащие мысли (docs/specs/batch-ux.md, BS).</summary>
+/// <summary>Настройки, давно лежащие мысли (docs/specs/batch-ux.md, BS) и быстрый поиск (BK2).</summary>
 public static class SettingsEndpoints
 {
     public static void MapSettingsEndpoints(this RouteGroupBuilder api, IWebHostEnvironment environment)
@@ -24,6 +24,17 @@ public static class SettingsEndpoints
         {
             var (months, thoughts) = await service.TakeNewlyStaleAsync(ct);
             return new StaleNoticeDto(months, thoughts.Select(t => t.ToDto()).ToList());
+        });
+
+        // Быстрый поиск по всем неделям (BK2)
+        api.MapGet("/search", async (string? q, SearchService service, TaskViews views, CancellationToken ct) =>
+        {
+            var result = await service.SearchAsync(q ?? "", ct);
+            return new SearchResultDto(
+                await views.ToDtosAsync(result.Tasks, ct),
+                result.Thoughts.Select(t => t.ToDto()).ToList(),
+                await views.ToDtosAsync(result.Projects, ct),
+                result.Goals.Select(g => new SearchGoalDto(g.Id, g.Title, g.WeekStart, g.RoleIds)).ToList());
         });
 
         if (environment.IsDevelopment())

@@ -107,7 +107,7 @@ await check('21. постоянная цель: на следующей неде
 });
 
 await check('22. следующая неделя: «— нет» — старые занятия остались шагами, новое — без проекта; цель этой недели — с книгой', async () => {
-  await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await page.click('.nav[title^="Следующая неделя"]'); await settle();
   await openGoal(GOAL);
   await chooseProject('— нет');
   await save(); await settle();
@@ -119,7 +119,7 @@ await check('22. следующая неделя: «— нет» — стары�
   for (const o of older) assert((await api('GET', `tasks/${o.taskId}`)).parentId === book.id, 'старое занятие перестало быть шагом');
   assert((await api('GET', `tasks/${wedSession.id}`)).parentId === book.id, 'занятие этой недели перестало быть шагом');
   assert((await goalOf(dayIso(0))).projectId === book.id, 'у цели этой недели сменился проект (P4: прошлые недели не меняются)');
-  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+  await page.click('.nav[title^="Предыдущая неделя"]'); await settle();
 });
 
 await check('23. книга выполнена — новое занятие этой недели без проекта; в окне цели — «(выполнен)»', async () => {

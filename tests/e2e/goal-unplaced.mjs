@@ -98,10 +98,10 @@ await check('N1.3: «свернуть все цели» — подсветка �
 
 await check('N1.4: прошлая неделя — подсветки нет', async () => {
   await api('POST', 'goals', { roleId: work.id, weekStart: dayIso(-7), title: 'Старое', isRecurring: false });
-  await page.click('.nav[title="Предыдущая неделя"]'); await settle();
+  await page.click('.nav[title^="Предыдущая неделя"]'); await settle();
   const s = await goalState('Старое');
   assert(s && !s.unplaced, JSON.stringify(s));
-  await page.click('.nav[title="Следующая неделя"]'); await settle();
+  await page.click('.nav[title^="Следующая неделя"]'); await settle();
 });
 
 await check('в консоли нет ошибок', async () => {

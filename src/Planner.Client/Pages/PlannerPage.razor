@@ -11,6 +11,7 @@
 @inject TotalsState Totals
 @inject ProjectFoldState ProjectFold
 @inject RightPanelState RightPanel
+@inject Hotkeys Hotkeys
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -67,6 +68,10 @@
     {
         <HelpScreen />
     }
+    else if (Windows.SearchOpen)
+    {
+        <SearchBox />
+    }
     else if (Windows.SettingsOpen)
     {
         <SettingsWindow />
@@ -93,7 +98,7 @@ else
         State.DoneRequested += Windows.OpenDone; // плашка «… выполнен → в «Выполненном» · Показать» (BP5)
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), Totals.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), Totals.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(), Hotkeys.InitAsync(),
             WatchLongTitlesAsync());
 
         // Мысли, перешагнувшие срок «давно лежат», — плашкой (batch-ux.md, BS4)
