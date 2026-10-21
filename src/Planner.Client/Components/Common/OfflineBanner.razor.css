@@ -1,0 +1,40 @@
+/* BN2: плашка «Нет связи» — заметная (--warn), выше обычных плашек, сама не исчезает */
+.offline {
+    position: fixed;
+    left: 50%;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    z-index: 101;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 9px 12px 9px 16px;
+    border-radius: 14px;
+    background: var(--warn-soft);
+    box-shadow: var(--shadow-pop), inset 0 0 0 1.5px var(--warn);
+    color: var(--warn-ink);
+    font-size: 13px;
+    font-weight: 700;
+    transform: translateX(-50%);
+}
+
+.action {
+    flex: none;
+    min-height: 24px;
+    padding: 2px 10px;
+    border: 1px solid var(--btn-line);
+    border-radius: 999px;
+    background: var(--btn-bg);
+    color: var(--btn-ink);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.action:hover {
+    background: var(--btn-hover);
+}
+
+.action:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}

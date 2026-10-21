@@ -12,8 +12,8 @@ public class ApiException(string message, string? code = null) : Exception(messa
     /// <summary>Дело возвращается в ленту без категории — нужно спросить категорию и повторить запрос.</summary>
 }
 
-/// <summary>Типизированный клиент к /api сервера.</summary>
-public class PlannerApi(HttpClient http)
+/// <summary>Типизированный клиент к /api сервера. Изменения идут через <see cref="ConnectionQueue"/> (BN): по порядку и с повтором при обрыве связи.</summary>
+public class PlannerApi(HttpClient http, ConnectionQueue queue)
 {
     // Экран
 
@@ -195,23 +195,37 @@ public class PlannerApi(HttpClient http)
 
     private async Task<HttpResponseMessage> SendRawAsync(HttpMethod method, string url, object? body)
     {
-        using var request = new HttpRequestMessage(method, url);
-        if (body is not null)
+        // Запрос собирается заново на каждую попытку: отправленный HttpRequestMessage повторно не отправить
+        Task<HttpResponseMessage> Send()
         {
-            // Тип берём объявленный (например, TaskTargetDto), чтобы в JSON попало поле "kind"
-            request.Content = body is TaskTargetDto target
-                ? JsonContent.Create(target)
-                : JsonContent.Create(body, body.GetType());
+            var request = new HttpRequestMessage(method, url);
+            if (body is not null)
+            {
+                // Тип берём объявленный (например, TaskTargetDto), чтобы в JSON попало поле "kind"
+                request.Content = body is TaskTargetDto target
+                    ? JsonContent.Create(target)
+                    : JsonContent.Create(body, body.GetType());
+            }
+
+            return http.SendAsync(request);
         }
 
         HttpResponseMessage response;
-        try
+        if (method == HttpMethod.Get)
         {
-            response = await http.SendAsync(request);
+            await queue.WhenDrainedAsync(); // BN6: не перечитывать поверх несохранённого
+            try
+            {
+                response = await Send();
+            }
+            catch (HttpRequestException)
+            {
+                throw new ApiException("Нет связи с сервером.");
+            }
         }
-        catch (HttpRequestException)
+        else
         {
-            throw new ApiException("Нет связи с сервером.");
+            response = await queue.SendAsync(Send); // BN1: при обрыве ждёт связи и повторяет
         }
 
         if (response.IsSuccessStatusCode)

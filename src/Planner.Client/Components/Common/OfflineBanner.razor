@@ -1,0 +1,92 @@
+@* Нет связи с сервером (docs/specs/batch-ux.md, BN2–BN5): заметная плашка вверху, сама не исчезает, пока очередь не ушла:
+   «Нет связи — изменения не сохранены (3), повторю попытку · Повторить сейчас». Связь вернулась — «Связь восстановлена — сохранено 3»
+   и экран перечитывается. Повтор сразу — по событию online (js/connection.js); закрыть вкладку с несохранённым — браузер спросит. *@
+@inject ConnectionQueue Queue
+@inject PlannerState State
+@inject Notifier Notifier
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (Queue.IsOffline)
+{
+    <div class="offline" role="alert">
+        <span>Нет связи — изменения не сохранены (@Queue.Pending), повторю попытку</span>
+        <button type="button" class="action" @onclick="Queue.RetryNow">Повторить сейчас</button>
+    </div>
+}
+
+@code {
+    private static readonly TimeSpan RestoredFor = TimeSpan.FromSeconds(4);
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<OfflineBanner>? _selfRef;
+
+    protected override void OnInitialized()
+    {
+        Queue.Changed += OnQueueChanged;
+        Queue.Restored += OnRestored;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/connection.js");
+            _selfRef = DotNetObjectReference.Create(this);
+            await _module.InvokeVoidAsync("watch", _selfRef);
+        }
+        catch (JSException)
+        {
+            // Без JS повтор всё равно идёт по таймеру
+        }
+    }
+
+    /// <summary>Браузер сообщил, что сеть снова есть (событие online).</summary>
+    [JSInvokable]
+    public void RetryNow() => Queue.RetryNow();
+
+    private void OnQueueChanged() => InvokeAsync(async () =>
+    {
+        StateHasChanged();
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("setUnsaved", Queue.Pending);
+            }
+            catch (JSException)
+            {
+                // Вопрос при закрытии вкладки не главное
+            }
+        }
+    });
+
+    private void OnRestored(int saved) => InvokeAsync(async () =>
+    {
+        Notifier.Info($"Связь восстановлена — сохранено {saved}", RestoredFor);
+        await State.LoadAsync(); // экран — как на сервере
+    });
+
+    public async ValueTask DisposeAsync()
+    {
+        Queue.Changed -= OnQueueChanged;
+        Queue.Restored -= OnRestored;
+        _selfRef?.Dispose();
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Страница уже закрыта
+            }
+        }
+    }
+}

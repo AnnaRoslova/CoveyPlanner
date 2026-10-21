@@ -8,7 +8,7 @@ namespace Planner.Client.Services;
 /// Если дата сменилась — сообщает <see cref="PlannerState"/>, а тот при необходимости листает неделю.
 /// А когда окно уходит в фон или закрывается — отправляет на сервер отложенное удаление («Удалено · Вернуть»).
 /// </summary>
-public sealed class TodayWatcher(PlannerState state, IJSRuntime js) : IAsyncDisposable
+public sealed class TodayWatcher(PlannerState state, ConnectionQueue queue, IJSRuntime js) : IAsyncDisposable
 {
     private DateOnly _today = RuDates.Today;
     private Timer? _midnightTimer;
@@ -33,7 +33,11 @@ public sealed class TodayWatcher(PlannerState state, IJSRuntime js) : IAsyncDisp
 
     /// <summary>Окно снова активно (вызывается из layout.js).</summary>
     [JSInvokable]
-    public Task OnActivated() => CheckAsync();
+    public Task OnActivated()
+    {
+        queue.RetryNow(); // нет связи — повторить сразу, а не ждать таймера (batch-ux.md, BN3)
+        return CheckAsync();
+    }
 
     /// <summary>Окно ушло в фон или закрывается (вызывается из layout.js).</summary>
     [JSInvokable]

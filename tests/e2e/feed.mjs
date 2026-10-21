@@ -241,7 +241,7 @@ await check('сменить эмодзи и название категории'
   assert(header.startsWith('💡') && header.includes('Идеи и планы'), `заголовок: ${header}`);
 });
 
-await check('нет связи: сообщение, несохранённая запись исчезает', async () => {
+await check('нет связи (batch-ux BN): запись остаётся, плашка «Нет связи»; связь вернулась — сохранено', async () => {
   // В опубликованной сборке запросы идут через service worker, а page.setOfflineMode действует
   // только на страницу — «отключаем сеть» и у service worker (через его CDP-сессию)
   const setOffline = async offline => {
@@ -255,13 +255,14 @@ await check('нет связи: сообщение, несохранённая �
   };
   await setOffline(true);
   await typeAndEnter('.quick input', 'Мысль без сети');
-  await sleep(800);
-  const toast = await page.$eval('.toast', e => e.textContent.trim()).catch(() => null);
-  assert(toast === 'Нет связи с сервером.', `сообщение: ${toast}`);
-  const all = await page.$$eval('.cat-b .item .tx', els => els.map(e => e.textContent.trim()));
-  assert(!all.includes('Мысль без сети'), 'запись осталась');
-  assert(!(await page.$('.saved')), 'осталось «записано»');
+  await page.waitForSelector('.offline', { timeout: 5000 });
+  const all = await page.$$eval('.someday .item .title', els => els.map(e => e.textContent.trim()));
+  assert(all.includes('Мысль без сети'), 'запись пропала');
   await setOffline(false);
+  await page.click('.offline .action');
+  await page.waitForFunction(() => !document.querySelector('.offline'), { timeout: 8000 });
+  const saved = await page.evaluate(async () => (await (await fetch('/api/board')).json()).somedayTasks.map(t => t.title));
+  assert(saved.includes('Мысль без сети'), 'не сохранилось');
 });
 
 await page.screenshot({ path: `${SHOTS}/feed-final.png` });

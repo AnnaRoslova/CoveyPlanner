@@ -40,6 +40,8 @@ public class Notifier
 
     public void Info(string message) => Show(message, isError: false);
 
+    public void Info(string message, TimeSpan duration) => Show(message, isError: false, duration: duration);
+
     /// <summary>Скрепка легла в банку привычки: «+1 в «Тренировки» · 103 · неделя 3 из 3 ✓» — на пару секунд.</summary>
     public void Clip(string message) =>
         Show(message, isError: false, duration: ClipDuration, isClip: true);
