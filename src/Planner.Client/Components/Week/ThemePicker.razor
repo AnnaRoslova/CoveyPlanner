@@ -5,16 +5,22 @@
 @implements IDisposable
 @inject ThemeState Theme
 
-<div class="picker">
+<div class="picker @(Inline ? "inline" : "")">
+    @if (!Inline)
+    {
     <button type="button" class="icon-b palette-b" title="Тема оформления" aria-haspopup="listbox"
             aria-expanded="@(_open ? "true" : "false")" @onclick="Toggle">
         <Icon Name="palette" Size="16" />
     </button>
+    }
 
-    @if (_open)
+    @if (_open || Inline)
     {
-        <div class="picker-backdrop" @onclick="Close"></div>
-        <div @ref="_list" class="themes" role="listbox" aria-label="Тема оформления" tabindex="-1" @onkeydown="OnKeyDown">
+        @if (!Inline)
+        {
+            <div class="picker-backdrop" @onclick="Close"></div>
+        }
+        <div @ref="_list" class="themes @(Inline ? "inline" : "")" role="listbox" aria-label="Тема оформления" tabindex="-1" @onkeydown="OnKeyDown">
             @foreach (var theme in ThemeState.Themes)
             {
                 var key = theme.Key;
@@ -37,6 +43,10 @@
 
 @code {
     private bool _open;
+
+    /// <summary>Список тем прямо на месте, без кнопки (окно «⚙ Настройки», batch-ux.md BI5).</summary>
+    [Parameter]
+    public bool Inline { get; set; }
     private bool _focusList;
     private ElementReference _list;
 

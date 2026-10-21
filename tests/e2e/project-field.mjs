@@ -151,7 +151,7 @@ await check('🗑 у шага в окне — в корзину с плашко�
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await sleep(300);
   await (await row.$('.trash-btn')).click(); await settle();
   assert(!(await windowSteps()).some(s => s.title === 'Полы'), 'шаг остался');
-  assert((await toastText())?.includes('Удалено «Полы»'), `плашка: ${await toastText()}`);
+  assert((await toastText())?.includes('«Полы» в корзине'), `плашка: ${await toastText()}`);
   await page.evaluate(() => [...document.querySelectorAll('.toast button.action')].find(b => b.textContent.trim() === 'Вернуть').click()); await settle();
   assert((await windowSteps()).some(s => s.title === 'Полы'), 'не вернулся');
   await closeEditor();
@@ -166,7 +166,7 @@ await check('11. занятие «Чтения» → «Проект: Атомн�
   await openDay(2, 'Чтение');
   await chooseProject('Атомные привычки', 'атом');
   await save(); await settle();
-  await page.click('.projects-b'); await settle(); // книга — проект, она в «🛠 Проекты» (N6)
+  await page.evaluate(() => [...document.querySelectorAll('.right-tabs .rt')].find(b => b.textContent.startsWith('Проекты')).click()); await settle(); // книга — проект, она во вкладке «Проекты» (BP1)
   await (await (await page.evaluateHandle(() => [...document.querySelectorAll('.someday .pgroup > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Атомные привычки'))).asElement().$('.title')).click();
   await settle();
   const line = await page.$eval('.editor .task-steps .sessions-line', e => e.textContent.trim());

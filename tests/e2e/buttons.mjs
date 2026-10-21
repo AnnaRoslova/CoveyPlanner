@@ -3,6 +3,7 @@
 // с клавиатуры виден фокус; «Сохранить» — главная (залитая), «+ дело» — пунктирная; вход в «✓ Выполненное» — значком в шапке недели,
 // строки «✓ выполненное» внизу ленты нет. Снимки для сравнения «до/после» — out/buttons-<тема>-<screen|task|toast>.png («Лотос», «Обсидиан»).
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -83,7 +84,7 @@ await check('D2: «+ дело» — пилюля с пунктирной обв�
 
 await check('D2.2: при наведении фон кнопки меняется («+ дело», «свернуть всё», значок 🫙)', async () => {
   await page.hover('.day:nth-child(3)');
-  for (const sel of ['.day .add', '.someday .feed-menu', '.week-h .jar-b']) {
+  for (const sel of ['.day .add', '.someday .feed-menu', '.week-h .totals-b']) {
     const el = await page.$(sel);
     assert(el, `нет ${sel}`);
     await page.mouse.move(0, 0); await sleep(250);
@@ -101,11 +102,12 @@ await check('D2.3: фокус с клавиатуры (Tab) — у кнопки 
   assert(ring.tag === 'BUTTON' && ring.style !== 'none' && ring.width >= 2, JSON.stringify(ring));
 });
 
-await check('D3: «✓» в шапке недели рядом с 🛠 🫙 📊 открывает «Выполненное»; внизу ленты строки «✓ выполненное» нет', async () => {
-  const order = await page.evaluate(() => [...document.querySelectorAll('.week-h .icon-b')].map(b => b.textContent.trim() || b.title));
-  assert(JSON.stringify(order.slice(0, 4)) === '["🛠","✓","🫙","📊"]', JSON.stringify(order));
+await check('BI1, D9: в шапке недели только «Итоги» и «Настройки» (линейные значки); «Итоги → Выполненное» открывает экран; строки внизу ленты нет', async () => {
+  const order = await page.evaluate(() => [...document.querySelectorAll('.week-h .icon-b')].map(b => b.getAttribute('aria-label')));
+  assert(JSON.stringify(order) === '["Итоги","Настройки"]', JSON.stringify(order));
+  assert(await page.$$eval('.week-h .icon-b', bs => bs.every(b => b.querySelector('svg.icon'))), 'значки не линейные');
   assert(!(await page.$('.done-link')), 'строка внизу ленты осталась');
-  await page.click('.week-h .done-b'); await sleep(500);
+  await openTotals(page, 'Выполненное');
   assert(await page.$('.done-screen'), 'экран «Выполненное» не открылся');
   await page.keyboard.press('Escape'); await sleep(300);
 });

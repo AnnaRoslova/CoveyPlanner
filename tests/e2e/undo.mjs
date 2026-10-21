@@ -88,7 +88,7 @@ await check('«в корзину» из окна — плашка «Удален
   await openDayTask(0, 'Купить подарок маме');
   await page.click('.editor .more-b'); await sleep(300); await clickText('.editor .popover .option .option-name', 'в корзину');
   assert(!(await dayTitles(0)).includes('Купить подарок маме'), 'не исчезло');
-  assert(await toast() === 'Удалено «Купить подарок маме» · Вернуть', `плашка: ${await toast()}`);
+  assert(await toast() === '«Купить подарок маме» в корзине · Вернуть', `плашка: ${await toast()}`);
   await undo();
   assert(JSON.stringify(await dayTitles(0)) === JSON.stringify(before), `после «Вернуть»: ${await dayTitles(0)}`);
   assert(await toast() === null, 'плашка осталась');
@@ -122,7 +122,7 @@ await check('перетаскивание на значок корзины: он
   assert(lit, 'корзина не подсветилась');
   assert(!(await page.$('.someday .trash.drop-hover')), 'подсветка осталась после сброса');
   assert(!(await feedTitles('Идеи')).includes('Сад с травами на балконе'), 'не удалилось');
-  assert(await toast() === 'Удалено «Сад с травами на балконе» · Вернуть', `плашка: ${await toast()}`);
+  assert(await toast() === '«Сад с травами на балконе» в корзине · Вернуть', `плашка: ${await toast()}`);
   await undo();
   assert(JSON.stringify(await feedTitles('Идеи')) === JSON.stringify(before), `после «Вернуть»: ${await feedTitles('Идеи')}`);
 });

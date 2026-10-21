@@ -24,12 +24,9 @@
     @if (Goal is { } goal)
     {
         <div class="rock-note">
-            <span class="pill-rock">камень</span>
-            @(goal.Title == _title ? "цель недели" : $"цель «{goal.Title}»") · @string.Join(", ", State.OrderedRoles.Where(r => goal.HasRole(r.Id)).Select(r => r.Name))
-            @if (goal.TimesPerWeek > 1)
-            {
-                <text> · сделано @goal.DoneCount из @goal.TimesPerWeek</text>
-            }
+            @* D2, BG2: «◆ занятие цели «Бег» · 1 из 3» *@
+            <span class="rock-diamond" aria-hidden="true">◆</span>
+            <span>занятие цели «@goal.Title»@(goal.TimesPerWeek > 1 ? $" · выполнено {goal.DoneCount} из {goal.TimesPerWeek}" : "")</span>
         </div>
     }
 

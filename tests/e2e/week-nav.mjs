@@ -2,6 +2,7 @@
 // Координаты стрелок не меняются при листании 12 недель вперёд (до недели другого года) и 12 назад; «Сегодня» стрелки не двигает;
 // подпись видна целиком (в том числе самая длинная); то же для стрелок экрана «📊 Отчёт».
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -67,7 +68,7 @@ await check('C2: самая длинная подпись («28 сентября
 
 await check('C3: «📊 Отчёт» — 12 месяцев вперёд и назад, стрелки периода на месте', async () => {
   await load();
-  await page.click('.report-b'); await page.waitForSelector('.report-screen .range .nav'); await sleep(400);
+  await openTotals(page, 'Отчёт'); await page.waitForSelector('.report-screen .range .nav'); await sleep(400);
   const start = await arrows('.report-screen .range .nav', '.report-screen .range-label');
   assert(start.boxes.length === 2, JSON.stringify(start));
   for (const [title, n] of [['Позже', 12], ['Раньше', 12]]) {

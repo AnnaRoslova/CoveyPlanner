@@ -8,6 +8,7 @@
 @inject ThemeState Theme
 @inject RoleTasksState RoleTasks
 @inject RoleFoldState RoleFold
+@inject TotalsState Totals
 @inject ProjectFoldState ProjectFold
 @inject RightPanelState RightPanel
 
@@ -62,6 +63,14 @@
     {
         <ReportScreen />
     }
+    else if (Windows.HelpOpen)
+    {
+        <HelpScreen />
+    }
+    else if (Windows.SettingsOpen)
+    {
+        <SettingsWindow />
+    }
 }
 else if (State.LoadError is not null)
 {
@@ -81,9 +90,10 @@ else
         Layout.Changed += OnLayoutChanged;
         Windows.Changed += OnLayoutChanged;
         RightPanel.Changed += OnLayoutChanged;
+        State.DoneRequested += Windows.OpenDone; // плашка «… выполнен → в «Выполненном» · Показать» (BP5)
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), Totals.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(),
             WatchLongTitlesAsync());
     }
 
@@ -106,6 +116,7 @@ else
         Layout.Changed -= OnLayoutChanged;
         Windows.Changed -= OnLayoutChanged;
         RightPanel.Changed -= OnLayoutChanged;
+        State.DoneRequested -= Windows.OpenDone;
         base.Dispose();
     }
 

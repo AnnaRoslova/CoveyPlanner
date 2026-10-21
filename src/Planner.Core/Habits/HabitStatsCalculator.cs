@@ -139,6 +139,7 @@ public static class HabitStatsCalculator
             InJar: total % jar,
             ThisWeek: CountOf(currentWeek),
             WeekStreak: weekStreak.Length,
+            BestWeekStreak: weekStreak.Best,
             WeekPaused: weekStreak.IsPaused,
             MonthStreak: monthStreak.Length,
             MonthPaused: monthStreak.IsPaused,
@@ -170,6 +171,9 @@ public static class HabitStatsCalculator
         /// <summary>Засчитанных периодов с начала серии.</summary>
         public int Length { get; private set; }
 
+        /// <summary>Самая длинная серия за всю историю (дашборд, batch-ux.md BD2).</summary>
+        public int Best { get; private set; }
+
         /// <summary>Пропусков подряд (каникулы и нейтральные периоды их не прерывают).</summary>
         public int Misses { get; private set; }
 
@@ -178,6 +182,7 @@ public static class HabitStatsCalculator
         public void Done()
         {
             Length++;
+            Best = Math.Max(Best, Length);
             Misses = 0;
             _pausedAt = null;
             results.Add(PeriodResult.Done);
@@ -187,6 +192,7 @@ public static class HabitStatsCalculator
         public void CountCurrent()
         {
             Length++;
+            Best = Math.Max(Best, Length);
             Misses = 0;
             _pausedAt = null;
         }

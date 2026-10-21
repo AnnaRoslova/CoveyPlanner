@@ -7,6 +7,7 @@
 // выполненные дела, подсказки и плейсхолдеры) — не ниже 3:1.
 // Снимки — в out/cmp-<тема>-<окно>.png и out/mock-<тема>.png, отчёт о контрасте — out/contrast.json.
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 import { makeHabitHistory } from './lib/habits-history.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,7 +24,8 @@ const LIGHT = ['lotus', 'peony', 'platinum'];
 const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
   '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
   '.parent-of', '.project-label', '.sum-chip.static', '.menu-hint', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
-  '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)'].join(', ');
+  '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)',
+  '.q2-of', '.q2-week'].join(', ');
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -313,7 +315,7 @@ for (const theme of THEMES) {
     await escape();
   });
   await check(`${theme}: экран «Копилки»`, async () => {
-    await page.click('.jar-b'); await page.waitForSelector('.habits .jar-card');
+    await openTotals(page, 'Привычки'); await page.waitForSelector('.habits .jar-card');
     await page.mouse.move(5, 5); await sleep(500); // курсор с кнопки 🫙 — иначе под ним оказывается кнопка экрана (замер в hover)
     await shot('habits');
     windows.push(['копилки', await audit(theme, 'habits', '.habits')]);
@@ -322,23 +324,33 @@ for (const theme of THEMES) {
     await escape(); await escape();
   });
   await check(`${theme}: экран «Выполненное»`, async () => {
-    await page.click('.week-h .done-b'); await page.waitForSelector('.done-screen .done-row');
+    await openTotals(page, 'Выполненное'); await page.waitForSelector('.done-screen .done-row');
     await page.mouse.move(5, 5); await sleep(400);
     await shot('done');
     windows.push(['выполненное', await audit(theme, 'done', '.done-screen')]);
     await escape();
   });
   await check(`${theme}: экран «Отчёт»`, async () => {
-    await page.click('.report-b'); await page.waitForSelector('.report-screen .srow');
+    await openTotals(page, 'Отчёт'); await page.waitForSelector('.report-screen .srow');
     await page.mouse.move(5, 5); await sleep(400);
     await shot('report');
     windows.push(['отчёт', await audit(theme, 'report', '.report-screen')]);
     await escape();
   });
+  await check(`${theme}: дашборд «Отчёта»`, async () => {
+    await openTotals(page, 'Отчёт'); await page.waitForSelector('.report-screen .view-switch');
+    await page.evaluate(() => [...document.querySelectorAll('.view-switch .vs')].find(b => b.textContent.trim() === 'Дашборд').click());
+    await page.waitForSelector('.dash'); await page.mouse.move(5, 5); await sleep(400);
+    await shot('dashboard');
+    windows.push(['дашборд', await audit(theme, 'dashboard', '.report-screen')]);
+    await page.evaluate(() => [...document.querySelectorAll('.view-switch .vs')].find(b => b.textContent.trim() === 'Список').click());
+    await sleep(300);
+    await escape();
+  });
   await check(`${theme}: меню тем`, async () => {
-    await page.click('.palette-b'); await page.waitForSelector('.themes'); await sleep(300);
+    await openThemes(page); await sleep(100);
     await shot('menu');
-    windows.push(['меню тем', await audit(theme, 'menu', '.themes')]);
+    windows.push(['настройки и темы', await audit(theme, 'menu', '.editor.settings')]);
     await escape();
   });
 

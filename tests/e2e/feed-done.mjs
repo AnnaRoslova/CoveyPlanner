@@ -85,7 +85,7 @@ await check('«в корзину» на плашке — в корзине; ве
   const b = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Б');
   await (await (await feedRow('Идеи', 'Б')).asElement().$('.ck-hit')).click(); await settle();
   await toastAction('в корзину'); await settle();
-  assert((await toast())?.text.includes('Удалено «Б»'), JSON.stringify(await toast()));
+  assert((await toast())?.text.includes('«Б» в корзине'), JSON.stringify(await toast()));
   await sleep(6500); // удаление уходит на сервер
   assert((await api('GET', 'trash')).some(t => t.id === b.id), 'не в корзине');
   const restored = await api('POST', `trash/${b.id}/restore`);
@@ -129,7 +129,7 @@ await check('удаление — плашка «Удалено «…» · Ве�
   for (let i = 1; i <= 14; i++) { await page.mouse.move(sx + (tx - sx) * i / 14, sy + (ty - sy) * i / 14); await sleep(16); }
   await sleep(150); await page.mouse.up(); await settle();
   const t = await toast();
-  assert(t?.text.includes('Удалено «А»') && !t.overFeed && !t.coversTrash, JSON.stringify(t));
+  assert(t?.text.includes('«А» в корзине') && !t.overFeed && !t.coversTrash, JSON.stringify(t));
   await toastAction('Вернуть'); await settle();
 });
 

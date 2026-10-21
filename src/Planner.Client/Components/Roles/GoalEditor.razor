@@ -16,10 +16,10 @@
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
     <div class="rock-note">
-        <span class="pill-rock" title="шаблон занятий: новые занятия берут эти значения">цель</span>
+        <span class="pill-rock" title="шаблон занятий: новые занятия берут эти значения">цель недели</span>
         @if (EditedGoal.TimesPerWeek > 1 || EditedGoal.Sessions.Count > 0)
         {
-            <span>сделано @EditedGoal.DoneCount из @EditedGoal.TimesPerWeek</span>
+            <span>выполнено @EditedGoal.DoneCount из @EditedGoal.TimesPerWeek</span>
         }
     </div>
 
@@ -305,12 +305,12 @@
             var list = new List<Choice<int>> { new(0, "— нет") };
             if (current.ProjectId is { } id && ShownProjectId == id)
             {
-                list.Add(new(id, (current.ProjectTitle ?? "проект") + (current.ProjectIsTrashed ? " (в корзине)" : current.ProjectIsOpen ? "" : " (выполнен)")));
+                list.Add(new(id, (current.ProjectTitle ?? "проект") + (current.ProjectIsTrashed ? " (в корзине)" : current.ProjectIsOpen ? "" : " (выполнен)"), Emoji: "🛠"));
             }
 
             list.AddRange(State.ProjectCandidates()
                 .Where(t => t.Id != current.ProjectId)
-                .Select(t => new Choice<int>(t.Id, t.Title)));
+                .Select(t => new Choice<int>(t.Id, t.Title, Emoji: "🛠"))); // BP6
             return list.DistinctBy(c => c.Value).ToList();
         }
     }

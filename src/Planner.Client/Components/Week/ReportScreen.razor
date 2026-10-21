@@ -1,23 +1,29 @@
 @* Экран «📊 Отчёт» (docs/specs/next-batch.md, N5): что сделано за период — привычки и постоянные цели (план и факт), разовые цели
    одной строкой, «Выполненное» по категориям — и «Скачать CSV» для Excel. Только чтение. Период: неделя (показанная), месяц
    (по умолчанию — текущий), N месяцев (последние, 2…12), год, свой (с — по); стрелки листают. Недели — по четвергу (N5.3).
-   Вход — «📊» в шапке недели; Esc или клик мимо — закрыть. *@
+   Вид «Список ⇄ Дашборд» (batch-ux.md, BD1) запоминается; дашборд — DashboardView с тем же периодом.
+   Вход — «📈 Итоги → Отчёт»; Esc или клик мимо — закрыть. *@
 @inherits StateComponent
 @inject WindowHost Windows
 @inject PlannerApi Api
 @inject Notifier Notifier
+@inject TotalsState Totals
 
 <div class="report-backdrop" @onclick="Windows.Close"></div>
 
-<section @ref="_root" class="report-screen" role="dialog" aria-label="Отчёт" tabindex="-1" @onkeydown="OnKeyDown">
+<section @ref="_root" class="report-screen" role="dialog" aria-label="Итоги: отчёт" tabindex="-1" @onkeydown="OnKeyDown">
     <header class="report-h">
-        <h2>📊 Отчёт</h2>
+        <TotalsTabs Current="TotalsTab.Report" />
         <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
     </header>
 
     @* Период — одно поле с меню вместо пяти вкладок (ui-declutter.md, U3) *@
     <div class="period-field">
         <ChoiceField TValue="PeriodMode" Items="Modes" Value="_mode" ValueChanged="SetModeAsync" Label="Период" />
+        <div class="view-switch" role="group" aria-label="Вид отчёта">
+            <button type="button" class="vs @(Totals.Dashboard ? "" : "on")" aria-pressed="@(Totals.Dashboard ? "false" : "true")" @onclick="() => SetViewAsync(false)">Список</button>
+            <button type="button" class="vs @(Totals.Dashboard ? "on" : "")" aria-pressed="@(Totals.Dashboard ? "true" : "false")" @onclick="() => SetViewAsync(true)">Дашборд</button>
+        </div>
     </div>
 
     <div class="range">
@@ -47,7 +53,11 @@
         <a class="btn csv" href="@PlannerApi.ReportCsvUrl(_from, _to)" download>Скачать CSV</a>
     </div>
 
-    @if (_report is null)
+    @if (Totals.Dashboard)
+    {
+        <DashboardView From="_from" To="_to" />
+    }
+    else if (_report is null)
     {
         <p class="empty">Загрузка…</p>
     }
@@ -216,10 +226,26 @@
         await LoadAsync();
     }
 
+    private async Task SetViewAsync(bool dashboard)
+    {
+        if (dashboard == Totals.Dashboard)
+        {
+            return;
+        }
+
+        await Totals.SetDashboardAsync(dashboard);
+        await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
         var version = ++_version;
         _report = null;
+        if (Totals.Dashboard)
+        {
+            return; // дашборд загружает свои данные сам
+        }
+
         try
         {
             var report = await Api.GetReportAsync(_from, _to);

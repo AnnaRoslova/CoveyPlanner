@@ -11,6 +11,11 @@ public partial class PlannerState
 
     public void RequestProjects(int? projectId = null) => ProjectsRequested?.Invoke(projectId);
 
+    /// <summary>Открыть экран «Выполненное» (плашка «„…“ выполнен → в «Выполненном» · Показать», BP5) — его открывает страница.</summary>
+    public event Action? DoneRequested;
+
+    public void RequestDone() => DoneRequested?.Invoke();
+
     /// <summary>
     /// Открытые проекты (N6.9): без родителя, не выполнены и не в корзине — из ленты и из плана любой недели.
     /// categoryKey: null — все категории, <see cref="DragDropService.UnsortedKey"/> — без категории, иначе Id категории.
@@ -95,8 +100,9 @@ public partial class PlannerState
     /// </summary>
     private void OfferProjectUndo(TaskDto task, int? firstStepId)
     {
-        notifier.WithActions($"«{task.Title}» теперь проект",
-            "🛠 Проекты", () =>
+        // BP2: «Теперь в «Проектах» · Показать · Вернуть» — «Показать» открывает вкладку «Проекты» на этом проекте
+        notifier.WithActions(task.State == TaskStateDto.Someday ? "Теперь в «Проектах»" : $"«{task.Title}» теперь проект",
+            "Показать", () =>
             {
                 RequestProjects(task.Id);
                 return Task.CompletedTask;

@@ -129,7 +129,7 @@ await check('6. отметили все шаги — проект отмечен
     await (await (await rowEl(0, t, true)).asElement().$('.ck-hit')).click(); await settle();
   }
   assert((await day(0)).rows[0].done, 'проект не отмечен');
-  assert((await toastText())?.includes('Все шаги сделаны'), `плашка: ${await toastText()}`);
+  assert((await toastText())?.includes('выполнен → в «Выполненном»'), `плашка: ${await toastText()}`); // BP5
   await (await (await rowEl(0, 'Люстра', true)).asElement().$('.ck-hit')).click(); await settle();
   const mon = await day(0);
   assert(mon.rows[0].done && mon.rows[0].project === '☑ 2/3', JSON.stringify(mon.rows[0]));

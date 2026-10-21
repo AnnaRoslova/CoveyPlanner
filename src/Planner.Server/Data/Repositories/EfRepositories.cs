@@ -74,6 +74,11 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .OrderByDescending(t => t.CompletedAt).ThenByDescending(t => t.Id)
             .ToListAsync(ct);
 
+    public Task<List<TaskItem>> GetCompletedAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default) =>
+        db.Tasks.AsNoTracking()
+            .Where(t => t.State == TaskState.Done && t.CompletedAt >= fromUtc && t.CompletedAt < toUtc)
+            .ToListAsync(ct);
+
     public void Add(TaskItem task) => db.Tasks.Add(task);
 
     public void Remove(TaskItem task) => db.Tasks.Remove(task);

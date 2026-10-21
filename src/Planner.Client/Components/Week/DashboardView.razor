@@ -1,0 +1,310 @@
+@* Дашборд во вкладке «Отчёт» (docs/specs/batch-ux.md, BD): тот же период, что у списка. Привычки — тепловая карта по дням (BD2),
+   «колесо» пилы (BD3), баланс ролей (BD4), доля II квадранта по неделям (BD5), давно лежащие мысли (BD6).
+   Графики свои — SVG и CSS, цвета темы и ролей (BD7); у каждого блока подсказки при наведении и таблица для диктора. *@
+@inject PlannerApi Api
+@inject Notifier Notifier
+@inject WindowHost Windows
+
+@if (_data is null)
+{
+    <p class="empty">Загрузка…</p>
+}
+else
+{
+    <div class="dash">
+        @* ---------- BD2. Привычки ---------- *@
+        <section class="block heat-block" aria-label="Привычки по дням">
+            <div class="block-h">
+                <h3>Привычки по дням</h3>
+                @if (VisibleHabits.Count > 1)
+                {
+                    <ChoiceField TValue="int" Items="HabitChoices" Value="_habitId" ValueChanged="id => _habitId = id" Label="Привычка" />
+                }
+            </div>
+            @if (VisibleHabits.Count == 0)
+            {
+                <p class="empty">Привычек пока нет — цель «каждую неделю» с «🫙 копить».</p>
+            }
+            else
+            {
+                var days = ClipsByDay();
+                <div class="heat-row">
+                    <div class="heat" style="--cols: @_data.Weeks.Count" role="img" aria-label="@HeatSummary(days)">
+                        @for (var d = 0; d < 7; d++)
+                        {
+                            <span class="wd">@WeekdayNames[d]</span>
+                            @foreach (var week in _data.Weeks)
+                            {
+                                var day = week.AddDays(d);
+                                var titles = days.GetValueOrDefault(day) ?? [];
+                                <span class="cell @CellClass(day, titles.Count)" title="@CellTitle(day, titles)"></span>
+                            }
+                        }
+                    </div>
+                    <dl class="heat-totals">
+                        <div><dt>всего скрепок</dt><dd>@days.Values.Sum(v => v.Count)</dd></div>
+                        <div title="@StreakTitle(h => h.WeekStreak)"><dt>серия сейчас</dt><dd>🔥 @Streak(h => h.WeekStreak)</dd></div>
+                        <div title="@StreakTitle(h => h.BestWeekStreak)"><dt>лучшая серия</dt><dd>@Streak(h => h.BestWeekStreak)</dd></div>
+                    </dl>
+                </div>
+                <div class="legend" aria-hidden="true">
+                    <span class="cell l0"></span> 0 <span class="cell l1"></span> 1 <span class="cell l2"></span> 2
+                    <span class="cell l3"></span> 3+ <span class="cell vac"></span> каникулы
+                </div>
+                <table class="sr-only">
+                    <caption>Скрепки по неделям</caption>
+                    @foreach (var week in _data.Weeks)
+                    {
+                        <tr><th>@RuDates.WeekRange(week)</th><td>@Enumerable.Range(0, 7).Sum(d => days.GetValueOrDefault(week.AddDays(d))?.Count ?? 0)</td></tr>
+                    }
+                </table>
+            }
+        </section>
+
+        @* ---------- BD3. Колесо пилы ---------- *@
+        <section class="block wheel-block" aria-label="Затачивание пилы">
+            <h3>Затачивание пилы <span class="sub">выполненных занятий</span></h3>
+            @if (_data.Saw.Count == 0)
+            {
+                <p class="empty">Измерений пилы нет.</p>
+            }
+            else
+            {
+                <svg class="wheel" viewBox="0 0 340 230" role="img" aria-label="@string.Join(", ", _data.Saw.Select(s => $"{s.Name}: {s.Count}"))">
+                    @for (var i = 0; i < _data.Saw.Count && i < 4; i++)
+                    {
+                        var saw = _data.Saw[i];
+                        var length = PetalLength(saw.Count);
+                        <path d="@Petal(length)" transform="translate(170 115) rotate(@(90 * i))"
+                              class="petal @(saw.Count == 0 ? "zero" : "")" style="@(saw.Count == 0 ? "" : $"fill: {saw.Color}")">
+                            <title>@saw.Name: @saw.Count</title>
+                        </path>
+                        var (x, y, anchor) = LabelSpot(i);
+                        @Svg.Text(x, y, "petal-t", $"{saw.Name} · {saw.Count}", anchor)
+                    }
+                    <circle cx="170" cy="115" r="4" class="hub" />
+                </svg>
+            }
+        </section>
+
+        @* ---------- BD4. Баланс ролей ---------- *@
+        <section class="block roles-block" aria-label="Баланс ролей">
+            <h3>Баланс ролей <span class="sub">выполненных дел</span></h3>
+            @if (_data.Roles.Count == 0)
+            {
+                <p class="empty">За период ничего не выполнено.</p>
+            }
+            else
+            {
+                var max = _data.Roles.Max(r => r.Count);
+                @foreach (var group in _data.Roles.GroupBy(r => r.IsSaw).OrderByDescending(g => g.Key))
+                {
+                    <p class="group-h">@(group.Key ? "Пила" : "Роли")</p>
+                    @foreach (var role in group)
+                    {
+                        <div class="bar-row" title="@role.Name: @role.Count">
+                            <span class="bar-name">@role.Name</span>
+                            <span class="bar-track"><span class="bar" style="width: @Pct(role.Count, max)%; background: @role.Color"></span></span>
+                            <span class="bar-n">@role.Count</span>
+                        </div>
+                    }
+                }
+            }
+        </section>
+
+        @* ---------- BD5. II квадрант ---------- *@
+        <section class="block q2-block" aria-label="Важно, не срочно">
+            <h3>Важно, не срочно (II) <span class="sub">доля среди дел с квадрантом</span></h3>
+            @if (_data.Quadrants.All(q => q.Marked == 0))
+            {
+                <p class="empty">Квадрант не отмечен ни у одного выполненного дела.</p>
+            }
+            else
+            {
+                var dense = _data.Quadrants.Count > 14; // подписи под каждым столбиком не помещаются — только подсказки
+                <div class="q2 @(dense ? "dense" : "")" role="img" aria-label="@Q2Summary">
+                    @foreach (var q in _data.Quadrants)
+                    {
+                        <div class="q2-col" title="@Q2Title(q)">
+                            @if (!dense)
+                            {
+                                <span class="q2-pct">@(q.Marked == 0 ? "—" : $"{Pct(q.Second, q.Marked)}%")</span>
+                            }
+                            <span class="q2-track"><span class="q2-bar" style="height: @Pct(q.Second, q.Marked)%"></span></span>
+                            @if (!dense)
+                            {
+                                <span class="q2-of">из @q.Marked</span>
+                                <span class="q2-week">@RuDates.DayMonthShort(q.WeekStart)</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        @* ---------- BD6. Давно лежат ---------- *@
+        <section class="block stale-block" aria-label="Давно лежат">
+            <h3>Давно лежат <span class="sub">мысли старше @_data.Stale.Months мес</span></h3>
+            @if (_data.Stale.Count == 0)
+            {
+                <p class="empty">Нет мыслей старше @_data.Stale.Months мес.</p>
+            }
+            else
+            {
+                <p class="stale-n">@_data.Stale.Count @Plural(_data.Stale.Count, "мысль", "мысли", "мыслей")</p>
+                <ul class="stale">
+                    @foreach (var t in _data.Stale.Oldest)
+                    {
+                        <li>
+                            <button type="button" class="stale-t" title="записано @CreatedLabel(t)" @onclick="() => Windows.OpenSomedayTask(t.Id)">
+                                <span class="stale-title">@t.Title</span> · @AgeLabel(t.CreatedAt)
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    private static readonly string[] WeekdayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+    /// <summary>Длина лепестка «колеса»: от 16 (ноль — серый) до 82.</summary>
+    private const double MinPetal = 16;
+    private const double MaxPetal = 82;
+
+    [Parameter, EditorRequired] public DateOnly From { get; set; }
+
+    [Parameter, EditorRequired] public DateOnly To { get; set; }
+
+    private DashboardDto? _data;
+    private (DateOnly, DateOnly) _loaded;
+    private int _version;
+
+    /// <summary>Выбранная привычка; 0 — все.</summary>
+    private int _habitId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loaded == (From, To))
+        {
+            return;
+        }
+
+        _loaded = (From, To);
+        var version = ++_version;
+        _data = null;
+        try
+        {
+            var data = await Api.GetDashboardAsync(From, To);
+            if (version == _version)
+            {
+                _data = data; // пока ждали, могли перелистнуть — старый ответ не нужен
+            }
+        }
+        catch (ApiException ex)
+        {
+            Notifier.Error(ex.Message);
+        }
+    }
+
+    /// <summary>Идущие привычки и архивные со скрепками в периоде.</summary>
+    private List<DashboardHabitDto> VisibleHabits => _data!.Habits.Where(h => !h.IsArchived || h.Clips.Count > 0).ToList();
+
+    private List<DashboardHabitDto> SelectedHabits =>
+        VisibleHabits.Where(h => _habitId == 0 || h.Id == _habitId).ToList() is { Count: > 0 } list ? list : VisibleHabits;
+
+    private IReadOnlyList<Choice<int>> HabitChoices =>
+        [new(0, "все привычки"), .. VisibleHabits.Select(h => new Choice<int>(h.Id, h.Title, h.Color))];
+
+    /// <summary>День → названия привычек по скрепкам (привычка повторяется, сколько скрепок).</summary>
+    private Dictionary<DateOnly, List<string>> ClipsByDay() =>
+        SelectedHabits
+            .SelectMany(h => h.Clips.Select(day => (day, h.Title)))
+            .GroupBy(x => x.day)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Title).ToList());
+
+    /// <summary>Каникулы дня: у всех выбранных привычек (каникулы «все» или перечисляющие каждую).</summary>
+    private bool IsVacation(DateOnly day) =>
+        SelectedHabits.All(h => _data!.Vacations.Any(v => v.From <= day && v.To >= day && (v.HabitIds.Count == 0 || v.HabitIds.Contains(h.Id))));
+
+    private string CellClass(DateOnly day, int clips)
+    {
+        var level = clips switch { 0 => "l0", 1 => "l1", 2 => "l2", _ => "l3" };
+        var vacation = IsVacation(day) ? " vac" : "";
+        var future = day > RuDates.Today ? " future" : "";
+        return level + vacation + future;
+    }
+
+    /// <summary>«Чт 22 окт · Бег, 10к шагов»; повтор привычки — «Бег ×2».</summary>
+    private string CellTitle(DateOnly day, List<string> titles)
+    {
+        var what = titles.Count == 0
+            ? "нет скрепок"
+            : string.Join(", ", titles.GroupBy(t => t).Select(g => g.Count() > 1 ? $"{g.Key} ×{g.Count()}" : g.Key));
+        return $"{RuDates.ShortDate(day)} · {what}{(IsVacation(day) ? " · каникулы" : "")}";
+    }
+
+    private string HeatSummary(Dictionary<DateOnly, List<string>> days) =>
+        $"Скрепок за период: {days.Values.Sum(v => v.Count)}, дней со скрепками: {days.Count}";
+
+    /// <summary>Серия выбранной привычки; у «всех» — самая длинная из привычек (её название — в подсказке).</summary>
+    private int Streak(Func<DashboardHabitDto, int> pick) => SelectedHabits.Max(pick);
+
+    private string StreakTitle(Func<DashboardHabitDto, int> pick)
+    {
+        var best = SelectedHabits.MaxBy(pick)!;
+        var weeks = pick(best);
+        return $"{weeks} {Plural(weeks, "неделя", "недели", "недель")} подряд — «{best.Title}»";
+    }
+
+    private double PetalLength(int count)
+    {
+        var max = _data!.Saw.Max(s => s.Count);
+        return count == 0 || max == 0 ? MinPetal : MinPetal + (MaxPetal - MinPetal) * count / max;
+    }
+
+    /// <summary>Лепесток вверх от центра длиной <paramref name="length"/>; поворот — у элемента.</summary>
+    private static string Petal(double length)
+    {
+        var w = Math.Min(20, length * 0.45);
+        return $"M0,0 C{Svg.Num(-w)},{Svg.Num(-length * 0.35)} {Svg.Num(-w)},{Svg.Num(-length * 0.8)} 0,{Svg.Num(-length)} " +
+               $"C{Svg.Num(w)},{Svg.Num(-length * 0.8)} {Svg.Num(w)},{Svg.Num(-length * 0.35)} 0,0 Z";
+    }
+
+    /// <summary>Подписи лепестков: сверху, справа, снизу, слева; боковые — над лепестком, длинное название не наезжает на рисунок.</summary>
+    private static (double X, double Y, string Anchor) LabelSpot(int i) => i switch
+    {
+        0 => (170, 14, "middle"),
+        1 => (336, 88, "end"),
+        2 => (170, 224, "middle"),
+        _ => (4, 88, "start"),
+    };
+
+    private static int Pct(int part, int whole) => whole == 0 ? 0 : part * 100 / whole;
+
+    private static string Q2Title(DashboardQuadrantDto q) =>
+        $"{RuDates.WeekRange(q.WeekStart)}: II — {q.Second} из {q.Marked}" + (q.Unmarked > 0 ? $" · без квадранта: {q.Unmarked}" : "");
+
+    private string Q2Summary => string.Join("; ", _data!.Quadrants.Select(Q2Title));
+
+    private static string CreatedLabel(DashboardThoughtDto t)
+    {
+        var day = DateOnly.FromDateTime(t.CreatedAt.ToLocalTime());
+        return $"{RuDates.DayMonth(day)} {day.Year}";
+    }
+
+    /// <summary>«8 мес», больше года — «1 г 3 мес».</summary>
+    private static string AgeLabel(DateTime createdUtc)
+    {
+        var created = DateOnly.FromDateTime(createdUtc.ToLocalTime());
+        var today = RuDates.Today;
+        var months = (today.Year - created.Year) * 12 + today.Month - created.Month - (today.Day < created.Day ? 1 : 0);
+        return months < 12 ? $"{months} мес" : months % 12 == 0 ? $"{months / 12} г" : $"{months / 12} г {months % 12} мес";
+    }
+
+    private static string Plural(int n, string one, string few, string many) =>
+        (n % 100 is >= 11 and <= 14) ? many
+        : (n % 10) switch { 1 => one, >= 2 and <= 4 => few, _ => many };
+}

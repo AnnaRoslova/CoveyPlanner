@@ -1,0 +1,21 @@
+.settings-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 19px;
+    font-weight: 600;
+}
+
+.close {
+    color: var(--soft);
+}
+
+.settings-links {
+    display: flex;
+    gap: 8px;
+}

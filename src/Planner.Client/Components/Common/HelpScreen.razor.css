@@ -1,0 +1,133 @@
+/* «Как это устроено» — поверх недели, как «Выполненное» */
+.help-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: var(--overlay);
+}
+
+.help-screen {
+    position: fixed;
+    inset: 16px 16px auto;
+    z-index: 36;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(760px, calc(100vw - 32px));
+    margin: 0 auto;
+    overflow-y: auto;
+    padding: 20px 22px 24px;
+    border-radius: var(--panel-radius);
+    background: var(--t-panel);
+    box-shadow: var(--shadow-window);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    outline: none;
+}
+
+.help-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+h3 {
+    margin: 8px 0 0;
+    color: var(--b-deep);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.close {
+    color: var(--soft);
+}
+
+.glossary {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 14px;
+    margin: 0;
+    font-size: 13px;
+}
+
+.glossary dt {
+    font-weight: 700;
+}
+
+.glossary dd {
+    margin: 0;
+    color: var(--text);
+}
+
+.scheme {
+    width: 100%;
+    max-width: 640px;
+    height: auto;
+}
+
+.scheme .box {
+    fill: var(--surface);
+    stroke: var(--btn-line);
+    stroke-width: 1.2;
+}
+
+/* Подписи — строкой разметки (Svg.Text), без атрибута области: ::deep */
+.scheme ::deep .box-t {
+    fill: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.scheme .arrow {
+    stroke: var(--b-deep);
+    stroke-width: 1.4;
+}
+
+.scheme .arrow-head {
+    fill: var(--b-deep);
+}
+
+.scheme ::deep .arrow-t {
+    fill: var(--soft);
+    font-size: 12px;
+}
+
+.notes {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.keys {
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.keys td {
+    padding: 3px 14px 3px 0;
+}
+
+kbd {
+    padding: 0 6px;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: 700 12px var(--font);
+}
+
+.hint {
+    margin: 0;
+    color: var(--soft);
+    font-size: 12px;
+}

@@ -40,6 +40,9 @@ public interface ITaskRepository
     /// <summary>«Выполненное»: выполненные дела из ленты без родителя, свежие сверху.</summary>
     Task<List<TaskItem>> GetDoneFromSomedayAsync(CancellationToken ct = default);
 
+    /// <summary>Выполненные дела (и шаги), отмеченные в промежутке [fromUtc, toUtc) — для дашборда (BD).</summary>
+    Task<List<TaskItem>> GetCompletedAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
+
     /// <summary>Корзина, свежие сверху.</summary>
     Task<List<TaskItem>> GetTrashedAsync(CancellationToken ct = default);
 

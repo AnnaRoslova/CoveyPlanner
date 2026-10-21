@@ -3,6 +3,7 @@
 // Лента: правка категории, новая категория, «+ добавить».
 // Неделя: «+ дело». Левая панель: «+ цель».
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -130,9 +131,9 @@ await addField('«+ цель»',
   async () => (await (await role('Дом')).$$('.item')).length);
 
 await check('окна по-прежнему закрываются по Esc (слои редакторов им не мешают)', async () => {
-  await page.click('.palette-b'); await page.waitForSelector('.themes'); await sleep(200);
+  await openThemes(page);
   await page.keyboard.press('Escape'); await settle();
-  assert(!(await has('.themes')), 'меню тем не закрылось');
+  assert(!(await has('.themes')), '«Настройки» не закрылись');
 });
 
 await check('в консоли нет ошибок', async () => {

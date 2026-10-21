@@ -254,7 +254,7 @@ public partial class PlannerState
 
     /// <summary>
     /// После отметки: родитель отметился сам (все шаги сделаны, S12) — он обновляется на экране и плашка
-    /// «Все шаги сделаны — «…» выполнено · вернуть»: «вернуть» снимает отметку с того, что отметилось само — родителя и/или занятия (R4;
+    /// «„…“ выполнен → в «Выполненном» · Показать · Вернуть» (BP5): «Вернуть» снимает отметку с того, что отметилось само — родителя и/или занятия (R4;
     /// проект мог быть выполнен раньше — тогда отмечается только занятие).
     /// </summary>
     private void AfterParentAutoDone(TaskDto? parent, TaskDto? session = null)
@@ -288,8 +288,14 @@ public partial class PlannerState
             SyncSession(parent);
         }
 
-        notifier.WithAction($"Все шаги сделаны — «{parent.Title}» выполнено", "вернуть",
-            () => UncompleteAutoDoneParentAsync(parent, session), Notifier.DefaultDuration);
+        // BP5: «„Ремонт“ выполнен → в «Выполненном» · Показать · Вернуть»
+        notifier.WithActions($"«{parent.Title}» выполнен → в «Выполненном»",
+            "Показать", () =>
+            {
+                RequestDone();
+                return Task.CompletedTask;
+            },
+            "Вернуть", () => UncompleteAutoDoneParentAsync(parent, session), Notifier.DefaultDuration);
         NotifyChanged();
     }
 
@@ -346,7 +352,7 @@ public partial class PlannerState
 
     /// <summary>«в корзину» на плашке отметки: выполненное (его уже нет в ленте) — в корзину, с обычным «Вернуть».</summary>
     private Task TrashDoneInFeedAsync(TaskDto task) =>
-        DeleteWithUndoAsync(Deleted(task.Title), () => TrashCount++, () => api.TrashTaskAsync(task.Id));
+        DeleteWithUndoAsync(Trashed(task.Title), () => TrashCount++, () => api.TrashTaskAsync(task.Id));
 
     /// <summary>Снять отметку с выполненного в ленте: обратно в ленту на своё место (решает сервер).</summary>
     public async Task UncompleteInFeedAsync(int taskId)

@@ -66,8 +66,8 @@ const dayRows = i => page.evaluate(i => [...document.querySelectorAll('.day')[i]
 })), i);
 const toast = () => page.evaluate(() => document.querySelector('.toast')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
 const toastAction = text => page.evaluate(t => [...document.querySelectorAll('.toast button.action')].find(b => b.textContent.trim() === t)?.click(), text);
-const showProjects = async () => { if (!(await page.$('.someday.projects-mode'))) { await page.click('.projects-b'); await settle(); } };
-const showFeed = async () => { if (await page.$('.someday.projects-mode')) { await page.click('.projects-b'); await settle(); } };
+const showProjects = async () => { if (!(await page.$('.someday.projects-mode'))) { await page.evaluate(() => [...document.querySelectorAll('.right-tabs .rt')].find(b => b.textContent.startsWith('Проекты')).click()); await settle(); } };
+const showFeed = async () => { if (await page.$('.someday.projects-mode')) { await page.evaluate(() => [...document.querySelectorAll('.right-tabs .rt')].find(b => b.textContent.startsWith('Мысли')).click()); await settle(); } };
 async function openFeed(cat, title) {
   const row = (await page.evaluateHandle((n, t) => [...[...document.querySelectorAll('.cat')].find(c => c.querySelector('.cat-h .name')?.textContent.trim() === n)
     .querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title').textContent.trim() === t), cat, title)).asElement();
@@ -96,7 +96,7 @@ await check('N6.2: проект с шагами в ленте не показы�
   const p = await panel();
   const g = p.find(x => x.name === 'Дом');
   assert(g?.projects[0]?.title === 'Ремонт' && g.projects[0].label === '☑ 0/2', JSON.stringify(p));
-  assert(await page.$eval('.projects-b', b => b.getAttribute('aria-pressed')) === 'true', 'кнопка не нажата');
+  assert(await page.$eval('.right-tabs .rt.on', b => b.textContent.startsWith('Проекты')), 'вкладка «Проекты» не выбрана');
   await (await page.$('.someday')).screenshot({ path: `${SHOTS}/projects.png` });
 });
 
@@ -105,7 +105,7 @@ await check('N6.3: «🛠 сделать проектом» в окне мысл
   await openFeed('Идеи', 'Сад');
   await page.click('.editor .make-project-b'); await settle();
   assert(!(await feed('Идеи')).includes('Сад'), 'осталась в ленте');
-  assert((await toast())?.includes('«Сад» теперь проект'), JSON.stringify(await toast()));
+  assert((await toast())?.includes('Теперь в «Проектах»') && (await toast()).includes('Показать'), JSON.stringify(await toast())); // BP2
   await closeEditor();
   await toastAction('Вернуть'); await settle();
   assert(JSON.stringify(await feed('Идеи')) === '["Сад","Хлеб"]', JSON.stringify(await feed('Идеи')));

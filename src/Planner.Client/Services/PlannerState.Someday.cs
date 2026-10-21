@@ -221,7 +221,7 @@ public partial class PlannerState
         // Проект — вместе со своими шагами (занятия целей среди них остаются на месте, без проекта) — S23
         var steps = task.ParentId is null ? CountedStepsOf(taskId) : [];
         var sessions = task.ParentId is null ? StepsOf(taskId).Where(s => s.GoalId is not null).ToList() : [];
-        await DeleteWithUndoAsync(Deleted(task.Title) + StepsSuffix(steps.Count), () =>
+        await DeleteWithUndoAsync(Trashed(task.Title) + StepsSuffix(steps.Count), () =>
         {
             _tasks.Remove(taskId);
             TrashCount++;

@@ -1204,3 +1204,9 @@ body.dragging .editor {
     color: var(--soft);
     font-size: 12.5px;
 }
+
+/* «◆ занятие цели «Бег» · выполнено 1 из 3» в окне дела (D2, BG2) */
+.editor .rock-note .rock-diamond {
+    color: var(--a-deep);
+    font-size: 11px;
+}

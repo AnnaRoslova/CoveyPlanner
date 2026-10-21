@@ -5,6 +5,7 @@
 // привычка; сняли «каждую неделю» — в архив с историей, включили — продолжается; удаление из архива с «Вернуть» (цель остаётся);
 // каникулы. В конце — история «задним числом» (норма по неделям) и снимки экрана «Копилки» в темах (out/habits-<тема>.png).
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 import { makeHabitHistory, HISTORY } from './lib/habits-history.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -84,7 +85,7 @@ async function openGoal(title) {
 // Сводка банки привычки в окне цели «🫙 0 скрепок · 🔥0 ▸» (ui-declutter U2.2): клик — стартовое число и размер
 const habitLine = () => page.evaluate(() => document.querySelector('.editor .sum-chip[data-summary="jar"] .sum-text')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
 async function openScreen() {
-  await page.click('.jar-b');
+  await openTotals(page, 'Привычки');
   await page.waitForSelector('.habits');
   await settle();
 }

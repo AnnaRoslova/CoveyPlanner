@@ -38,10 +38,10 @@
             var list = new List<Choice<int>> { new(0, "— нет") };
             if (Task.ParentId is { } current)
             {
-                list.Add(new(current, State.ParentTitleOf(Task) ?? "проект"));
+                list.Add(new(current, State.ParentTitleOf(Task) ?? "проект", Emoji: "🛠"));
             }
 
-            list.AddRange(State.ProjectCandidates().Where(t => t.Id != Task.Id).Select(t => new Choice<int>(t.Id, t.Title)));
+            list.AddRange(State.ProjectCandidates().Where(t => t.Id != Task.Id).Select(t => new Choice<int>(t.Id, t.Title, Emoji: "🛠"))); // BP6
             return list.DistinctBy(c => c.Value).ToList();
         }
     }

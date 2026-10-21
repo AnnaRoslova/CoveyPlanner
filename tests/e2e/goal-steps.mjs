@@ -231,7 +231,7 @@ await check('R3: 🗑 у шага в развёрнутой строке — ш�
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await sleep(300);
   await (await step.$('.trash-btn')).click(); await settle();
   assert(JSON.stringify(await stepsIn(5)) === '["Первый"]', JSON.stringify(await stepsIn(5)));
-  assert((await toastText())?.includes('Удалено «Второй»'), `плашка: ${await toastText()}`);
+  assert((await toastText())?.includes('«Второй» в корзине'), `плашка: ${await toastText()}`);
   await toastAction('Вернуть'); await settle();
   assert(JSON.stringify(await stepsIn(5)) === '["Первый","Второй"]', JSON.stringify(await stepsIn(5)));
 });
@@ -290,8 +290,8 @@ await check('R4: последний шаг отметили в строке за
   assert(!(await dayInfo(6)).find(x => x.title === R).done, 'отмечено другое занятие');
   const projectR = (await api('GET', `week/${dayIso(0)}`)).goals.find(g => g.id === rGoal.id).projectId;
   assert((await api('GET', `tasks/${projectR}`)).state === 'Done', 'проект не отмечен');
-  assert((await toastText())?.includes('Все шаги сделаны'), `плашка: ${await toastText()}`);
-  await toastAction('вернуть'); await settle();
+  assert((await toastText())?.includes('выполнен → в «Выполненном»'), `плашка: ${await toastText()}`); // BP5
+  await toastAction('Вернуть'); await settle();
   assert(!(await dayInfo(5)).find(x => x.title === R).done, 'занятие не откатилось');
   assert((await api('GET', `tasks/${projectR}`)).state !== 'Done', 'проект не откатился');
 });

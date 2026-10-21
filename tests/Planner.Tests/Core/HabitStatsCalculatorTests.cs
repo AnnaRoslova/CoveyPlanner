@@ -649,4 +649,45 @@ public class HabitStatsCalculatorTests
         Assert.Equal("DNNDC", Marks(stats, 5));
         Assert.Equal(3, stats.WeekStreak);
     }
+
+    // ---------- Лучшая серия недель (дашборд, batch-ux.md BD2) ----------
+
+    [Fact]
+    public void BestWeekStreak_KeepsLongestAfterBreak()
+    {
+        // 4 засчитанные, пауза, второй пропуск — обрыв, потом 2 засчитанные; текущая ещё не выполнена
+        var stats = Run("3333 0 0 33 0");
+
+        Assert.Equal((2, 4), (stats.WeekStreak, stats.BestWeekStreak));
+    }
+
+    [Fact]
+    public void BestWeekStreak_PauseDoesNotBreak()
+    {
+        var stats = Run("33 0 333 0");
+
+        Assert.Equal((5, 5), (stats.WeekStreak, stats.BestWeekStreak));
+    }
+
+    [Fact]
+    public void BestWeekStreak_VacationFreezes()
+    {
+        var stats = Run("33 0 3 0", vacations: [new(W(-2), W(-2).AddDays(3))]);
+
+        Assert.Equal((3, 3), (stats.WeekStreak, stats.BestWeekStreak));
+    }
+
+    [Fact]
+    public void BestWeekStreak_CurrentWeekCountsOnceNormMet()
+    {
+        var stats = Run("33 0 0 3 3");
+
+        Assert.Equal((2, 2), (stats.WeekStreak, stats.BestWeekStreak));
+    }
+
+    [Fact]
+    public void BestWeekStreak_NoClips_IsZero()
+    {
+        Assert.Equal(0, Run("0 0 0").BestWeekStreak);
+    }
 }

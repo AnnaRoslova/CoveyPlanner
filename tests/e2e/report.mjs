@@ -1,6 +1,7 @@
 // N5 (docs/specs/next-batch.md, N5.1–N5.7): «📊» в шапке недели — экран отчёта. Периоды переключаются, числа совпадают с API,
 // «Скачать CSV» — файл с BOM, «;» и целой кириллицей; пустой период — «За этот период ничего нет». Данные — через API (чистая база).
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -64,7 +65,7 @@ await api('PUT', `tasks/${dune.id}/done`, { isDone: true });
 await load();
 
 await check('N5.1, N5.2: «📊» в шапке — экран; по умолчанию текущий месяц; числа как в API', async () => {
-  await page.click('.report-b'); await page.waitForSelector('.report-screen'); await settle();
+  await openTotals(page, 'Отчёт'); await page.waitForSelector('.report-screen'); await settle();
   const s = await screen();
   assert(s.mode === 'месяц' && s.label === `${MONTHS[now.getMonth()]} ${now.getFullYear()}`, JSON.stringify(s));
   const r = await api('GET', `report?from=${monthFrom}&to=${monthTo}`);

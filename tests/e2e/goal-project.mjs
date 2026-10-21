@@ -90,13 +90,13 @@ await check('20. окно цели: «Проект: Атомные привыч�
   assert(row, 'нет занятия в среде');
   assert(!(await row.$('.parent-of')), 'у занятия своего проекта есть «↳» (G4)');
   await (await row.$('.ck-hit')).click(); await settle();
-  await page.click('.projects-b'); await settle(); // проекты — в «🛠 Проекты» (N6)
+  await page.evaluate(() => [...document.querySelectorAll('.right-tabs .rt')].find(b => b.textContent.startsWith('Проекты')).click()); await settle(); // проекты — вкладка «Проекты» (BP1)
   await (await (await page.evaluateHandle(t => [...document.querySelectorAll('.someday .pgroup > .item')].find(i => i.querySelector('.title')?.textContent.trim() === t), BOOK)).asElement().$('.title')).click();
   await settle();
   const line = await page.$eval('.editor .task-steps .sessions-line', e => e.textContent.trim());
   assert(line.startsWith('1 занятие'), `строка занятий: ${line}`);
   await closeEditor();
-  await page.click('.projects-b'); await settle();
+  await page.evaluate(() => [...document.querySelectorAll('.right-tabs .rt')].find(b => b.textContent.startsWith('Мысли')).click()); await settle();
 });
 
 await check('21. постоянная цель: на следующей неделе — тот же проект; новое занятие там — шаг книги', async () => {

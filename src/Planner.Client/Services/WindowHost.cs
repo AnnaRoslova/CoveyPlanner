@@ -32,6 +32,12 @@ public sealed class WindowHost
     /// <summary>Экран «📊 Отчёт» (кнопка в шапке недели, N5).</summary>
     public bool ReportOpen { get; private set; }
 
+    /// <summary>Экран «Как это устроено» (batch-ux.md, BG3): словарь, схема, клавиши.</summary>
+    public bool HelpOpen { get; private set; }
+
+    /// <summary>Окно «⚙ Настройки» (batch-ux.md, BI5).</summary>
+    public bool SettingsOpen { get; private set; }
+
     /// <summary>Копилка, к которой экран «Копилки» прокручивается и которую подсвечивает (клик по пилюле у цели).</summary>
     public int? FocusHabitId { get; private set; }
 
@@ -55,6 +61,21 @@ public sealed class WindowHost
 
     public void OpenReport() => Open(report: true);
 
+    public void OpenHelp() => Open(help: true);
+
+    public void OpenSettings() => Open(settings: true);
+
+    /// <summary>«📈 Итоги» (BI2) на вкладке: «Привычки» — экран привычек, «Выполненное», «Отчёт».</summary>
+    public void OpenTotals(TotalsTab tab)
+    {
+        switch (tab)
+        {
+            case TotalsTab.Done: OpenDone(); break;
+            case TotalsTab.Report: OpenReport(); break;
+            default: OpenHabits(); break;
+        }
+    }
+
     /// <summary>Удалить цель: постоянную — сначала спросить (только эта неделя или с этой недели и дальше), разовую — сразу.</summary>
     public Task DeleteGoalAsync(PlannerState state, int goalId)
     {
@@ -70,11 +91,13 @@ public sealed class WindowHost
     public void Close() => Open();
 
     private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
-        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false)
+        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false)
     {
         HabitsOpen = habits;
         DoneOpen = done;
         ReportOpen = report;
+        HelpOpen = help;
+        SettingsOpen = settings;
         FocusHabitId = focusHabitId;
         GoalId = goalId;
         RoleId = roleId;

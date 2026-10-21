@@ -5,11 +5,6 @@
 @inherits StateComponent
 @inject RightPanelState RightPanel
 
-<div class="projects-h">
-    <span class="ph-title">🛠 Проекты</span>
-    <button type="button" class="btn to-feed" title="Показать ленту «Когда-нибудь»" @onclick="RightPanel.ShowFeedAsync">← лента</button>
-</div>
-
 <div class="projects-tools">
     <ChoiceField TValue="string" Items="FilterChoices" Value="@(RightPanel.CategoryFilter ?? AllKey)" ValueChanged="SetFilter" Label="Категория" />
 </div>
@@ -63,7 +58,8 @@
             }
             else
             {
-                <text>Проектов пока нет. «+ проект» здесь или «🛠 сделать проектом» в окне мысли.</text>
+                @* BP4: пустая вкладка объясняет, что такое проект *@
+                <span><b>Проект</b> — дело из нескольких шагов, например «Ремонт» или книга. Шаги можно раскладывать по дням.</span>
             }
         </div>
     }

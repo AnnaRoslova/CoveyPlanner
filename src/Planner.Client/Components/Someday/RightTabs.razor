@@ -1,0 +1,15 @@
+@* Вкладки правой колонки «Мысли · 46 | Проекты · 3» (docs/specs/batch-ux.md, BP1) — вместо 🛠 в шапке недели и «← лента».
+   Число — открытые мысли ленты и открытые проекты. Выбор запоминается в браузере (RightPanelState). *@
+@inherits StateComponent
+@inject RightPanelState RightPanel
+
+<div class="right-tabs" role="tablist" aria-label="Правая колонка">
+    <button type="button" role="tab" class="rt @(RightPanel.IsProjects ? "" : "on")" aria-selected="@(RightPanel.IsProjects ? "false" : "true")"
+            @onclick="RightPanel.ShowFeedAsync">Мысли <span class="n">· @Thoughts</span></button>
+    <button type="button" role="tab" class="rt @(RightPanel.IsProjects ? "on" : "")" aria-selected="@(RightPanel.IsProjects ? "true" : "false")"
+            @onclick="() => RightPanel.ShowProjectsAsync()">Проекты <span class="n">· @State.OpenProjects().Count(t => t.Id > 0)</span></button>
+</div>
+
+@code {
+    private int Thoughts => State.SomedayCount(null) + State.Categories.Sum(c => State.SomedayCount(c.Id));
+}

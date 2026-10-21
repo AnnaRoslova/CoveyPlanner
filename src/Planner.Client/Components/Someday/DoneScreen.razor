@@ -7,9 +7,9 @@
 
 <div class="done-backdrop" @onclick="Windows.Close"></div>
 
-<section @ref="_root" class="done-screen" role="dialog" aria-label="Выполненное" tabindex="-1" @onkeydown="OnKeyDown">
+<section @ref="_root" class="done-screen" role="dialog" aria-label="Итоги: выполненное" tabindex="-1" @onkeydown="OnKeyDown">
     <header class="done-h">
-        <h2>✓ Выполненное</h2>
+        <TotalsTabs Current="TotalsTab.Done" />
         <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
     </header>
 

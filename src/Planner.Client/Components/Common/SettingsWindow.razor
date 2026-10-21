@@ -1,0 +1,47 @@
+@* «⚙ Настройки» (docs/specs/batch-ux.md, BI5) — небольшое окно поверх недели: тема оформления (список с превью, сразу применяется),
+   ссылка «Как это устроено». Срок «старых мыслей» (BS2) и миссия (BM) — тоже здесь. Esc или клик мимо — закрыть. *@
+@inject WindowHost Windows
+
+<div class="editor-backdrop" @onclick="Windows.Close"></div>
+
+<div @ref="_root" class="editor settings" role="dialog" aria-label="Настройки" tabindex="-1" @onkeydown="OnKeyDown">
+    <div class="settings-h">
+        <h2>⚙ Настройки</h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </div>
+
+    <div class="field">
+        <div class="label">Тема оформления</div>
+        <ThemePicker Inline="true" />
+    </div>
+
+    @ChildContent
+
+    <div class="settings-links">
+        <button type="button" class="btn small help-link" @onclick="Windows.OpenHelp"><Icon Name="help" Size="14" /> Как это устроено</button>
+    </div>
+</div>
+
+@code {
+    private ElementReference _root;
+
+    /// <summary>Остальные настройки (срок старых мыслей, миссия) — их рисует страница.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync(); // Esc закрывает окно сразу
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

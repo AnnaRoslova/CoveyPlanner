@@ -7,9 +7,9 @@
 
 <div class="habits-backdrop" @onclick="Windows.Close"></div>
 
-<section @ref="_root" class="habits" role="dialog" aria-label="Копилки" tabindex="-1" @onkeydown="OnKeyDown">
+<section @ref="_root" class="habits" role="dialog" aria-label="Итоги: привычки" tabindex="-1" @onkeydown="OnKeyDown">
     <header class="habits-h">
-        <h2>🫙 Копилки</h2>
+        <TotalsTabs Current="TotalsTab.Habits" />
         <div class="tools">
             <button type="button" class="btn vac-b" @onclick="() => _vacations = true">🏖 Каникулы</button>
             <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>

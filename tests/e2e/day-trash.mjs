@@ -79,7 +79,7 @@ await check('клик по 🗑 — дело в корзину сразу: пл�
   const b = await trashBtn('Созвон с заказчиком');
   await page.mouse.click(b.x, b.y); await settle();
   assert(!(await allDayTitles()).includes('Созвон с заказчиком'), 'дело осталось в дне');
-  assert(await toast() === 'Удалено «Созвон с заказчиком» · Вернуть', `плашка: ${await toast()}`);
+  assert(await toast() === '«Созвон с заказчиком» в корзине · Вернуть', `плашка: ${await toast()}`);
   assert(!(await page.$('.editor')), 'открылось окно дела');
   assert(!pulse && await page.$eval('.someday .trash .trash-ico', e => e.classList.contains('shake')), 'корзина не вздрогнула');
   assert(await trashCount() === trash, 'на сервер ушло сразу, без 6 секунд');
@@ -97,7 +97,7 @@ await check('без «Вернуть» — через 6 секунд дело н
   await hover('Демо для команды');
   const b = await trashBtn('Демо для команды');
   await page.mouse.click(b.x, b.y); await settle();
-  assert(await toast() === 'Удалено «Демо для команды» · Вернуть', `плашка: ${await toast()}`);
+  assert(await toast() === '«Демо для команды» в корзине · Вернуть', `плашка: ${await toast()}`);
   await sleep(6500);
   assert(await trashCount() === trash + 1, `в корзине ${await trashCount()}, было ${trash}`);
   await load();
@@ -169,7 +169,7 @@ await check('палец: свайп и касание 🗑 — в корзину
   const b = await trashBtn('Ужин с семьёй');
   await page.touchscreen.tap(b.x, b.y); await settle();
   assert(!(await allDayTitles()).includes('Ужин с семьёй'), 'дело осталось');
-  assert(await toast() === 'Удалено «Ужин с семьёй» · Вернуть', `плашка: ${await toast()}`);
+  assert(await toast() === '«Ужин с семьёй» в корзине · Вернуть', `плашка: ${await toast()}`);
   await page.click('.toast .action'); await settle();
   assert((await allDayTitles()).includes('Ужин с семьёй'), '«Вернуть» не вернуло');
 });

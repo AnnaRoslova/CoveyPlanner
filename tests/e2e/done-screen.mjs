@@ -3,6 +3,7 @@
 // дело, созданное в неделе, не попадает, мысль, отмеченная в дне, — попадает; удалили категорию — дела в «без категории».
 // Данные — через API (чистая база).
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -49,7 +50,7 @@ const screen = () => page.evaluate(() => {
     })),
   }));
 });
-const openScreen = async () => { await page.click('.week-h .done-b'); await page.waitForSelector('.done-screen'); await settle(); };
+const openScreen = async () => { await openTotals(page, 'Выполненное'); await page.waitForSelector('.done-screen'); await settle(); };
 const doneRow = title => page.evaluateHandle(t => [...document.querySelectorAll('.done-screen .done-row')].find(r => r.querySelector('.title').textContent.trim() === t), title);
 
 await load();
@@ -70,13 +71,11 @@ for (const t of ['Стены', 'Полы']) {
 await load();
 const lolita = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Лолита');
 
-await check('V9 (fixes-2026-10 D3): вход — значок «✓» в шапке недели рядом с 🛠 и 🫙; внизу ленты строки нет', async () => {
-  const r = await page.evaluate(() => {
-    const b = document.querySelector('.week-h .done-b');
-    return b && { text: b.textContent.trim(), title: b.title, prev: b.previousElementSibling?.textContent.trim(), next: b.nextElementSibling?.textContent.trim(),
-      inFeed: !!document.querySelector('.someday .done-link') };
-  });
-  assert(r && r.text === '✓' && r.title === 'Выполненное' && r.prev === '🛠' && r.next === '🫙' && !r.inFeed, JSON.stringify(r));
+await check('V9 (batch-ux BI2): вход — «📈 Итоги → Выполненное»; внизу ленты строки нет', async () => {
+  await openScreen();
+  assert(await page.$eval('.totals-tabs .tt.on', b => b.textContent.trim()) === 'Выполненное', 'не та вкладка');
+  assert(!(await page.$('.someday .done-link')), 'строка внизу ленты');
+  await page.keyboard.press('Escape'); await settle();
 });
 
 await check('п. 14: отметили «Лолиту» в ленте — в группе «📚 Книги», счёт по годам, дата — сегодня', async () => {

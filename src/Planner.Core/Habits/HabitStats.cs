@@ -75,6 +75,7 @@ public sealed record HabitMonth(DateOnly Month, PeriodResult Result);
 /// <param name="InJar">Скрепок в текущей банке.</param>
 /// <param name="ThisWeek">Скрепок на текущей неделе.</param>
 /// <param name="WeekStreak">🔥 Серия недель: засчитанных недель с начала серии; текущая входит, как только норма в ней выполнена.</param>
+/// <param name="BestWeekStreak">Лучшая серия недель за всю историю (дашборд, batch-ux.md BD2).</param>
 /// <param name="WeekPaused">⚠ Пауза: последняя завершённая неделя (не считая каникул) — первый пропуск, а норма текущей ещё не выполнена.</param>
 /// <param name="MonthStreak">🌙 Серия месяцев.</param>
 /// <param name="MonthPaused">⚠ Пауза серии месяцев: последний завершённый месяц не засчитан (первый раз).</param>
@@ -90,6 +91,7 @@ public sealed record HabitStats(
     int InJar,
     int ThisWeek,
     int WeekStreak,
+    int BestWeekStreak,
     bool WeekPaused,
     int MonthStreak,
     bool MonthPaused,

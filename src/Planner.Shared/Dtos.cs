@@ -252,3 +252,31 @@ public sealed record ReportDoneGroupDto(int? CategoryId, string Name, string? Em
 
 /// <summary>Выполненное дело: день отметки и сколько шагов сделано.</summary>
 public sealed record ReportDoneTaskDto(int Id, string Title, DateOnly Date, int StepsDone);
+
+/// <summary>
+/// Дашборд за период (batch-ux.md, BD8): недели периода (понедельники), привычки со скрепками по дням и сериями, каникулы,
+/// занятия по измерениям пилы, выполненное по ролям, II квадрант по неделям, давно лежащие мысли.
+/// </summary>
+public sealed record DashboardDto(
+    DateOnly From, DateOnly To, IReadOnlyList<DateOnly> Weeks, IReadOnlyList<DashboardHabitDto> Habits,
+    IReadOnlyList<DashboardVacationDto> Vacations, IReadOnlyList<DashboardRoleDto> Saw, IReadOnlyList<DashboardRoleDto> Roles,
+    IReadOnlyList<DashboardQuadrantDto> Quadrants, DashboardStaleDto Stale);
+
+/// <summary>Привычка на тепловой карте: скрепки периода (день повторяется по числу скрепок), 🔥 сейчас и лучшая серия недель.</summary>
+public sealed record DashboardHabitDto(
+    int Id, string Title, string Color, bool IsArchived, int WeekStreak, int BestWeekStreak, IReadOnlyList<DateOnly> Clips);
+
+/// <summary>Каникулы, задевающие период; HabitIds пусто — у всех привычек.</summary>
+public sealed record DashboardVacationDto(DateOnly From, DateOnly To, IReadOnlyList<int> HabitIds);
+
+/// <summary>Число у роли; RoleId = null — «без роли».</summary>
+public sealed record DashboardRoleDto(int? RoleId, string Name, string Color, bool IsSaw, int Count);
+
+/// <summary>Неделя: выполненных с квадрантом II, с отмеченным квадрантом, без квадранта.</summary>
+public sealed record DashboardQuadrantDto(DateOnly WeekStart, int Second, int Marked, int Unmarked);
+
+/// <summary>«Давно лежат»: срок в месяцах, сколько мыслей старше, самые старые.</summary>
+public sealed record DashboardStaleDto(int Months, int Count, IReadOnlyList<DashboardThoughtDto> Oldest);
+
+/// <summary>Давняя мысль: когда записана.</summary>
+public sealed record DashboardThoughtDto(int Id, string Title, DateTime CreatedAt);

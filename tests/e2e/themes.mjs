@@ -3,6 +3,7 @@
 // у выбранной — галочка и обводка; закрывается выбором, кликом мимо и Esc. Выбор запоминается;
 // шрифты тем скачиваются только для выбранной темы.
 import puppeteer from 'puppeteer-core';
+import { openTotals, openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
@@ -29,20 +30,20 @@ const fontFiles = () => page.evaluate(() => performance.getEntriesByType('resour
   .map(e => e.name.split('/').pop()).filter(n => n.endsWith('.woff2')));
 const themeFonts = /^(cormorant|manrope|chakra|exo)/;
 async function openMenu() {
-  if (!(await isOpen())) await page.click('.palette-b');
-  await page.waitForSelector('.themes');
-  await sleep(200);
+  await openThemes(page); // BI5: темы — в «⚙ Настройках»
 }
 async function choose(key) {
   await openMenu();
   await page.click(`.themes .theme[data-key="${key}"]`);
   await sleep(500);
+  // В «Настройках» выбор не закрывает окно (можно перебрать темы) — закрываем сами
+  await page.keyboard.press('Escape'); await sleep(300);
 }
 
 await load();
 
-await check('палитра — в правом верхнем углу шапки, правее «камней»', async () => {
-  const [palette, rocks, header] = await page.evaluate(() => ['.palette-b', '.rocks', '.week-h']
+await check('«⚙ Настройки» — в правом верхнем углу шапки, правее «камней»', async () => {
+  const [palette, rocks, header] = await page.evaluate(() => ['.settings-b', '.rocks', '.week-h']
     .map(s => document.querySelector(s).getBoundingClientRect().toJSON()));
   assert(palette.left > rocks.right + 8, 'палитра не отделена от «камней»');
   assert(header.right - palette.right < 30, 'палитра не в правом углу');

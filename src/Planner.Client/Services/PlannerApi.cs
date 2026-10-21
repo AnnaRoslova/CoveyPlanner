@@ -135,6 +135,9 @@ public class PlannerApi(HttpClient http)
     /// <summary>Выполненные дела из ленты по категориям, свежие сверху (только чтение).</summary>
     public Task<List<DoneGroupDto>> GetDoneAsync() => GetAsync<List<DoneGroupDto>>("api/done");
 
+    public Task<DashboardDto> GetDashboardAsync(DateOnly from, DateOnly to) =>
+        GetAsync<DashboardDto>($"api/dashboard?from={Format(from)}&to={Format(to)}");
+
     public Task<ReportDto> GetReportAsync(DateOnly from, DateOnly to) =>
         GetAsync<ReportDto>($"api/report?from={Format(from)}&to={Format(to)}");
 

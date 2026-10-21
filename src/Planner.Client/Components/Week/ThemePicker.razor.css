@@ -102,3 +102,11 @@
     background: var(--b-deep);
     color: var(--on-accent);
 }
+
+/* В окне «⚙ Настройки» (BI5) — список тем на месте, без всплывающего окошка */
+.themes.inline {
+    position: static;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+}

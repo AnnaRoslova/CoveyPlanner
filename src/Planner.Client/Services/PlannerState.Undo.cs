@@ -141,9 +141,13 @@ public partial class PlannerState
         }
     }
 
-    /// <summary>Для плашки: длинное название сокращаем.</summary>
-    private static string Deleted(string title) =>
-        $"Удалено «{(title.Length > 40 ? title[..40].TrimEnd() + "…" : title)}»";
+    /// <summary>Для плашки: длинное название сокращаем. Цель, роль, категория, привычка — в корзину не попадают: «Удалено «…»».</summary>
+    private static string Deleted(string title) => $"Удалено «{Short(title)}»";
+
+    /// <summary>Дело — в корзине, а не удалено (batch-ux.md, BG-b): «„Купить хлеб“ в корзине».</summary>
+    private static string Trashed(string title) => $"«{Short(title)}» в корзине";
+
+    private static string Short(string title) => title.Length > 40 ? title[..40].TrimEnd() + "…" : title;
 
     private sealed record Snapshot(
         Dictionary<int, TaskDto> Tasks, List<RoleDto> Roles, List<CategoryDto> Categories, List<WeeklyGoalDto> Goals, int TrashCount,
