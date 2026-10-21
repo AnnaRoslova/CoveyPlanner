@@ -28,7 +28,7 @@ const T = `const titleOf = ${titleOf};`;
 const roleSel = name => `[...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === ${JSON.stringify(name)})`;
 const goalsOf = name => page.evaluate(`(() => { ${T} const r = ${roleSel(name)}; return r ? [...r.querySelectorAll('.item')].map(i => ({ title: titleOf(i), when: ([...i.querySelectorAll('.goal-days .d')].map(d => d.textContent).join(' · ') || null), done: i.classList.contains('done') })) : null; })()`);
 const goalTitles = async name => (await goalsOf(name)).map(g => g.title);
-const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), time: it.querySelector('.pill.time')?.textContent ?? null, rock: !!it.querySelector('.pill.rock') })); })()`);
+const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), time: it.querySelector('.pill.time')?.textContent ?? null, rock: !!it.querySelector('.title.rock') })); })()`);
 const dayTitles = async i => (await day(i)).map(t => t.title);
 const feed = name => page.evaluate(n => {
   const cat = [...document.querySelectorAll('.cat')].find(c => c.querySelector('.cat-h .name')?.textContent.trim() === n);
@@ -151,7 +151,7 @@ await check('цель «на неделю без дня» → понедельн
   const target = await dayItemBox(0, 'Оплатить интернет');
   await mouseDrag(from, target.x + 40, target.y + 3);
   const mon = await dayTitles(0);
-  assert(JSON.stringify(mon) === '["Бег в парке","Купить подарок маме","Сделать фотокнигу за лето","Оплатить интернет"]', `Пн: ${mon}`);
+  assert(JSON.stringify(mon) === '["Сделать фотокнигу за лето","Оплатить интернет","Бег в парке","Купить подарок маме"]', `Пн: ${mon}`); // D3: выполненные — внизу дня
   assert((await goalsOf('Дух')).find(g => g.title === 'Сделать фотокнигу за лето')?.when === 'Пн', 'метка цели');
 });
 

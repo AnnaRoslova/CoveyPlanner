@@ -1,0 +1,168 @@
+@* Поле «Дата» окон дела и мысли (docs/specs/ui-declutter.md, U2.5): «Вт 20 окт · сегодня ▾». Меню: «сегодня», «завтра», «другая дата…»
+   (календарь прямо в меню), «без даты» (подсказка — куда уйдёт: в ленту, в список шагов), за чертой — «→ на след. неделю» (без дня, слева
+   под ролью; единственное место этого действия, B1). У дела без роли «→ на след. неделю» открывает в том же меню роли («в роль: ● Работа»)
+   и «в ленту» (B3). У занятия цели пункт бледный — с причиной. Значение применяется по «Сохранить» окна, «→ на след. неделю» — сразу. *@
+
+<button @ref="_field" type="button" class="select-field date-field" aria-label="Дата" aria-haspopup="menu"
+        aria-expanded="@(_open ? "true" : "false")" @onclick="Toggle">
+    <span class="select-label">@Text</span>
+    <Icon Name="chevron-down" Size="13" />
+</button>
+
+@if (_open)
+{
+    <Popover Anchor="_field" OnClose="Close" Class="options date-menu" Role="menu" Label="Дата" Arrows="true">
+        @if (_roles)
+        {
+            <button type="button" class="option menu-back" role="menuitem" @onclick="() => _roles = false">
+                <span class="option-name">‹ на след. неделю — в роль:</span>
+            </button>
+            @foreach (var role in Roles)
+            {
+                var id = role.Id;
+                <button type="button" class="option" role="menuitem" @onclick="() => NextWeekAsync(id, false)">
+                    <ChoiceMark Color="@role.Color" />
+                    <span class="option-name">в роль: @role.Name</span>
+                </button>
+            }
+            @if (ShowFeed)
+            {
+                <button type="button" class="option to-feed" role="menuitem" @onclick="() => NextWeekAsync(null, true)">
+                    <span class="option-name">в ленту</span>
+                </button>
+            }
+        }
+        else
+        {
+            <button type="button" class="option @(Value == Today ? "on" : "")" role="menuitem" @onclick="() => SetAsync(Today)">
+                <span class="option-name">сегодня</span><span class="menu-hint">@RuDates.ShortDate(Today)</span>
+            </button>
+            <button type="button" class="option @(Value == Today.AddDays(1) ? "on" : "")" role="menuitem" @onclick="() => SetAsync(Today.AddDays(1))">
+                <span class="option-name">завтра</span><span class="menu-hint">@RuDates.ShortDate(Today.AddDays(1))</span>
+            </button>
+            @if (_calendar)
+            {
+                <input class="option-date" type="date" aria-label="Другая дата" value="@Value?.ToString("yyyy-MM-dd")" @onchange="OnPickAsync" />
+            }
+            else
+            {
+                <button type="button" class="option" role="menuitem" @onclick="() => _calendar = true">
+                    <span class="option-name">другая дата…</span><span class="menu-hint">календарь</span>
+                </button>
+            }
+            <button type="button" class="option @(Value is null && !KeepWeek ? "on" : "")" role="menuitem" @onclick="() => SetAsync(null)">
+                <span class="option-name">без даты</span>
+                @if (NoDateHint is { } hint)
+                {
+                    <span class="menu-hint">@hint</span>
+                }
+            </button>
+            <div class="menu-sep" role="separator"></div>
+            <button type="button" class="option next-week" role="menuitem" disabled="@(NextWeekDisabled is not null)"
+                    title="@(NextWeekDisabled ?? "на следующей неделе слева под ролью, день — потом")" @onclick="OnNextWeekClick">
+                <span class="option-name">→ на след. неделю</span>
+                <span class="menu-hint">@(NextWeekDisabled ?? "без дня")</span>
+            </button>
+        }
+    </Popover>
+}
+
+@code {
+    private ElementReference _field;
+    private bool _open;
+    private bool _calendar;
+    private bool _roles;
+
+    [Parameter]
+    public DateOnly? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<DateOnly?> ValueChanged { get; set; }
+
+    /// <summary>Подпись поля без даты: «без даты», «в ленте», «на неделе 19 — 25 октября».</summary>
+    [Parameter]
+    public string EmptyText { get; set; } = "без даты";
+
+    /// <summary>У дела «на неделе» без дня (N4) дату не меняли — «без даты» не выбрано.</summary>
+    [Parameter]
+    public bool KeepWeek { get; set; }
+
+    /// <summary>Куда уйдёт «без даты»: «в ленту», «в «Ремонт»».</summary>
+    [Parameter]
+    public string? NoDateHint { get; set; }
+
+    /// <summary>Роли дела сейчас: нет — «→ на след. неделю» спрашивает роль.</summary>
+    [Parameter]
+    public IReadOnlyCollection<int> RoleIds { get; set; } = [];
+
+    /// <summary>Все роли по порядку — для меню «в роль: …».</summary>
+    [Parameter]
+    public IEnumerable<RoleDto> Roles { get; set; } = [];
+
+    /// <summary>Пункт «в ленту» в меню ролей (у мысли — нет).</summary>
+    [Parameter]
+    public bool ShowFeed { get; set; } = true;
+
+    /// <summary>Почему «→ на след. неделю» нельзя (у занятия цели); null — можно.</summary>
+    [Parameter]
+    public string? NextWeekDisabled { get; set; }
+
+    /// <summary>«→ на след. неделю»: роль из меню (null — свои роли дела) или «в ленту».</summary>
+    [Parameter]
+    public EventCallback<NextWeekChoice> OnNextWeek { get; set; }
+
+    private static DateOnly Today => RuDates.Today;
+
+    private string Text => Value is { } date
+        ? RuDates.ShortDate(date) + (date == Today ? " · сегодня" : date == Today.AddDays(1) ? " · завтра" : "")
+        : EmptyText;
+
+    private void Toggle()
+    {
+        _open = !_open;
+        _calendar = false;
+        _roles = false;
+    }
+
+    private void Close()
+    {
+        _open = false;
+        StateHasChanged();
+    }
+
+    private async Task SetAsync(DateOnly? date)
+    {
+        _open = false;
+        Value = date;
+        KeepWeek = false;
+        await ValueChanged.InvokeAsync(date);
+    }
+
+    private async Task OnPickAsync(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var date))
+        {
+            await SetAsync(date);
+        }
+    }
+
+    private async Task OnNextWeekClick()
+    {
+        if (RoleIds.Count == 0)
+        {
+            _roles = true; // B3: у дела без роли — сначала роль
+            return;
+        }
+
+        await NextWeekAsync(null, false);
+    }
+
+    private async Task NextWeekAsync(int? roleId, bool toFeed)
+    {
+        _open = false;
+        await OnNextWeek.InvokeAsync(new NextWeekChoice(roleId, toFeed));
+    }
+
+    /// <summary>Что выбрали в «→ на след. неделю»: роль меню (null — свои роли дела) или «в ленту».</summary>
+    public sealed record NextWeekChoice(int? RoleId, bool ToFeed);
+}

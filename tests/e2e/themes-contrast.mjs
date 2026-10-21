@@ -22,7 +22,7 @@ const LIGHT = ['lotus', 'peony', 'platinum'];
 // Кнопки системы («+ …», «свернуть всё», «ещё дела», значки — fixes-2026-10.md, D4) — как основной текст: их в этом списке нет
 const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
   '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
-  '.parent-of', '.project-label', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
+  '.parent-of', '.project-label', '.sum-chip.static', '.menu-hint', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
   '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)'].join(', ');
 const results = [];
 const consoleErrors = [];
@@ -288,6 +288,7 @@ for (const theme of THEMES) {
   await check(`${theme}: окно цели — повтор, дни, барабан времени`, async () => {
     await clickItem('.role', 'Бег');
     await page.waitForSelector('.editor[aria-label="Цель недели"]');
+    for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await sleep(300);
     await page.click('.editor .repeat-row .select-field'); await page.waitForSelector('.editor .popover');
     await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === 'будни').click());
     await sleep(300);

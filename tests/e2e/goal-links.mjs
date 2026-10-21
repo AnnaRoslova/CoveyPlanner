@@ -43,7 +43,7 @@ async function clickText(selector, text) {
 
 const dayRows = (i, title) => page.evaluate((i, t) => [...document.querySelectorAll('.day')[i].querySelectorAll('.item')]
   .filter(it => it.querySelector('.title').textContent.trim() === t)
-  .map(it => ({ rock: !!it.querySelector('.pill.rock'), dots: it.querySelectorAll('.role-dots i').length, flash: it.classList.contains('flash') })), i, title);
+  .map(it => ({ rock: !!it.querySelector('.title.rock'), dots: it.querySelectorAll('.role-dots i').length, flash: it.classList.contains('flash') })), i, title);
 const goalDays = title => page.evaluate(t => {
   const row = [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title').textContent.trim() === t);
   return row ? [...row.querySelectorAll('.goal-days .d')].map(d => d.textContent).join(' · ') : null;

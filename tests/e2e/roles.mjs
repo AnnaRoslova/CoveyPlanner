@@ -39,7 +39,8 @@ const goalsOf = name => page.evaluate(n => {
     done: i.classList.contains('done'),
   })) : null;
 }, name);
-const countOf = name => page.evaluate(n => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n)?.querySelector('.n')?.textContent ?? null, name);
+// «выполнено/всего» по строкам целей роли (счёта у роли больше нет, ui-declutter D5)
+const countOf = name => page.evaluate(n => { const r = [...document.querySelectorAll('.role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === n); return r ? (() => { const items = [...r.querySelectorAll('.role-body > .item')]; return items.length ? `${items.filter(i => i.classList.contains('done')).length}/${items.length}` : null; })() : null; }, name);
 const userRoles = () => page.$$eval('.user-roles > .role .role-h .name', ns => ns.map(n => n.textContent.trim()));
 async function goalRow(roleName, title) {
   const role = await roleHandle(roleName);
@@ -54,7 +55,7 @@ const dayTitles = i => page.evaluate(i => [...document.querySelectorAll('.day')[
   .map(tx => [...tx.childNodes].filter(c => !c.classList?.contains('pills') && !c.classList?.contains('goal-days')).map(c => c.textContent).join('').trim()), i);
 const dayItem = (i, title) => page.evaluate((i, t) => {
   const it = [...document.querySelectorAll('.day')[i].querySelectorAll('.item')].find(x => x.querySelector('.tx').textContent.includes(t));
-  return it ? { done: it.classList.contains('done'), rock: !!it.querySelector('.pill.rock') } : null;
+  return it ? { done: it.classList.contains('done'), rock: !!it.querySelector('.title.rock') } : null;
 }, i, title);
 async function openRoleMenu(name) {
   const role = await roleHandle(name);

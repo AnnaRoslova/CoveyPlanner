@@ -21,6 +21,7 @@ function assert(c, m) { if (!c) throw new Error(m); }
 async function check(name, fn) {
   try { await fn(); results.push(`OK   ${name}`); }
   catch (e) { results.push(`FAIL ${name}: ${e.message}`); await page.screenshot({ path: `${SHOTS}/fail-projects-${results.length}.png` }); }
+  for (let i = 0; i < 3 && await page.$('.editor'); i++) { await page.keyboard.press('Escape'); await new Promise(r => setTimeout(r, 400)); }
 }
 const api = (method, path, body) => page.evaluate(async (m, p, b) => {
   const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
@@ -102,7 +103,7 @@ await check('N6.2: проект с шагами в ленте не показы�
 await check('N6.3: «🛠 сделать проектом» в окне мысли — мысль ушла из ленты, плашка «теперь проект»; «Вернуть» — снова мысль', async () => {
   await showFeed();
   await openFeed('Идеи', 'Сад');
-  await page.click('.editor .project-toggle'); await settle();
+  await page.click('.editor .make-project-b'); await settle();
   assert(!(await feed('Идеи')).includes('Сад'), 'осталась в ленте');
   assert((await toast())?.includes('«Сад» теперь проект'), JSON.stringify(await toast()));
   await closeEditor();
@@ -110,17 +111,16 @@ await check('N6.3: «🛠 сделать проектом» в окне мысл
   assert(JSON.stringify(await feed('Идеи')) === '["Сад","Хлеб"]', JSON.stringify(await feed('Идеи')));
 });
 
-await check('N6.3, N6.14: первый «+ шаг» у мысли — проект; «Вернуть» убирает и проект, и этот шаг', async () => {
+await check('BP2: в окне мысли нет «+ шаг» — только «🛠 Сделать проектом»; «Вернуть» — снова мысль без флага', async () => {
   await openFeed('Идеи', 'Хлеб');
-  await page.click('.editor .task-steps .add-step'); await sleep(200);
-  await page.keyboard.type('Закваска'); await page.keyboard.press('Enter'); await settle();
+  assert(!(await page.$('.editor .add-step')), 'у мысли есть «+ шаг»');
+  await page.click('.editor .make-project-b'); await settle();
+  assert(!(await page.$('.editor')), 'окно не закрылось');
   assert(!(await feed('Идеи')).includes('Хлеб'), 'осталась в ленте');
-  assert((await toast())?.includes('«Хлеб» теперь проект'), JSON.stringify(await toast()));
-  await closeEditor();
   await toastAction('Вернуть'); await settle();
   assert((await feed('Идеи')).includes('Хлеб'), 'не вернулась');
   const bread = (await api('GET', 'board')).somedayTasks.find(t => t.title === 'Хлеб');
-  assert(!bread.isProject && (await api('GET', `tasks/${bread.id}/steps`)).length === 0, 'шаг или флаг остались');
+  assert(!bread.isProject, 'флаг остался');
 });
 
 await check('N6.11: «+ проект» с фильтром «Дом» — новый проект наверху группы «Дом»; фильтр оставляет одну группу', async () => {
@@ -186,6 +186,7 @@ await check('N6.4, N6.15: «+ шаг» в окне цели без проект�
   await load();
   const goalEl = (await page.evaluateHandle(() => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === 'Собес'))).asElement();
   await (await goalEl.$('.title')).click(); await settle();
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await settle();
   await page.focus('.editor .goal-steps .inline-input').catch(async () => { await page.click('.editor .goal-steps .add-step'); });
   await sleep(200);
   await page.keyboard.type('Резюме'); await page.keyboard.press('Enter'); await settle();
@@ -200,7 +201,8 @@ await check('N6.4, N6.15: «+ шаг» в окне цели без проект�
 await check('N6.7: у проекта без шагов в окне — «🛠 больше не проект» → снова мысль в своей категории', async () => {
   const row = (await projectRow('Переезд')).asElement();
   await (await row.$('.title')).click(); await settle();
-  await page.click('.editor .project-toggle'); await settle();
+  await page.click('.editor .more-b'); await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.includes('больше не проект')).click()); await settle();
   await closeEditor();
   await showFeed();
   assert((await feed('Дом')).includes('Переезд'), JSON.stringify(await feed('Дом')));
@@ -208,6 +210,7 @@ await check('N6.7: у проекта без шагов в окне — «🛠 б
 
 await check('N6.13: поле «Проект» в окне мысли предлагает только проекты', async () => {
   await openFeed('Идеи', 'Сад');
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await settle();
   await page.click('.editor .project-row .select-field'); await sleep(300);
   const options = await page.$$eval('.editor .popover .option .option-name', os => os.map(o => o.textContent.trim()));
   assert(options.includes('Ремонт') && options.includes('Собес') && !options.includes('Хлеб') && !options.includes('Переезд'), JSON.stringify(options));

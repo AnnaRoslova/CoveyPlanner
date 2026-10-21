@@ -19,6 +19,6 @@ builder.Services.AddScoped<ThemeState>();
 builder.Services.AddScoped<RoleTasksState>();
 builder.Services.AddScoped<ProjectFoldState>();
 builder.Services.AddScoped<RightPanelState>();
-builder.Services.AddScoped<GoalFoldState>();
+builder.Services.AddScoped<RoleFoldState>();
 
 await builder.Build().RunAsync();

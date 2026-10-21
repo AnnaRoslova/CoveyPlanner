@@ -45,6 +45,8 @@ async function openGoal(title) {
   assert(el, `нет цели ${title}`);
   await (await el.$('.title')).click(); await settle();
   await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
 }
 async function chooseProject(label, search) {
   await page.click('.editor .project-row .select-field'); await sleep(300);

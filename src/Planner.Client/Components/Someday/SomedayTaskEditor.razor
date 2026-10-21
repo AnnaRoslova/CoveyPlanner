@@ -1,38 +1,76 @@
-@* Окно дела ленты «Когда-нибудь»: название, подробное описание (заметки), категория, «Проект» (S6–S9: станет шагом — уйдёт из ленты),
-   шаги («☑ N/M», порядок, 🗑, «N занятий ▸»); «в корзину».
-   Сменили категорию — дело встаёт наверх новой. Enter в названии — сохранить, Esc или клик мимо — отмена.
-   Стили — css/editor.css (как у окна дела в дне). *@
+@* Окно мысли ленты «Когда-нибудь» (docs/specs/ui-declutter.md, U2.B; batch-ux.md, BP2): название, категория, «Дата: в ленте ▾»
+   (сегодня, завтра, другая дата… — мысль встаёт в день; за чертой — «→ на след. неделю»), «🛠 Сделать проектом» — явно, с подписью
+   (у мысли нет «+ шаг»: шаги — только у проекта); редкие поля (заметки, «Проект» — станет шагом, уйдёт из ленты, S8) — сводкой или «+ …» (U2.2).
+   У проекта — его шаги («☑ N/M», порядок, 🗑, «N занятий ▸»). Редкое — в «⋯»: «🛠 больше не проект», «в корзину».
+   Сменили категорию — мысль встаёт наверх новой. Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
 @inject PlannerState State
+@inject IJSRuntime JS
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
 <div class="editor" role="dialog" aria-label="Мысль" tabindex="-1" @onkeydown="OnKeyDown">
-    <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
+    <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Мысль"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
-    <div class="field">
-        <div class="label">Подробно</div>
-        <textarea rows="5" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
-    </div>
-
-    <div class="field">
-        <div class="label">Категория</div>
+    <div class="line">
+        <span class="label">Категория</span>
         <ChoiceField Items="CategoryChoices" @bind-Value="_categoryId" Label="Категория" />
     </div>
 
-    @* B1: на неделю после показанной, без дня; у мысли без роли — меню ролей (B3), «в ленту» не нужен — она и так в ленте *@
-    <NextWeekButton RoleIds="EditedTask.RoleIds" ShowFeed="false" OnChoose="NextWeekAsync" />
+    <div class="line">
+        <span class="label">Дата</span>
+        <DateField @bind-Value="_date" EmptyText="в ленте" NoDateHint="остаться в ленте"
+                   RoleIds="EditedTask.RoleIds" Roles="State.OrderedRoles" ShowFeed="false" OnNextWeek="NextWeekAsync" />
+    </div>
 
-    <ProjectField Task="EditedTask" @bind-Value="_projectId" />
+    @if (EditedTask.Id > 0 && !IsProject)
+    {
+        @* BP2: мысль → проект только явно *@
+        <div class="make-project">
+            <button type="button" class="btn make-project-b" @onclick="MakeProjectAsync">🛠 Сделать проектом</button>
+            <span class="hint">добавить шаги и раскладывать их по дням</span>
+        </div>
+    }
 
-    @* Шаги — меняются сразу, без «Сохранить» *@
-    @if (EditedTask.Id > 0)
+    @* Редкие поля (U2.2): заполненное — сводкой, пустое — «+ …» *@
+    <div class="rare">
+        @if (_rare.IsOpen("notes"))
+        {
+            <div class="field" data-field="notes">
+                <div class="label">Заметки</div>
+                <textarea rows="5" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_notes))
+        {
+            <SummaryChip Key="notes" Text="@($"📝 {RareFields.FirstLine(_notes)}")" Title="@_notes" OnClick="@(() => _rare.Open("notes"))" />
+        }
+        @if (_rare.IsOpen("project"))
+        {
+            <div data-field="project"><ProjectField Task="EditedTask" @bind-Value="_projectId" /></div>
+        }
+        else if (_projectId != 0)
+        {
+            <SummaryChip Key="project" Text="@($"🛠 {State.FindTask(_projectId)?.Title ?? "проект"}")" OnClick="@(() => _rare.Open("project"))" />
+        }
+    </div>
+    <AddersRow Items="Adders" OnAdd="key => _rare.Open(key)" />
+
+    @* Шаги проекта — меняются сразу, без «Сохранить» *@
+    @if (EditedTask.Id > 0 && IsProject)
     {
         <TaskStepsBlock TaskId="EditedTask.Id" />
     }
 
     <div class="buttons">
-        <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
+        <MoreMenu Class="left">
+            @if (IsProject && State.StepsOf(EditedTask.Id).Count == 0)
+            {
+                <MenuItem Label="🛠 больше не проект" OnClick="() => State.UnmakeProjectAsync(EditedTask.Id)" />
+                <div class="menu-sep" role="separator"></div>
+            }
+            <MenuItem Label="в корзину" Danger="true" Class="trash" OnClick="TrashAsync" />
+        </MoreMenu>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
         <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
@@ -44,6 +82,30 @@
     private string _title = "";
     private string? _notes;
     private int? _categoryId;
+    private DateOnly? _date; // null — остаётся в ленте; день — мысль встаёт в этот день
+    private RareFields _rare = null!; // раскрытые редкие поля (не запоминаются)
+
+    private bool IsProject => State.FindTask(EditedTask.Id)?.IsProject ?? EditedTask.IsProject;
+
+    /// <summary>«+ заметки · + проект» — пустые редкие поля (у проекта поля «Проект» нет — один уровень).</summary>
+    private IReadOnlyList<(string Key, string Label)> Adders =>
+    [
+        .. string.IsNullOrWhiteSpace(_notes) && !_rare.IsOpen("notes") ? [("notes", "заметки")] : Array.Empty<(string, string)>(),
+        .. _projectId == 0 && !IsProject && !_rare.IsOpen("project") ? [("project", "проект")] : Array.Empty<(string, string)>(),
+    ];
+
+    /// <summary>BP2: «🛠 Сделать проектом» — сохранить набранное, сделать проектом (мысль уходит во вкладку «Проекты»), закрыть окно.</summary>
+    private async Task MakeProjectAsync()
+    {
+        var task = EditedTask;
+        await OnClose.InvokeAsync();
+        if (!string.IsNullOrWhiteSpace(_title))
+        {
+            await State.UpdateTaskAsync(task.Id, _title, _notes, task.RoleIds, task.Quadrant, null, task.DurationMinutes);
+        }
+
+        await State.MakeProjectAsync(task.Id);
+    }
 
     /// <summary>«неразобранное» и категории ленты по порядку.</summary>
     private List<Choice<int?>> CategoryChoices =>
@@ -60,6 +122,7 @@
 
     protected override void OnInitialized()
     {
+        _rare = new RareFields(JS);
         _title = EditedTask.Title;
         _notes = EditedTask.Notes;
         _categoryId = EditedTask.CategoryId;
@@ -71,6 +134,8 @@
         {
             await _titleInput.FocusAsync();
         }
+
+        await _rare.AfterRenderAsync();
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -112,10 +177,15 @@
         {
             await State.SetParentAsync(task.Id, _projectId); // мысль становится шагом — уходит из ленты (S8)
         }
+
+        if (_date is { } day)
+        {
+            await State.MoveTaskToDateAsync(task.Id, day); // мысль — в день, без перетаскивания (U2.B)
+        }
     }
 
     /// <summary>«→ на следующую неделю (без дня)» (N4.1, B1–B3): сохранить набранное и отправить мысль на неделю после показанной (с ролью из меню).</summary>
-    private async Task NextWeekAsync(NextWeekButton.NextWeekChoice choice)
+    private async Task NextWeekAsync(DateField.NextWeekChoice choice)
     {
         await OnClose.InvokeAsync();
         var task = EditedTask;

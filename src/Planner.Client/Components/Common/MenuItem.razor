@@ -1,0 +1,51 @@
+@* Пункт меню «⋯» (MoreMenu) или меню поля: подпись, подсказка справа; Danger — розовый (опасное действие);
+   DisabledReason — пункт бледный, недоступный, причина — справа вместо подсказки. Выбор закрывает меню. *@
+
+<button type="button" class="option menu-item @(Danger ? "danger" : "") @Class" role="menuitem" disabled="@(DisabledReason is not null)"
+        title="@(DisabledReason ?? Title)" @onclick="ChooseAsync">
+    <span class="option-name">@Label</span>
+    @if ((DisabledReason ?? Hint) is { } side)
+    {
+        <span class="menu-hint">@side</span>
+    }
+</button>
+
+@code {
+    [CascadingParameter]
+    public MoreMenu? Menu { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public string? Hint { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public bool Danger { get; set; }
+
+    [Parameter]
+    public string? DisabledReason { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    /// <summary>Не закрывать меню после выбора (пункт открывает подменю в том же окошке).</summary>
+    [Parameter]
+    public bool KeepOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private async Task ChooseAsync()
+    {
+        if (!KeepOpen)
+        {
+            Menu?.Close();
+        }
+
+        await OnClick.InvokeAsync();
+    }
+}

@@ -40,7 +40,7 @@ const goalsOf = role => page.evaluate(n => [...[...document.querySelectorAll('.r
 const goalRow = title => page.evaluateHandle(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title').textContent.trim() === t), title);
 async function addGoal(role, title) {
   await page.evaluate(n => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n)
-    .querySelector(':scope > .add').click(), role);
+    .querySelector('.role-body > .add').click(), role);
   await settle();
   await page.keyboard.type(title); await page.keyboard.press('Enter'); await settle();
   await page.keyboard.press('Escape'); await settle();
@@ -48,6 +48,8 @@ async function addGoal(role, title) {
 async function openGoal(title) {
   await (await (await goalRow(title)).$('.title')).click(); await settle();
   assert(await page.$('.editor[aria-label="Цель недели"]'), 'окно цели не открылось');
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
 }
 const switchOn = () => page.$eval('.editor .switch-row input', i => i.checked);
 // Листать неделю и дождаться, что заголовок сменился и неделя загрузилась
@@ -82,7 +84,7 @@ await check('новая цель пилы появляется на следую
   await nextWeek();
   const body = await goalsOf('Тело');
   assert(body.includes('Бассейн') && body.includes('Бег'), `Тело на следующей неделе: ${body}`);
-  const run = await (await goalRow('Бег')).evaluate(i => ({ days: i.querySelectorAll('.goal-days .d').length, progress: i.querySelector('.progress')?.textContent }));
+  const run = await (await goalRow('Бег')).evaluate(i => ({ days: i.querySelectorAll('.goal-days .d').length, progress: (t => t ? t.replace(/.*выполнено (\d+) из (\d+).*/, '$1/$2') : null)((i.querySelector('.pct-ring, .pct')?.getAttribute('title'))) ?? i.querySelector('.progress')?.textContent }));
   assert(run.days === 0 && run.progress === '0/3', `«Бег»: ${JSON.stringify(run)}`);
   assert(!(await goalsOf('Работа')).includes('Демо для команды'), 'разовая цель тоже появилась');
 });
@@ -162,7 +164,7 @@ await check('выключить «каждую неделю» (E1.2): вопро
   await openGoal('100 страниц');
   await page.click('.editor .switch-row'); await settle();
   assert(!(await switchOn()), 'переключатель не выключился');
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.editor .buttons .btn.primary'); await settle();
   const q = await page.$eval('.series-end', e => e.textContent.replace(/\s+/g, ' ').trim()).catch(() => null);
   assert(q?.includes('Закончить «100 страниц» после этой недели?') && /Уберутся цели: \d+, занятий: \d+/.test(q)
     && q.includes('Закончить серию') && q.includes('Отмена'), JSON.stringify(q));
@@ -179,7 +181,7 @@ await check('«Закончить серию» — со следующей не�
   await goWeek(0);
   await openGoal('100 страниц');
   await page.click('.editor .switch-row'); await settle();
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.editor .buttons .btn.primary'); await settle();
   await page.click('.series-end .btn.danger'); await settle();
   assert(!(await page.$('.editor')), 'окна не закрылись');
   await openGoal('100 страниц');
@@ -194,7 +196,7 @@ await check('E1.1: снова включить «каждую неделю» —
   await openGoal('100 страниц');
   await page.click('.editor .switch-row'); await settle();
   assert(await switchOn(), 'переключатель не включился');
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.editor .buttons .btn.primary'); await settle();
   assert(!(await page.$('.series-end')), 'вопрос при включении');
   await goWeek(1);
   assert((await goalsOf('Ум')).includes('100 страниц'), 'на следующей неделе не вернулась');
@@ -204,7 +206,7 @@ await check('E1.1: снова включить «каждую неделю» —
   await goWeek(0);
   await openGoal('100 страниц');
   await page.click('.editor .switch-row'); await settle();
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.editor .buttons .btn.primary'); await settle();
   await page.click('.series-end .btn.danger'); await settle();
 });
 
@@ -248,7 +250,7 @@ await check('дни Пн, Ср, Пт: «раз в неделю» = 3 (забло
   assert(await page.$eval('.editor .times-fixed', e => e.textContent.trim()) === '3', 'не 3');
   assert(!(await page.$('.editor .times-per-week .step')), 'степпер не заблокирован');
   await page.screenshot({ path: `${SHOTS}/goal-series-days.png` });
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1200);
+  await page.click('.editor .buttons .btn.primary'); await sleep(1200);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,2,4]', `эта неделя: ${await sessionDays('Увидеться с Олей')}`);
   await goWeek(1);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[0,2,4]', `следующая: ${await sessionDays('Увидеться с Олей')}`);
@@ -260,7 +262,7 @@ await check('сменить дни на Вт, Чт: лишние — в корз
   await chooseDays('Пн', 'Ср', 'Пт', 'Вт', 'Чт'); // сняли Пн, Ср, Пт и выбрали Вт, Чт
   assert(JSON.stringify(await dayDots()) === '["Вт","Чт"]', `выбрано: ${await dayDots()}`);
   assert(await repeat() === 'свои дни', `повтор: ${await repeat()}`);
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1500);
+  await page.click('.editor .buttons .btn.primary'); await sleep(1500);
   assert(JSON.stringify(await sessionDays('Увидеться с Олей')) === '[1,3]', `после смены: ${await sessionDays('Увидеться с Олей')}`);
   const t = await toast();
   // По 3 занятия (Пн, Ср, Пт) на этой неделе и на каждой уже открытой следующей

@@ -55,14 +55,21 @@ async function openTask(dayIndex, title) {
   await settle();
   assert(await page.$('.editor[aria-label="Дело"]'), 'окно дела не открылось');
 }
+/** Поле «Дата» — меню (ui-declutter.md, U2.5): открыть и выбрать пункт по подписи. */
+async function dateMenu(label) {
+  await page.click('.editor .date-field'); await sleep(300);
+  await clickText('.date-menu .option .option-name', label);
+}
+/** «другая дата…» — календарь в меню. */
 async function setDate(d) {
-  await page.$eval('.editor input[type="date"]', (input, v) => {
+  await dateMenu('другая дата…');
+  await page.$eval('.date-menu .option-date', (input, v) => {
     input.value = v;
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, iso(d));
   await settle();
 }
-const save = async () => { await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(900); };
+const save = async () => { await page.click('.editor .buttons .btn.primary'); await sleep(900); };
 async function goToday() {
   if (await page.$('.today-b')) { await page.click('.today-b'); await sleep(900); }
 }
@@ -81,17 +88,19 @@ async function moveSmooth(from, to, steps = 14) {
 
 await load();
 
-await check('в окне дела — поле «Дата» с кнопками «сегодня», «завтра», «через неделю», «без даты» (кнопка «→ на след. неделю» — отдельно, fixes-2026-10 B1)', async () => {
+await check('в окне дела — поле «Дата» с меню «сегодня», «завтра», «другая дата…», «без даты», за чертой «→ на след. неделю» (ui-declutter U2.5)', async () => {
   await openTask(0, 'Оплатить интернет');
-  assert(await page.$eval('.editor input[type="date"]', i => i.value) === iso(day(0, 0)), 'в поле не дата дела');
-  const chips = await page.$$eval('.editor .date-row .chip', cs => cs.map(c => c.textContent.trim()));
-  assert(JSON.stringify(chips) === '["сегодня","завтра","через неделю","без даты"]', `кнопки: ${chips}`);
+  assert((await page.$eval('.editor .date-field', e => e.textContent.trim())).startsWith(shortDate(day(0, 0))), 'в поле не дата дела');
+  await page.click('.editor .date-field'); await sleep(300);
+  const items = await page.$$eval('.date-menu .option-name', cs => cs.map(c => c.textContent.trim()));
+  assert(JSON.stringify(items) === '["сегодня","завтра","другая дата…","без даты","→ на след. неделю"]', `пункты: ${items}`);
   await page.screenshot({ path: `${SHOTS}/week-move-editor.png` });
+  await page.keyboard.press('Escape'); await sleep(200);
 });
 
-await check('«через неделю» — дело уходит на следующую неделю; плашка «Перенесено на … · Показать» листает туда', async () => {
+await check('другая дата через неделю — дело уходит на следующую неделю; плашка «Перенесено на … · Показать» листает туда', async () => {
   await openTask(0, 'Оплатить интернет');
-  await clickText('.editor .date-row .chip', 'через неделю');
+  { const d = new Date(today); d.setDate(today.getDate() + 7); await setDate(d); }
   await save();
   assert(!(await dayTitles(0)).includes('Оплатить интернет'), 'осталось на этой неделе');
   const target = new Date(today); target.setDate(today.getDate() + 7);
@@ -116,7 +125,7 @@ await check('дата в календаре: дело со временем — 
 
 await check('«без даты» — дело возвращается в ленту («неразобранное»)', async () => {
   await openTask(3, 'Написать отчёт');
-  await clickText('.editor .date-row .chip', 'без даты');
+  await dateMenu('без даты');
   assert((await page.$eval('.editor .date-hint', e => e.textContent)).includes('неразобранное'), 'нет подсказки');
   await save();
   assert(!(await dayTitles(3)).includes('Написать отчёт'), 'осталось в четверге');
@@ -127,7 +136,7 @@ await check('«без даты» — дело возвращается в лен
 await check('камень через окно на другую неделю: там — занятие той же цели, здесь прогресс меньше', async () => {
   await openTask(3, 'Демо для команды');
   await setDate(day(1, 1));
-  assert((await page.$eval('.editor .date-hint', e => e.textContent)).includes('станет занятием цели «Демо для команды»'), 'нет подсказки про цель');
+  assert((await page.$eval('.editor .date-hint', e => e.textContent)).includes('станет занятием цели той недели'), 'нет подсказки про цель');
   await save();
   const here = (await serverWeek(0)).goals.find(g => g.title === 'Демо для команды');
   assert(here && here.sessions.length === 0, `цель этой недели: ${JSON.stringify(here)}`);
@@ -192,7 +201,7 @@ await check('камень перетаскиванием на следующую
   await sleep(200);
   await page.mouse.up(); await sleep(1200);
   const rock = await page.evaluate(() => !![...document.querySelectorAll('.day')[2].querySelectorAll('.item')]
-    .find(i => i.querySelector('.title').textContent.trim() === 'Записаться к стоматологу')?.querySelector('.pill.rock'));
+    .find(i => i.querySelector('.title').textContent.trim() === 'Записаться к стоматологу')?.querySelector('.title.rock'));
   assert(rock, 'на новой неделе — не камень');
   const goals = await page.$$eval('.role .item .title', ts => ts.map(t => t.textContent.trim()));
   assert(goals.includes('Записаться к стоматологу'), `целей на новой неделе: ${goals}`);

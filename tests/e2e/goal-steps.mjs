@@ -47,6 +47,8 @@ async function openGoal(title) {
   assert(el, `нет цели ${title}`);
   await (await el.$('.title')).click(); await settle();
   await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
 }
 async function addStepInEditor(title) {
   // Поле «+ шаг» после Enter остаётся открытым для следующего шага
@@ -169,7 +171,7 @@ await check('A1: постоянная цель без проекта — в ок
   await openGoal('Бег');
   assert(!(await page.$('.editor .goal-steps')), 'у постоянной цели без проекта есть блок «Шаги»');
   const hint = await page.$eval('.editor .project-row', r => r.parentElement.querySelector('.date-hint')?.textContent.trim());
-  assert(hint?.includes('у привычки проект — только выбранный'), `подсказка: ${hint}`);
+  assert(hint?.includes('только выбранный: книга, курс'), `подсказка: ${hint}`);
   await closeEditor();
   assert(!(await api('GET', 'board')).somedayTasks.some(t => t.title === 'Бег'), 'проект «Бег» создан');
 });
@@ -235,11 +237,17 @@ await check('R3: 🗑 у шага в развёрнутой строке — ш�
 });
 
 // ---------- Найдено на проверке 6в: R7, защита 🗑 у шага ----------
-const goalPct = t => page.evaluate(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === t)?.querySelector('.pct')?.textContent.trim() ?? null, t);
+// «☑ 1/2 · 50%»; занятий не выполнено — «☑ 1/2» и пустой кружок (D1) → «☑ 1/2 · ○»
+const goalPct = t => page.evaluate(t => {
+  const i = [...document.querySelectorAll('.role .item')].find(x => x.querySelector('.title')?.textContent.trim() === t);
+  if (!i) return null;
+  const p = i.querySelector('.pct')?.textContent.trim() ?? null;
+  return i.querySelector('.pct-ring') ? (p ? p + ' · ○' : '○') : p;
+}, t);
 
 await check('R7: у цели слева «☑ N/M · %» — сразу меняется при отметке, добавлении и удалении шага', async () => {
   await load();
-  assert(/^☑ 0\/2 · \d+%/.test(await goalPct(R)), `слева: ${await goalPct(R)}`);
+  assert(/^☑ 0\/2 · (\d+%|○)/.test(await goalPct(R)), `слева: ${await goalPct(R)}`);
   const step = (await page.evaluateHandle(() => [...document.querySelectorAll('.day')[5].querySelectorAll('.steps .item')].find(i => i.querySelector('.title').textContent.trim() === 'Первый'))).asElement();
   await (await step.$('.ck-hit')).click(); await settle();
   assert((await goalPct(R))?.startsWith('☑ 1/2 · '), `после отметки: ${await goalPct(R)}`);

@@ -178,7 +178,7 @@ await check('8. проект в корзину (шаг в другом дне) �
   await load();
   assert((await day(4)).rows.some(r => r.title === 'Обои'), 'шаг не в пятнице');
   await (await (await rowEl(0, 'Ремонт')).asElement().$('.tx')).click(); await settle();
-  await page.evaluate(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'в корзину').click());
+  await page.click('.editor .more-b'); await sleep(300); await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(b => b.querySelector('.option-name')?.textContent.trim() === 'в корзину').click());
   await settle();
   assert(!(await day(4)).rows.some(r => r.title === 'Обои'), 'шаг остался в пятнице');
   assert((await toastText())?.includes('шаг'), `плашка: ${await toastText()}`);
@@ -186,7 +186,7 @@ await check('8. проект в корзину (шаг в другом дне) �
   assert((await day(4)).rows.some(r => r.title === 'Обои'), 'после «Вернуть» шага нет');
 
   await (await (await rowEl(0, 'Ремонт')).asElement().$('.tx')).click(); await settle();
-  await page.evaluate(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'в корзину').click());
+  await page.click('.editor .more-b'); await sleep(300); await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(b => b.querySelector('.option-name')?.textContent.trim() === 'в корзину').click());
   await sleep(6800);
   const trash = await api('GET', 'trash');
   assert(trash.some(t => t.id === repair.id) && !trash.some(t => t.id === id('Обои')), JSON.stringify(trash.map(t => t.title)));

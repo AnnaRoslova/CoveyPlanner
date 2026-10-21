@@ -1,7 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
 // Левая панель: процент у каждой цели («Тренировка · 2 раза», одно выполнено → 50%; норма выполнена и сверх — «100% ✓» мятным;
-// разовая цель — 0% / 100% ✓) и «свернуть / развернуть все цели» — одна кнопка в шапке, все цели всех ролей сразу,
-// роли не сворачиваются; состояние запоминается в браузере.
+// разовая цель — 0% / 100% ✓) и сворачивание ролей (docs/specs/ui-declutter.md, U1): название роли — кнопка, «Затачивание пилы» —
+// все измерения, кнопка в шапке — все роли; «+ цель» при наведении; состояние запоминается в браузере.
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -39,12 +39,12 @@ const goalRow = title => page.evaluate(t => {
   const item = [...document.querySelectorAll('.roles-panel .role .item')].find(i => i.querySelector('.title')?.textContent.trim() === t);
   if (!item) return null;
   return {
-    pct: item.querySelector('.pct')?.textContent.trim() ?? null,
+    pct: item.querySelector('.pct-ring') ? '○' : item.querySelector('.pct')?.textContent.trim() ?? null, // D1: не начато — кружок
     full: item.querySelector('.pct')?.classList.contains('full') ?? false,
     compact: item.classList.contains('compact'),
     days: !!item.querySelector('.goal-days'),
     jar: !!item.querySelector('.jar-pill'),
-    progress: item.querySelector('.progress')?.textContent.trim() ?? null,
+    progress: ((i) => (t => t ? t.replace(/.*выполнено (\d+) из (\d+).*/, '$1/$2') : null)((i.querySelector('.pct-ring, .pct')?.getAttribute('title'))))(item), // D5: «2/5» — в подсказке процента
     height: item.getBoundingClientRect().height,
   };
 }, title);
@@ -71,13 +71,14 @@ await load();
 await check('процент у каждой цели — и в «Затачивании пилы», и в ролях', async () => {
   const counts = await page.evaluate(() => ({
     goals: document.querySelectorAll('.roles-panel .role .item').length,
-    pct: document.querySelectorAll('.roles-panel .role .item .pct').length,
-    saw: document.querySelectorAll('.roles-panel .saw .role .item .pct').length,
+    // D1: не начато — пустой кружок .pct-ring вместо «0%»
+    pct: [...document.querySelectorAll('.roles-panel .role .item')].filter(i => i.querySelector('.pct, .pct-ring')).length,
+    saw: document.querySelectorAll('.roles-panel .saw .role .item :is(.pct, .pct-ring)').length,
   }));
   assert(counts.goals > 0 && counts.pct === counts.goals, `процентов ${counts.pct} у ${counts.goals} целей`);
   assert(counts.saw > 0, 'у целей пилы нет процента');
   const run = await goalRow('Бег');
-  assert(run.pct === '0%' && !run.full, `Бег (0 из 3): ${run.pct}`);
+  assert(run.pct === '○' && !run.full, `Бег (0 из 3): ${run.pct}`);
 });
 
 await check('«Тренировка · 2 раза», одно выполнено → 50%, тихо (не мятная)', async () => {
@@ -97,81 +98,102 @@ await check('норма выполнена → «100% ✓» мятным; све
   const colors = await page.evaluate(() => {
     const items = [...document.querySelectorAll('.roles-panel .role .item')];
     const color = t => getComputedStyle(items.find(i => i.querySelector('.title').textContent.trim() === t).querySelector('.pct')).backgroundColor;
-    return { full: color('Тренировка'), quiet: color('Бег') };
+    const quiet = document.createElement('span'); quiet.className = 'pct'; items[0].appendChild(quiet);
+    const q = getComputedStyle(quiet).backgroundColor; quiet.remove();
+    return { full: color('Тренировка'), quiet: q };
   });
   assert(colors.full !== colors.quiet, `у 100% нет мятного фона: ${colors.full}`);
 });
 
 await check('разовая цель: 0% → галочка цели → «100% ✓»', async () => {
-  assert((await goalRow('Записаться к стоматологу')).pct === '0%', 'не 0%');
+  assert((await goalRow('Записаться к стоматологу')).pct === '○', 'не пустой кружок');
   await toggleGoal('Записаться к стоматологу');
   const row = await goalRow('Записаться к стоматологу');
   assert(row.pct === '100% ✓' && row.full, `после галочки: ${row.pct}`);
   await toggleGoal('Записаться к стоматологу');
-  assert((await goalRow('Записаться к стоматологу')).pct === '0%', 'снятие галочки не вернуло 0%');
+  assert((await goalRow('Записаться к стоматологу')).pct === '○', 'снятие галочки не вернуло кружок');
 });
 
-await check('по умолчанию все цели развёрнуты: дни занятий, «2/5»; пилюли банки у целей нет (R6)', async () => {
+/** Роль по названию: свёрнута ли, видны ли её цели и «+ цель», подпись «N цели», розовая точка. */
+const roleState = name => page.evaluate(n => {
+  const r = [...document.querySelectorAll('.roles-panel .role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === n);
+  if (!r) return null;
+  const visible = el => !!el && el.getBoundingClientRect().height > 0;
+  return {
+    folded: r.classList.contains('folded'), expanded: r.querySelector('.role-toggle').getAttribute('aria-expanded'),
+    goals: [...r.querySelectorAll('.item')].filter(visible).length, add: visible(r.querySelector('.role-body > .add')) && getComputedStyle(r.querySelector('.role-body > .add')).opacity === '1',
+    peek: r.querySelector('.role-h .peek')?.textContent.trim() ?? null, dot: !!r.querySelector('.role-h .unplaced-dot'),
+  };
+}, name);
+const clickRole = async name => {
+  await page.evaluate(n => [...document.querySelectorAll('.roles-panel .role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === n).querySelector('.role-toggle').click(), name);
+  await settle();
+};
+
+await check('по умолчанию роли развёрнуты: дни занятий, «2/5»; пилюли банки у целей нет (R6); у роли нет счёта «0/1» (D5)', async () => {
   const dentist = await goalRow('Записаться к стоматологу');
-  assert(!dentist.compact && dentist.days, 'у цели нет строки дней');
+  assert(dentist.days, 'у цели нет строки дней');
   assert(!(await goalRow('Бег')).jar, 'у привычки в левой панели пилюля банки (R6: её больше нет)');
-  assert((await foldButton()).title === 'Свернуть все цели', `подсказка: ${(await foldButton()).title}`);
+  assert((await foldButton()).title === 'Свернуть все роли', `подсказка: ${(await foldButton()).title}`);
+  assert(!(await page.$('.roles-panel .role-h .n')), 'счёт у роли остался');
   await page.evaluate(() => document.querySelector('.roles-panel .panel-scroll').scrollTop = 0);
   await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/goal-fold-open.png` });
 });
 
-await check('«свернуть все цели» — все цели всех ролей в одну строку «название · процент»; роли остаются', async () => {
-  const rolesBefore = await page.$$eval('.roles-panel .role-h', hs => hs.length);
-  await clickFold();
-  const state = await page.evaluate(() => {
-    const items = [...document.querySelectorAll('.roles-panel .role .item')];
-    return {
-      all: items.length, compact: items.filter(i => i.classList.contains('compact')).length,
-      extras: document.querySelectorAll('.roles-panel .role .item .goal-days, .roles-panel .role .item .jar-pill, .roles-panel .role .item .progress').length,
-      pct: document.querySelectorAll('.roles-panel .role .item .pct').length,
-      tall: items.filter(i => i.getBoundingClientRect().height > 30).map(i => i.querySelector('.title').textContent.trim()),
-      roles: document.querySelectorAll('.roles-panel .role-h').length,
-      adds: document.querySelectorAll('.roles-panel .role .add').length,
-    };
-  });
-  assert(state.compact === state.all, `свёрнуто ${state.compact} из ${state.all}`);
-  assert(state.extras === 0, `видно лишнее: ${state.extras}`);
-  assert(state.pct === state.all, 'процент пропал');
-  assert(state.tall.length === 0, `в несколько строк: ${state.tall}`);
-  assert(state.roles === rolesBefore && state.adds === rolesBefore, 'роли свернулись');
-  const button = await foldButton();
-  assert(button.title === 'Развернуть все цели' && button.pressed === 'true', JSON.stringify(button));
-  await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/goal-fold-folded.png` });
+await check('U1.1: клик по названию роли — её цели свёрнуты, строка «▸ Работа · 2 цели»; ещё клик — развёрнуты', async () => {
+  await clickRole('Работа');
+  let s = await roleState('Работа');
+  assert(s.folded && s.expanded === 'false' && s.goals === 0 && !s.add && /^\d+ цел(ь|и|ей)$/.test(s.peek ?? ''), JSON.stringify(s));
+  assert((await roleState('Дом')).goals > 0, 'свернулась и другая роль');
+  await clickRole('Работа');
+  s = await roleState('Работа');
+  assert(!s.folded && s.goals > 0 && s.peek === null, JSON.stringify(s));
 });
 
-await check('свёрнутые цели — запоминается после перезагрузки; работают клик, галочка', async () => {
+await check('U1.2: свёрнутая роль — запоминается после перезагрузки; галочка цели в другой роли работает', async () => {
+  await clickRole('Дом');
   await load();
-  assert((await goalRow('Бег')).compact && (await goalRow('Тренировка')).compact, 'развернулись после перезагрузки');
+  assert((await roleState('Дом')).folded, 'развернулась после перезагрузки');
   await toggleGoal('Записаться к стоматологу');
   assert((await goalRow('Записаться к стоматологу')).pct === '100% ✓', 'галочка не сработала');
   await toggleGoal('Записаться к стоматологу');
-  await page.evaluate(() => [...document.querySelectorAll('.roles-panel .role .item .title')].find(t => t.textContent.trim() === 'Тренировка').click());
-  await settle();
-  assert(await page.$('.editor'), 'клик по свёрнутой цели не открыл окно');
+  await clickRole('Дом');
 });
 
-await check('новая цель в свёрнутом виде — тоже свёрнута', async () => {
-  await page.evaluate(() => [...document.querySelectorAll('.roles-panel .role')]
-    .find(r => r.querySelector('.role-h .name').textContent.trim() === 'Дом').querySelector('.add').click());
-  await settle();
-  await page.keyboard.type('Разобрать балкон'); await page.keyboard.press('Enter'); await sleep(800);
-  await page.keyboard.press('Escape'); await settle();
-  const row = await goalRow('Разобрать балкон');
-  assert(row?.compact && row.pct === '0%', JSON.stringify(row));
+await check('U1.4: у свёрнутой роли с неразложенной целью — розовая точка', async () => {
+  await clickRole('Ум'); // «100 страниц» без занятий в днях — не разложено
+  assert((await roleState('Ум')).dot, JSON.stringify(await roleState('Ум')));
+  await clickRole('Ум');
 });
 
-await check('«развернуть все цели» — обратно, и это тоже запоминается', async () => {
+await check('U1.3: «Затачивание пилы» — кнопка: сворачивает все 4 измерения сразу', async () => {
+  await page.click('.roles-panel .sect-toggle'); await settle();
+  assert(await page.$eval('.roles-panel .saw', s => s.getBoundingClientRect().height === 0), 'пила видна');
+  assert(await page.$eval('.roles-panel .sect-toggle', b => b.getAttribute('aria-expanded')) === 'false', 'aria-expanded');
+  await page.click('.roles-panel .sect-toggle'); await settle();
+  assert(await page.$eval('.roles-panel .saw', s => s.getBoundingClientRect().height > 0), 'пила не развернулась');
+});
+
+await check('U1.8: кнопка шапки — свернуть все роли и пилу; ещё раз — развернуть; запоминается', async () => {
   await clickFold();
-  const state = await page.evaluate(() => document.querySelectorAll('.roles-panel .role .item.compact').length);
-  assert(state === 0, `свёрнутых осталось: ${state}`);
+  assert((await foldButton()).title === 'Развернуть все роли' && (await foldButton()).pressed === 'true', JSON.stringify(await foldButton()));
+  const all = await page.$$eval('.roles-panel .user-roles .role', rs => rs.every(r => r.classList.contains('folded')));
+  assert(all, 'не все роли свёрнуты');
+  await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/goal-fold-folded.png` });
   await load();
-  assert(!(await goalRow('Бег')).compact, 'после перезагрузки свёрнуто');
-  assert((await goalRow('Записаться к стоматологу')).days, 'нет строки дней');
+  assert((await roleState('Работа')).folded, 'после перезагрузки развёрнуто');
+  await clickFold();
+  assert(!(await roleState('Работа')).folded && !(await roleState('Тело')).folded, 'не развернулось');
+});
+
+await check('U1.7: «+ цель» — при наведении на роль; у роли без целей — всегда', async () => {
+  const empty = await roleState('Дух');
+  assert(empty && empty.goals === 0 && empty.add, `у пустой роли «+ цель» скрыта: ${JSON.stringify(empty)}`);
+  await page.mouse.move(800, 450); await settle();
+  assert(!(await roleState('Работа')).add, '«+ цель» видна без наведения');
+  const box = await page.evaluate(() => { const r = [...document.querySelectorAll('.roles-panel .role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === 'Работа').getBoundingClientRect(); return { x: r.x + 40, y: r.y + 30 }; });
+  await page.mouse.move(box.x, box.y); await settle();
+  assert((await roleState('Работа')).add, '«+ цель» не появилась при наведении');
 });
 
 // Снимки в двух темах: развёрнуто и свёрнуто

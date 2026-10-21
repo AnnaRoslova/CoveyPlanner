@@ -26,21 +26,22 @@ const expanded = () => page.$$eval('.someday .cat', cs => cs.map(c => c.classLis
 
 await load();
 
-await check('сверху ленты: «+ категория» и «свернуть всё» — над категориями', async () => {
+await check('сверху ленты — «⋯» у поиска: «+ категория наверх» и «свернуть всё» (ui-declutter U3)', async () => {
   const m = await page.evaluate(() => {
-    const tools = document.querySelector('.someday .feed-tools');
+    const tools = document.querySelector('.someday .feed-menu, .feed-menu');
     const first = document.querySelector('.someday .cat');
     return tools && {
       add: tools.querySelector('.add')?.textContent.trim(), fold: tools.querySelector('.fold')?.textContent.trim(),
       above: tools.getBoundingClientRect().bottom <= first.getBoundingClientRect().top,
     };
   });
-  assert(m && m.add === '+ категория' && m.above, JSON.stringify(m));
+  assert(m && m.above, JSON.stringify(m));
   assert(await page.$('.someday .panel-scroll > .add'), 'нижняя «+ категория» пропала');
 });
 
 await check('«+ категория» сверху: новая категория встаёт первой и сохраняется', async () => {
-  await page.click('.someday .feed-tools .add'); await settle();
+  await page.click('.someday .feed-menu, .feed-menu'); await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll('.popover.more-menu .option')].find(o => o.textContent.includes('+ категория наверх')).click()); await settle();
   const editorTop = await page.$eval('.someday .cat-editor', e => e.getBoundingClientRect().top);
   const firstTop = await page.$eval('.someday .cat', c => c.getBoundingClientRect().top);
   assert(editorTop < firstTop, 'редактор не сверху');
@@ -51,15 +52,20 @@ await check('«+ категория» сверху: новая категори�
 });
 
 await check('«свернуть всё» сворачивает все категории, «развернуть всё» — раскрывает; запоминается', async () => {
-  const fold = () => page.$eval('.someday .feed-tools .fold', b => b.textContent.trim());
-  if ((await fold()) === 'развернуть всё') { await page.click('.someday .feed-tools .fold'); await settle(); }
+  const fold = async () => {   await page.click('.someday .feed-menu, .feed-menu'); await sleep(300);
+    const t = await page.$eval('.popover.more-menu .option.fold', b => b.textContent.trim());   await page.keyboard.press('Escape'); await sleep(200);
+    return t; };
+  if ((await fold()) === 'развернуть всё') {   await page.click('.someday .feed-menu, .feed-menu'); await sleep(300);
+    await page.click('.popover.more-menu .option.fold'); await settle(); }
   assert(await fold() === 'свернуть всё', `кнопка: ${await fold()}`);
-  await page.click('.someday .feed-tools .fold'); await settle();
+    await page.click('.someday .feed-menu, .feed-menu'); await sleep(300);
+  await page.click('.popover.more-menu .option.fold'); await settle();
   assert((await expanded()).every(e => !e), `раскрыты: ${await expanded()}`);
   assert(await fold() === 'развернуть всё', `кнопка: ${await fold()}`);
   await load();
   assert((await expanded()).every(e => !e), 'после перезагрузки раскрыты');
-  await page.click('.someday .feed-tools .fold'); await settle();
+  await page.click('.someday .feed-menu, .feed-menu'); await sleep(300);
+  await page.click('.popover.more-menu .option.fold'); await settle();
   assert((await expanded()).every(e => e), `свёрнуты: ${await expanded()}`);
 });
 
@@ -86,10 +92,11 @@ await check('дело ленты: окно — название, подробн�
   await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
   assert(await page.$(editor), 'окно не открылось');
   const labels = await page.$$eval(`${editor} .label`, ls => ls.map(l => l.textContent.trim()));
-  assert(JSON.stringify(labels) === '["Подробно","Категория","Проект","Шаги"]', `поля: ${labels}`); // «Проект» (S6) и шаги — дело-чеклист
+  assert(JSON.stringify(labels) === '["Категория","Дата"]', `поля: ${labels}`); // остальное — «+ заметки · + проект» (ui-declutter U2.2)
+  await page.$eval(`${editor} .adder[data-adder="notes"]`, b => b.click()); await settle();
   await page.type(`${editor} textarea`, 'Базилик, мята, розмарин');
   await chooseCategory('Дом');
-  await page.click(`${editor} .buttons .btn:not(.quiet):not(.danger)`); await settle();
+  await page.click(`${editor} .buttons .btn.primary`); await settle();
   assert(!(await page.$(editor)), 'окно не закрылось');
   if (!(await page.$$eval('.someday .cat', cs => cs.find(c => c.textContent.includes('Дом')).classList.contains('open')))) {
     await page.evaluate(() => [...document.querySelectorAll('.someday .cat-h')].find(h => h.textContent.includes('Дом')).click()); await settle();
@@ -98,7 +105,7 @@ await check('дело ленты: окно — название, подробн�
   assert(!(await titlesIn('Идеи')).includes('Сад с травами на балконе'), 'осталось в Идеях');
   await load();
   await (await (await feedItem('Сад с травами на балконе')).$('.tx')).click(); await settle();
-  assert(await page.$eval(`${editor} textarea`, t => t.value) === 'Базилик, мята, розмарин', 'описание не сохранилось');
+  assert(await page.$eval(`${editor} .sum-chip[data-summary="notes"] .sum-text`, t => t.textContent.trim()) === '📝 Базилик, мята, розмарин', 'описание не сохранилось');
 });
 
 await check('окно дела ленты: Esc и клик мимо — отмена', async () => {
@@ -171,8 +178,8 @@ await check('«неразобранное» — сверху ленты, над 
   await api('POST', 'tasks', { title: 'Неразобранная мысль', target: { kind: 'someday', categoryId: null, index: 0 } });
   await load();
   const u = await page.$eval('.unsorted', e => e.getBoundingClientRect().bottom);
-  const tools = await page.$eval('.someday .feed-tools', e => e.getBoundingClientRect().top);
-  assert(u <= tools, '«неразобранное» не над категориями');
+  const firstCat = await page.$eval('.someday .cat', e => e.getBoundingClientRect().top);
+  assert(u <= firstCat, '«неразобранное» не над категориями');
   assert(JSON.stringify(await unsortedTitles()) === '["Неразобранная мысль"]', `неразобранное: ${await unsortedTitles()}`);
 
   const item = await page.evaluateHandle(() => [...document.querySelectorAll('.unsorted .item')].find(i => i.textContent.includes('Неразобранная мысль')));
@@ -186,7 +193,8 @@ await check('«неразобранное» — сверху ленты, над 
   const back = await boxOf(await feedItem('Неразобранная мысль'));
   await page.mouse.move(back.x + back.width / 2, back.y + back.height / 2); await page.mouse.down();
   await page.mouse.move(back.x + back.width / 2, back.y + back.height / 2 + 20, { steps: 4 }); await sleep(100);
-  const zone = await page.$eval('.unsorted', e => ({ display: getComputedStyle(e).display, ...e.getBoundingClientRect().toJSON() }));
+  // Место — поверх «Записать мысль» (ui-declutter U3: строки «+ категория / свернуть всё» над категориями больше нет)
+  const zone = await page.$eval('.unsorted-drop', e => ({ display: getComputedStyle(e).display, ...e.getBoundingClientRect().toJSON() }));
   assert(zone.display !== 'none' && zone.height >= 30, `место для сброса не видно: ${JSON.stringify(zone)}`);
   for (let i = 1; i <= 10; i++) { await page.mouse.move(zone.x + zone.width / 2, back.y + (zone.y + zone.height / 2 - back.y) * i / 10); await sleep(16); }
   await sleep(150); await page.mouse.up(); await settle();
@@ -198,7 +206,7 @@ await check('«неразобранное» — сверху ленты, над 
 await check('окно мысли: «неразобранное» в списке категорий переносит в «неразобранное»', async () => {
   await (await (await feedItem('Научиться печь хлеб на закваске')).$('.tx')).click(); await settle();
   await chooseCategory('неразобранное');
-  await page.click(`${editor} .buttons .btn:not(.quiet):not(.danger)`); await settle();
+  await page.click(`${editor} .buttons .btn.primary`); await settle();
   assert((await unsortedTitles())[0] === 'Научиться печь хлеб на закваске', `неразобранное: ${await unsortedTitles()}`);
 });
 

@@ -41,7 +41,7 @@ const dayItemSel = (i, title) => `(() => { ${T} return [...document.querySelecto
 const dayItem = (i, title) => page.evaluate(`(() => { const it = ${dayItemSel(i, title)}; return it ? {
   time: it.querySelector('.pill.time')?.textContent ?? null,
   dur: it.querySelector('.pill.dur')?.textContent ?? null,
-  rock: !!it.querySelector('.pill.rock') } : null; })()`);
+  rock: !!it.querySelector('.title.rock') } : null; })()`);
 const dayLoad = i => page.evaluate(i => document.querySelectorAll('.day')[i].querySelector('.day-h .load')?.textContent ?? null, i);
 
 async function boxOf(src) {
@@ -63,6 +63,8 @@ async function openBy(sel, label) {
   assert(el, 'запись не найдена');
   await el.$eval('.tx', e => e.click());
   await page.waitForSelector(`.editor[aria-label="${label}"]`, { timeout: 3000 });
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
   await sleep(200);
 }
 const openGoal = title => openBy(goalSel(title), 'Цель недели');
@@ -75,7 +77,7 @@ async function setTime(value) {
   await setWheel('Время', h, m);
 }
 const fieldHas = (label, sel) => page.evaluate((label, sel) => {
-  const f = [...document.querySelectorAll('.editor .field')].find(x => x.querySelector('.label')?.textContent.trim() === label);
+  const f = [...document.querySelectorAll('.editor .field, .editor .line')].find(x => x.querySelector(':scope > .label, :scope > .label-row > .label')?.textContent.trim() === label);
   return !!f?.querySelector(sel);
 }, label, sel);
 
@@ -84,8 +86,9 @@ await load();
 await check('окно цели: время 07:00 и квадрант II — сохраняются', async () => {
   await openGoal('Бег');
   assert(await page.$eval('.editor textarea', e => e.value) === 'Парк, лёгкий темп', 'нет заметки цели');
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await settle();
   await setTime('07:00');
-  await clickIn('.editor .segments button', 'II');
+  await page.click('.editor .select-field[aria-label="Квадрант"]'); await settle(); await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim().startsWith('II ·')).click()); await settle();
   await save();
   await openGoal('Бег');
   assert(await wheelText('Время') === '07:00', 'время не сохранилось');
@@ -105,7 +108,8 @@ await check('цель → среда: занятие по шаблону — 07:
 await check('окно занятия: роль и квадрант «задаётся у цели», без выбора', async () => {
   await openSession(2, 'Бег');
   assert(await fieldHas('Роль', '.tags .hint') && !(await fieldHas('Роль', '.tag-add')), 'роль можно выбирать');
-  assert(await fieldHas('Квадрант', '.from-goal'), 'квадрант можно выбирать');
+  // Квадрант занятия — неизменяемая сводка «Квадрант … · от цели», без списка (ui-declutter U2.2)
+  assert(await page.$('.editor .sum-chip.static[data-summary="quadrant"]') && !(await page.$('.editor .select-field[aria-label="Квадрант"]')), 'квадрант можно выбирать');
   assert(!(await page.$('.editor .own')), 'метка «своё» без изменений');
   await page.keyboard.press('Escape'); await settle();
 });

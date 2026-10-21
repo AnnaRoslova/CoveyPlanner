@@ -65,7 +65,9 @@ const roleHeader = name => page.evaluate(n => {
   const r = [...document.querySelectorAll('.role')].find(x => x.querySelector('.role-h .name')?.textContent.trim() === n).querySelector('.role-h').getBoundingClientRect();
   return { x: r.x + r.width / 3, y: r.y + r.height / 2 };
 }, name);
-const menuItems = () => page.$$eval('.next-week-menu .option-name', os => os.map(o => o.textContent.trim()));
+const menuItems = () => page.$$eval('.date-menu .option-name', os => os.map(o => o.textContent.trim()));
+/** «→ на след. неделю» — последний пункт меню поля «Дата» (ui-declutter.md, U2.5). */
+async function nextWeekItem() { await page.click('.editor .date-field'); await sleep(300); await page.click('.date-menu .option.next-week'); await sleep(300); }
 const giftBody = roleId => ({ title: 'Купить подарок', notes: null, roleIds: [roleId], quadrant: null, startTime: '15:00:00', durationMinutes: null });
 
 await load();
@@ -80,10 +82,10 @@ const ideas = await api('POST', 'categories', { name: 'Идеи' });
 await api('POST', 'tasks', { title: 'Шкаф', target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
 await load();
 
-await check('B1, B4: окно дела с ролью — кнопка «→ на след. неделю» → дела нет в дне; плашка «… → след. неделя, «Семья» · Показать · Вернуть»', async () => {
+await check('B1, B4: окно дела с ролью — «→ на след. неделю» в меню «Дата» → дела нет в дне; плашка «… → след. неделя, «Семья» · Показать · Вернуть»', async () => {
   await openDayTask(1, 'Купить подарок'); await settle();
-  assert(!(await page.$('.editor .chip.next-week')), 'чип в «Дата» остался');
-  await page.click('.editor .next-week-row .btn.next-week'); await settle();
+  assert(!(await page.$('.editor .next-week-row')), 'отдельная кнопка осталась');
+  await nextWeekItem(); await settle();
   assert(!(await page.$('.editor')), 'окно не закрылось');
   assert(!(await dayTitles(1)).includes('Купить подарок'), 'осталось в дне');
   const t = await toast();
@@ -104,7 +106,7 @@ await check('B4: «Вернуть» — дело снова во вторник�
   await api('PUT', `tasks/${gift.id}`, giftBody(family.id));
   await load();
   await openDayTask(1, 'Купить подарок'); await settle();
-  await page.click('.editor .btn.next-week'); await settle();
+  await nextWeekItem(); await settle();
   await toastAction('Вернуть'); await settle();
   const t = await api('GET', `tasks/${gift.id}`);
   assert(t.plannedDate === dayIso(1) && t.startTime?.startsWith('15:00') && t.plannedWeek === null, JSON.stringify(t));
@@ -114,10 +116,10 @@ await check('B4: «Вернуть» — дело снова во вторник�
 await check('B3: мысль без роли — меню ролей без «в ленту»; «в роль: Дом» → ушла из ленты, на следующей неделе под «Домом»', async () => {
   await page.evaluate(() => [...document.querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Шкаф').querySelector('.title').click());
   await settle();
-  await page.click('.editor .btn.next-week'); await sleep(300);
+  await nextWeekItem();
   const items = await menuItems();
   assert(items.includes('в роль: Дом') && !items.includes('в ленту'), JSON.stringify(items));
-  await page.evaluate(() => [...document.querySelectorAll('.next-week-menu .option')].find(o => o.textContent.includes('в роль: Дом')).click()); await settle();
+  await page.evaluate(() => [...document.querySelectorAll('.date-menu .option')].find(o => o.textContent.includes('в роль: Дом')).click()); await settle();
   assert(!(await page.$$eval('.cat-b > .item .title', ts => ts.map(t => t.textContent.trim()))).includes('Шкаф'), 'осталась в ленте');
   assert((await toast())?.includes('«Шкаф» → след. неделя, «Дом»'), JSON.stringify(await toast()));
   await page.click('.nav[title="Следующая неделя"]'); await settle();
@@ -128,9 +130,9 @@ await check('B3: мысль без роли — меню ролей без «в 
 
 await check('B3: дело в дне без роли — в меню есть «в ленту» → дело в ленте', async () => {
   await openDayTask(1, 'Чай'); await settle();
-  await page.click('.editor .btn.next-week'); await sleep(300);
+  await nextWeekItem();
   assert((await menuItems()).includes('в ленту'), JSON.stringify(await menuItems()));
-  await page.evaluate(() => document.querySelector('.next-week-menu .option.to-feed').click()); await settle();
+  await page.evaluate(() => document.querySelector('.date-menu .option.to-feed').click()); await settle();
   assert(!(await dayTitles(1)).includes('Чай'), 'осталось в дне');
   assert((await api('GET', 'board')).somedayTasks.some(t => t.title === 'Чай'), 'не в ленте');
 });
@@ -169,14 +171,15 @@ await check('B5: мысль, брошенная у нижнего края ст�
   assert(goals.includes('Созвон'), JSON.stringify(goals));
 });
 
-await check('N4.5: окно занятия цели — кнопка неактивна, подсказка', async () => {
+await check('N4.5: окно занятия цели — пункт неактивен, подсказка', async () => {
   const g = (await api('GET', `week/${dayIso(7)}`)).goals.find(x => x.title === 'Квартальный план');
   await api('POST', `goals/${g.id}/schedule`, { kind: 'day', date: dayIso(9), index: 0 });
   await load(); await page.click('.nav[title="Следующая неделя"]'); await settle();
   await openDayTask(2, 'Квартальный план'); await settle();
-  assert(await page.$eval('.editor .btn.next-week', b => b.disabled), 'кнопка активна');
-  assert((await page.$eval('.editor .next-week-row', e => e.textContent)).includes('своя неделя'), 'нет подсказки');
-  await page.keyboard.press('Escape'); await settle();
+  await page.click('.editor .date-field'); await sleep(300);
+  assert(await page.$eval('.date-menu .option.next-week', b => b.disabled), 'пункт активен');
+  assert((await page.$eval('.date-menu .option.next-week', e => e.textContent)).includes('своя неделя'), 'нет подсказки');
+  await page.keyboard.press('Escape'); await sleep(200); await page.keyboard.press('Escape'); await settle();
 });
 
 await check('N4: дыра закрыта — дело из дня, ставшее целью другой недели, теряет день', async () => {

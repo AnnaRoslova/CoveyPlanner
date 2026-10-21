@@ -156,7 +156,7 @@
 .pill {
     padding: 0 7px;
     border-radius: 20px;
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 17px;
     white-space: nowrap; /* пилюля никогда не переносится */
@@ -184,7 +184,7 @@
     align-self: flex-start;
     padding-top: 1px;
     color: var(--b-deep);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 17px;
 }
@@ -200,7 +200,7 @@
     gap: 3px;
     margin-top: 1px;
     color: var(--soft);
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 700;
     text-decoration: none;
 }
@@ -266,7 +266,7 @@
     border-radius: 20px;
     box-shadow: inset 0 0 0 1px var(--line);
     color: var(--soft);
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 800;
     line-height: 16px;
     white-space: nowrap;
@@ -357,7 +357,7 @@ body.dragging .trash-btn {
 .progress.below {
     align-self: auto;
     padding-top: 0;
-    font-size: 10.5px;
+    font-size: 12px;
     line-height: inherit;
 }
 
@@ -372,7 +372,7 @@ body.dragging .trash-btn {
     border-radius: 6px;
     text-align: left;
     color: var(--b-deep);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 15px;
     white-space: nowrap;
@@ -386,7 +386,7 @@ body.dragging .trash-btn {
     padding: 0;
     overflow: hidden;
     color: var(--faint);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 15px;
     text-align: left;
     text-overflow: ellipsis;
@@ -407,7 +407,7 @@ body.dragging .trash-btn {
     flex: none;
     align-self: flex-start;
     color: var(--faint);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 17px;
     white-space: nowrap;
 }
@@ -520,4 +520,21 @@ body.dragging .trash-btn {
 
 .item.unplaced:hover {
     background: color-mix(in srgb, var(--unplaced-bg), var(--b-soft));
+}
+
+/* D2: занятие цели — маленький розовый ◆ в конце названия вместо пилюли «камень» (подсказка «занятие цели «Бег»») */
+.title.rock::after {
+    content: " ◆";
+    color: var(--a-deep);
+    font-size: 11px;
+}
+
+/* D1: не начато — тихий пустой кружок вместо «0%» (число — в подсказке) */
+.pct-ring {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    border: 1.6px solid var(--btn-line);
+    border-radius: 50%;
 }

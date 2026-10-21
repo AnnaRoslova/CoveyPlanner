@@ -47,14 +47,28 @@ async function openFeed(name, title) {
     return [...cat.querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title')?.textContent.trim() === t);
   }, name, title)).asElement();
   await (await row.$('.title')).click(); await settle();
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
 }
 async function openDay(i, title) {
   const row = (await page.evaluateHandle((i, t) => [...document.querySelectorAll('.day')[i].querySelectorAll(':scope > .item')]
     .find(it => it.querySelector('.title')?.textContent.trim() === t), i, title)).asElement();
   await (await row.$('.title')).click(); await settle();
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
+}
+/** Раскрыть поле «Проект» (ui-declutter U2.2): сводка «🛠 …», «+ проект» или у шага — «⋯ → сменить проект…». */
+async function openProjectField() {
+  if (await page.$('.editor .project-row')) return;
+  const opener = await page.$('.editor .sum-chip[data-summary="project"], .editor .adder[data-adder="project"]');
+  if (opener) { await opener.click(); await sleep(300); return; }
+  await page.click('.editor .more-b'); await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll('.more-menu .option')].find(o => o.textContent.includes('сменить проект')).click());
+  await sleep(300);
 }
 /** Выбрать проект в поле «Проект» окна (с поиском). */
 async function chooseProject(label, search) {
+  await openProjectField();
   await page.click('.editor .project-row .select-field'); await sleep(300);
   if (search) { await page.type('.editor .popover .option-search', search); await sleep(200); }
   await page.evaluate(l => [...document.querySelectorAll('.editor .popover .option')].find(o => o.querySelector('.option-name')?.textContent.trim() === l).click(), label);
@@ -88,17 +102,18 @@ await check('9. мысль «Краска»: «Проект: Ремонт» (п�
   await openDay(0, 'Ремонт');
   await page.evaluate(() => [...document.querySelectorAll('.editor .task-steps .steps .item')].find(i => i.querySelector('.title').textContent.trim() === 'Краска').querySelector('.title').click());
   await settle();
-  assert((await page.$eval('.editor .step-of', e => e.textContent.trim())) === '↳ Ремонт', 'нет «↳ Ремонт»');
+  assert((await page.$eval('.editor .step-of', e => e.textContent.trim())) === '↳ 🛠 Ремонт', 'нет «↳ 🛠 Ремонт»');
   await chooseProject('— нет');
   await save(); await settle();
   assert((await feedTitles('Идеи')).includes('Краска'), `не вернулась: ${JSON.stringify(await feedTitles('Идеи'))}`);
 });
 
-await check('10. у дела со своими шагами поле «Проект» неактивно; в списке проектов нет шагов и самого дела', async () => {
+await check('10. у проекта поля «Проект» нет (один уровень, ui-declutter U2.2); в списке проектов нет шагов и самого дела', async () => {
   await openDay(0, 'Ремонт');
-  assert((await page.$eval('.editor .project-row', e => e.textContent)).includes('это проект'), 'поле активно');
+  assert(!(await page.$('.editor .project-row')) && !(await page.$('.editor .adder[data-adder="project"]')), 'у проекта можно выбрать проект');
   await closeEditor();
   await openFeed('Идеи', 'Краска');
+  await openProjectField();
   await page.click('.editor .project-row .select-field'); await sleep(300);
   const options = await page.$$eval('.editor .popover .option .option-name', os => os.map(o => o.textContent.trim()));
   assert(!options.includes('Стены') && !options.includes('Полы') && !options.includes('Краска') && options.includes('Ремонт'), JSON.stringify(options));

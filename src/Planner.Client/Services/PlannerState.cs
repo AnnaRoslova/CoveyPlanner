@@ -70,6 +70,32 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
             .ThenBy(t => t.SortOrder);
 
     /// <summary>
+    /// Дела дня, как их видно (docs/specs/ui-declutter.md, D3): невыполненные (со временем — по времени, потом ручной порядок),
+    /// под ними — выполненные в том же порядке. Ручной порядок (<see cref="TasksOn"/>) не меняется: сняли отметку — дело на своём месте.
+    /// </summary>
+    public IEnumerable<TaskDto> DayRows(DateOnly date) =>
+        TasksOn(date).OrderBy(t => t.State == TaskStateDto.Done);
+
+    /// <summary>
+    /// Бросок в день (D3): позиция на экране — среди невыполненных дел без времени (выполненные внизу в счёт не идут).
+    /// Переводит её в позицию сервера — среди всех дел дня без времени по ручному порядку. Ниже последнего невыполненного —
+    /// сразу после него (выше выполненных, они всё равно рисуются внизу).
+    /// </summary>
+    public int DropIndexInDay(DateOnly date, int taskId, int visualIndex)
+    {
+        var untimed = TasksOn(date).Where(t => t.StartTime is null && t.Id != taskId).ToList();
+        var open = untimed.Where(t => t.State != TaskStateDto.Done).ToList();
+        if (open.Count == untimed.Count)
+        {
+            return visualIndex; // выполненных без времени нет — позиции совпадают
+        }
+
+        return visualIndex < open.Count
+            ? untimed.IndexOf(open[Math.Max(0, visualIndex)])
+            : open.Count == 0 ? 0 : untimed.IndexOf(open[^1]) + 1;
+    }
+
+    /// <summary>
     /// Дела показанной недели с этой ролью, кроме занятий целей («ещё дела» в левой панели):
     /// по дням, в дне — как в списке дня.
     /// </summary>

@@ -39,6 +39,7 @@ const AFTER_DROP_MS = 500;     // мс — после сброса клики н
 const EDGE = 48;               // px — зона у края прокручиваемой области для автопрокрутки
 const AUTOSCROLL_DELAY = 400;  // мс — сколько держать у края, прежде чем начнётся прокрутка
 const MAX_SPEED = 16;          // px за кадр
+const PEEK_DELAY = 500;        // мс — задержать запись над свёрнутой ролью, чтобы она раскрылась до броска (ui-declutter.md, U1.5)
 const FLIP_DELAY = 500;        // мс — сколько задержать запись над краем недели или стрелкой, чтобы перелистнуть
 const FLIP_REPEAT = 700;       // мс — держат дальше: следующая неделя через столько
 const SWIPE_MIN = 40;          // px — свайп влево хотя бы на столько показывает кнопку записи (data-swipe)
@@ -94,7 +95,9 @@ function onPointerDown(e) {
     const el = e.target.closest('[data-drag], [data-press]');
     if (!el) return;
     // Кнопки и поля внутри записи (чекбокс, «удалить») работают как обычно
-    if (e.target.closest('button, input, textarea, select, a, [data-no-drag]')) return;
+    // (кроме кнопок с data-drag-ok: название роли — и кнопка «свернуть», и ручка, за которую роль тащат; клик после броска гасится)
+    const control = e.target.closest('button, input, textarea, select, a, [data-no-drag]');
+    if (control && !control.hasAttribute('data-drag-ok')) return;
 
     pending = {
         el,
@@ -210,6 +213,9 @@ function start(x, y) {
         flipEl: null,   // стрелка недели под записью
         flipAt: 0,      // когда перелистнуть
         flipped: false, // уже листали
+        peekEl: null,   // свёрнутая роль под записью
+        peekAt: 0,      // когда раскрыть
+        peeked: [],     // раскрытые на время перетаскивания
         raf: 0,
     };
 
@@ -374,6 +380,7 @@ function autoScroll(now) {
     }
 
     checkFlip(now);
+    checkPeek(now);
     // После листания дни перерисованы — место сброса пересчитываем, даже если указатель стоит
     if (drag.flipped) updateTarget();
     drag.raf = requestAnimationFrame(autoScroll);
@@ -403,6 +410,25 @@ function checkFlip(now) {
         drag.flipAt = now + FLIP_REPEAT;
         dotnet?.invokeMethodAsync('OnFlipWeek', Number(el.dataset.flip), drag.id);
         charge(el);
+    }
+}
+
+// Свёрнутая роль под записью: задержали — раскрываем (класс peek) до конца перетаскивания; раскрытое — заново ищем место сброса
+function checkPeek(now) {
+    const under = document.elementFromPoint(drag.x, drag.y);
+    // Свёрнутая пила скрыта целиком — её раскрывает задержка над заголовком «Затачивание пилы»
+    const saw = under?.closest('.sect-toggle')?.nextElementSibling;
+    const role = under?.closest('.role.folded:not(.peek)') ?? (saw?.matches('.saw.folded:not(.peek)') ? saw : null);
+    if (role !== drag.peekEl) {
+        drag.peekEl = role;
+        drag.peekAt = now + PEEK_DELAY;
+        return;
+    }
+    if (role && now >= drag.peekAt) {
+        role.classList.add('peek');
+        drag.peeked.push(role);
+        drag.peekEl = null;
+        updateTarget();
     }
 }
 
@@ -465,6 +491,7 @@ function finish() {
     drag.el.classList.remove('drag-source');
     drag.hoverZone?.classList.remove('drop-hover');
     drag.flipEl?.classList.remove('flip-armed');
+    drag.peeked.forEach(el => el.classList.remove('peek'));
     document.body.classList.remove('dragging');
     delete document.body.dataset.dragKind;
     drag = null;

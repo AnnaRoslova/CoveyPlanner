@@ -29,11 +29,11 @@ const T = `const titleOf = ${titleOf};`;
 const roleSel = name => `[...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === ${JSON.stringify(name)})`;
 const goalSel = (role, title) => `(() => { ${T} return [...${roleSel(role)}.querySelectorAll('.item')].find(i => titleOf(i) === ${JSON.stringify(title)}); })()`;
 const goal = (role, title) => page.evaluate(`(() => { const g = ${goalSel(role, title)}; return g ? {
-  progress: g.querySelector('.progress')?.textContent ?? null,
+  progress: ((i) => (t => t ? t.replace(/.*выполнено ([0-9]+) из ([0-9]+).*/, '$1/$2') : null)((i.querySelector('.pct-ring, .pct')?.getAttribute('title'))))(g), // D5: «2/5» — в подсказке процента
   when: [...g.querySelectorAll('.goal-days .d')].map(d => d.textContent).join(' · ') || null,
   doneDays: [...g.querySelectorAll('.goal-days .d.done')].map(d => d.textContent),
   done: g.classList.contains('done') } : null; })()`);
-const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), rock: !!it.querySelector('.pill.rock'), done: it.classList.contains('done') })); })()`);
+const day = i => page.evaluate(`(() => { ${T} return [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].map(it => ({ title: titleOf(it), rock: !!it.querySelector('.title.rock'), done: it.classList.contains('done') })); })()`);
 
 async function boxOf(src, block = 'nearest') {
   const el = (await page.evaluateHandle(src)).asElement();
@@ -62,6 +62,8 @@ async function openGoal(title, role = 'Тело') {
   const el = (await page.evaluateHandle(goalSel(role, title))).asElement();
   await el.$eval('.tx', e => e.click());
   await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
+  // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
   await sleep(200);
 }
 const save = async () => {

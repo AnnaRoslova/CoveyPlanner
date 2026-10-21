@@ -50,7 +50,9 @@ const clickIn = (sel, text) => page.evaluate((sel, text) => {
 const toastText = () => page.evaluate(() => document.querySelector('.toast')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
 const card = name => `.jar-card[aria-label="Привычка «${name}»"]`;
 const cardTotal = name => page.evaluate(s => document.querySelector(`${s} .total-n`)?.textContent.trim() ?? null, card(name));
-const cardButton = (name, text) => page.evaluate((s, t) => [...document.querySelector(s).querySelectorAll('.btn')].find(b => b.textContent.trim() === t).click(), card(name), text);
+const cardButton = (name, text) => text === 'настроить'
+  ? page.evaluate(s => document.querySelector(s).querySelector('.card-settings').click(), card(name))
+  : page.evaluate((s, t) => [...document.querySelector(s).querySelectorAll('.btn')].find(b => b.textContent.trim() === t).click(), card(name), text);
 const serverHabit = name => page.evaluate(async n => (await (await fetch('/api/habits')).json()).habits.find(h => h.name === n) ?? null, name);
 const api = (method, path, body) => page.evaluate(async (m, p, b) => {
   const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
@@ -79,7 +81,8 @@ async function openGoal(title) {
   await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
   await sleep(200);
 }
-const habitLine = () => page.evaluate(() => document.querySelector('.editor .habit-line')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
+// Сводка банки привычки в окне цели «🫙 0 скрепок · 🔥0 ▸» (ui-declutter U2.2): клик — стартовое число и размер
+const habitLine = () => page.evaluate(() => document.querySelector('.editor .sum-chip[data-summary="jar"] .sum-text')?.textContent.replace(/\s+/g, ' ').trim() ?? null);
 async function openScreen() {
   await page.click('.jar-b');
   await page.waitForSelector('.habits');
@@ -117,9 +120,10 @@ await check('🫙 в шапке: экран по измерениям пилы �
   assert(!(await page.$('.habits')), 'экран не закрылся');
 });
 
-await check('окно цели «Бег»: строка «🫙 привычка: 0 скрепок · 🔥0» и банка; «В копилку» нет; у обычной цели и дела — ничего', async () => {
+await check('окно цели «Бег»: кнопка «🫙 0 скрепок · 🔥0» и банка; «В копилку» нет; у обычной цели и дела — ничего', async () => {
   await openGoal('Бег');
-  assert(await habitLine() === '🫙 привычка: 0 скрепок · 🔥0', `строка: ${await habitLine()}`);
+  assert(await habitLine() === '🫙 0 скрепок · 🔥0', `строка: ${await habitLine()}`);
+  await page.click('.editor .sum-chip[data-summary="jar"]'); await sleep(300);
   assert(await page.$('.editor input[aria-label="Стартовое число"]') && await page.$('.editor input[aria-label="Скрепок в банке"]'), 'нет настроек банки');
   assert(!(await page.$('.editor .select-field[aria-label="В копилку"]')), 'поле «В копилку» осталось');
   await escape();
@@ -129,7 +133,7 @@ await check('окно цели «Бег»: строка «🫙 привычка:
   const el = (await page.evaluateHandle(dayItemSel(1, 'Почитать 30 страниц'))).asElement();
   await el.$eval('.tx', e => e.click());
   await page.waitForSelector('.editor[aria-label="Дело"]'); await sleep(200);
-  assert(!(await page.$('.editor .select-field[aria-label="В копилку"]')) && !(await page.$('.editor .habit-line')), 'в окне дела — копилка');
+  assert(!(await page.$('.editor .select-field[aria-label="В копилку"]')) && !(await page.$('.editor .sum-chip[data-summary="jar"]')), 'в окне дела — копилка');
   await escape();
 });
 
@@ -161,7 +165,8 @@ await check('сняли отметку — скрепка ушла: пилюля
 await check('пилюли банки у целей нет (R6); строка «🫙 привычка» в окне цели — экран «Копилки» на «Бег» (карточка в фокусе)', async () => {
   assert(!(await page.$('.role .item .jar-pill')), 'в левой панели пилюля банки');
   await openGoal('Бег');
-  await page.click('.editor .habit-line');
+  await page.click('.editor .more-b'); await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll('.more-menu .option')].find(o => o.textContent.includes('открыть привычку')).click());
   await page.waitForSelector('.habits'); await settle();
   const focused = await page.evaluate(() => document.querySelector('.jar-card.focused')?.getAttribute('aria-label'));
   assert(focused === 'Привычка «Бег»', `в фокусе: ${focused}`);
@@ -192,6 +197,7 @@ await check('«+1 сегодня» у «Увидеться с Олей» (1 ра
 
 await check('банка в окне цели: стартовое число +3 — пилюля «🫙 4»', async () => {
   await openGoal('Бег');
+  await page.click('.editor .sum-chip[data-summary="jar"]'); await sleep(300);
   for (let i = 0; i < 3; i++) {
     await page.evaluate(() => document.querySelector('.editor input[aria-label="Стартовое число"]').closest('.stepper').querySelector('.step[aria-label="Больше"]').click());
     await sleep(100);

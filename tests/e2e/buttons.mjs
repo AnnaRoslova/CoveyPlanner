@@ -58,13 +58,16 @@ await check('D2.1: кнопки на экране — высота не мень
   assert(small.length === 0, JSON.stringify(small.slice(0, 8)));
 });
 
-await check('D2.1: в окне дела — то же; «Сохранить» — главная (залитая), «Отмена» — обычная, «в корзину» — опасная', async () => {
+await check('D2.1: в окне дела — то же; «Сохранить» — главная (залитая), «Отмена» — обычная, «⋯» — обычная, «в корзину» в «⋯» — опасный пункт', async () => {
   await openFirstDayTask(); await sleep(500);
   const small = (await sizes()).filter(s => s.h < 23.5);
   assert(small.length === 0, JSON.stringify(small.slice(0, 8)));
   const kinds = await page.evaluate(() => [...document.querySelectorAll('.editor .buttons .btn')].map(b => b.className.replace('btn', '').trim() + ':' + b.textContent.trim()));
   assert(kinds.some(k => k.startsWith('primary') && k.endsWith('Сохранить')), JSON.stringify(kinds));
-  assert(kinds.some(k => k.startsWith('danger') && k.includes('в корзину')), JSON.stringify(kinds));
+  assert(kinds.some(k => k.startsWith('more-b')), JSON.stringify(kinds));
+  await page.click('.editor .more-b'); await sleep(300);
+  assert(await page.$eval('.more-menu .option.danger', o => o.textContent.includes('в корзину')), 'в «⋯» нет опасного «в корзину»');
+  await page.keyboard.press('Escape'); await sleep(200);
   assert(kinds.some(k => k === ':Отмена' || k === 'quiet:Отмена'), JSON.stringify(kinds)); // .btn.quiet — прежнее имя обычной
   await page.keyboard.press('Escape'); await sleep(300);
 });
@@ -79,7 +82,8 @@ await check('D2: «+ дело» — пилюля с пунктирной обв�
 });
 
 await check('D2.2: при наведении фон кнопки меняется («+ дело», «свернуть всё», значок 🫙)', async () => {
-  for (const sel of ['.day .add', '.feed-tools .fold', '.week-h .jar-b']) {
+  await page.hover('.day:nth-child(3)');
+  for (const sel of ['.day .add', '.someday .feed-menu', '.week-h .jar-b']) {
     const el = await page.$(sel);
     assert(el, `нет ${sel}`);
     await page.mouse.move(0, 0); await sleep(250);

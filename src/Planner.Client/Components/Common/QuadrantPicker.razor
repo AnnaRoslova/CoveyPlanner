@@ -1,20 +1,20 @@
-@* Квадрант Кови: «—» и I–IV, под выбранным — подсказка. Стили — css/editor.css. *@
+@* Квадрант: одно поле «II · важно, не срочно ▾» (docs/specs/ui-declutter.md, U2.5; было — 5 кнопок и подсказка под ними). *@
 
-<div class="segments">
-    <button type="button" class="@(Value is null ? "on" : "")" title="Без квадранта" @onclick="() => SetAsync(null)">—</button>
-    @foreach (var (value, roman, hint) in Quadrants)
-    {
-        <button type="button" class="@(Value == value ? "on" : "")" title="@hint" @onclick="() => SetAsync(value)">@roman</button>
-    }
-</div>
+<ChoiceField TValue="int?" Items="Choices" Value="Value" ValueChanged="ValueChanged" Label="Квадрант" />
 
 @code {
     public static readonly (int Value, string Roman, string Hint)[] Quadrants =
     [
-        (1, "I", "I — важно и срочно"),
-        (2, "II", "II — важно, не срочно (главное по Кови)"),
-        (3, "III", "III — срочно, не важно"),
-        (4, "IV", "IV — не срочно и не важно"),
+        (1, "I", "важно и срочно"),
+        (2, "II", "важно, не срочно"),
+        (3, "III", "срочно, не важно"),
+        (4, "IV", "не срочно и не важно"),
+    ];
+
+    private static readonly IReadOnlyList<Choice<int?>> Choices =
+    [
+        new(null, "—"),
+        .. Quadrants.Select(q => new Choice<int?>(q.Value, Label(q.Value))),
     ];
 
     [Parameter]
@@ -27,5 +27,6 @@
 
     public static string Hint(int quadrant) => Quadrants.First(q => q.Value == quadrant).Hint;
 
-    private Task SetAsync(int? value) => ValueChanged.InvokeAsync(value);
+    /// <summary>«II · важно, не срочно».</summary>
+    public static string Label(int quadrant) => $"{Roman(quadrant)} · {Hint(quadrant)}";
 }

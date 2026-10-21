@@ -83,7 +83,9 @@ await check('дело в дне: клик по левой полосе (не п�
   await page.mouse.click(p.x, p.y); await settle();
   assert(!(await page.$('.editor')), 'открылось окно дела');
   assert(await item.evaluate(i => i.classList.contains('done')), 'не отмечено');
-  await page.mouse.click(p.x, p.y); await settle();
+  // D3: выполненное уехало вниз дня — снимаем отметку там, где оно теперь
+  const p2 = await stripPoint(item);
+  await page.mouse.click(p2.x, p2.y); await settle();
   assert(!(await item.evaluate(i => i.classList.contains('done'))), 'отметка не снялась');
 });
 
@@ -104,7 +106,7 @@ await check('цель в левой панели: клик по левой по�
   const p = await stripPoint(goal);
   await page.mouse.click(p.x, p.y); await settle();
   assert(!(await page.$('.editor')), 'открылось окно цели');
-  const count = await page.evaluate(() => [...document.querySelectorAll('.role')].find(r => r.textContent.includes('100 страниц')).querySelector('.n').textContent);
+  const count = await page.evaluate(() => { const r = [...document.querySelectorAll('.role')].find(x => x.textContent.includes('100 страниц')); return (() => { const items = [...r.querySelectorAll('.role-body > .item')]; return items.length ? `${items.filter(i => i.classList.contains('done')).length}/${items.length}` : null; })(); });
   assert(count === '1/1', `счётчик ${count}`);
 });
 

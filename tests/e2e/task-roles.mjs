@@ -43,7 +43,7 @@ async function pickRoles(...names) {
 async function clearRoles() {
   while (await page.$('.editor .tag-x')) { await page.click('.editor .tag-x'); await settle(); }
 }
-const save = async () => { await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle(); };
+const save = async () => { await page.click('.editor .buttons .btn.primary'); await settle(); };
 // Цвет роли по имени — из её точки в левой панели
 const roleColor = name => page.evaluate(n => getComputedStyle([...document.querySelectorAll('.role')]
   .find(r => r.querySelector('.role-h .name')?.textContent.trim() === n).querySelector('.role-h .dot')).backgroundColor, name);
@@ -110,7 +110,7 @@ await check('одна роль — без точек; без роли — бле
 });
 
 await check('занятие цели: роль одна, от цели, выбрать нельзя', async () => {
-  await (await page.evaluateHandle(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.pill.rock'))).then(h => h.$('.title'))).click();
+  await (await page.evaluateHandle(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title.rock'))).then(h => h.$('.title'))).click();
   await settle();
   assert(!(await page.$('.editor .tag-add')) && !(await page.$('.editor .tag-x')), 'у занятия можно выбирать роли');
   assert((await chipsOn()).length === 1, `роли: ${await chipsOn()}`);

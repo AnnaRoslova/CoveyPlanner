@@ -25,7 +25,8 @@
         <span class="dot"></span>
     }
     <div class="tx">
-        <span class="title-box"><span class="title @(Clamp && !_unclamped ? "clamp" : "") @(_unclamped ? "unclamped" : "") @(Compact ? "one-line" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
+        @* D2: занятие цели — ◆ в конце названия (::after, ui-declutter.md), слово — в подсказке *@
+        <span class="title-box" title="@(IsRock ? RockTitle ?? "занятие цели" : null)"><span class="title @(IsRock ? "rock" : "") @(Clamp && !_unclamped ? "clamp" : "") @(_unclamped ? "unclamped" : "") @(Compact ? "one-line" : "")">@foreach (var segment in TextSearch.Split(Title, Highlight))
         {
             if (segment.IsMatch)
             {
@@ -64,7 +65,7 @@
                 }
             </span>
         }
-        @if (TimeLabel is not null || DurationLabel is not null || IsRock || Badge is not null)
+        @if (TimeLabel is not null || DurationLabel is not null || Badge is not null)
         {
             <div class="pills">
                 @if (TimeLabel is not null)
@@ -74,10 +75,6 @@
                 @if (DurationLabel is not null)
                 {
                     <span class="pill dur">@DurationLabel</span>
-                }
-                @if (IsRock)
-                {
-                    <span class="pill rock">камень</span>
                 }
                 @Badge
             </div>
@@ -118,7 +115,20 @@
     }
     @if (Percent is { } percent)
     {
-        <span class="pct @(percent >= 100 ? "full" : "")" title="@(PercentPrefix is null ? "" : "Шаги цели: " + PercentPrefix + " · ")Выполнено занятий этой недели: @percent%">@(PercentPrefix is null ? "" : PercentPrefix + " · ")@(percent >= 100 ? "100% ✓" : $"{percent}%")</span>
+        var pctTitle = (PercentPrefix is null ? "" : "Шаги цели: " + PercentPrefix + " · ") + (PercentHint ?? $"выполнено {percent}%");
+        @if (percent == 0)
+        {
+            @* D1: не начато — тихий пустой кружок вместо «0%» (ui-declutter.md) *@
+            @if (PercentPrefix is not null)
+            {
+                <span class="pct" title="@pctTitle">@PercentPrefix</span>
+            }
+            <span class="pct-ring" role="img" title="@(pctTitle + " · не начато")" aria-label="@(pctTitle + " · не начато")"></span>
+        }
+        else
+        {
+            <span class="pct @(percent >= 100 ? "full" : "")" title="@pctTitle">@(PercentPrefix is null ? "" : PercentPrefix + " · ")@(percent >= 100 ? "100% ✓" : $"{percent}%")</span>
+        }
     }
     @if (Actions is not null)
     {
@@ -198,6 +208,14 @@
     /// <summary>Процент выполнения цели («50%», 100 — «100% ✓» мятным) — справа в строке. null — не показывать.</summary>
     [Parameter]
     public int? Percent { get; set; }
+
+    /// <summary>Подсказка процента: «выполнено 2 из 5» (число — один раз, в подсказке; D5).</summary>
+    [Parameter]
+    public string? PercentHint { get; set; }
+
+    /// <summary>Подсказка ◆: «занятие цели «Бег»» (D2).</summary>
+    [Parameter]
+    public string? RockTitle { get; set; }
 
     /// <summary>Перед процентом — «☑ 1/3» шагов проекта цели (R7): «☑ 1/3 · 25%»; процент — по-прежнему занятия.</summary>
     [Parameter]

@@ -27,7 +27,7 @@ const day = i => page.evaluate((i, titleOfSrc) => {
   const titleOf = new Function('return ' + titleOfSrc)();
   return [...document.querySelectorAll('.day')[i].querySelectorAll('.item')].map(it => ({
     title: titleOf(it), time: it.querySelector('.pill.time')?.textContent ?? null,
-    rock: !!it.querySelector('.pill.rock'), done: it.classList.contains('done'),
+    rock: !!it.querySelector('.title.rock'), done: it.classList.contains('done'),
   }));
 }, i, titleOf.toString());
 const dayTitles = async i => (await day(i)).map(t => t.title);
@@ -84,20 +84,28 @@ await check('лента → день между делами без времен
   const target = await dayItemBox(0, 'Оплатить интернет');
   await mouseDrag(from, target.x + 40, target.y + 4);
   const mon = await dayTitles(0);
-  assert(JSON.stringify(mon) === '["Бег в парке","Купить подарок маме","Сад с травами на балконе","Оплатить интернет"]', `Пн: ${mon}`);
+  // D3: выполненные («Бег в парке», «Купить подарок маме») — внизу дня
+  assert(JSON.stringify(mon) === '["Сад с травами на балконе","Оплатить интернет","Бег в парке","Купить подарок маме"]', `Пн: ${mon}`);
 });
 
 await check('порядок внутри дня', async () => {
   const from = await dayItemBox(0, 'Оплатить интернет');
-  const target = await dayItemBox(0, 'Купить подарок маме');
+  const target = await dayItemBox(0, 'Сад с травами на балконе');
   await mouseDrag(from, target.x + 40, target.y + 4);
   const mon = await dayTitles(0);
-  assert(JSON.stringify(mon) === '["Бег в парке","Оплатить интернет","Купить подарок маме","Сад с травами на балконе"]', `Пн: ${mon}`);
+  assert(JSON.stringify(mon) === '["Оплатить интернет","Сад с травами на балконе","Бег в парке","Купить подарок маме"]', `Пн: ${mon}`);
   await load();
   assert(JSON.stringify(await dayTitles(0)) === JSON.stringify(mon), 'после перезагрузки');
 });
 
 await check('дело без времени нельзя поставить выше дел со временем', async () => {
+  // Дело со временем — невыполненное (выполненные стоят внизу дня, D3)
+  await page.evaluate(async () => {
+    const week = await (await fetch('/api/week/' + new Date().toISOString().slice(0, 10))).json();
+    const t = week.tasks.find(x => x.title === 'Бег в парке');
+    await fetch(`/api/tasks/${t.id}/done`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isDone: false }) });
+  });
+  await load();
   const from = await dayItemBox(0, 'Сад с травами на балконе');
   const top = await dayItemBox(0, 'Бег в парке');
   let lineY = null;

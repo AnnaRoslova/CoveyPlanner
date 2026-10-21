@@ -1,0 +1,21 @@
+@* Строка «+ проект · + время · + длительность · + заметки · + квадрант» — пустые редкие поля окна (docs/specs/ui-declutter.md, U2.2).
+   Нажали — поле появляется раскрытым, фокус в нём (это делает окно). Нет пустых полей — строки нет. Стили — css/editor.css. *@
+
+@if (Items.Count > 0)
+{
+    <div class="adders" role="group" aria-label="Добавить">
+        @foreach (var (key, label) in Items)
+        {
+            <button type="button" class="add small adder" data-adder="@key" @onclick="() => OnAdd.InvokeAsync(key)">+ @label</button>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Пустые поля: ключ и подпись («duration», «длительность»).</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<(string Key, string Label)> Items { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<string> OnAdd { get; set; }
+}

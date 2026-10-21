@@ -1,19 +1,22 @@
-@* Окно редактирования дела: «↳ Проект» у шага (клик — окно проекта), название, роли (можно несколько), «Проект» (S6–S10),
-   дата (другой день, другая неделя или «без даты» — в ленту; у шага — в список проекта),
-   время, квадрант, длительность, заметки, шаги (у занятия — шаги цели); «в корзину».
+@* Окно редактирования дела (docs/specs/ui-declutter.md, U2.A): сразу видно название, роль, дата и время; редкие поля (квадрант,
+   длительность, проект, заметки) — заполненные одной строкой-сводкой (клик раскрывает поле), пустые — «+ …» (U2.2); редкие действия — в «⋯» («🛠 сделать проектом» /
+   «больше не проект», «открыть проект» у шага, «в корзину»). «→ на след. неделю» — последним пунктом меню поля «Дата» (U2-a).
+   У шага сверху «↳ 🛠 Ремонт» (клик — окно проекта), отдельной сводки проекта нет (U2-d), сменить — «⋯ → сменить проект…».
+   Шаги — только у проекта (batch-ux.md, BP3): у дела без шагов «+ шаг» нет, сначала «⋯ → сделать проектом».
    У занятия цели роли и квадрант — от цели (здесь только видны), а время, длительность и заметки могут быть «своими» —
    метка «своё» и кнопка «как у цели». Сделать дело занятием цели — перетащить его на строку цели в левой панели.
-   Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
+   Enter в названии — сохранить, Ctrl+Enter — из любого поля, Esc или клик мимо — отмена. Стили — css/editor.css. *@
 @inject PlannerState State
 @inject WindowHost Windows
+@inject IJSRuntime JS
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
 <div class="editor" role="dialog" aria-label="Дело" tabindex="-1" @onkeydown="OnKeyDown">
     @if (State.ParentTitleOf(EditedTask) is { } headerProject)
     {
-        @* Шаг проекта: «↳ Ремонт» — клик открывает окно проекта *@
-        <button type="button" class="step-of" title="Открыть проект" @onclick="OpenProjectAsync">↳ <span>@headerProject</span></button>
+        @* Шаг проекта: «↳ 🛠 Ремонт» — клик открывает окно проекта *@
+        <button type="button" class="step-of" title="Открыть проект" @onclick="OpenProjectAsync">↳ 🛠 <span>@headerProject</span></button>
     }
     <input @ref="_titleInput" class="title-input" maxlength="500" placeholder="Что сделать"
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
@@ -30,122 +33,140 @@
         </div>
     }
 
-    <div class="field">
-        <div class="label">Роль</div>
+    <div class="line">
+        <span class="label">Роль</span>
         @* Роли — множественный выбор; у занятия — роли цели, здесь только видны *@
         <RolePicker Roles="State.OrderedRoles" Value="RoleIds" ValueChanged="SetRoles"
                     Locked="Goal is not null" LockedHint="от цели" />
     </div>
 
-    <ProjectField Task="EditedTask" @bind-Value="_projectId" />
-
-    @* Дата: любая (календарь) или быстрые кнопки; «без даты» — обратно в ленту *@
-    <div class="field">
-        <div class="label">Дата</div>
-        <div class="date-row">
-            <input type="date" @bind="_date" @bind:after="ClearWeekChoice" aria-label="Дата" />
-            <div class="chips">
-                <button type="button" class="chip @(_date == RuDates.Today ? "on" : "")" @onclick="() => SetDate(RuDates.Today)">сегодня</button>
-                <button type="button" class="chip @(_date == RuDates.Today.AddDays(1) ? "on" : "")" @onclick="() => SetDate(RuDates.Today.AddDays(1))">завтра</button>
-                <button type="button" class="chip @(_date == RuDates.Today.AddDays(7) ? "on" : "")" @onclick="() => SetDate(RuDates.Today.AddDays(7))">через неделю</button>
-                <button type="button" class="chip @(_date is null && !_keepWeek ? "on" : "")" @onclick="() => SetDate(null)">без даты</button>
-            </div>
-        </div>
-        @if (_keepWeek && EditedTask.PlannedWeek is { } plannedWeek)
-        {
-            <div class="date-hint">на неделе @RuDates.WeekRange(plannedWeek), без дня</div>
-        }
-        else if (_date is null && State.ParentTitleOf(EditedTask) is { } projectTitle)
-        {
-            <div class="date-hint">останется в списке шагов «@projectTitle»</div>
-        }
-        else if (_date is null)
-        {
-            <div class="date-hint">вернётся в ленту@(State.FindCategory(EditedTask.CategoryId) is { } category ? $" — в «{category.Name}»" : " — в «неразобранное»")</div>
-        }
-        else if (Goal is { } dateGoal && RuDates.WeekStartOf(_date.Value) != dateGoal.WeekStart)
-        {
-            <div class="date-hint">на той неделе станет занятием цели «@dateGoal.Title» (появится, если её там нет)</div>
-        }
-    </div>
-
-    @* B1: заметная кнопка — на неделю после показанной, без дня, слева под ролью; без роли — меню ролей и «в ленту» (B3); у занятия цели нельзя (N4.5) *@
-    <NextWeekButton RoleIds="RoleIds" Disabled="Goal is not null" OnChoose="NextWeekAsync" />
-
-    <div class="row">
-        <div class="field">
-            <div class="label-row">
-                <span class="label">Время</span>
-                @if (Goal is { } timeGoal && OwnTime(timeGoal))
-                {
-                    <span class="own">своё</span>
-                    <button type="button" class="btn small as-goal" @onclick="() => _time = timeGoal.StartTime">как у цели</button>
-                }
-            </div>
+    @* Дата: одно поле с меню (сегодня, завтра, другая дата…, без даты, → на след. неделю); рядом — время *@
+    <div class="line">
+        <span class="label">Дата</span>
+        <div class="line-values">
+            <DateField Value="_date" ValueChanged="SetDate" KeepWeek="_keepWeek" EmptyText="@DateEmptyText" NoDateHint="@NoDateHint"
+                       RoleIds="RoleIds" Roles="State.OrderedRoles"
+                       NextWeekDisabled="@(Goal is not null ? "у занятия цели своя неделя" : null)" OnNextWeek="NextWeekAsync" />
             <TimePicker @bind-Value="_time" />
-        </div>
-
-        <div class="field">
-            <div class="label">Квадрант</div>
-            @if (Goal is not null)
+            @if (Goal is { } timeGoal && OwnTime(timeGoal))
             {
-                <div class="from-goal">
-                    @(Quadrant is { } gq ? QuadrantPicker.Roman(gq) : "—")
-                    <span class="hint">· от цели</span>
-                </div>
-            }
-            else
-            {
-                <QuadrantPicker @bind-Value="_quadrant" />
+                <span class="own">своё</span>
+                <button type="button" class="btn small as-goal" @onclick="() => _time = timeGoal.StartTime">как у цели</button>
             }
         </div>
     </div>
-    @if (Quadrant is { } q)
+    @if (DateHint is { } dateHint)
     {
-        <div class="quadrant-hint">@QuadrantPicker.Hint(q)</div>
+        <div class="date-hint">@dateHint</div>
     }
 
-    <div class="field">
-        <div class="label-row">
-            <span class="label">Длительность</span>
-            @if (Goal is { } durGoal && OwnDuration(durGoal))
+    @* Редкие поля (U2.2): заполненное — одной строкой-сводкой (клик раскрывает это поле), пустое — «+ …» в строке добавлялок *@
+    <div class="rare">
+        @if (Goal is not null)
+        {
+            @if (Quadrant is { } gq)
             {
-                <span class="own">своё</span>
-                <button type="button" class="btn small as-goal" @onclick="() => _duration = durGoal.DurationMinutes">как у цели</button>
+                <SummaryChip Key="quadrant" Text="@($"Квадрант {QuadrantPicker.Label(gq)} · от цели")" Title="квадрант занятия — от цели" />
             }
-        </div>
-        <DurationPicker @bind-Value="_duration" />
-    </div>
+        }
+        else if (_rare.IsOpen("quadrant"))
+        {
+            <div class="line" data-field="quadrant">
+                <span class="label">Квадрант</span>
+                <QuadrantPicker @bind-Value="_quadrant" />
+            </div>
+        }
+        else if (_quadrant is { } q)
+        {
+            <SummaryChip Key="quadrant" Text="@($"Квадрант {QuadrantPicker.Label(q)}")" OnClick="@(() => _rare.Open("quadrant"))" />
+        }
 
-    <div class="field">
-        <div class="label-row">
-            <span class="label">Заметки</span>
-            @if (Goal is { } notesGoal && OwnNotes(notesGoal))
-            {
-                <span class="own">своё</span>
-                <button type="button" class="btn small as-goal" @onclick="() => _notes = notesGoal.Notes">как у цели</button>
-            }
-        </div>
-        <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
-    </div>
+        @if (_rare.IsOpen("duration"))
+        {
+            <div class="line" data-field="duration">
+                <span class="label">Длительность</span>
+                <div class="line-values">
+                    <DurationPicker @bind-Value="_duration" />
+                    @if (Goal is { } durGoal && OwnDuration(durGoal))
+                    {
+                        <span class="own">своё</span>
+                        <button type="button" class="btn small as-goal" @onclick="() => _duration = durGoal.DurationMinutes">как у цели</button>
+                    }
+                </div>
+            </div>
+        }
+        else if (_duration is { } minutes)
+        {
+            <SummaryChip Key="duration" Text="@($"⏱ {RuDates.Duration(minutes)}{(Goal is { } dg && OwnDuration(dg) ? " · своё" : "")}")"
+                         OnClick="@(() => _rare.Open("duration"))" />
+        }
 
-    @* Шаги — дело-чеклист: меняются сразу, без «Сохранить». У шага своих шагов не бывает;
-       у занятия цели — шаги цели (её проекта), один список на все занятия (G4) *@
+        @if (_rare.IsOpen("project"))
+        {
+            <div data-field="project"><ProjectField Task="EditedTask" @bind-Value="_projectId" /></div>
+        }
+        else if (_projectId != 0 && EditedTask.ParentId is null)
+        {
+            <SummaryChip Key="project" Text="@($"🛠 {State.FindTask(_projectId)?.Title ?? "проект"}")" OnClick="@(() => _rare.Open("project"))" />
+        }
+
+        @if (_rare.IsOpen("notes"))
+        {
+            <div class="field" data-field="notes">
+                <div class="label-row">
+                    <span class="label">Заметки</span>
+                    @if (Goal is { } notesGoal && OwnNotes(notesGoal))
+                    {
+                        <span class="own">своё</span>
+                        <button type="button" class="btn small as-goal" @onclick="() => _notes = notesGoal.Notes">как у цели</button>
+                    }
+                </div>
+                <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_notes))
+        {
+            <SummaryChip Key="notes" Text="@($"📝 {RareFields.FirstLine(_notes)}{(Goal is { } ng && OwnNotes(ng) ? " · своё" : "")}")"
+                         Title="@_notes" OnClick="@(() => _rare.Open("notes"))" />
+        }
+    </div>
+    <AddersRow Items="Adders" OnAdd="key => _rare.Open(key)" />
+
+    @* Шаги — меняются сразу, без «Сохранить». У занятия цели — шаги её проекта (один список на все занятия, G4); у проекта — его шаги *@
     @if (EditedTask.Id > 0 && Goal is { } stepsGoal)
     {
         @* У занятия постоянной цели без выбранного проекта шагов нет: привычка — не проект (fixes-2026-10.md, A2) *@
         @if (!stepsGoal.IsRecurring || stepsGoal is { ProjectId: not null, ProjectIsTrashed: false })
         {
-                <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" ViaSessionId="EditedTask.Id" />
+            <GoalStepsBlock Goal="stepsGoal" Title="@($"Шаги цели «{stepsGoal.Title}»")" ViaSessionId="EditedTask.Id" />
         }
     }
-    else if (EditedTask.Id > 0 && EditedTask.ParentId is null)
+    else if (EditedTask.Id > 0 && IsProject)
     {
         <TaskStepsBlock TaskId="EditedTask.Id" />
     }
 
     <div class="buttons">
-        <button type="button" class="btn danger trash" @onclick="TrashAsync">в корзину</button>
+        <MoreMenu Class="left">
+            @if (EditedTask.Id > 0 && Goal is null && EditedTask.ParentId is null)
+            {
+                @if (!IsProject)
+                {
+                    <MenuItem Label="🛠 сделать проектом" Hint="шаги и дни" OnClick="() => State.MakeProjectAsync(EditedTask.Id)" />
+                }
+                else if (State.StepsOf(EditedTask.Id).Count == 0)
+                {
+                    <MenuItem Label="🛠 больше не проект" OnClick="() => State.UnmakeProjectAsync(EditedTask.Id)" />
+                }
+            }
+            @if (EditedTask.ParentId is not null)
+            {
+                <MenuItem Label="↳ открыть проект" OnClick="OpenProjectAsync" />
+                <MenuItem Label="сменить проект…" OnClick="@(() => _rare.Open("project"))" />
+            }
+            <div class="menu-sep" role="separator"></div>
+            <MenuItem Label="в корзину" Danger="true" Class="trash" OnClick="TrashAsync" />
+        </MoreMenu>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
         <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
@@ -165,13 +186,58 @@
     // Дело «на неделе» без дня (N4) и дату не меняли
     private bool _keepWeek;
 
+    // Раскрытые редкие поля (U2.2; не запоминаются, U2-b)
+    private RareFields _rare = null!;
+
     private void SetDate(DateOnly? date)
     {
         _date = date;
-        ClearWeekChoice();
+        _keepWeek = false;
     }
 
-    private void ClearWeekChoice() => _keepWeek = false;
+    private bool IsProject => State.FindTask(EditedTask.Id)?.IsProject ?? EditedTask.IsProject;
+
+    /// <summary>
+    /// «+ …» — пустые редкие поля, которые ещё не раскрыли (U2.2). Квадрант занятия — от цели (не добавляется); у шага проект — в «↳ Ремонт»
+    /// (сменить — «⋯ → сменить проект», U2-d); у проекта поля «Проект» нет (один уровень).
+    /// </summary>
+    private IReadOnlyList<(string Key, string Label)> Adders =>
+    [
+        .. Goal is null && _quadrant is null && !_rare.IsOpen("quadrant") ? [("quadrant", "квадрант")] : Array.Empty<(string, string)>(),
+        .. _duration is null && !_rare.IsOpen("duration") ? [("duration", "длительность")] : Array.Empty<(string, string)>(),
+        .. _projectId == 0 && EditedTask.ParentId is null && !IsProject && !_rare.IsOpen("project") ? [("project", "проект")] : Array.Empty<(string, string)>(),
+        .. string.IsNullOrWhiteSpace(_notes) && !_rare.IsOpen("notes") ? [("notes", "заметки")] : Array.Empty<(string, string)>(),
+    ];
+
+    /// <summary>Подпись поля «Дата» без дня: дело «на неделе» — его неделя, иначе «без даты».</summary>
+    private string DateEmptyText => _keepWeek && EditedTask.PlannedWeek is { } week ? $"на неделе {RuDates.DayMonthShort(week)}" : "без даты";
+
+    /// <summary>Куда уйдёт «без даты» (подсказка в меню): шаг — в список проекта, остальное — в ленту.</summary>
+    private string NoDateHint => State.ParentTitleOf(EditedTask) is { } project ? $"в «{project}»" : "в ленту";
+
+    /// <summary>Подсказка под строкой даты (D6: коротко, со строчной, без точки).</summary>
+    private string? DateHint
+    {
+        get
+        {
+            if (_keepWeek && EditedTask.PlannedWeek is { } plannedWeek)
+            {
+                return $"на неделе {RuDates.WeekRange(plannedWeek)}, без дня";
+            }
+
+            if (_date is null && State.ParentTitleOf(EditedTask) is { } projectTitle)
+            {
+                return $"останется в «{projectTitle}»";
+            }
+
+            if (_date is null)
+            {
+                return State.FindCategory(EditedTask.CategoryId) is { } category ? $"в ленту, в «{category.Name}»" : "в ленту, в «неразобранное»";
+            }
+
+            return Goal is { } dateGoal && RuDates.WeekStartOf(_date.Value) != dateGoal.WeekStart ? "станет занятием цели той недели" : null;
+        }
+    }
 
     [Parameter, EditorRequired]
     public TaskDto EditedTask { get; set; } = null!;
@@ -196,6 +262,7 @@
 
     protected override void OnInitialized()
     {
+        _rare = new RareFields(JS);
         _title = EditedTask.Title;
         _notes = EditedTask.Notes;
         _roleIds.UnionWith(EditedTask.RoleIds);
@@ -213,6 +280,8 @@
         {
             await _titleInput.FocusAsync();
         }
+
+        await _rare.AfterRenderAsync();
     }
 
     /// <summary>Роли, которые видны в окне: у занятия — роли цели.</summary>
@@ -269,7 +338,7 @@
     /// «→ на след. неделю» (B1–B3): сохранить набранное в окне и сразу перенести — с ролью из меню, если у дела ролей нет;
     /// «в ленту» — как «без даты».
     /// </summary>
-    private async Task NextWeekAsync(NextWeekButton.NextWeekChoice choice)
+    private async Task NextWeekAsync(DateField.NextWeekChoice choice)
     {
         if (string.IsNullOrWhiteSpace(_title))
         {

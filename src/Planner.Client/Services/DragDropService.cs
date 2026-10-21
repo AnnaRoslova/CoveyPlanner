@@ -162,7 +162,7 @@ public sealed class DragDropService(IJSRuntime js, PlannerState state, WindowHos
             // Лента или день → день: запланировать, перенести на другой день, порядок в дне
             case { Kind: SomedayItem or DayItem or StepItem, Zone: DayZone }
                 when DateOnly.TryParseExact(drop.Key, "yyyy-MM-dd", out var date):
-                await state.MoveTaskToDayAsync(drop.Id, date, drop.Index);
+                await state.MoveTaskToDayAsync(drop.Id, date, state.DropIndexInDay(date, drop.Id, drop.Index)); // D3: выполненные внизу
                 break;
 
             // Лента или день → строка цели: дело становится занятием этой цели (было занятием другой — переходит)

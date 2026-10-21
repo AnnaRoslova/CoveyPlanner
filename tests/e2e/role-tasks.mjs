@@ -1,5 +1,5 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// «ещё дела: N ▸» в левой панели: дела недели с ролью роли, кроме занятий целей.
+// «дела в днях · N ▸» (было «ещё дела», ui-declutter D4) в левой панели: дела недели с ролью роли, кроме занятий целей.
 // Клик раскрывает список «Чт · название», клик по делу — его окно; раскрытие запоминается; нет дел — нет строки.
 import puppeteer from 'puppeteer-core';
 
@@ -40,9 +40,9 @@ await load();
 
 await check('строка «ещё дела: N» — без занятий целей; у роли без таких дел строки нет', async () => {
   const work = await roleInfo('Работа');
-  assert(work.head === 'ещё дела: 1', `Работа: ${work.head}`); // «Созвон», а камни «Код-ревью» и «Демо» — нет
+  assert(work.head === 'дела в днях · 1', `Работа: ${work.head}`); // «Созвон», а камни «Код-ревью» и «Демо» — нет
   assert(work.items.length === 0, 'список раскрыт сразу');
-  assert((await roleInfo('Семья')).head === 'ещё дела: 2', 'Семья');
+  assert((await roleInfo('Семья')).head === 'дела в днях · 2', 'Семья');
   assert((await roleInfo('Дом')).head === null, 'у «Дома» есть строка');
 });
 
@@ -84,9 +84,9 @@ await check('новое дело с ролью сразу попадает в с
   await page.click('.editor .tag-add'); await settle();
   await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === 'Ум').click());
   await settle(); await page.keyboard.press('Escape'); await settle();
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await settle();
+  await page.click('.editor .buttons .btn.primary'); await settle();
   const after = await roleInfo('Ум');
-  assert(before.head === 'ещё дела: 1' && after.head === 'ещё дела: 2', `${before.head} → ${after.head}`);
+  assert(before.head === 'дела в днях · 1' && after.head === 'дела в днях · 2', `${before.head} → ${after.head}`);
 });
 
 await check('в консоли нет ошибок', async () => {

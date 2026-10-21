@@ -1,0 +1,29 @@
+@* Сводка заполненного редкого поля окна (docs/specs/ui-declutter.md, U2.2): одна строка «⏱ 30 мин ▸», «🛠 Ремонт ▸», «Повтор: будни ▸».
+   Клик раскрывает именно это поле. Без OnClick — только подпись (квадрант занятия «от цели»). Стили — css/editor.css. *@
+
+@if (OnClick.HasDelegate)
+{
+    <button type="button" class="sum-chip" data-summary="@Key" title="@Title" @onclick="OnClick">
+        <span class="sum-text">@Text</span>
+        <span class="sum-chev" aria-hidden="true">▸</span>
+    </button>
+}
+else
+{
+    <span class="sum-chip static" data-summary="@Key" title="@Title"><span class="sum-text">@Text</span></span>
+}
+
+@code {
+    /// <summary>Ключ поля (quadrant, duration, project…) — для e2e и фокуса.</summary>
+    [Parameter, EditorRequired]
+    public string Key { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+}

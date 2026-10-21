@@ -43,7 +43,7 @@ async function boxOf(src) {
 }
 const goalBox = (role, title) => boxOf(`(() => { ${T} return [...${roleSel(role)}.querySelectorAll('.item')].find(i => titleOf(i) === ${JSON.stringify(title)}); })()`);
 const roleBox = role => boxOf(roleSel(role));
-const dayItem = (i, title) => page.evaluate(`(() => { ${T} const it = [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].find(x => titleOf(x) === ${JSON.stringify(title)}); return it ? { rock: !!it.querySelector('.pill.rock'), dots: it.querySelectorAll('.role-dots i').length } : null; })()`);
+const dayItem = (i, title) => page.evaluate(`(() => { ${T} const it = [...document.querySelectorAll('.day')[${i}].querySelectorAll('.item')].find(x => titleOf(x) === ${JSON.stringify(title)}); return it ? { rock: !!it.querySelector('.title.rock'), dots: it.querySelectorAll('.role-dots i').length } : null; })()`);
 async function dragGoal(role, title, toRole, { shift = false, beforeUp } = {}) {
   const from = await goalBox(role, title);
   const to = await roleBox(toRole);
@@ -77,7 +77,7 @@ await check('окно цели: «+» → «Семья» — цель видна
   await page.keyboard.press('Escape'); await settle();
   assert(JSON.stringify(await editorRoles()) === '["Тело","Семья"]', `роли: ${await editorRoles()}`);
   await page.screenshot({ path: `${SHOTS}/goal-roles-editor.png` });
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1200);
+  await page.click('.editor .buttons .btn.primary'); await sleep(1200);
   assert((await titlesOf('Тело')).includes('Бег') && (await titlesOf('Семья')).at(-1) === 'Бег', `Семья: ${await titlesOf('Семья')}`);
   assert(await rocks() === before, `камней: ${before} → ${await rocks()}`);
   await page.screenshot({ path: `${SHOTS}/goal-roles-panel.png` });
@@ -89,7 +89,7 @@ await check('прогресс общий: отметили занятие — «
   await openGoal('Семья', 'Бег');
   await page.evaluate(() => { const s = [...document.querySelectorAll('.editor .stepper .step')].find(b => b.title === 'Меньше'); s.click(); s.click(); });
   await settle();
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1000);
+  await page.click('.editor .buttons .btn.primary'); await sleep(1000);
   await page.evaluate(`(() => { ${T} [...${roleSel('Тело')}.querySelectorAll('.item')].find(i => titleOf(i) === 'Бег').querySelector('.ck-hit').click(); })()`);
   await sleep(1200);
   const [body, family] = [await goalIn('Тело', 'Бег'), await goalIn('Семья', 'Бег')];
@@ -126,7 +126,7 @@ await check('в окне цели «×» снимает роль, последн
   await page.click('.editor .tag-x'); await settle(); // первая по порядку — «Ум»
   assert(JSON.stringify(await editorRoles()) === '["Дух"]', `роли: ${await editorRoles()}`);
   assert(!(await page.$('.editor .tag-x')), 'у последней роли есть «×»');
-  await page.click('.editor .buttons .btn:not(.quiet):not(.danger)'); await sleep(1000);
+  await page.click('.editor .buttons .btn.primary'); await sleep(1000);
   assert(!(await titlesOf('Ум')).includes('100 страниц'), 'осталась под «Умом»');
 });
 

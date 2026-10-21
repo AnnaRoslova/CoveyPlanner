@@ -49,7 +49,7 @@ const day = i => page.evaluate(i => {
     return {
       title,
       time: item.querySelector('.pill.time')?.textContent ?? null,
-      rock: !!item.querySelector('.pill.rock'),
+      rock: !!item.querySelector('.title.rock'),
       done: item.classList.contains('done'),
       color: item.style.getPropertyValue('--c').trim() || null,
     };
@@ -99,11 +99,13 @@ await check('«+ дело»: в конец дня, поле остаётся; Es
   await page.type('.day:nth-of-type(1) .inline-input', 'Новое дело'); await page.keyboard.press('Enter'); await settle();
   assert(await page.$('.day:nth-of-type(1) .inline-input'), 'поле закрылось');
   await page.keyboard.press('Escape'); await settle();
+  // D3: последнее среди невыполненных — выполненные («Бег в парке», «Купить подарок маме») ниже
+  const lastOpen = t => t.slice(0, t.indexOf('Бег в парке')).at(-1);
   const t = await titles(0);
-  assert(t[t.length - 1] === 'Новое дело', `Пн: ${t}`);
+  assert(lastOpen(t) === 'Новое дело', `Пн: ${t}`);
   await load();
   const t2 = await titles(0);
-  assert(t2[t2.length - 1] === 'Новое дело', `после перезагрузки Пн: ${t2}`);
+  assert(lastOpen(t2) === 'Новое дело', `после перезагрузки Пн: ${t2}`);
 });
 
 await check('чекбокс: отметить и снять, запоминается; клик по чекбоксу не открывает окно', async () => {
@@ -136,7 +138,8 @@ await check('окно: название, роль, время, квадрант,
   await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim() === 'Работа').click());
   await settle(); await page.keyboard.press('Escape'); await settle();
   await setWheel('Время', 9, 15);
-  await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .segments button')].find(b => b.textContent.trim() === 'II'))).click();
+  for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await settle();
+  await page.click('.editor .select-field[aria-label="Квадрант"]'); await settle(); await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim().startsWith('II ·')).click()); await settle();
   await page.type('.editor textarea', 'черновик у Маши');
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить'))).click();
   await settle();
@@ -150,12 +153,13 @@ await check('после перезагрузки окно показывает �
   await load();
   await openEditor(3, 'Написать отчёт за сентябрь');
   const v = await page.evaluate(() => ({
-    notes: document.querySelector('.editor textarea').value,
+    // Заполненные редкие поля — сводками (ui-declutter U2.2)
+    notes: document.querySelector('.editor .sum-chip[data-summary="notes"] .sum-text')?.textContent.trim(),
     time: document.querySelector('.editor .wheel-field[aria-label="Время"] .select-label').textContent.trim(),
-    q: document.querySelector('.editor .segments .on')?.textContent.trim(),
+    q: document.querySelector('.editor .sum-chip[data-summary="quadrant"] .sum-text')?.textContent.trim().split(' ')[1],
     role: document.querySelector('.editor .tags .tag-name')?.textContent.trim(),
   }));
-  assert(v.notes === 'черновик у Маши' && v.time === '09:15' && v.q === 'II' && v.role === 'Работа', JSON.stringify(v));
+  assert(v.notes === '📝 черновик у Маши' && v.time === '09:15' && v.q === 'II' && v.role === 'Работа', JSON.stringify(v));
   await page.keyboard.press('Escape'); await settle();
   assert(!(await page.$('.editor')), 'Esc не закрыл');
 });
@@ -194,7 +198,7 @@ await check('переименование занятия цель не меня�
 
 await check('«в корзину» из окна; в корзине видно, из какого дня', async () => {
   await openEditor(0, 'Новое дело');
-  await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'в корзину'))).click();
+  await page.click('.editor .more-b'); await sleep(300); await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .popover .option')].find(b => b.querySelector('.option-name')?.textContent.trim() === 'в корзину'))).click();
   await settle();
   assert(!(await titles(0)).includes('Новое дело'), 'не удалилось');
   await page.click('.trash'); await sleep(600);

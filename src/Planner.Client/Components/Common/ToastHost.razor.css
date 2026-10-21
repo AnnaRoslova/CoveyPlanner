@@ -1,7 +1,8 @@
+/* D7 (ui-declutter.md): все плашки — в одном месте, вверху по центру под шапкой недели: там не бывает ни корзины, ни частых бросков */
 .toast {
     position: fixed;
     left: 50%;
-    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    top: calc(66px + env(safe-area-inset-top, 0px));
     z-index: 100;
     max-width: min(420px, calc(100vw - 32px));
     padding: 9px 16px;
@@ -91,18 +92,4 @@
     }
 }
 
-/* Про ленту и корзину («Удалено «…» · Вернуть», «выполнено · в корзину · вернуть») — у значка корзины внизу ленты */
-.toast.near-trash {
-    left: auto;
-    right: calc(22px + var(--right-width) / 2);
-    /* Над значком корзины, не на нём: корзину можно открыть, пока висит плашка */
-    bottom: calc(66px + env(safe-area-inset-bottom, 0px));
-    max-width: min(360px, calc(100vw - 32px));
-    transform: translateX(50%);
-}
-
-@media (max-width: 760px) {
-    .toast.near-trash {
-        right: 50%;
-    }
-}
+/* Плашки про ленту и корзину — там же, где все (D7); класс near-trash оставлен для e2e и анимации значка корзины */

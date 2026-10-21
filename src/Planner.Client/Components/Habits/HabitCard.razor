@@ -111,8 +111,11 @@
         {
             <button type="button" class="btn pink plus-one" @onclick="OnPlusOne">+1 сегодня</button>
         }
-        <button type="button" class="btn quiet" @onclick="OnEdit">настроить</button>
     </div>
+    @* «настроить» — значок ⚙ в углу карточки, при наведении и фокусе (ui-declutter.md, U3): нужен раз в жизни привычки *@
+    <button type="button" class="icon-b card-settings" title="настроить" aria-label="настроить" @onclick="OnEdit">
+        <Icon Name="gear" Size="15" />
+    </button>
 </article>
 
 @code {

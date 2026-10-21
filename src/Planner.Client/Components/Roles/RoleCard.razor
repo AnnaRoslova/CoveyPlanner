@@ -1,38 +1,54 @@
-@* Роль (или измерение пилы) и её цели на неделю.
+@* Роль (или измерение пилы) и её цели на неделю (docs/specs/ui-declutter.md, U1).
+   Название роли — кнопка «▾ / ▸»: сворачивает цели роли (и «+ цель», «на неделе», «дела в днях»), запоминается (RoleFoldState).
+   Свёрнутая — одна строка «▸ ● Работа · 2 цели» и розовая точка, если что-то не разложено (N1, E2). Пока тащат дело или цель, задержка
+   над свёрнутой ролью ~0,5 с раскрывает её до броска (js/dnd.js, класс peek; тело роли поэтому рисуется всегда, а прячется стилем).
    Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
    Справа у цели — процент выполненных занятий недели («50%», норма выполнена — «100% ✓»), перед ним — шаги её проекта («☑ 1/3 · 25%»).
-   Свёрнутые цели (Folded) — одна строка «название · процент», без дней и «2/5».
    Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»),
-   крестик — удалить, «+ цель» — новая цель в конец.
-   «⋯» в заголовке — окно роли (название, цвет, удаление). Порядок ролей — перетаскиванием карточки.
-   Под целями — тихая строка «ещё дела: N ▸»: остальные дела недели с этой ролью; раскрывается в список
+   крестик — удалить, «+ цель» — новая цель в конец (видна при наведении на роль; у роли без целей — всегда, U1.7).
+   «⋯» в заголовке — окно роли (название, цвет, удаление), при наведении. Порядок ролей — перетаскиванием карточки.
+   Под целями — строка «ещё дела: N ▸»: остальные дела недели с этой ролью; раскрывается в список
    «Чт · название», клик по делу — его окно. Раскрытие запоминается (RoleTasksState).
    Над ним — «на неделе · N» (N4, B2): дела недели без дня с этой ролью. Дело, брошенное на заголовок роли, — туда же (B5). *@
 @inject PlannerState State
 @inject WindowHost Windows
 @inject RoleTasksState RoleTasks
+@inject RoleFoldState RoleFold
 
-<div class="role @(Role.IsSharpenSaw ? "saw" : "")" style="--c: @Role.Color"
+@{ var folded = RoleFold.IsFolded(Role.Id) && !FlashInside; }
+<div class="role @(Role.IsSharpenSaw ? "saw" : "") @(folded ? "folded" : "") @(Goals.Count == 0 ? "no-goals" : "")" style="--c: @Role.Color"
      data-drop="@DragDropService.RoleZone" data-key="@Role.Id" data-accept="@DragDropService.RoleAccepts"
      data-drag="@(Role.IsSharpenSaw ? null : DragDropService.RoleItem)" data-id="@Role.Id">
     @* Заголовок роли — место, куда бросить дело «на эту неделю без дня» с этой ролью (B5); между целями — новая цель *@
     <div class="role-h" data-list-head data-drop="@DragDropService.WeekZone" data-key="@Role.Id" data-accept="@DragDropService.WeekAccepts"
          data-drop-index="2147483647" data-drop-hover>
-        <span class="dot"></span>
-        <span class="name">@Role.Name</span>
+        <button type="button" class="role-toggle" data-drag-ok aria-expanded="@(folded ? "false" : "true")"
+                title="@(folded ? "Развернуть цели роли" : "Свернуть цели роли")" @onclick="() => RoleFold.ToggleAsync(Role.Id)">
+            <span class="chev"><Icon Name="@(folded ? "chevron-right" : "chevron-down")" Size="11" /></span>
+            <span class="dot"></span>
+            <span class="name">@Role.Name</span>
+        </button>
+        @if (folded)
+        {
+            @if (Goals.Count > 0)
+            {
+                <span class="peek">@GoalsWord(Goals.Count)</span>
+            }
+            @if (HasUnplaced)
+            {
+                <span class="unplaced-dot" title="есть неразложенное"></span>
+            }
+        }
         <button type="button" class="menu" title="Изменить роль" @onclick="() => Windows.OpenRole(Role.Id)">
             <Icon Name="more" Size="14" />
         </button>
-        @if (Goals.Count > 0)
-        {
-            <span class="n">@Goals.Count(g => g.IsDone)/@Goals.Count</span>
-        }
     </div>
 
+    <div class="role-body">
     @foreach (var goal in Goals)
     {
-        <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone" Compact="Folded"
-                 Progress="@(Folded ? null : Progress(goal))" Days="@(Folded ? null : Days(goal))" Percent="goal.Percent" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
+        <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
+                 Days="@Days(goal)" Percent="goal.Percent" PercentHint="@($"выполнено {goal.DoneCount} из {goal.TimesPerWeek}")" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
                  Unplaced="@UnplacedHint(goal)"
                  OnToggle="() => State.ToggleGoalAsync(goal.Id)"
                  OnClick="() => OpenGoal(goal.Id)"
@@ -52,7 +68,7 @@
 
     @if (!Role.IsSharpenSaw && Goals.Count > State.RecommendedGoalsPerWeek)
     {
-        <div class="hint">Кови советует 1–@State.RecommendedGoalsPerWeek больших камня</div>
+        <div class="hint">лучше 1–@State.RecommendedGoalsPerWeek больших камня</div>
     }
 
     @if (_adding)
@@ -72,9 +88,9 @@
     @if (OtherTasks.Count > 0)
     {
         var open = RoleTasks.IsOpen(Role.Id);
-        <button type="button" class="btn small others-h" aria-expanded="@(open ? "true" : "false")"
+        <button type="button" class="btn small others-h" aria-expanded="@(open ? "true" : "false")" title="@($"дела этой недели с ролью «{Role.Name}», кроме занятий целей")"
                 @onclick="() => RoleTasks.ToggleAsync(Role.Id)">
-            ещё дела: @OtherTasks.Count <span class="chev @(open ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
+            дела в днях · @OtherTasks.Count <span class="chev @(open ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
         </button>
         @if (open)
         {
@@ -89,6 +105,7 @@
             </div>
         }
     }
+    </div>
 </div>
 
 @code {
@@ -105,9 +122,23 @@
     [Parameter]
     public IReadOnlyList<TaskDto> OtherTasks { get; set; } = [];
 
-    /// <summary>Цели свёрнуты в одну строку «название · процент» (кнопка в шапке панели, все цели сразу).</summary>
-    [Parameter]
-    public bool Folded { get; set; }
+    /// <summary>
+    /// В свёрнутой роли что-то не разложено: цель с неразложенными занятиями (N1) или дело «на неделе» без дня (E2) — розовая точка (U1.4).
+    /// </summary>
+    private bool HasUnplaced =>
+        Goals.Any(g => UnplacedHint(g) is not null)
+        || State.WeekTasksWithoutDay(Role.Id).Any(t => PlannerState.IsUnassigned(t, State.WeekStart, RuDates.Today));
+
+    /// <summary>Подсвечено дело «на неделе» этой роли («Показать» на плашке B4) — роль видна развёрнутой, пока идёт подсветка.</summary>
+    private bool FlashInside => State.FlashTaskId is { } id && State.WeekTasksWithoutDay(Role.Id).Any(t => t.Id == id);
+
+    /// <summary>«1 цель», «2 цели», «5 целей».</summary>
+    public static string GoalsWord(int n) => (n % 10, n % 100) switch
+    {
+        (1, not 11) => $"{n} цель",
+        (2 or 3 or 4, not (12 or 13 or 14)) => $"{n} цели",
+        _ => $"{n} целей",
+    };
 
     /// <summary>N1: «не разложено: 1 из 2» у недособранной цели текущей или будущей недели; иначе подсветки нет.</summary>
     private static string? UnplacedHint(WeeklyGoalDto goal) =>
@@ -116,10 +147,6 @@
     /// <summary>«☑ 1/3» — шаги проекта цели (R7), перед процентом; шагов нет — null. Меняется сразу: шаги лежат в состоянии экрана.</summary>
     private string? StepsLabel(WeeklyGoalDto goal) =>
         State.StepsOfGoal(goal) is { Count: > 0 } steps ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
-
-    /// <summary>«2/5» — только у цели на несколько раз в неделю.</summary>
-    private static string? Progress(WeeklyGoalDto goal) =>
-        goal.TimesPerWeek > 1 ? $"{goal.DoneCount}/{goal.TimesPerWeek}" : null;
 
     /// <summary>Дни, на которые стоят занятия: «Чт · Пт».</summary>
     private static IReadOnlyList<DayMark> Days(WeeklyGoalDto goal) =>

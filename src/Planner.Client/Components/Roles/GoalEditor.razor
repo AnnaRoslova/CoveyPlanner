@@ -1,11 +1,13 @@
-@* Окно цели — шаблон занятий: название, роли (можно несколько), «раз в неделю», «каждую неделю», время, квадрант, длительность, заметки.
-   Изменения расходятся по невыполненным занятиям недели (кроме полей, которые у занятия свои);
-   роль и квадрант — по всем занятиям. Постоянная цель пилы — привычка: строка «🫙 привычка: 102 скрепки · 🔥13»
-   (клик — экран «Копилки» на ней) и настройки банки. Enter в названии — сохранить, Esc или клик мимо — отмена.
+@* Окно цели — шаблон занятий (docs/specs/ui-declutter.md, U2.D): основное — одна-две строки «роль · раз в неделю · каждую неделю · 🫙 копить»;
+   редкие поля (повтор по дням, время, длительность, «несколько раз в день», квадрант, проект с шагами, заметки, банка привычки) — заполненные
+   одной строкой-сводкой (клик раскрывает поле), пустые — «+ …» (U2.2). Изменения расходятся по невыполненным занятиям недели (кроме полей,
+   которые у занятия свои); роль и квадрант — по всем занятиям. Внизу — «⋯» («🫙 открыть привычку», «удалить цель»), «Отмена», «Сохранить».
+   Enter в названии — сохранить, Esc или клик мимо — отмена.
    Выключили «каждую неделю», а на следующих неделях уже есть цели, — перед сохранением вопрос «Закончить серию?» (SeriesEndDialog, E1.2).
    Стили — css/editor.css. *@
 @inherits StateComponent
 @inject WindowHost Windows
+@inject IJSRuntime JS
 
 <div class="editor-backdrop" @onclick="OnClose"></div>
 
@@ -14,150 +16,203 @@
            @bind="_title" @bind:event="oninput" @onkeydown="OnTitleKey" />
 
     <div class="rock-note">
-        <span class="pill-rock">цель</span>
-        шаблон занятий: новые занятия берут эти значения
+        <span class="pill-rock" title="шаблон занятий: новые занятия берут эти значения">цель</span>
         @if (EditedGoal.TimesPerWeek > 1 || EditedGoal.Sessions.Count > 0)
         {
-            <text> · сделано @EditedGoal.DoneCount из @EditedGoal.TimesPerWeek</text>
+            <span>сделано @EditedGoal.DoneCount из @EditedGoal.TimesPerWeek</span>
         }
     </div>
 
-    <div class="field">
-        <div class="label">Роль</div>
+    @* Основное — одна-две строки (U2.2): роль · раз в неделю · каждую неделю · 🫙 копить *@
+    <div class="goal-main">
         @* Роли — можно несколько: цель видна под каждой (одна и та же, прогресс общий); хотя бы одна *@
         <RolePicker Roles="State.OrderedRoles" Value="_roleIds" ValueChanged="ids => _roleIds = [.. ids]" Required="true" />
-    </div>
-
-    <div class="field">
-        <div class="label">Раз в неделю</div>
-        <div class="times-per-week">
+        <span class="times-per-week" title="@(DaysChosen ? "раз в неделю = числу выбранных дней" : "раз в неделю")">
             @if (DaysChosen)
             {
                 @* Дни выбраны — «раз в неделю» задают они *@
                 <span class="times-fixed">@DayCount(_days)</span>
-                <span class="hint">= числу выбранных дней</span>
             }
             else
             {
                 <Stepper Value="_times" ValueChanged="times => _times = times ?? 1" Min="1" Max="MaxTimesPerWeek" Label="Раз в неделю" />
             }
-        </div>
-    </div>
-
-    @* «Каждую неделю»: цель сама появляется на следующих неделях; правка — с этой недели и дальше *@
-    <label class="switch-row">
-        <input type="checkbox" role="switch" @bind="_recurring" @bind:after="OnRecurringChanged" />
-        <span class="switch"></span>
-        <span>каждую неделю</span>
-        <span class="hint">@(_recurring ? "появится и на следующих неделях; изменения — с этой недели и дальше" : "только на этой неделе")</span>
-    </label>
-
-    @if (_recurring)
-    {
-        @* «🫙 копить»: постоянная цель с ним — привычка с банкой. Свойство всей серии, история не теряется *@
-        <label class="switch-row">
-            <input type="checkbox" role="switch" @bind="_habit" />
-            <span class="switch"></span>
-            <span>🫙 копить</span>
-            <span class="hint">@(_habit ? "занятия — скрепки в банку привычки" : "без банки и серий")</span>
-        </label>
-
-        @* Повтор: «сам раскладываю» — как раньше; дни выбраны — занятия встают в них сами.
-           Кружки дней можно переключать руками — тогда в списке «свои дни» *@
-        <div class="field">
-            <div class="repeat-row">
-                <span class="label">Повтор</span>
-                <ChoiceField TValue="Repeat" Items="RepeatChoices" Value="_repeat" ValueChanged="SetRepeat" Label="Повтор" />
-            </div>
-            @if (_repeat != Repeat.Manual)
+            <span class="times-word">раз в неделю</span>
+        </span>
+        @* «Каждую неделю»: цель сама появляется на следующих неделях; правка — с этой недели. «🫙 копить» — привычка с банкой *@
+        <span class="switches">
+            <label class="switch-row" title="@RecurringHint">
+                <input type="checkbox" role="switch" @bind="_recurring" @bind:after="OnRecurringChanged" />
+                <span class="switch"></span>
+                <span>каждую неделю</span>
+            </label>
+            @if (_recurring)
             {
-                <div class="day-dots" role="group" aria-label="Дни">
-                    @for (var i = 0; i < DayNames.Length; i++)
+                <label class="switch-row" title="@HabitHint">
+                    <input type="checkbox" role="switch" @bind="_habit" @bind:after="OnHabitChanged" />
+                    <span class="switch"></span>
+                    <span>🫙 копить</span>
+                </label>
+            }
+        </span>
+    </div>
+    @if (TouchedHint is { } touchedHint)
+    {
+        <div class="date-hint">@touchedHint</div>
+    }
+
+    @* Редкие поля (U2.2): заполненное — одной строкой-сводкой (клик раскрывает это поле), пустое — «+ …» *@
+    <div class="rare">
+        @if (_recurring)
+        {
+            @if (_rare.IsOpen("days"))
+            {
+                @* Повтор: «сам раскладываю» — как раньше; дни выбраны — занятия встают в них сами. Кружки — «свои дни» *@
+                <div class="field" data-field="days">
+                    <div class="line repeat-row">
+                        <span class="label">Повтор</span>
+                        <ChoiceField TValue="Repeat" Items="RepeatChoices" Value="_repeat" ValueChanged="SetRepeat" Label="Повтор" />
+                    </div>
+                    @if (_repeat != Repeat.Manual)
                     {
-                        var bit = 1 << i;
-                        var on = (_days & bit) != 0;
-                        <button type="button" class="day-dot @(on ? "on" : "")" aria-pressed="@(on ? "true" : "false")"
-                                title="@DayNames[i]" aria-label="@DayNames[i]" @onclick="() => ToggleDay(bit)">@DayNames[i][..1]</button>
+                        <div class="day-dots" role="group" aria-label="Дни">
+                            @for (var i = 0; i < DayNames.Length; i++)
+                            {
+                                var bit = 1 << i;
+                                var on = (_days & bit) != 0;
+                                <button type="button" class="day-dot @(on ? "on" : "")" aria-pressed="@(on ? "true" : "false")"
+                                        title="@DayNames[i]" aria-label="@DayNames[i]" @onclick="() => ToggleDay(bit)">@DayNames[i][..1]</button>
+                            }
+                        </div>
+                    }
+                    @if (DaysChosen)
+                    {
+                        <div class="date-hint">занятия встанут в эти дни сами</div>
                     }
                 </div>
             }
-            @if (DaysChosen)
+            else if (DaysChosen)
             {
-                <div class="date-hint">занятия встанут в эти дни сами — на этой неделе и дальше; выполненные не трогаются</div>
+                <SummaryChip Key="days" Text="@($"Повтор: {DaysText}")" OnClick="@(() => _rare.Open("days"))" />
             }
-        </div>
-    }
+        }
 
-    @* Проект цели (P1): новые занятия — его шаги; его шаги — шаги цели, один список (G1–G2).
-       У постоянной цели проект — только выбранный, сам он не создаётся (fixes-2026-10.md, A1–A2): без проекта блока «Шаги» нет *@
-    <div class="field">
-        <div class="project-row">
-            <span class="label">Проект</span>
-            <ChoiceField TValue="int" Items="ProjectChoices" Value="ShownProjectId" ValueChanged="SetProject" Label="Проект" Searchable="true" />
-        </div>
-        <div class="date-hint">@(ShowsSteps ? "новые занятия — шаги проекта" : "у привычки проект — только выбранный: книга, курс…")</div>
-    </div>
-    @if (ShowsSteps)
-    {
-        <GoalStepsBlock Goal="@(State.FindGoal(EditedGoal.Id) ?? EditedGoal)" />
-    }
-
-    <label class="switch-row">
-        <input type="checkbox" role="switch" @bind="_several" />
-        <span class="switch"></span>
-        <span>можно несколько раз в день</span>
-        <span class="hint">@(_several ? "например, утром и вечером" : "в один день — не больше одного занятия")</span>
-    </label>
-
-    @* Постоянная цель с «копить» — привычка: её счёт и банка (норма — «раз в неделю», скрепки — выполненные занятия) *@
-    @if (_recurring && _habit && State.HabitOfGoal(EditedGoal) is { } habit)
-    {
-        <div class="field habit-of-goal">
-            <button type="button" class="btn habit-line" title="Открыть на экране «Копилки»" @onclick="() => OpenHabitAsync(habit.Id)">
-                🫙 привычка: @habit.Stats.Total @HabitCard.ClipsWord(habit.Stats.Total) · @(habit.Stats.WeekPaused ? "⚠" : $"🔥{habit.Stats.WeekStreak}")
-            </button>
-            <div class="row">
-                <div class="field">
-                    <div class="label">Стартовое число</div>
-                    <Stepper Value="_startCount" ValueChanged="v => _startCount = v ?? 0" Min="0" Max="1000000" Label="Стартовое число" />
-                </div>
-                <div class="field">
-                    <div class="label">В банке</div>
-                    <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
-                </div>
+        @if (_rare.IsOpen("time"))
+        {
+            <div class="line" data-field="time">
+                <span class="label">Время</span>
+                <TimePicker @bind-Value="_time" />
             </div>
-            <div class="date-hint">стартовое число — сколько скрепок было до привычки: идут только в общий счёт</div>
-        </div>
-    }
+        }
+        else if (_time is { } time)
+        {
+            <SummaryChip Key="time" Text="@($"⏰ {RuDates.Time(time)}")" OnClick="@(() => _rare.Open("time"))" />
+        }
 
-    <div class="row">
-        <div class="field">
-            <div class="label">Время</div>
-            <TimePicker @bind-Value="_time" />
-        </div>
+        @if (_rare.IsOpen("duration"))
+        {
+            <div class="line" data-field="duration">
+                <span class="label">Длительность</span>
+                <DurationPicker @bind-Value="_duration" />
+            </div>
+        }
+        else if (_duration is { } minutes)
+        {
+            <SummaryChip Key="duration" Text="@($"⏱ {RuDates.Duration(minutes)}")" OnClick="@(() => _rare.Open("duration"))" />
+        }
 
-        <div class="field">
-            <div class="label">Квадрант</div>
-            <QuadrantPicker @bind-Value="_quadrant" />
-        </div>
+        @if (_rare.IsOpen("several"))
+        {
+            <label class="switch-row" data-field="several" title="@(_several ? "можно утром и вечером" : "одно в день")">
+                <input type="checkbox" role="switch" @bind="_several" />
+                <span class="switch"></span>
+                <span>можно несколько раз в день</span>
+            </label>
+        }
+        else if (_several)
+        {
+            <SummaryChip Key="several" Text="можно несколько раз в день" OnClick="@(() => _rare.Open("several"))" />
+        }
+
+        @if (_rare.IsOpen("quadrant"))
+        {
+            <div class="line" data-field="quadrant">
+                <span class="label">Квадрант</span>
+                <QuadrantPicker @bind-Value="_quadrant" />
+            </div>
+        }
+        else if (_quadrant is { } q)
+        {
+            <SummaryChip Key="quadrant" Text="@($"Квадрант {QuadrantPicker.Label(q)}")" OnClick="@(() => _rare.Open("quadrant"))" />
+        }
+
+        @if (_rare.IsOpen("project"))
+        {
+            @* Проект цели (P1): новые занятия — его шаги; его шаги — шаги цели, один список (G1–G2).
+               У постоянной цели проект — только выбранный, сам он не создаётся (fixes-2026-10.md, A1–A2) *@
+            <div class="field" data-field="project">
+                <div class="line project-row">
+                    <span class="label">Проект</span>
+                    <ChoiceField TValue="int" Items="ProjectChoices" Value="ShownProjectId" ValueChanged="SetProject" Label="Проект" Searchable="true" />
+                </div>
+                <div class="date-hint">@ProjectHint</div>
+            </div>
+        }
+        else if (ShownProjectId != 0)
+        {
+            <SummaryChip Key="project" Text="@($"🛠 {ProjectChoices.FirstOrDefault(c => c.Value == ShownProjectId)?.Label ?? "проект"}")"
+                         OnClick="@(() => _rare.Open("project"))" />
+        }
+        @* Шаги цели — содержимое: видны, когда проект выбран или поле «Проект» раскрыто (у разовой цели первый шаг создаст проект) *@
+        @if (ShowsSteps && (ShownProjectId != 0 || _rare.IsOpen("project")))
+        {
+            <GoalStepsBlock Goal="@(State.FindGoal(EditedGoal.Id) ?? EditedGoal)" />
+        }
+
+        @if (_rare.IsOpen("notes"))
+        {
+            <div class="field" data-field="notes">
+                <div class="label">Заметки</div>
+                <textarea rows="3" maxlength="10000" placeholder="Что делать на занятии, ссылки…" @bind="_notes" @bind:event="oninput"></textarea>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_notes))
+        {
+            <SummaryChip Key="notes" Text="@($"📝 {RareFields.FirstLine(_notes)}")" Title="@_notes" OnClick="@(() => _rare.Open("notes"))" />
+        }
+
+        @* Банка привычки: «🫙 19 скрепок · 🔥2 ▸» — стартовое число и размер (как «настроить» на экране привычек) *@
+        @if (_recurring && _habit && State.HabitOfGoal(EditedGoal) is { } habit)
+        {
+            @if (_rare.IsOpen("jar"))
+            {
+                <div class="line habit-of-goal" data-field="jar" title="стартовое число — скрепки до привычки">
+                    <span class="label">Банка</span>
+                    <div class="line-values">
+                        <Stepper Value="_startCount" ValueChanged="v => _startCount = v ?? 0" Min="0" Max="1000000" Label="Стартовое число" />
+                        <Stepper Value="_jarSize" ValueChanged="v => _jarSize = v ?? 30" Min="1" Max="1000" Step="5" Label="Скрепок в банке" Unit="скрепок" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                <SummaryChip Key="jar" Title="стартовое число и размер банки"
+                             Text="@($"🫙 {habit.Stats.Total} {HabitCard.ClipsWord(habit.Stats.Total)} · {(habit.Stats.WeekPaused ? "⚠" : $"🔥{habit.Stats.WeekStreak}")}")"
+                             OnClick="@(() => _rare.Open("jar"))" />
+            }
+        }
     </div>
-    @if (_quadrant is { } q)
-    {
-        <div class="quadrant-hint">@QuadrantPicker.Hint(q)</div>
-    }
-
-    <div class="field">
-        <div class="label">Длительность</div>
-        <DurationPicker @bind-Value="_duration" />
-    </div>
-
-    <div class="field">
-        <div class="label">Заметки</div>
-        <textarea rows="3" maxlength="10000" placeholder="Что делать на занятии, ссылки…" @bind="_notes" @bind:event="oninput"></textarea>
-    </div>
+    <AddersRow Items="Adders" OnAdd="key => _rare.Open(key)" />
 
     <div class="buttons">
-        <button type="button" class="btn danger trash" @onclick="DeleteAsync">удалить цель</button>
+        <MoreMenu Class="left">
+            @if (_recurring && _habit && State.HabitOfGoal(EditedGoal) is { } habitItem)
+            {
+                <MenuItem Label="🫙 открыть привычку" OnClick="() => OpenHabitAsync(habitItem.Id)" />
+                <div class="menu-sep" role="separator"></div>
+            }
+            <MenuItem Label="удалить цель" Danger="true" Class="trash" OnClick="DeleteAsync" />
+        </MoreMenu>
         <button type="button" class="btn quiet" @onclick="OnClose">Отмена</button>
         <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(_title)" @onclick="SaveAsync">Сохранить</button>
     </div>
@@ -183,6 +238,56 @@
     private bool _habit;
     private int _projectId; // 0 — без проекта
     private bool _projectChanged;
+    private RareFields _rare = null!; // раскрытые редкие поля (не запоминаются, U2-b)
+    private Touched _touched; // какой переключатель меняли в этом окне — его подсказка видна строкой (U2.6)
+
+    private enum Touched { None, Recurring, Habit }
+
+    private string RecurringHint => _recurring ? "каждую неделю, правка — с этой недели" : "только эта неделя";
+
+    private string HabitHint => _habit ? "занятия — скрепки" : "без банки";
+
+    private string? TouchedHint => _touched switch
+    {
+        Touched.Recurring => RecurringHint,
+        Touched.Habit when _recurring => HabitHint,
+        _ => null,
+    };
+
+    private void OnHabitChanged() => _touched = Touched.Habit;
+
+    /// <summary>«Повтор: будни» — сводка выбранных дней: по пункту списка, а у «своих дней» — сами дни.</summary>
+    private string DaysText => _repeat == Repeat.Custom
+        ? string.Join(", ", DayNames.Where((_, i) => (_days & (1 << i)) != 0))
+        : RepeatChoices.First(c => c.Value == _repeat).Label;
+
+    /// <summary>«+ дни · + время · + длительность · + несколько в день · + квадрант · + проект · + заметки» — пустые и не раскрытые (U2.2).</summary>
+    private IReadOnlyList<(string Key, string Label)> Adders
+    {
+        get
+        {
+            var list = new List<(string, string)>();
+            void Add(bool empty, string key, string label)
+            {
+                if (empty && !_rare.IsOpen(key))
+                {
+                    list.Add((key, label));
+                }
+            }
+
+            Add(_recurring && !DaysChosen, "days", "дни");
+            Add(_time is null, "time", "время");
+            Add(_duration is null, "duration", "длительность");
+            Add(!_several, "several", "несколько в день");
+            Add(_quadrant is null, "quadrant", "квадрант");
+            Add(ShownProjectId == 0, "project", "проект");
+            Add(string.IsNullOrWhiteSpace(_notes), "notes", "заметки");
+            return list;
+        }
+    }
+    /// <summary>Подсказка поля «Проект» (D6): у постоянной — только выбранный; у разовой без проекта — первый шаг его создаст.</summary>
+    private string ProjectHint => !ShowsSteps ? "только выбранный: книга, курс" : ShownProjectId == 0 ? "первый шаг создаст проект" : "новые занятия — шаги проекта";
+
     private SeriesEndPreviewDto? _endQuestion; // вопрос «Закончить серию?» (E1.2) открыт
     private bool _endConfirmed;
     private bool _refocus; // вопрос закрыли «Отмена» — фокус обратно в окно (иначе Esc его не закроет)
@@ -289,6 +394,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized(); // перерисовка при изменениях: «+ шаг» мог создать проект (G3)
+        _rare = new RareFields(JS);
         _title = EditedGoal.Title;
         _roleIds = [.. EditedGoal.RoleIds];
         _times = EditedGoal.TimesPerWeek;
@@ -316,6 +422,7 @@
     /// <summary>Включили «каждую неделю» — «копить» предустанавливается по ролям (видно до «Сохранить»).</summary>
     private void OnRecurringChanged()
     {
+        _touched = Touched.Recurring;
         if (_recurring && !EditedGoal.IsRecurring)
         {
             _habit = HabitByDefault;
@@ -333,6 +440,8 @@
             _refocus = false;
             await _root.FocusAsync();
         }
+
+        await _rare.AfterRenderAsync();
     }
 
     /// <summary>«Отмена» в вопросе E1.2: окно цели остаётся как набрано.</summary>

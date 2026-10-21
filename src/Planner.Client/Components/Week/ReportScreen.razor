@@ -15,12 +15,9 @@
         <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
     </header>
 
-    <div class="periods" role="tablist">
-        @foreach (var (mode, label) in Modes)
-        {
-            <button type="button" role="tab" class="period @(_mode == mode ? "on" : "")" aria-selected="@(_mode == mode ? "true" : "false")"
-                    @onclick="() => SetModeAsync(mode)">@label</button>
-        }
+    @* Период — одно поле с меню вместо пяти вкладок (ui-declutter.md, U3) *@
+    <div class="period-field">
+        <ChoiceField TValue="PeriodMode" Items="Modes" Value="_mode" ValueChanged="SetModeAsync" Label="Период" />
     </div>
 
     <div class="range">
@@ -103,9 +100,9 @@
 @code {
     private enum PeriodMode { Week, Month, Months, Year, Custom }
 
-    private static readonly (PeriodMode Mode, string Label)[] Modes =
+    private static readonly IReadOnlyList<Choice<PeriodMode>> Modes =
     [
-        (PeriodMode.Week, "неделя"), (PeriodMode.Month, "месяц"), (PeriodMode.Months, "N месяцев"), (PeriodMode.Year, "год"), (PeriodMode.Custom, "свой"),
+        new(PeriodMode.Week, "неделя"), new(PeriodMode.Month, "месяц"), new(PeriodMode.Months, "N месяцев"), new(PeriodMode.Year, "год"), new(PeriodMode.Custom, "свой"),
     ];
 
     private ElementReference _root;

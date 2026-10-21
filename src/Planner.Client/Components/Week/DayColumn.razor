@@ -1,12 +1,13 @@
 @* День — страница «в точку»: сначала дела со временем, затем без времени.
    Клик по делу — окно редактирования, по чекбоксу — «выполнено», «+ дело» — новое дело в конец.
-   🗑 справа при наведении (на касании — после свайпа влево) — в корзину сразу, с плашкой «Вернуть». *@
+   🗑 справа при наведении (на касании — после свайпа влево) — в корзину сразу, с плашкой «Вернуть».
+   «+ дело» — при наведении на день (в сегодняшнем, пустом дне и на касании — всегда; docs/specs/ui-declutter.md, U3-b). *@
 @inject PlannerState State
 @inject ProjectFoldState Folds
 @inject WindowHost Windows
 @implements IDisposable
 
-<section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "")"
+<section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "") @(Tasks.Count == 0 ? "empty" : "")"
          data-drop="@DragDropService.DayZone" data-key="@Css.Date(Date)"
          data-accept="@DragDropService.DayAccepts" data-fixed-sort>
     <div class="day-h" data-list-head>
@@ -40,7 +41,7 @@
                  IsDone="task.State == TaskStateDto.Done"
                  TimeLabel="@(task.StartTime is { } time ? RuDates.Time(time) : null)"
                  DurationLabel="@(task.DurationMinutes is { } minutes ? "~" + RuDates.Duration(minutes) : null)"
-                 IsRock="State.IsRock(task.Id)"
+                 IsRock="State.IsRock(task.Id)" RockTitle="@(goal is null ? null : $"занятие цели «{goal.Title}»")"
                  Notes="@task.Notes"
                  IsPending="task.Id < 0"
                  IsFlashing="State.FlashTaskId == task.Id"
@@ -62,7 +63,7 @@
                  OnClick="() => task.Id > 0 ? OnEdit.InvokeAsync(task.Id) : Task.CompletedTask"
                  OnTrash="() => task.Id > 0 ? State.TrashTaskAsync(task.Id) : Task.CompletedTask"
                  DragKind="@(task.Id > 0 ? isStep ? DragDropService.StepItem : DragDropService.DayItem : null)"
-                 DragFixed="task.StartTime is not null"
+                 DragFixed="task.StartTime is not null || task.State == TaskStateDto.Done"
                  DragId="task.Id" />
         @if (expanded)
         {

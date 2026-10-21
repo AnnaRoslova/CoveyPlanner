@@ -132,7 +132,7 @@ await check('поиск раскрывает совпадения и подсв�
   assert(JSON.stringify(unsorted) === '["Мысль без категории"]', `неразобранное: ${unsorted}`);
   const marks = await page.$$eval('mark.hit', ms => ms.length);
   assert(marks === 3, `подсветок ${marks}`);
-  await page.focus('.search input'); await page.keyboard.press('Escape'); await settle();
+  await page.focus('.someday .search input'); await page.keyboard.press('Escape'); await sleep(400); await page.keyboard.press('Escape'); await sleep(500);
   assert(JSON.stringify(await categories()) === '["Книги","Идеи"]', 'поиск не очистился');
   assert((await itemsIn('Книги')).length === 0, 'Книги должны снова быть свёрнуты');
 });
@@ -140,7 +140,7 @@ await check('поиск раскрывает совпадения и подсв�
 await check('поиск без результатов', async () => {
   await page.type('.search input', 'байкал'); await settle();
   assert(await page.$('.nothing'), 'нет «Ничего не нашлось»');
-  await page.focus('.search input'); await page.keyboard.press('Escape'); await settle();
+  await page.focus('.someday .search input'); await page.keyboard.press('Escape'); await sleep(400); await page.keyboard.press('Escape'); await sleep(500);
 });
 
 await check('«+ добавить» в категории: Enter → в конец, поле остаётся для следующего', async () => {
@@ -168,7 +168,7 @@ await check('в корзину и обратно (возврат — навер�
   const row = (await page.$$('.cat-b .item'))[1]; // «Ещё идея»
   assert(!(await row.$('.row-action')), 'в строке ленты остался крестик');
   await (await row.$('.title')).click(); await settle();
-  await clickText('.editor .btn', 'в корзину'); await settle();
+  await page.click('.editor .more-b'); await sleep(300); await clickText('.editor .popover .option .option-name', 'в корзину'); await settle();
   assert(JSON.stringify(await itemsIn('Идеи')) === '["Идея про хлеб"]', 'не удалилось');
   await page.click('.trash'); await sleep(600);
   const rows = await page.$$eval('.trash-popup .row .text > div:first-child', els => els.map(e => e.textContent));
@@ -181,7 +181,7 @@ await check('в корзину и обратно (возврат — навер�
 
 await check('удалить категорию «вместе с делами» → дела в корзину; вернуть — в «неразобранное»', async () => {
   const cat = (await page.$$('.cat-h'))[0];            // Книги
-  await cat.hover();
+  await cat.hover(); await sleep(200);
   await (await cat.$('.menu')).click(); await settle();
   await clickText('.cat-editor .btn', 'удалить');
   const text = await page.$eval('.cat-editor .confirm span', e => e.textContent);
@@ -203,6 +203,7 @@ await check('удалить категорию «вместе с делами» 
 await check('удалить навсегда — с подтверждением в строке; «очистить всё» — сразу, с «Вернуть»', async () => {
   const left = await page.$$eval('.trash-popup .row', rs => rs.length);
   assert(left === 1, `в корзине ${left}`);
+  await page.hover('.trash-popup .row'); await sleep(200);
   await page.click('.trash-popup .row-action[title="Удалить навсегда"]'); await settle();
   assert(await page.$eval('.trash-popup .confirm span', e => e.textContent) === 'Удалить навсегда?', 'нет подтверждения');
   await clickText('.trash-popup .confirm .btn', 'Нет'); await settle();
@@ -215,6 +216,7 @@ await check('удалить навсегда — с подтверждением
   await page.click('.trash'); await sleep(600);
   assert(await page.$$eval('.trash-popup .row', rs => rs.length) === 1, '«Вернуть» не вернуло корзину');
 
+  await page.hover('.trash-popup .row'); await sleep(200);
   await page.click('.trash-popup .row-action[title="Удалить навсегда"]'); await settle();
   await clickText('.trash-popup .confirm .btn', 'Да'); await settle();
   assert(await page.$eval('.trash-popup .empty', e => e.textContent) === 'Пусто', 'не удалилось');
@@ -227,7 +229,7 @@ await check('удалить навсегда — с подтверждением
 
 await check('сменить эмодзи и название категории', async () => {
   const cat = (await page.$$('.cat-h'))[0];
-  await cat.hover();
+  await cat.hover(); await sleep(200);
   await (await cat.$('.menu')).click(); await settle();
   await page.click('.emoji-btn'); await settle();
   await clickText('.emoji-picker .grid button', '💡');

@@ -76,7 +76,7 @@ await check('D2, D3: отметили «Б» — ушла из ленты; пл�
   assert(JSON.stringify(await feed('Идеи')) === '["А","В"]', JSON.stringify(await feed('Идеи')));
   const t = await toast();
   assert(t?.text.includes('«Б» выполнено') && t.text.includes('в корзину') && t.text.includes('вернуть'), JSON.stringify(t));
-  assert(t.nearTrash && t.overFeed && !t.coversTrash, `плашка не у корзины или закрывает её: ${JSON.stringify(t)}`);
+  assert(!t.coversTrash && !t.overFeed, `плашка не вверху по центру (D7) или закрывает корзину: ${JSON.stringify(t)}`);
   await toastAction('вернуть'); await settle();
   assert(JSON.stringify(await feed('Идеи')) === '["А","Б","В"]', JSON.stringify(await feed('Идеи')));
 });
@@ -129,7 +129,7 @@ await check('удаление — плашка «Удалено «…» · Ве�
   for (let i = 1; i <= 14; i++) { await page.mouse.move(sx + (tx - sx) * i / 14, sy + (ty - sy) * i / 14); await sleep(16); }
   await sleep(150); await page.mouse.up(); await settle();
   const t = await toast();
-  assert(t?.text.includes('Удалено «А»') && t.nearTrash && t.overFeed && !t.coversTrash, JSON.stringify(t));
+  assert(t?.text.includes('Удалено «А»') && !t.overFeed && !t.coversTrash, JSON.stringify(t));
   await toastAction('Вернуть'); await settle();
 });
 

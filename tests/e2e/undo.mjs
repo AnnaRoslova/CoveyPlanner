@@ -86,7 +86,7 @@ await check('в строках ленты и дней нет крестика у
 await check('«в корзину» из окна — плашка «Удалено «…» · Вернуть»; «Вернуть» ставит дело на прежнее место, сервер не трогали', async () => {
   const before = await dayTitles(0);
   await openDayTask(0, 'Купить подарок маме');
-  await clickText('.editor .btn', 'в корзину');
+  await page.click('.editor .more-b'); await sleep(300); await clickText('.editor .popover .option .option-name', 'в корзину');
   assert(!(await dayTitles(0)).includes('Купить подарок маме'), 'не исчезло');
   assert(await toast() === 'Удалено «Купить подарок маме» · Вернуть', `плашка: ${await toast()}`);
   await undo();
@@ -100,7 +100,7 @@ await check('«в корзину» из окна — плашка «Удален
 
 await check('без «Вернуть» плашка через 6 с исчезает, дело — в корзине на сервере', async () => {
   await openDayTask(0, 'Оплатить интернет');
-  await clickText('.editor .btn', 'в корзину');
+  await page.click('.editor .more-b'); await sleep(300); await clickText('.editor .popover .option .option-name', 'в корзину');
   await sleep(3000);
   assert(await toast() !== null, 'плашка исчезла раньше времени');
   assert((await api('board')).trashCount === 0, 'на сервер ушло раньше времени');
@@ -154,7 +154,7 @@ await check('удалить цель: цель и невыполненное з�
   assert(JSON.stringify(await goals()) === JSON.stringify(goalsBefore), 'цели не вернулись');
   assert(JSON.stringify(await dayTitles(3)) === JSON.stringify(thuBefore), 'занятие не вернулось');
   const rock = await page.evaluate(() => !![...document.querySelectorAll('.day')[3].querySelectorAll('.item')]
-    .find(i => i.querySelector('.title').textContent.trim() === 'Демо для команды')?.querySelector('.pill.rock'));
+    .find(i => i.querySelector('.title').textContent.trim() === 'Демо для команды')?.querySelector('.title.rock'));
   assert(rock, 'нет метки «камень»');
   await sleep(6500);
   const week = await api(`week/${monday}`);

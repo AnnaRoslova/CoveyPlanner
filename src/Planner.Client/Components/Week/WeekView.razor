@@ -45,7 +45,7 @@
     <div class="days">
         @foreach (var day in State.WeekDays)
         {
-            <DayColumn @key="day" Date="day" Tasks="State.TasksOn(day).ToList()" OnEdit="Windows.OpenTask" />
+            <DayColumn @key="day" Date="day" Tasks="State.DayRows(day).ToList()" OnEdit="Windows.OpenTask" />
         }
     </div>
 

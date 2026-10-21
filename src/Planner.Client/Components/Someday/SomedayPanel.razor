@@ -29,9 +29,26 @@
             <input type="search" placeholder="Поиск по ленте" @bind="_search" @bind:event="oninput"
                    @onkeydown="OnSearchKey" />
         </div>
+        @if (State.Categories.Count > 0)
+        {
+            @* U3: «+ категория наверх» и «свернуть / развернуть всё» — в «⋯» у поиска; «+ категория» внизу ленты — как есть *@
+            <MoreMenu Class="feed-menu" Title="Лента: ещё">
+                <MenuItem Label="+ категория наверх" Class="new-top" OnClick="() => _newCategoryAtTop = true" />
+                <MenuItem Label="@(State.AnyCategoryExpanded ? "свернуть всё" : "развернуть всё")" Class="fold"
+                          OnClick="() => State.SetAllCategoriesExpandedAsync(!State.AnyCategoryExpanded)" />
+            </MoreMenu>
+        }
     </div>
 
-    <QuickCapture />
+    <div class="quick-wrap">
+        <QuickCapture />
+        @* Пустое «неразобранное» во время перетаскивания — место, куда бросить: поверх «Записать мысль», лента не сдвигается *@
+        @if (!IsSearching && !State.SomedayIn(null).Any())
+        {
+            <div class="unsorted-drop" data-drop="@DragDropService.SomedayZone" data-key="@DragDropService.UnsortedKey"
+                 data-accept="@DragDropService.SomedayAccepts" aria-hidden="true">в неразобранное</div>
+        }
+    </div>
 
     <div class="panel-scroll">
         @{ var unsorted = State.SomedayIn(null).Where(t => !IsSearching || State.FeedMatches(t, Query)).ToList(); }
@@ -43,16 +60,6 @@
                 Разложить мысли по темам помогут категории.<br />
                 <span class="add">+ создайте первую категорию</span>
             </button>
-        }
-
-        @if (State.Categories.Count > 0 && !IsSearching)
-        {
-            <div class="feed-tools">
-                <button class="add" @onclick="() => _newCategoryAtTop = true">+ категория</button>
-                <button class="btn fold" @onclick="() => State.SetAllCategoriesExpandedAsync(!State.AnyCategoryExpanded)">
-                    @(State.AnyCategoryExpanded ? "свернуть всё" : "развернуть всё")
-                </button>
-            </div>
         }
 
         @if (_newCategoryAtTop)

@@ -109,3 +109,20 @@
 .cat-b ::deep .item:hover {
     background: var(--b-soft);
 }
+
+/* «+ добавить» — при наведении на категорию или фокусе внутри; на касании — всегда (ui-declutter.md, U3) */
+.cat-b > .add {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.cat:hover .cat-b > .add,
+.cat:focus-within .cat-b > .add {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .cat-b > .add {
+        opacity: 1;
+    }
+}

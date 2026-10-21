@@ -57,7 +57,7 @@
 /* Сумма длительностей «~3 ч» — тихо, рядом с числом */
 .load {
     color: var(--soft);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -67,7 +67,7 @@
     border-radius: 20px;
     background: color-mix(in srgb, var(--a) 14%, var(--surface));
     color: var(--a-ink);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
 }
 
@@ -89,4 +89,22 @@
 
 .day .add:hover {
     background: var(--btn-hover);
+}
+
+/* «+ дело» — при наведении на день или фокусе внутри; в сегодняшнем и пустом дне, на касании — всегда (ui-declutter.md, U3-b).
+   Прозрачность, а не visibility: кнопка остаётся в порядке Tab */
+.day:not(.today):not(.empty) > .add {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.day:hover > .add,
+.day:focus-within > .add {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .day > .add {
+        opacity: 1 !important;
+    }
 }

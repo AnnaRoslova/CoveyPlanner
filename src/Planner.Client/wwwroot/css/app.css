@@ -186,7 +186,7 @@ textarea:focus-visible {
 .sect {
     margin: 14px 6px 6px;
     color: var(--b-deep);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -370,22 +370,35 @@ body.dragging * {
     -webkit-user-select: none;
 }
 
-/* Пустое «неразобранное» (UnsortedSection) во время перетаскивания — место, куда бросить.
-   Ложится поверх строки «+ категория / свернуть всё», не сдвигая ленту: иначе всё под указателем уехало бы */
-body.dragging .unsorted.empty {
+/* Пустое «неразобранное» во время перетаскивания — место, куда бросить (SomedayPanel, .unsorted-drop): ложится поверх
+   «Записать мысль», не сдвигая ленту (ui-declutter.md, U3: строки «+ категория / свернуть всё» над категориями больше нет) */
+.quick-wrap {
+    position: relative;
+}
+
+.unsorted-drop {
+    display: none;
+}
+
+body.dragging .unsorted-drop {
     position: absolute;
-    top: 2px;
-    right: 14px;
-    left: 14px;
+    inset: 0 14px 8px;
     z-index: 2;
     display: flex;
+    align-items: center;
     justify-content: center;
-    height: 30px;
-    margin: 0;
-    padding: 0;
     border: 1.5px dashed color-mix(in srgb, var(--b) 70%, var(--surface));
     border-radius: 12px;
     background: var(--surface);
+    color: var(--faint);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+body.dragging .unsorted-drop.drop-hover {
+    background: var(--b-soft);
+    border-style: solid;
+    color: var(--b-deep);
 }
 
 /* Исходная запись, пока её тащат */

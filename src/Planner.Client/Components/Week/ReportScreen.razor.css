@@ -196,3 +196,14 @@ h3 {
     font-size: 13px;
     line-height: 1.5;
 }
+
+/* Период — одно поле с меню (ui-declutter.md, U3) */
+.period-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.period-field .select-field {
+    font-size: 13px;
+}

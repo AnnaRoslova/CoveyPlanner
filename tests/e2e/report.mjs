@@ -40,7 +40,7 @@ const screen = () => page.evaluate(() => {
   const s = document.querySelector('.report-screen');
   if (!s) return null;
   return {
-    mode: s.querySelector('.period.on')?.textContent.trim(),
+    mode: s.querySelector('.period-field .select-label')?.textContent.trim(),
     label: s.querySelector('.range-label')?.textContent.trim() ?? null,
     rows: [...s.querySelectorAll('.srow:not(.oneoff)')].map(r => ({
       title: r.querySelector('.title').textContent.trim(), fact: r.querySelector('.fact').textContent.replace(/\s+/g, ' ').trim(),
@@ -51,7 +51,7 @@ const screen = () => page.evaluate(() => {
     csv: s.querySelector('.csv')?.getAttribute('href'),
   };
 });
-const setMode = async label => { await page.evaluate(l => [...document.querySelectorAll('.report-screen .period')].find(b => b.textContent.trim() === l).click(), label); await settle(); };
+const setMode = async label => { await page.click('.report-screen .period-field .select-field'); await sleep(300); await page.evaluate(l => [...document.querySelectorAll('.report-screen .popover .option')].find(o => o.textContent.trim() === l).click(), label); await settle(); };
 
 await load();
 const body = (await api('GET', 'board')).roles.find(r => r.name === 'Тело');

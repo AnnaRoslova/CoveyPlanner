@@ -9,7 +9,7 @@
     @* Видна только иконка категории; сам select прозрачный поверх неё — список раскрывается с названиями *@
     @{ var selected = State.FindCategory(SelectedCategoryId); }
     <label class="cat-pick" title="Куда: @(selected?.Name ?? UnsortedName)">
-        <span class="cat-icon @(selected?.Emoji is null ? "text" : "")">@CategoryIcon(selected)</span>
+        <span class="cat-icon @(selected is not null && selected.Emoji is null ? "text" : "")">@CategoryIcon(selected)</span>
         <select aria-label="Категория" @bind:get="SelectedKey" @bind:set="SetSelectedKey">
             <option value="">@UnsortedName</option>
             @foreach (var category in State.OrderedCategories)
@@ -82,7 +82,9 @@
     }
 
     /// <summary>Эмодзи категории, а без него — название (обрезается по ширине: «Проекты» и «Покупки» различаются).</summary>
-    private static string CategoryIcon(CategoryDto? category) => category?.Emoji ?? category?.Name ?? UnsortedName;
+    /// <summary>Значок выбора (ui-declutter.md, D8): эмодзи категории, «неразобранное» — 📥, без эмодзи — короткое название (так «Проекты» и «Покупки» различаются); название — в подсказке и списке.</summary>
+    private static string CategoryIcon(CategoryDto? category) =>
+        category is null ? "📥" : category.Emoji ?? category.Name;
 
     private static string CategoryLabel(CategoryDto category) =>
         category.Emoji is null ? category.Name : $"{category.Emoji} {category.Name}";
