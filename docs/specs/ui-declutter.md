@@ -1,6 +1,6 @@
 # Чище интерфейс (progressive disclosure)
 
-Статус: **утверждена** (2026-10-21; ответы на U1-a … U3-b и D-a … D-d — как предложено, кроме U2-a и U3-a — см. таблицу; поле «Дата» в окне мысли — да).
+Статус: **реализована** (2026-10-21, bdcd867; D9 — в batch-ux 3). Ответы на U1-a … U3-b и D-a … D-d — как предложено, кроме U2-a и U3-a — см. таблицу; поле «Дата» в окне мысли — да).
 Макет: [ui-declutter-mockup.html](ui-declutter-mockup.html) (разделы 1–5; окна в макете — с блоком «Подробнее», он заменён сводками и «+ …», см. U2.2).
 План: [ui-declutter.plan.md](ui-declutter.plan.md). Журнал: [ui-declutter.metrics.md](ui-declutter.metrics.md).
 Опирается на [fixes-2026-10.md](fixes-2026-10.md) (D — система кнопок; B — «на след. неделю»; A — привычка ≠ проект), [next-batch.md](next-batch.md) (N1, N4, N6).
