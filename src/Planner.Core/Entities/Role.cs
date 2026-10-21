@@ -30,6 +30,9 @@ public class Role : ISortable
 
     public bool IsSharpenSaw => SawDimension is not null;
 
+    /// <summary>«Кем я хочу быть в этой роли» (batch-ux.md, BM1), до 200 знаков; null — не написано. Есть и у измерений пилы.</summary>
+    public string? Vision { get; private set; }
+
     public static Role Create(string name, string color) => new()
     {
         Name = TextRules.Required(name, TextRules.NameMaxLength, "Название роли"),
@@ -51,6 +54,8 @@ public class Role : ISortable
     }
 
     public void SetColor(string color) => Color = RolePalette.Validate(color);
+
+    public void SetVision(string? vision) => Vision = TextRules.Optional(vision, TextRules.VisionMaxLength, "Кем я хочу быть");
 
     public void EnsureEditable()
     {

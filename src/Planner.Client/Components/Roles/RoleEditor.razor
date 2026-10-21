@@ -1,4 +1,4 @@
-@* Окно роли: создание или правка — название и цвет; для пользовательских ролей — ещё удаление.
+@* Окно роли: создание или правка — название, цвет и «кем я хочу быть в этой роли» (batch-ux.md, BM2); для пользовательских ролей — ещё удаление.
    Измерения «Затачивания пилы» нельзя переименовать и удалить — только сменить цвет.
    Порядок ролей меняется перетаскиванием карточки роли. Esc или клик по затемнению — отмена.
    Общие стили окна — css/editor.css. *@
@@ -20,6 +20,9 @@
     }
 
     <ColorSwatches @bind-Selected="_color" />
+
+    <input class="vision-input" type="text" maxlength="200" placeholder="кем я хочу быть в этой роли…" aria-label="Кем я хочу быть в этой роли"
+           @bind="_vision" />
 
     @if (_confirmDelete)
     {
@@ -50,6 +53,7 @@
 @code {
     private string _name = "";
     private string _color = "";
+    private string _vision = "";
     private bool _confirmDelete;
 
     /// <summary>Правка роли; null — создание новой.</summary>
@@ -63,6 +67,7 @@
     {
         _name = Role?.Name ?? "";
         _color = Role?.Color ?? State.NextRoleColor;
+        _vision = Role?.Vision ?? "";
     }
 
     private async Task SaveAsync(string name)
@@ -75,7 +80,10 @@
             }
 
             await OnClose.InvokeAsync();
-            await State.CreateRoleAsync(name, _color);
+            if (await State.CreateRoleAsync(name, _color) is { } created && !string.IsNullOrWhiteSpace(_vision))
+            {
+                await State.SetRoleVisionAsync(created.Id, _vision);
+            }
         }
         else
         {
@@ -86,6 +94,7 @@
 
             await OnClose.InvokeAsync();
             await State.UpdateRoleAsync(Role.Id, name, _color);
+            await State.SetRoleVisionAsync(Role.Id, _vision);
         }
     }
 

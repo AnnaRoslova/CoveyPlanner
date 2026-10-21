@@ -54,7 +54,7 @@ public sealed record TaskDto(
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
-public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, SawDimensionDto? SawDimension)
+public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, SawDimensionDto? SawDimension, string? Vision = null)
 {
     [JsonIgnore]
     public bool IsSharpenSaw => SawDimension is not null;
@@ -125,7 +125,8 @@ public sealed record BoardDto(
     int TrashCount,
     IReadOnlyList<TaskDto>? Steps = null,
     IReadOnlyList<TaskDto>? PlannedProjects = null,
-    int StaleMonths = 3);
+    int StaleMonths = 3,
+    SettingsDto? Settings = null);
 
 /// <summary>
 /// Неделя: цели ролей и дела плана (с датой в пределах недели, а также занятия её целей без дня).
@@ -284,8 +285,8 @@ public sealed record DashboardStaleDto(int Months, int Count, IReadOnlyList<Dash
 /// <summary>Давняя мысль: с какого момента лежит без изменений (UpdatedAt, BS1).</summary>
 public sealed record DashboardThoughtDto(int Id, string Title, DateTime Since);
 
-/// <summary>Настройки на сервере (batch-ux.md, BS2): срок «давно лежат», месяцев.</summary>
-public sealed record SettingsDto(int StaleMonths);
+/// <summary>Настройки на сервере: срок «давно лежат», месяцев (batch-ux.md, BS2), миссия и её блок в левой панели (BM).</summary>
+public sealed record SettingsDto(int StaleMonths, string? Mission = null, bool ShowMissionInPanel = false);
 
 /// <summary>Плашка о мыслях, перешагнувших срок (BS4): срок и сами мысли (самые старые сверху); пусто — плашки нет.</summary>
 public sealed record StaleNoticeDto(int Months, IReadOnlyList<TaskDto> Thoughts);

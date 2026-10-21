@@ -22,6 +22,13 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Mission")
+                        .HasMaxLength(5000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ShowMissionInPanel")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("StaleMonths")
                         .HasColumnType("INTEGER");
 
@@ -144,6 +151,10 @@ namespace Planner.Server.Data.Migrations
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Vision")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 

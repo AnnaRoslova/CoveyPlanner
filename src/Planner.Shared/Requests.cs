@@ -57,8 +57,8 @@ public sealed record UpdateCategoryRequest(string? Name, string? Emoji, bool? Is
 
 public sealed record CreateRoleRequest(string Name, string? Color);
 
-/// <summary>null — поле не менять.</summary>
-public sealed record UpdateRoleRequest(string? Name, string? Color);
+/// <summary>null — поле не менять; Vision "" — стереть «кем я хочу быть».</summary>
+public sealed record UpdateRoleRequest(string? Name, string? Color, string? Vision = null);
 
 /// <summary>IsRecurring — «каждую неделю»; null — как принято у роли (у измерений пилы — да, у обычных ролей — нет).</summary>
 public sealed record CreateGoalRequest(int RoleId, DateOnly WeekStart, string Title, bool? IsRecurring = null);
@@ -110,8 +110,8 @@ public sealed record CreateVacationRequest(DateOnly From, DateOnly To, IReadOnly
 /// <summary>Новый шаг (в конец) или новое название шага.</summary>
 public sealed record StepRequest(string Title);
 
-/// <summary>Срок «давно лежат» (1–36 мес).</summary>
-public sealed record UpdateSettingsRequest(int StaleMonths);
+/// <summary>Настройки: срок «давно лежат» (1–36 мес), миссия, её блок в панели. null — поле не менять; Mission "" — стереть.</summary>
+public sealed record UpdateSettingsRequest(int? StaleMonths = null, string? Mission = null, bool? ShowMissionInPanel = null);
 
 /// <summary>Сдвиг часов сервера (только Development, e2e).</summary>
 public sealed record ShiftClockRequest(double Days);

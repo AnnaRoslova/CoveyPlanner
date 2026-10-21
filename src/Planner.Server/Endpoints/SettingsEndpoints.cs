@@ -9,11 +9,10 @@ public static class SettingsEndpoints
 {
     public static void MapSettingsEndpoints(this RouteGroupBuilder api, IWebHostEnvironment environment)
     {
-        api.MapGet("/settings", async (SettingsService service, CancellationToken ct) =>
-            new SettingsDto((await service.GetAsync(ct)).StaleMonths));
+        api.MapGet("/settings", async (SettingsService service, CancellationToken ct) => (await service.GetAsync(ct)).ToDto());
 
         api.MapPut("/settings", async (UpdateSettingsRequest request, SettingsService service, CancellationToken ct) =>
-            new SettingsDto((await service.SetStaleMonthsAsync(request.StaleMonths, ct)).StaleMonths));
+            (await service.UpdateAsync(request.StaleMonths, request.Mission, request.ShowMissionInPanel, ct)).ToDto());
 
         // «Оставить» давно лежащую мысль (BS4)
         api.MapPost("/tasks/{id:int}/keep", async (int id, StaleThoughtService service, CancellationToken ct) =>

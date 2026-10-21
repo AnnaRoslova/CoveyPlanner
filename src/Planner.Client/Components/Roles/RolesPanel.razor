@@ -21,6 +21,11 @@
     </div>
 
     <div class="panel-scroll">
+        @if (State.ShowMissionInPanel)
+        {
+            <MissionBlock />
+        }
+
         @* «Затачивание пилы» — кнопка: сворачивает все 4 измерения (U1.3) *@
         <button type="button" class="sect sect-toggle" aria-expanded="@(RoleFold.IsSawFolded ? "false" : "true")"
                 title="@(RoleFold.IsSawFolded ? "Развернуть измерения пилы" : "Свернуть измерения пилы")" @onclick="RoleFold.ToggleSawAsync">

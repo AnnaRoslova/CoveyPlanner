@@ -17,7 +17,7 @@ public static class RoleEndpoints
         });
 
         roles.MapPut("/{id:int}", async (int id, UpdateRoleRequest request, RoleService service, CancellationToken ct) =>
-            (await service.UpdateAsync(id, request.Name, request.Color, ct)).ToDto());
+            (await service.UpdateAsync(id, request.Name, request.Color, ct, request.Vision)).ToDto());
 
         roles.MapPost("/reorder", async (ReorderRequest request, RoleService service, CancellationToken ct) =>
         {

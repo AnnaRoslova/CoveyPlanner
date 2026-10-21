@@ -30,6 +30,7 @@ public static class BoardEndpoints
         var someday = await tasks.GetSomedayAsync(ct);
         var plannedProjects = await tasks.GetPlannedProjectsAsync(ct);
         var trashed = await tasks.GetTrashedAsync(ct);
+        var appSettings = await settings.GetAsync(ct);
 
         return new BoardDto(
             RolePalette.Colors,
@@ -40,7 +41,8 @@ public static class BoardEndpoints
             trashed.Count,
             await views.StepsOfAsync(someday.Concat(plannedProjects), ct),
             await views.ToDtosAsync(plannedProjects, ct),
-            (await settings.GetAsync(ct)).StaleMonths);
+            appSettings.StaleMonths,
+            appSettings.ToDto());
     }
 
     /// <summary>Неделя по любой её дате (приводится к понедельнику).</summary>

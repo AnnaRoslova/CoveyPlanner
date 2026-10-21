@@ -29,7 +29,7 @@ public partial class PlannerState
     {
         try
         {
-            StaleMonths = (await api.SetSettingsAsync(months)).StaleMonths;
+            StaleMonths = (await api.UpdateSettingsAsync(new UpdateSettingsRequest(StaleMonths: months))).StaleMonths;
         }
         catch (ApiException ex)
         {

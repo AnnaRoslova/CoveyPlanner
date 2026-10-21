@@ -23,7 +23,7 @@
     <div class="role-h" data-list-head data-drop="@DragDropService.WeekZone" data-key="@Role.Id" data-accept="@DragDropService.WeekAccepts"
          data-drop-index="2147483647" data-drop-hover>
         <button type="button" class="role-toggle" data-drag-ok aria-expanded="@(folded ? "false" : "true")"
-                title="@(folded ? "Развернуть цели роли" : "Свернуть цели роли")" @onclick="() => RoleFold.ToggleAsync(Role.Id)">
+                title="@((Role.Vision is { } vision ? vision + " · " : "") + (folded ? "развернуть цели роли" : "свернуть цели роли"))" @onclick="() => RoleFold.ToggleAsync(Role.Id)">
             <span class="chev"><Icon Name="@(folded ? "chevron-right" : "chevron-down")" Size="11" /></span>
             <span class="dot"></span>
             <span class="name">@Role.Name</span>

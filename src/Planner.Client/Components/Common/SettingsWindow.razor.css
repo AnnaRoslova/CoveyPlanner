@@ -43,3 +43,11 @@ h2 {
     color: var(--faint);
     font-size: 12px;
 }
+
+.check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: 13px;
+}

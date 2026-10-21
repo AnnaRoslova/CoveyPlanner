@@ -127,13 +127,24 @@
                 break;
 
             case 4:
-                <h3>Миссия и роли</h3>
-                <p class="empty">Начни с конца: кем ты хочешь быть?</p>
-                @foreach (var role in State.UserRoles)
+                <div class="step-h">
+                    <h3>Миссия и роли</h3>
+                    <button type="button" class="btn small edit-mission" @onclick="Windows.OpenMission">изменить</button>
+                </div>
+                @if (State.Mission is { } mission)
+                {
+                    <p class="mission-text">@mission</p>
+                }
+                else
+                {
+                    <p class="empty">Начни с конца: кем ты хочешь быть?</p>
+                }
+                @foreach (var role in State.OrderedRoles)
                 {
                     <div class="row">
                         <span class="dot" style="background: @role.Color"></span>
-                        <span class="title">@role.Name</span>
+                        <span class="role-title">@role.Name</span>
+                        <span class="vision">@(role.Vision ?? "—")</span>
                     </div>
                 }
                 break;

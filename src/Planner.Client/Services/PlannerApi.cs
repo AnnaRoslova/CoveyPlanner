@@ -135,7 +135,8 @@ public class PlannerApi(HttpClient http, ConnectionQueue queue)
     /// <summary>Выполненные дела из ленты по категориям, свежие сверху (только чтение).</summary>
     public Task<List<DoneGroupDto>> GetDoneAsync() => GetAsync<List<DoneGroupDto>>("api/done");
 
-    public Task<SettingsDto> SetSettingsAsync(int staleMonths) => SendAsync<SettingsDto>(HttpMethod.Put, "api/settings", new UpdateSettingsRequest(staleMonths));
+    /// <summary>null в запросе — поле не менять.</summary>
+    public Task<SettingsDto> UpdateSettingsAsync(UpdateSettingsRequest request) => SendAsync<SettingsDto>(HttpMethod.Put, "api/settings", request);
 
     public Task<TaskDto> KeepTaskAsync(int id) => SendAsync<TaskDto>(HttpMethod.Post, $"api/tasks/{id}/keep");
 

@@ -70,6 +70,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
     {
         builder.Property(r => r.Name).IsRequired().HasMaxLength(TextRules.NameMaxLength);
         builder.Property(r => r.Color).IsRequired().HasMaxLength(7);
+        builder.Property(r => r.Vision).HasMaxLength(TextRules.VisionMaxLength);
         builder.Property(r => r.SawDimension).HasConversion<string>().HasMaxLength(16);
         builder.HasIndex(r => r.SawDimension).IsUnique();
     }
@@ -161,6 +162,7 @@ public class AppSettingsConfiguration : IEntityTypeConfiguration<AppSettings>
     {
         builder.ToTable("AppSettings");
         builder.Property(s => s.Id).ValueGeneratedNever(); // одна строка, Id = 1
+        builder.Property(s => s.Mission).HasMaxLength(TextRules.MissionMaxLength);
     }
 }
 

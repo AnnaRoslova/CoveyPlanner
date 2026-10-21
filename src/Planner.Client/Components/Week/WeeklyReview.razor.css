@@ -238,3 +238,22 @@ h3 {
 .spacer {
     flex: 1;
 }
+
+.mission-text {
+    margin: 0 0 10px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.role-title {
+    flex: 0 0 150px;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.vision {
+    flex: 1;
+    color: var(--soft);
+}

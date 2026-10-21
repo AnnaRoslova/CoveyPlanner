@@ -8,6 +8,8 @@ public static class TextRules
     public const int TitleMaxLength = 500;
     public const int NotesMaxLength = 10_000;
     public const int NameMaxLength = 100;
+    public const int MissionMaxLength = 5000;
+    public const int VisionMaxLength = 200;
 
     /// <summary>Обрезает пробелы; пустая строка или превышение длины — ошибка.</summary>
     public static string Required(string? value, int maxLength, string fieldName)

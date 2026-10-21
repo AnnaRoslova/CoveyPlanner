@@ -33,10 +33,12 @@ public static class Mapping
         DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc),
         t.KeptAt is { } kept ? DateTime.SpecifyKind(kept, DateTimeKind.Utc) : null);
 
+    public static SettingsDto ToDto(this AppSettings s) => new(s.StaleMonths, s.Mission, s.ShowMissionInPanel);
+
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Emoji, c.SortOrder, c.IsExpanded);
 
     public static RoleDto ToDto(this Role r) =>
-        new(r.Id, r.Name, r.Color, r.SortOrder, (SawDimensionDto?)r.SawDimension);
+        new(r.Id, r.Name, r.Color, r.SortOrder, (SawDimensionDto?)r.SawDimension, r.Vision);
 
     public static WeeklyGoalDto ToDto(this WeeklyGoal g) => new(
         g.Id,

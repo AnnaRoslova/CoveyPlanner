@@ -1,0 +1,47 @@
+@* Блок «✦ Моя миссия ▸» вверху левой панели (docs/specs/batch-ux.md, BM2): включается в «⚙ Настройки», по умолчанию свёрнут;
+   раскрытый — текст миссии и «изменить». Раскрытие запоминается в браузере. *@
+@inherits StateComponent
+@inject WindowHost Windows
+@inject IJSRuntime JS
+
+<div class="mission-block @(_open ? "open" : "")">
+    <button type="button" class="mission-toggle" aria-expanded="@(_open ? "true" : "false")" @onclick="ToggleAsync">
+        <span class="star">✦</span> Моя миссия <Icon Name="@(_open ? "chevron-down" : "chevron-right")" Size="11" />
+    </button>
+    @if (_open)
+    {
+        <p class="mission-text">@(State.Mission ?? "Начни с конца: кем ты хочешь быть?")</p>
+        <button type="button" class="btn small mission-edit" @onclick="Windows.OpenMission">изменить</button>
+    }
+</div>
+
+@code {
+    private const string Key = "planner.mission-open";
+
+    private bool _open;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _open = await JS.InvokeAsync<string?>("localStorage.getItem", Key) == "1";
+        }
+        catch (JSException)
+        {
+            // localStorage недоступен — свёрнут
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _open = !_open;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", Key, _open ? "1" : "0");
+        }
+        catch (JSException)
+        {
+            // Не запомнили — не страшно
+        }
+    }
+}

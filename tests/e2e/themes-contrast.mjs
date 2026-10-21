@@ -25,7 +25,7 @@ const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.pr
   '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
   '.parent-of', '.project-label', '.sum-chip.static', '.menu-hint', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
   '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)',
-  '.q2-of', '.q2-week', '.hit-meta', '.hit.done .hit-title', '.hit.done mark', '.review .meta', '.review .diamond'].join(', '); // ◆ — значок (--a-deep, 3:1)
+  '.q2-of', '.q2-week', '.hit-meta', '.hit.done .hit-title', '.hit.done mark', '.review .meta', '.review .diamond', '.mission .sub'].join(', '); // ◆ — значок (--a-deep, 3:1)
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -345,6 +345,14 @@ for (const theme of THEMES) {
     windows.push(['дашборд', await audit(theme, 'dashboard', '.report-screen')]);
     await page.evaluate(() => [...document.querySelectorAll('.view-switch .vs')].find(b => b.textContent.trim() === 'Список').click());
     await sleep(300);
+    await escape();
+  });
+  await check(`${theme}: «Моя миссия»`, async () => {
+    await openThemes(page);
+    await page.click('.editor.settings .mission-link');
+    await page.waitForSelector('.mission .vision'); await page.mouse.move(5, 5); await sleep(300);
+    await shot('mission');
+    windows.push(['моя миссия', await audit(theme, 'mission', '.mission')]);
     await escape();
   });
   await check(`${theme}: недельный обзор`, async () => {

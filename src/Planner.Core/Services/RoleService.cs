@@ -24,7 +24,8 @@ public class RoleService(
         return role;
     }
 
-    public async Task<Role> UpdateAsync(int id, string? name, string? color, CancellationToken ct = default)
+    /// <summary>null — поле не менять; vision "" — стереть «кем я хочу быть».</summary>
+    public async Task<Role> UpdateAsync(int id, string? name, string? color, CancellationToken ct = default, string? vision = null)
     {
         var role = await GetAsync(id, ct);
         if (name is not null && name.Trim() != role.Name)
@@ -35,6 +36,11 @@ public class RoleService(
         if (color is not null)
         {
             role.SetColor(color);
+        }
+
+        if (vision is not null)
+        {
+            role.SetVision(vision);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

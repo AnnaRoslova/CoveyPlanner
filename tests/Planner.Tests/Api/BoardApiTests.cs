@@ -66,6 +66,6 @@ public class BoardApiTests : ApiTestBase
     {
         var json = await Client.GetStringAsync("/api/settings");
 
-        Assert.Equal("{\"staleMonths\":3}", json);
+        Assert.Equal("{\"staleMonths\":3,\"mission\":null,\"showMissionInPanel\":false}", json);
     }
 }

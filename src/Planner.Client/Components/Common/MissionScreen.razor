@@ -1,0 +1,50 @@
+@* «Моя миссия» (docs/specs/batch-ux.md, BM1): экран поверх недели — свободный текст (до 5000 знаков, переносы строк сохраняются)
+   и у каждой роли по порядку строка «кем я хочу быть в этой роли» (до 200 знаков). Сохраняется по уходу из поля, без кнопки и плашки.
+   Вход — «⚙ Настройки → Моя миссия», блок в левой панели, шаг 4 недельного обзора. Esc или клик мимо — закрыть. *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+<div class="mission-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="mission" role="dialog" aria-label="Моя миссия" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="mission-h">
+        <h2>Моя миссия <span class="sub">сохраняется само</span></h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </header>
+
+    <textarea class="mission-text" rows="6" maxlength="5000" aria-label="Текст миссии" placeholder="Начни с конца: кем ты хочешь быть?"
+              value="@State.Mission" @onchange="e => State.SetMissionAsync(e.Value?.ToString() ?? string.Empty)"></textarea>
+
+    <h3>Кем я хочу быть в каждой роли</h3>
+    <div class="visions">
+        @foreach (var role in State.OrderedRoles)
+        {
+            <label class="vision">
+                <span class="role"><span class="dot" style="background: @role.Color"></span>@role.Name</span>
+                <input type="text" maxlength="200" value="@role.Vision" placeholder="кем я хочу быть в этой роли…"
+                       aria-label="@($"Кем я хочу быть: {role.Name}")"
+                       @onchange="e => State.SetRoleVisionAsync(role.Id, e.Value?.ToString() ?? string.Empty)" />
+            </label>
+        }
+    </div>
+</section>
+
+@code {
+    private ElementReference _root;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync(); // Esc закрывает экран сразу
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

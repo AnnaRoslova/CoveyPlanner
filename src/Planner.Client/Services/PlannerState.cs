@@ -228,6 +228,8 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
         Categories = [.. board.Categories];
         TrashCount = board.TrashCount;
         StaleMonths = board.StaleMonths;
+        Mission = board.Settings?.Mission;
+        ShowMissionInPanel = board.Settings?.ShowMissionInPanel ?? false;
 
         // Лента, открытые проекты плана любой недели («🛠 Проекты», N6.9) и их шаги
         foreach (var id in _tasks.Values.Where(IsBoardTask).Select(t => t.Id).ToList())

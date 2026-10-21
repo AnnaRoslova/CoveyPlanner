@@ -30,7 +30,14 @@
         <div class="hint">Старше срока — розовая метка в ленте и одно напоминание.</div>
     </div>
 
+    <div class="field mission-settings">
+        <div class="label">Миссия</div>
+        <label class="check-row"><input type="checkbox" checked="@State.ShowMissionInPanel"
+               @onchange="e => State.SetShowMissionInPanelAsync(e.Value is true)" /> показывать вверху левой панели</label>
+    </div>
+
     <div class="settings-links">
+        <button type="button" class="btn small mission-link" @onclick="Windows.OpenMission">✦ Моя миссия</button>
         <button type="button" class="btn small help-link" @onclick="Windows.OpenHelp"><Icon Name="help" Size="14" /> Как это устроено</button>
     </div>
 </div>

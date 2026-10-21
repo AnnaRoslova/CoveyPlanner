@@ -496,6 +496,26 @@ public sealed class MigrationTests : IDisposable
         Assert.Equal(new DateOnly(2026, 10, 14), tasks[1].PlannedDate);
     }
 
+    /// <summary>batch-ux.md BM: миссия и «кем я хочу быть» — пустые, блок в панели выключен; роли, их порядок и цвета не меняются.</summary>
+    [Fact]
+    public async Task Mission_EmptyFields_RolesKept()
+    {
+        await using var db = CreateContext();
+
+        await db.GetService<IMigrator>().MigrateAsync("StaleThoughts");
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (10, 'Работа', '#8fb4e3', 2, NULL), (11, 'Дом', '#f3e3a6', 3, NULL);
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var roles = await db.Roles.Where(r => r.Id >= 10).OrderBy(r => r.Id).ToListAsync();
+        Assert.Equal([("Работа", "#8fb4e3", 2), ("Дом", "#f3e3a6", 3)], roles.Select(r => (r.Name, r.Color, r.SortOrder)).ToList());
+        Assert.All(roles, r => Assert.Null(r.Vision));
+        var settings = await db.AppSettings.SingleAsync();
+        Assert.Equal((3, (string?)null, false), (settings.StaleMonths, settings.Mission, settings.ShowMissionInPanel));
+    }
+
     /// <summary>
     /// batch-ux.md BS4a: UpdatedAt = CreatedAt (возраст честный); мыслям, уже старым при установке, — StaleNotifiedAt (плашек о них нет);
     /// свежая мысль, проект и дело плана не помечены; срок в AppSettings — 3 мес.
