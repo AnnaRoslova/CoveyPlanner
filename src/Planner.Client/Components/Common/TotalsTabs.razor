@@ -1,5 +1,6 @@
 @* Шапка экрана «📈 Итоги» (docs/specs/batch-ux.md, BI2): заголовок и вкладки «Привычки · Выполненное · Отчёт» — общие для трёх экранов.
-   Вкладка запоминается (TotalsState). Каждый экран рисует её у себя в шапке вместо своего заголовка. *@
+   Вкладка запоминается (TotalsState). Каждый экран рисует её у себя в шапке вместо своего заголовка.
+   Рядом — «🗓 Недельный обзор» (BR1). *@
 @inject WindowHost Windows
 @inject TotalsState Totals
 
@@ -11,6 +12,7 @@
         <button type="button" role="tab" class="tt @(on ? "on" : "")" aria-selected="@(on ? "true" : "false")" @onclick="() => OpenAsync(tab)">@label</button>
     }
 </div>
+<button type="button" class="btn small review-b" title="Недельный обзор (W)" @onclick="Windows.OpenReview">🗓 Недельный обзор</button>
 
 @code {
     private static readonly (TotalsTab Tab, string Label)[] Tabs =

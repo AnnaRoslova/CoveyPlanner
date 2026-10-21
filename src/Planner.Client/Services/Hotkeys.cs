@@ -57,6 +57,9 @@ public sealed class Hotkeys(
             case "totals":
                 windows.OpenTotals(totals.Last);
                 break;
+            case "review": // W: недельный обзор (BR1)
+                windows.OpenReview();
+                break;
             case "help":
                 windows.OpenHelp();
                 break;

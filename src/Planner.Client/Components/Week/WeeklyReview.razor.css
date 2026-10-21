@@ -1,0 +1,240 @@
+/* Недельный обзор (BR) — экран поверх недели, как «Итоги» */
+.review-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: var(--overlay);
+}
+
+.review {
+    position: fixed;
+    inset: 16px 16px auto;
+    z-index: 36;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(760px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    margin: 0 auto;
+    padding: 20px 22px 18px;
+    border-radius: var(--panel-radius);
+    background: var(--t-panel);
+    box-shadow: var(--shadow-window);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    outline: none;
+}
+
+.review-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0 0 6px;
+    font-size: 15px;
+}
+
+.sub {
+    color: var(--faint);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.close {
+    color: var(--soft);
+}
+
+/* Шаги 1–5 точками */
+.review-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 2px 10px 2px 3px;
+    border-radius: 999px;
+    color: var(--soft);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.step .n {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--line);
+    color: var(--text);
+    font-size: 11.5px;
+}
+
+.step.past .n {
+    background: var(--b-soft);
+    color: var(--b-deep);
+}
+
+.step.on {
+    background: var(--b-soft);
+    color: var(--b-deep);
+}
+
+.step.on .n {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-ink);
+}
+
+.step:focus-visible {
+    outline: 2px solid var(--focus-ring);
+}
+
+.body {
+    flex: 1;
+    min-height: 120px;
+    overflow-y: auto;
+}
+
+.step-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.group {
+    margin: 10px 0 4px;
+    color: var(--b-deep);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: var(--surface);
+    margin-bottom: 4px;
+    font-size: 13.5px;
+}
+
+.row.kept {
+    opacity: 0.55;
+}
+
+.title {
+    flex: 1 1 200px;
+    min-width: 0;
+    color: var(--text);
+}
+
+.diamond {
+    color: var(--a-deep);
+    font-size: 11px;
+}
+
+.meta {
+    color: var(--faint);
+    font-size: 12px;
+}
+
+.acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dot {
+    display: inline-block;
+    flex: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.pips {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.pip {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--b);
+}
+
+.pip.on {
+    background: var(--b-deep);
+    box-shadow: none;
+}
+
+.streak {
+    color: var(--soft);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.role-block {
+    margin-bottom: 10px;
+}
+
+.role-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 2px;
+    font-weight: 800;
+    font-size: 13.5px;
+}
+
+.goal,
+.no-rocks {
+    margin: 0 0 2px 15px;
+    font-size: 13px;
+}
+
+.no-rocks {
+    color: var(--a-ink);
+}
+
+.role-block .add {
+    margin-left: 15px;
+}
+
+.empty {
+    color: var(--soft);
+    font-size: 13px;
+}
+
+.review-f {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spacer {
+    flex: 1;
+}

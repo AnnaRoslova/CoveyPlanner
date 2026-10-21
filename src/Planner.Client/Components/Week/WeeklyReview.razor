@@ -1,0 +1,334 @@
+@* Недельный обзор (docs/specs/batch-ux.md, BR): экран поверх недели, шаги 1–5 точками сверху, «Назад» / «Дальше», Esc — выйти.
+   Обзор — по текущей неделе (в понедельник до 12:00 — по прошлой); на шаге 5 неделя на экране — следующая. Ничего нового не хранится (BR8):
+   каждое действие — обычное (перенос, лента, корзина, «Оставить», «+ цель») со своей плашкой и «Вернуть». *@
+@inherits StateComponent
+@inject WindowHost Windows
+
+<div class="review-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="review" role="dialog" aria-label="Недельный обзор" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="review-h">
+        <h2>Недельный обзор <span class="sub">· @RuDates.WeekRange(_week)</span></h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </header>
+
+    <ol class="review-steps" aria-label="Шаги">
+        @for (var i = 1; i <= Steps.Length; i++)
+        {
+            var step = i;
+            <li>
+                <button type="button" class="step @(step == _step ? "on" : "") @(step < _step ? "past" : "")" aria-current="@(step == _step ? "step" : null)"
+                        @onclick="() => GoToAsync(step)"><span class="n">@step</span> @Steps[step - 1]</button>
+            </li>
+        }
+    </ol>
+
+    <div class="body">
+        @switch (_step)
+        {
+            case 1:
+                <div class="step-h">
+                    <h3>Не сделано на неделе <span class="sub">· @OpenTasks.Count</span></h3>
+                    @if (OpenTasks.Any(t => t.RoleIds.Count > 0 && !_kept.Contains(t.Id)) || OneOffRocks.Any(r => !_kept.Contains(r.Task.Id)))
+                    {
+                        <button type="button" class="btn small postpone-all" @onclick="PostponeAllAsync">Отложить всё на след. неделю</button>
+                    }
+                </div>
+                @if (OpenTasks.Count == 0 && Rocks.Count == 0)
+                {
+                    <p class="empty">Всё сделано — можно идти дальше.</p>
+                }
+                @foreach (var day in _days)
+                {
+                    var tasks = OpenTasks.Where(t => t.PlannedDate == day).ToList();
+                    if (tasks.Count > 0)
+                    {
+                        <p class="group">@RuDates.ShortDate(day)</p>
+                        @foreach (var task in tasks)
+                        {
+                            @TaskRow(task)
+                        }
+                    }
+                }
+                @if (OpenTasks.Where(t => t.PlannedDate is null).ToList() is { Count: > 0 } withoutDay)
+                {
+                    <p class="group">На неделе, без дня</p>
+                    @foreach (var task in withoutDay)
+                    {
+                        @TaskRow(task)
+                    }
+                }
+                @if (Rocks.Count > 0)
+                {
+                    <p class="group">Камни</p>
+                    @foreach (var (goal, task) in Rocks)
+                    {
+                        <div class="row @(_kept.Contains(task.Id) ? "kept" : "")">
+                            <span class="title">@task.Title <span class="diamond" title="занятие цели">◆</span></span>
+                            <span class="meta">@(goal.IsRecurring ? "каждую неделю" : "разовая цель") · @goal.DoneCount из @goal.TimesPerWeek</span>
+                            <div class="acts">
+                                @if (!goal.IsRecurring)
+                                {
+                                    <button type="button" class="btn small" @onclick="() => RockToNextWeekAsync(goal, task)">на след. неделю</button>
+                                }
+                                <button type="button" class="btn small danger" @onclick="() => State.TrashTaskAsync(task.Id)">в корзину</button>
+                                <button type="button" class="btn small keep" @onclick="() => Keep(task.Id)">оставить</button>
+                            </div>
+                        </div>
+                    }
+                }
+                break;
+
+            case 2:
+                <h3>Привычки</h3>
+                @if (ActiveHabits.Count == 0)
+                {
+                    <p class="empty">Привычек нет — цель «каждую неделю» с «🫙 копить».</p>
+                }
+                @foreach (var habit in ActiveHabits)
+                {
+                    var week = habit.Stats.Weeks.FirstOrDefault(w => w.WeekStart == _week);
+                    var count = week?.Count ?? 0;
+                    var norm = week?.Norm ?? habit.WeeklyNorm;
+                    <div class="row habit">
+                        <span class="dot" style="background: @habit.Color"></span>
+                        <span class="title">@habit.Name</span>
+                        <span class="pips" aria-hidden="true">
+                            @for (var i = 0; i < Math.Max(norm, count); i++)
+                            {
+                                <span class="pip @(i < count ? "on" : "")"></span>
+                            }
+                        </span>
+                        <span class="meta">@count из @norm@(count >= norm ? " ✓" : "")</span>
+                        <span class="streak">@(habit.Stats.WeekPaused ? "⚠ не пропускай дважды" : habit.Stats.WeekStreak > 0 ? $"🔥 {habit.Stats.WeekStreak}" : "")</span>
+                    </div>
+                }
+                break;
+
+            case 3:
+                <h3>Давно лежат <span class="sub">· старше @State.StaleMonths мес</span></h3>
+                @if (State.StaleThoughts() is { Count: 0 })
+                {
+                    <p class="empty">Давно лежащих мыслей нет.</p>
+                }
+                @foreach (var thought in State.StaleThoughts())
+                {
+                    <div class="row">
+                        <span class="title">@thought.Title</span>
+                        <span class="meta">@(thought.UpdatedAt is { } u ? ThoughtAge.Label(ThoughtAge.LocalDay(u), RuDates.Today) : "")</span>
+                        <div class="acts">
+                            <button type="button" class="btn small keep" @onclick="() => State.KeepAsync(thought.Id)">оставить</button>
+                            <button type="button" class="btn small" @onclick="() => State.MoveToNextWeekAsync(thought.Id)">на след. неделю</button>
+                            <button type="button" class="btn small" @onclick="() => Windows.OpenSomedayTask(thought.Id)">открыть</button>
+                            <button type="button" class="btn small danger" @onclick="() => State.TrashTaskAsync(thought.Id)">в корзину</button>
+                        </div>
+                    </div>
+                }
+                break;
+
+            case 4:
+                <h3>Миссия и роли</h3>
+                <p class="empty">Начни с конца: кем ты хочешь быть?</p>
+                @foreach (var role in State.UserRoles)
+                {
+                    <div class="row">
+                        <span class="dot" style="background: @role.Color"></span>
+                        <span class="title">@role.Name</span>
+                    </div>
+                }
+                break;
+
+            case 5:
+                <h3>Камни на следующую неделю <span class="sub">· @RuDates.WeekRange(_week.AddDays(7))</span></h3>
+                @foreach (var role in State.OrderedRoles)
+                {
+                    var goals = State.GoalsFor(role.Id).ToList();
+                    <div class="role-block">
+                        <p class="role-name"><span class="dot" style="background: @role.Color"></span> @role.Name</p>
+                        @if (goals.Count == 0)
+                        {
+                            <p class="no-rocks">у роли «@role.Name» нет камней</p>
+                        }
+                        @foreach (var goal in goals)
+                        {
+                            <p class="goal">@goal.Title <span class="meta">@(goal.IsRecurring ? "· каждую неделю" : "")</span></p>
+                        }
+                        @if (_addingRole == role.Id)
+                        {
+                            <InlineInput @bind-Value="_newGoal" Placeholder="Новая цель — Enter" MaxLength="200"
+                                         OnSubmit="() => AddGoalAsync(role.Id)" OnCancel="() => _addingRole = null" />
+                        }
+                        else
+                        {
+                            <button type="button" class="add" @onclick="() => { _addingRole = role.Id; _newGoal = string.Empty; }">+ цель</button>
+                        }
+                    </div>
+                }
+                break;
+        }
+    </div>
+
+    <footer class="review-f">
+        @if (_step > 1)
+        {
+            <button type="button" class="btn back" @onclick="() => GoToAsync(_step - 1)">Назад</button>
+        }
+        <span class="spacer"></span>
+        @if (_step < Steps.Length)
+        {
+            <button type="button" class="btn primary next" @onclick="() => GoToAsync(_step + 1)">Дальше: @Steps[_step].ToLowerInvariant()</button>
+        }
+        else
+        {
+            <button type="button" class="btn primary done" @onclick="FinishAsync">Готово → след. неделя</button>
+        }
+    </footer>
+</section>
+
+@code {
+    private static readonly string[] Steps = ["Не сделано", "Привычки", "Давно лежат", "Миссия", "Камни"];
+
+    private ElementReference _root;
+    private DateOnly _week;
+    private DateOnly[] _days = [];
+    private int _step = 1;
+    private readonly HashSet<int> _kept = [];
+    private int? _addingRole;
+    private string _newGoal = "";
+
+    /// <summary>Неделя обзора (BR2): текущая, а в понедельник до 12:00 — прошлая.</summary>
+    public static DateOnly ReviewWeek(DateTime now)
+    {
+        var today = DateOnly.FromDateTime(now);
+        var week = RuDates.WeekStartOf(today);
+        return today.DayOfWeek == DayOfWeek.Monday && now.Hour < 12 ? week.AddDays(-7) : week;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _week = ReviewWeek(DateTime.Now);
+        _days = Enumerable.Range(0, 7).Select(_week.AddDays).ToArray();
+        if (State.WeekStart != _week)
+        {
+            await State.GoToWeekAsync(_week);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync(); // Esc закрывает экран сразу
+        }
+    }
+
+    /// <summary>Невыполненные дела недели в днях и «на неделе» (не занятия целей, не шаги в списках проектов).</summary>
+    private List<TaskDto> OpenTasks =>
+    [
+        .. _days.SelectMany(State.TasksOn).Where(t => t.State == TaskStateDto.Planned && !State.IsRock(t.Id)),
+        .. State.OrderedRoles.Select(r => (int?)r.Id).Append(null).SelectMany(State.WeekTasksWithoutDay)
+            .Where(t => t.State == TaskStateDto.Planned).DistinctBy(t => t.Id),
+    ];
+
+    /// <summary>Невыполненные занятия целей недели.</summary>
+    private List<(WeeklyGoalDto Goal, TaskDto Task)> Rocks =>
+        State.Goals.Where(g => g.WeekStart == _week)
+            .SelectMany(g => g.Sessions.Where(s => !s.IsDone).Select(s => (Goal: g, Task: State.FindTask(s.TaskId))))
+            .Where(x => x.Task is { State: TaskStateDto.Planned })
+            .Select(x => (x.Goal, x.Task!))
+            .ToList();
+
+    private IEnumerable<(WeeklyGoalDto Goal, TaskDto Task)> OneOffRocks => Rocks.Where(r => !r.Goal.IsRecurring);
+
+    private List<HabitDto> ActiveHabits => State.Habits.Where(h => !h.IsArchived).ToList();
+
+    private RenderFragment TaskRow(TaskDto task) => __builder =>
+    {
+        <div class="row @(_kept.Contains(task.Id) ? "kept" : "")">
+            <span class="title">@task.Title</span>
+            @if (State.RolesOf(task).FirstOrDefault() is { } role)
+            {
+                <span class="meta">@role.Name</span>
+            }
+            <div class="acts">
+                @if (task.RoleIds.Count > 0)
+                {
+                    <button type="button" class="btn small next-week" @onclick="() => State.MoveToNextWeekAsync(task.Id)">на след. неделю</button>
+                }
+                else
+                {
+                    @* B3: у дела без роли — сначала роль *@
+                    <MoreMenu Label="на след. неделю ▾" Class="small next-week" Title="На следующую неделю — в роль">
+                        @foreach (var r in State.OrderedRoles)
+                        {
+                            <MenuItem Label="@($"в роль: {r.Name}")" OnClick="() => State.MoveToNextWeekAsync(task.Id, r.Id)" />
+                        }
+                    </MoreMenu>
+                }
+                <button type="button" class="btn small to-feed" @onclick="() => State.MoveTaskToDateAsync(task.Id, null)">в ленту</button>
+                <button type="button" class="btn small danger" @onclick="() => State.TrashTaskAsync(task.Id)">в корзину</button>
+                <button type="button" class="btn small keep" @onclick="() => Keep(task.Id)">оставить</button>
+            </div>
+        </div>
+    };
+
+    private void Keep(int taskId) => _kept.Add(taskId);
+
+    /// <summary>Занятие разовой цели — к той же цели на следующей неделе (как перенос на другую неделю).</summary>
+    private Task RockToNextWeekAsync(WeeklyGoalDto goal, TaskDto task) =>
+        State.MoveTaskToDayAsync(task.Id, (task.PlannedDate ?? goal.WeekStart).AddDays(7), int.MaxValue);
+
+    /// <summary>«Отложить всё»: дела с ролью и занятия разовых целей, кроме оставленных; без роли — по одному (нужна роль).</summary>
+    private async Task PostponeAllAsync()
+    {
+        foreach (var task in OpenTasks.Where(t => t.RoleIds.Count > 0 && !_kept.Contains(t.Id)).ToList())
+        {
+            await State.MoveToNextWeekAsync(task.Id);
+        }
+
+        foreach (var (goal, task) in OneOffRocks.Where(r => !_kept.Contains(r.Task.Id)).ToList())
+        {
+            await RockToNextWeekAsync(goal, task);
+        }
+    }
+
+    private async Task AddGoalAsync(int roleId)
+    {
+        if (string.IsNullOrWhiteSpace(_newGoal))
+        {
+            return;
+        }
+
+        var title = _newGoal;
+        _newGoal = "";
+        await State.CreateGoalAsync(roleId, title); // на показанной — следующей — неделе
+    }
+
+    /// <summary>Шаг 5 — про следующую неделю: она и на экране; с шага 5 назад — снова неделя обзора.</summary>
+    private async Task GoToAsync(int step)
+    {
+        _step = Math.Clamp(step, 1, Steps.Length);
+        _addingRole = null;
+        var shown = _step == Steps.Length ? _week.AddDays(7) : _week;
+        if (State.WeekStart != shown)
+        {
+            await State.GoToWeekAsync(shown);
+        }
+
+        await _root.FocusAsync();
+    }
+
+    private async Task FinishAsync()
+    {
+        await State.GoToWeekAsync(_week.AddDays(7));
+        Windows.Close();
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

@@ -23,5 +23,6 @@ builder.Services.AddScoped<RightPanelState>();
 builder.Services.AddScoped<RoleFoldState>();
 builder.Services.AddScoped<TotalsState>();
 builder.Services.AddScoped<Hotkeys>();
+builder.Services.AddScoped<ReviewReminder>();
 
 await builder.Build().RunAsync();

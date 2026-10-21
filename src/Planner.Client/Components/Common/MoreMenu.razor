@@ -2,9 +2,16 @@
    <div class="menu-sep">, розовым; недоступный — бледный, с причиной справа). Esc и клик мимо закрывают только меню, окно остаётся
    (Popover, js/popover.js); ↑↓ — по пунктам. Стили — css/editor.css. *@
 
-<button @ref="_button" type="button" class="btn more-b @Class" title="@Title" aria-label="@Title" aria-haspopup="menu"
+<button @ref="_button" type="button" class="btn @(Label is null ? "more-b" : "") @Class" title="@Title" aria-label="@Title" aria-haspopup="menu"
         aria-expanded="@(_open ? "true" : "false")" @onclick="() => _open = !_open">
-    <Icon Name="more" Size="16" />
+    @if (Label is null)
+    {
+        <Icon Name="more" Size="16" />
+    }
+    else
+    {
+        @Label
+    }
 </button>
 
 @if (_open)
@@ -28,6 +35,10 @@
 
     [Parameter]
     public string? Class { get; set; }
+
+    /// <summary>Подпись кнопки вместо «⋯» (меню «на след. неделю → роль» в недельном обзоре).</summary>
+    [Parameter]
+    public string? Label { get; set; }
 
     /// <summary>Закрыть меню (пункт выбран, клик мимо, Esc).</summary>
     public void Close()

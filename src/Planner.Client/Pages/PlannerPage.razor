@@ -12,6 +12,7 @@
 @inject ProjectFoldState ProjectFold
 @inject RightPanelState RightPanel
 @inject Hotkeys Hotkeys
+@inject ReviewReminder ReviewReminder
 
 <PageTitle>CoveyPlanner</PageTitle>
 
@@ -72,6 +73,10 @@
     {
         <SearchBox />
     }
+    else if (Windows.ReviewOpen)
+    {
+        <WeeklyReview />
+    }
     else if (Windows.SettingsOpen)
     {
         <SettingsWindow />
@@ -105,6 +110,7 @@ else
         if (State.IsLoaded)
         {
             await State.CheckStaleAsync();
+            await ReviewReminder.CheckAsync(); // воскресенье — «Неделя заканчивается · Недельный обзор» (BR1)
         }
     }
 

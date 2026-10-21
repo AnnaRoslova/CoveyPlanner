@@ -38,6 +38,9 @@ public sealed class WindowHost
     /// <summary>Окно «⚙ Настройки» (batch-ux.md, BI5).</summary>
     public bool SettingsOpen { get; private set; }
 
+    /// <summary>Недельный обзор (W, «Итоги»; batch-ux.md, BR).</summary>
+    public bool ReviewOpen { get; private set; }
+
     /// <summary>Быстрый поиск (Ctrl+K, /; batch-ux.md, BK2).</summary>
     public bool SearchOpen { get; private set; }
 
@@ -70,6 +73,8 @@ public sealed class WindowHost
 
     public void OpenSearch() => Open(search: true);
 
+    public void OpenReview() => Open(review: true);
+
     /// <summary>«📈 Итоги» (BI2) на вкладке: «Привычки» — экран привычек, «Выполненное», «Отчёт».</summary>
     public void OpenTotals(TotalsTab tab)
     {
@@ -96,7 +101,7 @@ public sealed class WindowHost
     public void Close() => Open();
 
     private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
-        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false, bool search = false)
+        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false, bool search = false, bool review = false)
     {
         HabitsOpen = habits;
         DoneOpen = done;
@@ -104,6 +109,7 @@ public sealed class WindowHost
         HelpOpen = help;
         SettingsOpen = settings;
         SearchOpen = search;
+        ReviewOpen = review;
         FocusHabitId = focusHabitId;
         GoalId = goalId;
         RoleId = roleId;

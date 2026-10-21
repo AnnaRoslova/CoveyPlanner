@@ -4,7 +4,7 @@
 // Ctrl+K — всегда (и из поля, и из окна); Ctrl+Z — «Вернуть» на плашке, только вне поля ввода.
 const PLAIN = {
     KeyN: 'thought', KeyD: 'day', ArrowLeft: 'prev', ArrowRight: 'next', KeyT: 'today',
-    KeyH: 'totals', KeyP: 'tabs',
+    KeyH: 'totals', KeyP: 'tabs', KeyW: 'review',
 };
 
 const OVERLAYS = '.editor-backdrop, .habits-backdrop, .done-backdrop, .report-backdrop, .help-backdrop, .search-backdrop, ' +
