@@ -656,7 +656,7 @@ public sealed class MigrationTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        TestDatabase.ClearPool(_path);
         foreach (var file in Directory.GetFiles(Path.GetDirectoryName(_path)!, Path.GetFileName(_path) + "*"))
         {
             File.Delete(file);

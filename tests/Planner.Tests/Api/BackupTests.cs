@@ -20,6 +20,14 @@ public class BackupTests
         public override DateTimeOffset GetUtcNow() => _now = _now.AddSeconds(1);
     }
 
+    /// <summary>Часы, которые стоят: за секунду до полуночи — оба запуска сервера в тесте «в один день» (batch-3.md, FT1).</summary>
+    private sealed class StoppedClock : TimeProvider
+    {
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+
+        public override DateTimeOffset GetUtcNow() => new(2026, 10, 22, 23, 59, 59, TimeSpan.Zero);
+    }
+
     private static int CountRoles(string path)
     {
         using var connection = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
@@ -76,7 +84,7 @@ public class BackupTests
         }
         finally
         {
-            SqliteConnection.ClearAllPools();
+            TestDatabase.ClearPool(dbPath);
             Directory.Delete(dir, recursive: true);
         }
     }
@@ -84,13 +92,13 @@ public class BackupTests
     [Fact]
     public async Task Startup_DailyBackup_OncePerDay()
     {
-        await using var first = new PlannerApiFactory(dailyBackup: true);
+        await using var first = new PlannerApiFactory(dailyBackup: true, clock: new StoppedClock());
         first.CreateClient();
         var daily = Assert.Single(Directory.GetFiles(first.BackupDirectory));
         Assert.Contains("ежедневная", daily);
 
         // Второй запуск в тот же день на той же базе и с той же папкой копий — новой копии нет
-        await using var second = new PlannerApiFactory(first.DatabasePath, dailyBackup: true, first.BackupDirectory);
+        await using var second = new PlannerApiFactory(first.DatabasePath, dailyBackup: true, first.BackupDirectory, new StoppedClock());
         second.CreateClient();
         Assert.Equal(daily, Assert.Single(Directory.GetFiles(first.BackupDirectory)));
     }
@@ -108,7 +116,7 @@ public class BackupTests
                 "INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Работа', '#8ac2c4', 0, NULL);");
         }
 
-        SqliteConnection.ClearAllPools();
+        TestDatabase.ClearPool(dbPath);
 
         await using var factory = new PlannerApiFactory(dbPath, dailyBackup: true);
         factory.CreateClient(); // запуск сервера: копия → миграции (ежедневная не нужна — копия за сегодня уже есть)

@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Planner.Server.Data;
 using Planner.Shared;
@@ -11,8 +11,10 @@ namespace Planner.Tests.Api;
 /// <summary>
 /// Поднимает сервер в памяти с отдельным временным файлом БД и своей папкой резервных копий.
 /// Ежедневная копия при запуске выключена (кроме тестов, которые включают её сами).
+/// clock — часы сервера вместо настоящих (тест не зависит от того, перешли ли сутки за время теста; batch-3.md, FT1).
 /// </summary>
-public sealed class PlannerApiFactory(string? databasePath = null, bool dailyBackup = false, string? backupDirectory = null)
+public sealed class PlannerApiFactory(
+    string? databasePath = null, bool dailyBackup = false, string? backupDirectory = null, TimeProvider? clock = null)
     : WebApplicationFactory<Program>
 {
     public string DatabasePath { get; } =
@@ -27,12 +29,16 @@ public sealed class PlannerApiFactory(string? databasePath = null, bool dailyBac
         builder.UseSetting(DataServiceCollectionExtensions.DatabasePathKey, DatabasePath);
         builder.UseSetting(DataServiceCollectionExtensions.BackupPathKey, BackupDirectory);
         builder.UseSetting(DataServiceCollectionExtensions.DailyBackupKey, dailyBackup.ToString());
+        if (clock is not null)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(clock));
+        }
     }
 
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        SqliteConnection.ClearAllPools();
+        TestDatabase.ClearPool(DatabasePath);
         foreach (var file in Directory.GetFiles(Path.GetDirectoryName(DatabasePath)!, Path.GetFileName(DatabasePath) + "*"))
         {
             File.Delete(file);
@@ -53,6 +59,9 @@ public abstract class ApiTestBase : IAsyncLifetime
     private readonly PlannerApiFactory _factory = new();
 
     protected HttpClient Client { get; private set; } = null!;
+
+    /// <summary>Сервисы сервера — посмотреть базу напрямую (то, чего не видно через API).</summary>
+    protected IServiceProvider Services => _factory.Services;
 
     public Task InitializeAsync()
     {
