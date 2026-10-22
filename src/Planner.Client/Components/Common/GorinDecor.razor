@@ -1,6 +1,7 @@
 @* Декор темы «Пять колец» (docs/specs/batch-3.md, G3; рисунки — из макета docs/theme-gorin.html): inline SVG, цвета — переменные темы (--g-*).
    Place: Defs — символы (один раз на странице), Week — облако-завиток, солнце с полосами и горы за подписью недели, лепестки;
-   Feed — лепестки над лентой; LeftFoot / FeedFoot — ветвь сакуры (и волна дыма у ленты) блоком в конце прокручиваемой части панели.
+   Feed — лепестки над лентой; LeftCorner — маленькая ветвь в правом верхнем углу левой панели (G10);
+   FeedFoot — ветвь сакуры и волна дыма блоком в конце прокручиваемой части ленты.
    Только в темах «Земля», «Вода», «Пустота»; мышь не ловит, под текстом, на узких и низких экранах спрятан (css/themes.css). *@
 @implements IDisposable
 @inject ThemeState Theme
@@ -102,10 +103,10 @@
                     <use href="#g-petal" x="470" y="520" width="9" height="9" />
                 </svg>
                 <svg class="kumo" viewBox="0 0 340 110"><use href="#g-kumo" x="0" y="0" width="340" height="110" /></svg>
-                @* красное солнце с полосами и горы — за подписью недели *@
+                @* красное солнце с полосами и силуэт гор — за подписью недели, целиком в шапке (G8) *@
                 <svg class="sun" viewBox="0 0 150 110">
-                    <path d="M0 104 C20 84 34 78 52 90 C66 62 84 56 100 82 C112 72 128 74 150 96 L150 110 L0 110 Z" fill="var(--g-mount)" opacity=".18" />
-                    <circle cx="86" cy="48" r="34" fill="var(--g-sun)" opacity=".85" />
+                    <path d="M0 104 C20 84 34 78 52 90 C66 62 84 56 100 82 C112 72 128 74 150 96 L150 110 L0 110 Z" fill="var(--g-mount)" opacity=".3" />
+                    <circle cx="86" cy="48" r="34" fill="var(--g-sun)" opacity=".55" />
                     <path d="M50 60 H122 M52 68 H120 M56 76 H116" stroke="var(--paper)" stroke-width="3.4" />
                 </svg>
             </div>
@@ -123,9 +124,9 @@
             </div>
             break;
 
-        case GorinPlace.LeftFoot:
-            <div class="gorin-foot left" aria-hidden="true">
-                <svg class="vetka" viewBox="0 0 300 185"><use href="#g-vetka" /></svg>
+        case GorinPlace.LeftCorner:
+            <div class="gorin-layer" aria-hidden="true">
+                <svg class="vetka corner" viewBox="0 0 300 185"><use href="#g-vetka" /></svg>
             </div>
             break;
 

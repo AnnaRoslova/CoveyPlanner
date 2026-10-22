@@ -128,7 +128,7 @@ await check('«Земля»: скачаны только её шрифты (Kura
   await page.evaluate(() => document.fonts.ready); await sleep(400);
   const files = (await fontFiles()).filter(f => themeFonts.test(f));
   assert(files.length > 0 && files.every(f => /^(kurale|pt-serif)/.test(f)), `шрифты: ${files}`);
-  assert(await page.$('.gorin-defs') && await page.$('.week .gorin-layer') && await page.$('.roles-panel .gorin-foot'), 'нет декора');
+  assert(await page.$('.gorin-defs') && await page.$('.week .gorin-layer') && await page.$('.roles-panel .gorin-layer .vetka.corner'), 'нет декора');
   const blocking = await page.$$eval('.gorin-layer, .gorin-foot, .gorin-layer svg, .gorin-foot svg',
     els => els.filter(e => getComputedStyle(e).pointerEvents !== 'none').length);
   assert(blocking === 0, `декор ловит мышь: ${blocking}`);

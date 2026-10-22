@@ -549,3 +549,31 @@ body.dragging .trash-btn {
     border: 1.6px solid var(--btn-line);
     border-radius: 50%;
 }
+
+/* G11 (batch-3.md): строка с процентом (цель в левой панели) — процент своей колонкой, название не рвётся посреди слова:
+   название не уже самого длинного слова, а «× удалить» не занимает места — поверх правого края строки при наведении
+   (невидимое не нажимается). На касании «×» остаётся на своём месте, как раньше */
+.item:has(.pct, .pct-ring) .tx {
+    min-width: min-content;
+}
+
+@media (hover: hover) {
+    .item:has(.pct, .pct-ring) {
+        position: relative;
+    }
+
+    .item:has(.pct, .pct-ring) .actions {
+        position: absolute;
+        top: 3px;
+        right: 4px;
+        margin: 0;
+        border-radius: 50%;
+        background: var(--glass-top);
+        pointer-events: none;
+    }
+
+    .item:has(.pct, .pct-ring):hover .actions,
+    .item:has(.pct, .pct-ring) .actions:focus-within {
+        pointer-events: auto;
+    }
+}

@@ -199,6 +199,29 @@ await check('U1.7: «+ цель» — при наведении на роль; �
 });
 
 // Снимки в двух темах: развёрнуто и свёрнуто
+// G11 (batch-3.md): название цели переносится по словам — ни одно слово не разорвано между строками (в Земле шрифт шире)
+for (const theme of ['lotus', 'earth']) {
+  await check(`G11: названия целей не рвутся посреди слова — тема ${theme}`, async () => {
+    await page.evaluate(t => localStorage.setItem('planner.theme', t), theme);
+    await load();
+    const broken = await page.evaluate(() => {
+      const out = [];
+      for (const title of document.querySelectorAll('.roles-panel .role .item .title')) {
+        const node = [...title.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
+        if (!node) continue;
+        for (const m of node.textContent.matchAll(/S+/g)) {
+          const range = document.createRange();
+          range.setStart(node, m.index); range.setEnd(node, m.index + m[0].length);
+          const tops = new Set([...range.getClientRects()].map(r => Math.round(r.top)));
+          if (tops.size > 1) out.push(m[0]);
+        }
+      }
+      return out;
+    });
+    assert(broken.length === 0, `разорваны: ${broken.join(', ')}`);
+  });
+}
+
 for (const theme of ['lotus', 'obsidian']) {
   await check(`снимки левой панели — тема ${theme}`, async () => {
     await page.evaluate(t => localStorage.setItem('planner.theme', t), theme);

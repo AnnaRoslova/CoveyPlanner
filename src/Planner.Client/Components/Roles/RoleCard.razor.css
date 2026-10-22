@@ -44,8 +44,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 24px; /* зона нажатия ≥ 24px (fixes-2026-10 D2.1) */
+    height: 24px;
     transform: translateY(-50%);
     background: var(--glass-hi);
     border-radius: 50%;
@@ -254,8 +254,8 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     margin-left: auto;
     border: 1.3px dashed var(--btn-line);
     border-radius: 50%;

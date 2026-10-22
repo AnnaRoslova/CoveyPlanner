@@ -12,8 +12,8 @@ public enum GorinPlace
     /// <summary>Лента: лепестки.</summary>
     Feed,
 
-    /// <summary>Конец левой панели: ветвь сакуры.</summary>
-    LeftFoot,
+    /// <summary>Левая панель: маленькая ветвь сакуры в правом верхнем углу (G10).</summary>
+    LeftCorner,
 
     /// <summary>Конец ленты: волна дыма и ветвь сакуры.</summary>
     FeedFoot,

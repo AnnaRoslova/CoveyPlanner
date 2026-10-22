@@ -19,6 +19,7 @@ const MOCKUP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 const THEMES = ['lotus', 'peony', 'platinum', 'obsidian', 'earth', 'water', 'void'];
 const MUST_PASS_AA = ['obsidian', 'void'];
 const LIGHT = ['lotus', 'peony', 'platinum', 'earth', 'water'];
+const GORIN = ['earth', 'water', 'void'];
 // Второстепенный текст: счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
 // Кнопки системы («+ …», «свернуть всё», «ещё дела», значки — fixes-2026-10.md, D4) — как основной текст: их в этом списке нет
 const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
@@ -202,9 +203,13 @@ for (const theme of THEMES) {
       const ring = getComputedStyle(today).boxShadow.match(/(rgba?\([^)]*\)|color\([^)]*\)|#[0-9a-f]+)/i)[1];
       const todayBg = flat(rgb(getComputedStyle(today).backgroundColor));
       const otherBg = flat(rgb(getComputedStyle(other).backgroundColor));
-      return { ring: ratio(flat(rgb(ring)), otherBg), bgDiff: Math.max(...[0, 1, 2].map(i => Math.abs(todayBg[i] - otherBg[i]))) };
+      const tag = today.querySelector('.day-h .tag');
+      return { ring: ratio(flat(rgb(ring)), otherBg), bgDiff: Math.max(...[0, 1, 2].map(i => Math.abs(todayBg[i] - otherBg[i]))),
+        tanzaku: !!tag && getComputedStyle(tag).writingMode === 'vertical-rl' && tag.getBoundingClientRect().height > 60 };
     });
-    assert(m.ring >= 2, `обводка ${m.ring.toFixed(2)}:1`);
+    // «Пять колец» (batch-3.md, G9): без рамки — мягкий тон и танзаку «сегодня»
+    if (GORIN.includes(theme)) assert(m.tanzaku, 'нет танзаку «сегодня»');
+    else assert(m.ring >= 2, `обводка ${m.ring.toFixed(2)}:1`);
     assert(m.bgDiff >= 6, `фон отличается на ${m.bgDiff}`);
   });
   await check(`${theme}: D4 — обводка кнопок от фона под ними не ниже 1.5:1 (обычная, «+ …», значки)`, async () => {
