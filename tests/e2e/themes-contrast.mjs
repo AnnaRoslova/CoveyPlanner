@@ -16,9 +16,9 @@ import { fileURLToPath } from 'node:url';
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
 const SHOTS = process.argv[2] ?? '.';
 const MOCKUP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/themes.html');
-const THEMES = ['lotus', 'peony', 'platinum', 'obsidian'];
-const MUST_PASS_AA = ['obsidian'];
-const LIGHT = ['lotus', 'peony', 'platinum'];
+const THEMES = ['lotus', 'peony', 'platinum', 'obsidian', 'earth', 'water', 'void'];
+const MUST_PASS_AA = ['obsidian', 'void'];
+const LIGHT = ['lotus', 'peony', 'platinum', 'earth', 'water'];
 // Второстепенный текст: счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
 // Кнопки системы («+ …», «свернуть всё», «ещё дела», значки — fixes-2026-10.md, D4) — как основной текст: их в этом списке нет
 const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',

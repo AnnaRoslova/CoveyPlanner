@@ -1,0 +1,159 @@
+@* Декор темы «Пять колец» (docs/specs/batch-3.md, G3; рисунки — из макета docs/theme-gorin.html): inline SVG, цвета — переменные темы (--g-*).
+   Place: Defs — символы (один раз на странице), Week — облако-завиток, солнце с полосами и горы за подписью недели, лепестки;
+   Feed — лепестки над лентой; LeftFoot / FeedFoot — ветвь сакуры (и волна дыма у ленты) блоком в конце прокручиваемой части панели.
+   Только в темах «Земля», «Вода», «Пустота»; мышь не ловит, под текстом, на узких и низких экранах спрятан (css/themes.css). *@
+@implements IDisposable
+@inject ThemeState Theme
+
+@if (Theme.IsGorin)
+{
+    switch (Place)
+    {
+        case GorinPlace.Defs:
+            <svg class="gorin-defs" width="0" height="0" aria-hidden="true" focusable="false">
+                <defs>
+                    @* облако-завиток (кумо) *@
+                    <symbol id="g-kumo" viewBox="0 0 240 90">
+                        <path d="M8 74 C6 52 26 40 44 48 C46 26 74 16 92 32 C102 12 140 10 150 34 C166 22 196 28 198 50 C218 46 234 60 230 76 Z" fill="var(--g-cloud-l)" stroke="var(--g-cloud)" stroke-width="3" />
+                        <path d="M58 60 c-10 0 -14 -14 -2 -16 c12 -2 16 14 4 20 c-14 6 -26 -6 -22 -18" fill="none" stroke="var(--g-cloud)" stroke-width="3" stroke-linecap="round" />
+                        <path d="M128 52 c-8 -2 -8 -14 2 -14 c12 0 12 18 -2 20 c-16 2 -24 -14 -16 -24" fill="none" stroke="var(--g-cloud)" stroke-width="3" stroke-linecap="round" />
+                        <path d="M186 64 c-6 0 -8 -9 0 -10 c8 0 9 11 0 13" fill="none" stroke="var(--g-cloud)" stroke-width="2.6" stroke-linecap="round" />
+                    </symbol>
+                    @* волна дыма *@
+                    <symbol id="g-mist" viewBox="0 0 400 120" preserveAspectRatio="none">
+                        <path d="M0 80 C40 40 80 40 110 70 C130 90 160 86 170 64 C180 40 150 30 140 46 C132 60 150 66 156 56" fill="none" stroke="var(--g-cloud)" stroke-width="14" stroke-linecap="round" opacity=".55" />
+                        <path d="M170 90 C220 50 260 54 290 80 C310 98 350 96 360 70 C370 46 340 38 330 54 C324 66 340 70 346 62" fill="none" stroke="var(--g-cloud)" stroke-width="14" stroke-linecap="round" opacity=".45" />
+                        <path d="M0 80 C40 40 80 40 110 70 C130 90 160 86 170 64" fill="none" stroke="var(--g-cloud-l)" stroke-width="4" stroke-linecap="round" opacity=".8" />
+                        <path d="M170 90 C220 50 260 54 290 80 C310 98 350 96 360 70" fill="none" stroke="var(--g-cloud-l)" stroke-width="4" stroke-linecap="round" opacity=".8" />
+                    </symbol>
+                    <radialGradient id="g-pg" cx="50%" cy="85%" r="95%">
+                        <stop offset="0" style="stop-color: var(--g-sakura-c)" />
+                        <stop offset=".35" style="stop-color: var(--g-sakura-m)" />
+                        <stop offset="1" style="stop-color: var(--g-sakura)" />
+                    </radialGradient>
+                    @* цветок сакуры: пять лепестков с выемкой, тычинки *@
+                    <symbol id="g-hana" viewBox="-14 -14 28 28">
+                        <path id="g-pt" d="M0 0 C-5 -1.5 -7 -7 -4 -11 Q-1.6 -13 0 -10.4 Q1.6 -13 4 -11 C7 -7 5 -1.5 0 0Z" fill="url(#g-pg)" stroke="var(--g-sakura-e)" stroke-width=".45" />
+                        <use href="#g-pt" transform="rotate(72)" /><use href="#g-pt" transform="rotate(144)" />
+                        <use href="#g-pt" transform="rotate(216)" /><use href="#g-pt" transform="rotate(288)" />
+                        <path d="M0 0 L0 -4.6 M0 0 L3.6 -2.8 M0 0 L4 1.6 M0 0 L1.4 4.4 M0 0 L-2.6 3.8 M0 0 L-4.3 0.4 M0 0 L-3 -3.4" stroke="var(--g-sakura-c)" stroke-width=".55" stroke-linecap="round" />
+                        <g fill="var(--g-stamen)">
+                            <circle cx="0" cy="-4.9" r=".75" /><circle cx="3.9" cy="-3" r=".75" /><circle cx="4.3" cy="1.7" r=".75" /><circle cx="1.5" cy="4.7" r=".75" />
+                            <circle cx="-2.8" cy="4" r=".75" /><circle cx="-4.6" cy=".4" r=".75" /><circle cx="-3.2" cy="-3.6" r=".75" />
+                        </g>
+                        <circle r="1.3" fill="var(--g-sakura-c)" />
+                    </symbol>
+                    <symbol id="g-bud" viewBox="-6 -9 12 14">
+                        <path d="M0 -8 C4 -6 4 -1 0 1 C-4 -1 -4 -6 0 -8Z" fill="url(#g-pg)" stroke="var(--g-sakura-e)" stroke-width=".5" />
+                        <path d="M-2.6 0 C-1.5 2 1.5 2 2.6 0 L0 4Z" fill="var(--g-branch)" />
+                    </symbol>
+                    <filter id="g-rough" x="-10%" y="-10%" width="120%" height="120%">
+                        <feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="5" />
+                        <feDisplacementMap in="SourceGraphic" scale="3.2" />
+                    </filter>
+                    @* изогнутая ветвь сакуры с цветами и бутонами *@
+                    <symbol id="g-vetka" viewBox="0 0 300 185">
+                        <g filter="url(#g-rough)" fill="none" stroke="var(--g-branch)" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M300 8 Q268 12 246 30" stroke-width="13" />
+                            <path d="M246 30 Q236 48 214 56" stroke-width="11" />
+                            <path d="M214 56 Q186 62 170 84" stroke-width="9" />
+                            <path d="M170 84 Q158 102 128 106" stroke-width="7" />
+                            <path d="M128 106 Q104 110 92 132" stroke-width="5" />
+                            <path d="M92 132 Q80 150 52 152" stroke-width="3.6" />
+                            <path d="M52 152 Q36 153 22 166" stroke-width="2" />
+                            <path d="M246 30 Q250 14 266 7" stroke-width="3.4" /><path d="M266 7 Q272 3 282 2" stroke-width="1.4" />
+                            <path d="M214 56 Q222 76 240 82" stroke-width="3.2" /><path d="M240 82 Q250 86 256 98" stroke-width="1.4" />
+                            <path d="M170 84 Q162 64 172 50" stroke-width="3" /><path d="M172 50 Q178 42 188 40" stroke-width="1.3" />
+                            <path d="M128 106 Q136 124 128 140" stroke-width="2.6" /><path d="M128 140 Q124 150 130 160" stroke-width="1.2" />
+                            <path d="M92 132 Q82 114 90 100" stroke-width="2" /><path d="M90 100 Q93 94 100 92" stroke-width="1" />
+                            <path d="M52 152 Q50 167 60 176" stroke-width="1.5" />
+                            <path d="M196 60 Q194 46 202 38" stroke-width="1.6" />
+                        </g>
+                        <g fill="var(--g-branch)" filter="url(#g-rough)">
+                            <ellipse cx="246" cy="30" rx="8" ry="6.5" /><ellipse cx="214" cy="56" rx="6.5" ry="5.5" /><ellipse cx="170" cy="84" rx="5.5" ry="4.6" />
+                            <ellipse cx="128" cy="106" rx="4.4" ry="3.8" /><ellipse cx="92" cy="132" rx="3.4" ry="3" />
+                            <ellipse cx="228" cy="44" rx="4" ry="2.6" transform="rotate(-40 228 44)" /><ellipse cx="150" cy="99" rx="3.4" ry="2.2" transform="rotate(-20 150 99)" />
+                        </g>
+                        <g fill="none" stroke="var(--g-branch-e)" stroke-width=".9" stroke-linecap="round" opacity=".55">
+                            <path d="M292 9 Q270 13 252 26" /><path d="M240 38 Q232 50 218 54" /><path d="M206 60 Q190 66 178 78" /><path d="M164 92 Q154 100 136 104" />
+                        </g>
+                        @foreach (var (x, y, size) in Flowers)
+                        {
+                            <use href="#g-hana" x="@x" y="@y" width="@size" height="@size" />
+                        }
+                        @foreach (var (x, y, w, h) in Buds)
+                        {
+                            <use href="#g-bud" x="@x" y="@y" width="@w" height="@h" />
+                        }
+                    </symbol>
+                    <symbol id="g-petal" viewBox="-6 -6 12 12">
+                        <path d="M0 -5 C4 -3 4 3 0 5 C-1 2 -1 -2 0 -5Z" fill="var(--g-sakura)" stroke="var(--g-sakura-c)" stroke-width=".6" />
+                    </symbol>
+                </defs>
+            </svg>
+            break;
+
+        case GorinPlace.Week:
+            <div class="gorin-layer" aria-hidden="true">
+                <svg class="petals" viewBox="0 0 900 600" preserveAspectRatio="none">
+                    <use href="#g-petal" x="330" y="120" width="10" height="10" transform="rotate(30 335 125)" />
+                    <use href="#g-petal" x="610" y="300" width="9" height="9" transform="rotate(-40 614 304)" />
+                    <use href="#g-petal" x="840" y="200" width="11" height="11" transform="rotate(70 845 205)" />
+                    <use href="#g-petal" x="470" y="520" width="9" height="9" />
+                </svg>
+                <svg class="kumo" viewBox="0 0 340 110"><use href="#g-kumo" x="0" y="0" width="340" height="110" /></svg>
+                @* красное солнце с полосами и горы — за подписью недели *@
+                <svg class="sun" viewBox="0 0 150 110">
+                    <path d="M0 104 C20 84 34 78 52 90 C66 62 84 56 100 82 C112 72 128 74 150 96 L150 110 L0 110 Z" fill="var(--g-mount)" opacity=".18" />
+                    <circle cx="86" cy="48" r="34" fill="var(--g-sun)" opacity=".85" />
+                    <path d="M50 60 H122 M52 68 H120 M56 76 H116" stroke="var(--paper)" stroke-width="3.4" />
+                </svg>
+            </div>
+            break;
+
+        case GorinPlace.Feed:
+            <div class="gorin-layer" aria-hidden="true">
+                <svg class="petals" viewBox="0 0 300 600" preserveAspectRatio="none">
+                    <use href="#g-petal" x="40" y="180" width="10" height="10" transform="rotate(20 45 185)" />
+                    <use href="#g-petal" x="210" y="260" width="9" height="9" transform="rotate(-30 214 264)" />
+                    <use href="#g-petal" x="120" y="340" width="11" height="11" transform="rotate(60 125 345)" />
+                    <use href="#g-petal" x="250" y="420" width="8" height="8" />
+                    <use href="#g-petal" x="70" y="470" width="10" height="10" transform="rotate(-50 75 475)" />
+                </svg>
+            </div>
+            break;
+
+        case GorinPlace.LeftFoot:
+            <div class="gorin-foot left" aria-hidden="true">
+                <svg class="vetka" viewBox="0 0 300 185"><use href="#g-vetka" /></svg>
+            </div>
+            break;
+
+        case GorinPlace.FeedFoot:
+            <div class="gorin-foot feed" aria-hidden="true">
+                <svg class="mist" viewBox="0 0 400 120" preserveAspectRatio="none"><use href="#g-mist" /></svg>
+                <svg class="vetka" viewBox="0 0 300 185"><use href="#g-vetka" /></svg>
+            </div>
+            break;
+    }
+}
+
+@code {
+    private static readonly (int X, int Y, int Size)[] Flowers =
+    [
+        (270, -12, 30), (250, -4, 26), (242, 84, 30), (224, 68, 26), (176, 24, 30), (158, 38, 24), (114, 146, 32),
+        (116, 124, 24), (80, 80, 28), (46, 160, 26), (8, 152, 26), (140, 86, 22), (190, 24, 20),
+    ];
+
+    private static readonly (int X, int Y, int W, int H)[] Buds =
+        [(284, -6, 9, 11), (258, 96, 9, 11), (102, 84, 8, 10), (132, 160, 8, 10), (62, 174, 8, 10), (200, 30, 8, 10)];
+
+    [Parameter, EditorRequired]
+    public GorinPlace Place { get; set; }
+
+    protected override void OnInitialized() => Theme.Changed += OnThemeChanged;
+
+    public void Dispose() => Theme.Changed -= OnThemeChanged;
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+}

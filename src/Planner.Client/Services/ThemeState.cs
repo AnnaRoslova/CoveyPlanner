@@ -13,14 +13,22 @@ public sealed class ThemeState(IJSRuntime js)
 {
     public const string DefaultKey = "lotus";
 
-    // Пока четыре темы; остальные из docs/themes.html — после проверки этих
+    // Остальные темы из docs/themes.html — после проверки этих; «Пять колец» — три варианта (docs/specs/batch-3.md, G1)
     public static readonly IReadOnlyList<ThemeInfo> Themes =
     [
         new("lotus", "Лотос"),
         new("peony", "Пион"),
         new("platinum", "Платина"),
         new("obsidian", "Обсидиан"),
+        new("earth", "Земля"),
+        new("water", "Вода"),
+        new("void", "Пустота"),
     ];
+
+    /// <summary>Темы «Пять колец»: у них свой декор — гравюра, облака, сакура (Components/Common/GorinDecor.razor).</summary>
+    public static readonly IReadOnlySet<string> Gorin = new HashSet<string> { "earth", "water", "void" };
+
+    public bool IsGorin => Gorin.Contains(Current);
 
     private IJSObjectReference? _module;
 

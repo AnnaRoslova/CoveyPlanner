@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тема «Пять колец» — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kurale&family=Caveat+Brush&family=PT+Serif:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ЗЕМЛЯ — старая бумага, тушь, киноварь (по умолчанию) */
+:root{
+  --bg:#d8cdb6; --paper:#e8dfcb; --paper-2:#efe8d8; --panel:rgba(239,232,216,.86);
+  --ink:#24211d; --ink-soft:#5e574d; --ink-faint:#8f8676; --line:rgba(36,33,29,.16);
+  --accent:#a8382f; --accent-soft:rgba(168,56,47,.12); --cloud:#9c968b; --cloud-l:#cfc8b9; --pine:#2f3328;
+  --sun:#b5402f; --mount:#7d786e; --grain:.22; --sakura:#fbf3f0; --sakura-m:#f2c9cc; --sakura-c:#c75a6c; --sakura-e:#d9a3a8; --stamen:#8e3446; --branch:#2a2420; --branch-e:#4a4038;
+  --r1:#a8382f; --r2:#4f5e46; --r3:#34466a; --r4:#a8823f; --r5:#76726a; --r6:#7a4757;
+}
+/* ВОДА — индиго по бумаге */
+body.water{
+  --bg:#d3cdbf; --paper:#e4dfd2; --paper-2:#ece8dd; --panel:rgba(236,232,221,.86);
+  --ink:#1d2740; --ink-soft:#46506a; --ink-faint:#7f8597; --line:rgba(29,39,64,.18);
+  --accent:#2c3f66; --accent-soft:rgba(44,63,102,.12); --cloud:#8d93a1; --cloud-l:#c9ccd2; --pine:#1d2740;
+  --sun:#e9e4d6; --mount:#6f7686; --sakura:#f7f4f6; --sakura-m:#e3d3e0; --sakura-c:#8f6f93; --sakura-e:#b8a9c0; --stamen:#4b3a5e; --branch:#1d2740; --branch-e:#3a4766;
+  --r1:#2c3f66; --r2:#4d6a6a; --r3:#5d6f9a; --r4:#8b7a55; --r5:#6c7080; --r6:#6a5577;
+}
+/* ПУСТОТА — ночь: чёрное небо, дымные облака, киноварь */
+body.void{
+  --bg:#141312; --paper:#1d1b19; --paper-2:#24211e; --panel:rgba(30,28,25,.9);
+  --ink:#e6dfd0; --ink-soft:#ada593; --ink-faint:#756e62; --line:rgba(230,223,208,.13);
+  --accent:#c4493c; --accent-soft:rgba(196,73,60,.16); --cloud:#6f6b64; --cloud-l:#9d978c; --pine:#0c0b0a;
+  --sun:#b03a2e; --mount:#4c4943; --grain:.16; --sakura:#fffaf8; --sakura-m:#f3d2d4; --sakura-c:#c4493c; --sakura-e:#e0b4b6; --stamen:#9a2e3a; --branch:#0b0a09; --branch-e:#8a847a;
+  --r1:#c4493c; --r2:#8a9a79; --r3:#7f93bd; --r4:#c9a35c; --r5:#a29d93; --r6:#b27a8c;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font:14px/1.5 "PT Serif",Georgia,serif;background:var(--bg);transition:background .35s,color .35s;overflow-x:hidden}
+/* зерно гравюры */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;opacity:var(--grain);mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .17 0 0 0 0 .13 0 0 0 -2.2 1.25'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+body.void::before{mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .86 0 0 0 0 .78 0 0 0 -2.6 1.3'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* пятнистость старой бумаги */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background:radial-gradient(ellipse at 15% 20%,rgba(255,255,255,.18),transparent 45%),radial-gradient(ellipse at 85% 80%,rgba(0,0,0,.07),transparent 50%)}
+.scene{position:fixed;inset:0;z-index:0;pointer-events:none}
+.app{position:relative;z-index:1;display:grid;grid-template-columns:268px 1fr 272px;gap:20px;padding:22px;max-width:1500px;margin:0 auto}
+.panel{position:relative;background:var(--panel);border-radius:22px;padding:18px 18px 20px;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 34px rgba(30,22,12,.10);overflow:hidden}
+body.void .panel{box-shadow:0 14px 40px rgba(0,0,0,.45)}
+h2{position:relative;z-index:2;font:24px/1.15 "Kurale",serif;margin:0}
+.stroke{position:relative;z-index:2;display:block;width:150px;height:10px;margin:6px 0 10px}
+.section{position:relative;z-index:2;display:flex;align-items:center;gap:8px;font:12px/1 "Kurale",serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:16px 0 8px}
+.seal{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.role{position:relative;z-index:2;margin:6px 0 10px}
+.rh{display:flex;align-items:center;gap:8px;font:16px "Kurale",serif;cursor:pointer}
+.rh .ch{font:10px "PT Serif";color:var(--ink-faint);width:10px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.rh .cnt{margin-left:auto;font:12px "PT Serif";color:var(--ink-faint)}
+.goal{display:flex;align-items:center;gap:9px;margin:5px 0 0 18px;padding:6px 10px;border-radius:14px;font-size:13.5px}
+.goal:hover{background:var(--accent-soft)}
+.goal.unplaced{background:linear-gradient(90deg,var(--accent-soft),transparent 85%);box-shadow:inset 3px 0 0 var(--accent)}
+.goal .pc{margin-left:auto;font-size:12px;color:var(--ink-soft)}
+.goal.done .pc{color:var(--r2);font-weight:700}
+.ring{width:14px;height:14px;border-radius:50%;border:1.6px solid var(--ink-faint);flex:none}
+.goal.done .ring{background:var(--r2);border-color:var(--r2)}
+.pine{position:absolute;right:-30px;top:-14px;width:190px;opacity:.9;z-index:1;pointer-events:none}
+body.void .pine{opacity:.55}
+.week{padding:18px 18px 22px}
+.top{position:relative;z-index:2;display:flex;align-items:center;gap:12px;margin-bottom:16px;height:56px}
+.sunwrap{position:absolute;left:150px;top:-26px;width:150px;height:110px;z-index:-1;pointer-events:none}
+.nav{display:flex;gap:6px}
+.nb{width:32px;height:32px;border-radius:50%;border:1.4px solid var(--line);background:var(--paper-2);color:var(--ink);font:17px "PT Serif";cursor:pointer}
+.nb:hover{border-color:var(--ink-soft)}
+.title{font:27px/1 "Kurale",serif;min-width:230px;text-shadow:0 0 12px var(--paper)}
+.stat{margin-left:auto;font-size:12.5px;color:var(--ink-soft)}
+.stat b{color:var(--ink)}
+.ib{width:34px;height:34px;border-radius:50%;border:1.4px solid var(--line);background:var(--paper-2);display:grid;place-items:center;color:var(--ink-soft)}
+.ib svg{width:16px;height:16px}
+.days{position:relative;z-index:2;display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.day{position:relative;min-height:640px;padding:12px 10px 12px;border-radius:20px;background:var(--paper-2);box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 6px 16px rgba(30,22,12,.06)}
+body.void .day{background:var(--paper-2);box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.day.weekend{background:color-mix(in srgb,var(--paper-2) 88%,var(--r3) 6%)}
+.dh{display:flex;align-items:baseline;gap:6px;margin:0 2px 8px}
+.dn{font:26px/1 "Caveat Brush",cursive;color:var(--ink)}
+.dd{font:15px "Kurale",serif;color:var(--ink-soft)}
+.dur{margin-left:auto;font-size:11px;color:var(--ink-faint)}
+.day.today{background:color-mix(in srgb,var(--paper-2) 90%,var(--accent) 7%)}
+.day.today .dn{color:var(--accent)}
+.tanzaku{position:absolute;right:-6px;top:14px;width:22px;padding:7px 0;border-radius:11px;background:var(--accent);color:var(--paper-2);
+  font:11px/1.05 "Kurale",serif;text-align:center;letter-spacing:.02em;box-shadow:0 4px 10px rgba(0,0,0,.18)}
+.item{position:relative;display:flex;gap:9px;align-items:flex-start;padding:7px 6px;border-radius:14px;font-size:13.5px}
+.item:hover{background:var(--accent-soft)}
+.item+.item{margin-top:2px}
+.cb{width:16px;height:16px;margin-top:2px;flex:none;border-radius:50%;border:1.6px solid var(--rc,var(--ink-soft));position:relative}
+.item.done{color:var(--ink-faint)}
+.item.done .cb{border-color:transparent}
+.item.done .cb::after{content:"";position:absolute;inset:-6px;background:var(--ink);opacity:.8;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M29 8 C22 3,9 5,6 16 C3 27,14 36,25 33 C34 30,37 20,31 12' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M29 8 C22 3,9 5,6 16 C3 27,14 36,25 33 C34 30,37 20,31 12' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat}
+.meta{display:flex;gap:5px;margin-top:4px;flex-wrap:wrap}
+.pill{font-size:11px;padding:1px 9px;border-radius:999px;background:rgba(0,0,0,.05);color:var(--ink-soft)}
+body.void .pill{background:rgba(255,255,255,.06)}
+.pill.t{background:var(--accent-soft);color:var(--accent)}
+.rock{color:var(--accent);font-size:10px}
+.add{display:inline-block;margin:10px 2px 0;font-size:12px;color:var(--ink-soft);padding:3px 12px;border-radius:999px;border:1.3px dashed var(--line)}
+.feed .tabs{position:relative;z-index:2;display:flex;padding:3px;border-radius:999px;background:rgba(0,0,0,.06);margin-bottom:12px}
+body.void .feed .tabs{background:rgba(255,255,255,.06)}
+.tab{flex:1;text-align:center;padding:6px 0;border-radius:999px;font-size:13px;color:var(--ink-soft)}
+.tab.on{background:var(--ink);color:var(--paper-2)}
+.search{position:relative;z-index:2;width:100%;padding:8px 14px;border-radius:999px;border:1.4px solid var(--line);background:var(--paper-2);color:var(--ink);font:13px "PT Serif";margin-bottom:10px}
+.cat{position:relative;z-index:2;margin:12px 0}
+.ch2{display:flex;align-items:center;gap:8px;font:16px "Kurale",serif}
+.ch2 .n{margin-left:auto;font:12px "PT Serif";color:var(--ink-faint)}
+.thought{display:flex;gap:9px;margin:5px 0 0 6px;padding:6px 10px;border-radius:14px;font-size:13px}
+.thought:hover{background:var(--accent-soft)}
+.thought .age{margin-left:auto;font-size:10.5px;color:var(--accent);white-space:nowrap}
+.clouds-feed{position:absolute;left:-30px;right:-30px;bottom:-12px;height:150px;z-index:1;pointer-events:none;opacity:.85}
+.clouds-week{position:absolute;right:-70px;top:-46px;width:300px;height:100px;z-index:1;pointer-events:none;opacity:.7}
+.legend{position:relative;z-index:1;max-width:1500px;margin:6px auto 0;padding:0 22px 80px;color:var(--ink-soft);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 20px}
+.vetka{position:absolute;z-index:3;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.12))}
+.vetka.left{width:290px;right:-40px;bottom:-24px;transform:rotate(-10deg)}
+.vetka.feedb{width:300px;left:-50px;bottom:-6px;transform:scaleX(-1) rotate(-8deg)}
+.feed .tabs{margin-right:0}
+.tab{white-space:nowrap;font-size:12.5px}
+.petals{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;opacity:.9}
+.legend b{color:var(--ink);font-family:Kurale,serif;font-weight:400;font-size:15px}
+.switch{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--panel);box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.switch button{font:13px "Kurale",serif;padding:7px 16px;border-radius:999px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.switch button.on{background:var(--accent);color:#f3ede0}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- облако-завиток (кумо) -->
+    <symbol id="kumo" viewBox="0 0 240 90">
+      <path d="M8 74 C6 52 26 40 44 48 C46 26 74 16 92 32 C102 12 140 10 150 34 C166 22 196 28 198 50 C218 46 234 60 230 76 Z" fill="var(--cloud-l)" stroke="var(--cloud)" stroke-width="3"/>
+      <path d="M58 60 c-10 0 -14 -14 -2 -16 c12 -2 16 14 4 20 c-14 6 -26 -6 -22 -18" fill="none" stroke="var(--cloud)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M128 52 c-8 -2 -8 -14 2 -14 c12 0 12 18 -2 20 c-16 2 -24 -14 -16 -24" fill="none" stroke="var(--cloud)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M186 64 c-6 0 -8 -9 0 -10 c8 0 9 11 0 13" fill="none" stroke="var(--cloud)" stroke-width="2.6" stroke-linecap="round"/>
+    </symbol>
+    <!-- волна-дым -->
+    <symbol id="mist" viewBox="0 0 400 120">
+      <path d="M0 80 C40 40 80 40 110 70 C130 90 160 86 170 64 C180 40 150 30 140 46 C132 60 150 66 156 56" fill="none" stroke="var(--cloud)" stroke-width="14" stroke-linecap="round" opacity=".55"/>
+      <path d="M170 90 C220 50 260 54 290 80 C310 98 350 96 360 70 C370 46 340 38 330 54 C324 66 340 70 346 62" fill="none" stroke="var(--cloud)" stroke-width="14" stroke-linecap="round" opacity=".45"/>
+      <path d="M0 80 C40 40 80 40 110 70 C130 90 160 86 170 64" fill="none" stroke="var(--cloud-l)" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+      <path d="M170 90 C220 50 260 54 290 80 C310 98 350 96 360 70" fill="none" stroke="var(--cloud-l)" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+    </symbol>
+    <radialGradient id="pg" cx="50%" cy="85%" r="95%">
+      <stop offset="0" style="stop-color:var(--sakura-c)"/>
+      <stop offset=".35" style="stop-color:var(--sakura-m)"/>
+      <stop offset="1" style="stop-color:var(--sakura)"/>
+    </radialGradient>
+    <symbol id="hana" viewBox="-14 -14 28 28">
+      <g id="pt5"><path id="pt" d="M0 0 C-5 -1.5 -7 -7 -4 -11 Q-1.6 -13 0 -10.4 Q1.6 -13 4 -11 C7 -7 5 -1.5 0 0Z" fill="url(#pg)" stroke="var(--sakura-e)" stroke-width=".45"/>
+      <use href="#pt" transform="rotate(72)"/><use href="#pt" transform="rotate(144)"/><use href="#pt" transform="rotate(216)"/><use href="#pt" transform="rotate(288)"/></g>
+      <g stroke="var(--sakura-c)" stroke-width=".55" stroke-linecap="round">
+        <path d="M0 0 L0 -4.6 M0 0 L3.6 -2.8 M0 0 L4 1.6 M0 0 L1.4 4.4 M0 0 L-2.6 3.8 M0 0 L-4.3 0.4 M0 0 L-3 -3.4"/>
+      </g>
+      <g fill="var(--stamen)"><circle cx="0" cy="-4.9" r=".75"/><circle cx="3.9" cy="-3" r=".75"/><circle cx="4.3" cy="1.7" r=".75"/><circle cx="1.5" cy="4.7" r=".75"/><circle cx="-2.8" cy="4" r=".75"/><circle cx="-4.6" cy=".4" r=".75"/><circle cx="-3.2" cy="-3.6" r=".75"/></g>
+      <circle r="1.3" fill="var(--sakura-c)"/>
+    </symbol>
+    <symbol id="bud" viewBox="-6 -9 12 14">
+      <path d="M0 -8 C4 -6 4 -1 0 1 C-4 -1 -4 -6 0 -8Z" fill="url(#pg)" stroke="var(--sakura-e)" stroke-width=".5"/>
+      <path d="M-2.6 0 C-1.5 2 1.5 2 2.6 0 L0 4Z" fill="var(--branch)"/>
+    </symbol>
+    <filter id="rough" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter>
+    <symbol id="vetka" viewBox="0 0 300 185">
+      <g filter="url(#rough)" fill="none" stroke="var(--branch)" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M300 8 Q268 12 246 30" stroke-width="13"/>
+        <path d="M246 30 Q236 48 214 56" stroke-width="11"/>
+        <path d="M214 56 Q186 62 170 84" stroke-width="9"/>
+        <path d="M170 84 Q158 102 128 106" stroke-width="7"/>
+        <path d="M128 106 Q104 110 92 132" stroke-width="5"/>
+        <path d="M92 132 Q80 150 52 152" stroke-width="3.6"/>
+        <path d="M52 152 Q36 153 22 166" stroke-width="2"/>
+        <path d="M246 30 Q250 14 266 7" stroke-width="3.4"/><path d="M266 7 Q272 3 282 2" stroke-width="1.4"/>
+        <path d="M214 56 Q222 76 240 82" stroke-width="3.2"/><path d="M240 82 Q250 86 256 98" stroke-width="1.4"/>
+        <path d="M170 84 Q162 64 172 50" stroke-width="3"/><path d="M172 50 Q178 42 188 40" stroke-width="1.3"/>
+        <path d="M128 106 Q136 124 128 140" stroke-width="2.6"/><path d="M128 140 Q124 150 130 160" stroke-width="1.2"/>
+        <path d="M92 132 Q82 114 90 100" stroke-width="2"/><path d="M90 100 Q93 94 100 92" stroke-width="1"/>
+        <path d="M52 152 Q50 167 60 176" stroke-width="1.5"/>
+        <path d="M196 60 Q194 46 202 38" stroke-width="1.6"/>
+      </g>
+      <g fill="var(--branch)" filter="url(#rough)">
+        <ellipse cx="246" cy="30" rx="8" ry="6.5"/><ellipse cx="214" cy="56" rx="6.5" ry="5.5"/><ellipse cx="170" cy="84" rx="5.5" ry="4.6"/>
+        <ellipse cx="128" cy="106" rx="4.4" ry="3.8"/><ellipse cx="92" cy="132" rx="3.4" ry="3"/>
+        <ellipse cx="228" cy="44" rx="4" ry="2.6" transform="rotate(-40 228 44)"/><ellipse cx="150" cy="99" rx="3.4" ry="2.2" transform="rotate(-20 150 99)"/>
+      </g>
+      <g fill="none" stroke="var(--branch-e)" stroke-width=".9" stroke-linecap="round" opacity=".55">
+        <path d="M292 9 Q270 13 252 26"/><path d="M240 38 Q232 50 218 54"/><path d="M206 60 Q190 66 178 78"/><path d="M164 92 Q154 100 136 104"/>
+      </g>
+      <use href="#hana" x="270" y="-12" width="30" height="30"/>
+      <use href="#hana" x="250" y="-4" width="26" height="26"/>
+      <use href="#hana" x="242" y="84" width="30" height="30"/>
+      <use href="#hana" x="224" y="68" width="26" height="26"/>
+      <use href="#hana" x="176" y="24" width="30" height="30"/>
+      <use href="#hana" x="158" y="38" width="24" height="24"/>
+      <use href="#hana" x="114" y="146" width="32" height="32"/>
+      <use href="#hana" x="116" y="124" width="24" height="24"/>
+      <use href="#hana" x="80" y="80" width="28" height="28"/>
+      <use href="#hana" x="46" y="160" width="26" height="26"/>
+      <use href="#hana" x="8" y="152" width="26" height="26"/>
+      <use href="#hana" x="140" y="86" width="22" height="22"/>
+      <use href="#hana" x="190" y="24" width="20" height="20"/>
+      <use href="#bud" x="284" y="-6" width="9" height="11"/>
+      <use href="#bud" x="258" y="96" width="9" height="11"/>
+      <use href="#bud" x="102" y="84" width="8" height="10"/>
+      <use href="#bud" x="132" y="160" width="8" height="10"/>
+      <use href="#bud" x="62" y="174" width="8" height="10"/>
+      <use href="#bud" x="200" y="30" width="8" height="10"/>
+    </symbol>
+    <symbol id="petal" viewBox="-6 -6 12 12"><path d="M0 -5 C4 -3 4 3 0 5 C-1 2 -1 -2 0 -5Z" fill="var(--sakura)" stroke="var(--sakura-c)" stroke-width=".6"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside class="panel">
+    <svg class="vetka left" viewBox="0 0 300 185"><use href="#vetka"/></svg>
+    <h2 style="text-shadow:0 0 10px var(--panel)">Роли и цели</h2>
+    <svg class="stroke" viewBox="0 0 150 10"><path d="M2 6 C30 2,70 8,104 4 S146 5,148 4" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/></svg>
+
+    <div class="section"><span class="seal"></span>Затачивание пилы</div>
+    <div class="role"><div class="rh"><span class="ch">▾</span><span class="dot" style="background:var(--r2)"></span>Тело<span class="cnt">1/2</span></div>
+      <div class="goal unplaced" title="не разложено: 2 из 3"><span class="ring"></span>Бег · 3 раза</div>
+      <div class="goal done"><span class="ring"></span>Скакалка · 6 раз<span class="pc">100% ✓</span></div>
+    </div>
+    <div class="role"><div class="rh"><span class="ch">▾</span><span class="dot" style="background:var(--r3)"></span>Ум<span class="cnt">0/1</span></div>
+      <div class="goal"><span class="ring"></span>Чтение · 6 раз<span class="pc">33%</span></div>
+    </div>
+    <div class="role"><div class="rh"><span class="ch">▸</span><span class="dot" style="background:var(--r6)"></span>Дух<span class="cnt">1 цель</span></div></div>
+    <div class="role"><div class="rh"><span class="ch">▸</span><span class="dot" style="background:var(--r1)"></span>Общение и эмоции<span class="cnt">1 цель</span></div></div>
+
+    <div class="section"><span class="seal"></span>Роли</div>
+    <div class="role"><div class="rh"><span class="ch">▾</span><span class="dot" style="background:var(--r4)"></span>Я сама<span class="cnt">0/1</span></div>
+      <div class="goal"><span class="ring"></span>Записаться к врачу</div>
+    </div>
+    <div class="role"><div class="rh"><span class="ch">▾</span><span class="dot" style="background:var(--r5)"></span>Работа<span class="cnt">1/2</span></div>
+      <div class="goal done"><span class="ring"></span>Код-ревью<span class="pc">100% ✓</span></div>
+      <div class="goal"><span class="ring"></span>Подготовка к собесу<span class="pc">25%</span></div>
+    </div>
+  </aside>
+
+  <main class="panel week">
+    <svg class="petals" viewBox="0 0 900 600" preserveAspectRatio="none" style="z-index:3">
+      <use href="#petal" x="330" y="120" width="10" height="10" transform="rotate(30 335 125)"/>
+      <use href="#petal" x="610" y="300" width="9" height="9" transform="rotate(-40 614 304)"/>
+      <use href="#petal" x="840" y="200" width="11" height="11" transform="rotate(70 845 205)"/>
+      <use href="#petal" x="470" y="520" width="9" height="9"/>
+    </svg>
+    <svg class="clouds-week"><use href="#kumo" x="0" y="0" width="340" height="110"/></svg>
+    <div class="top">
+      <!-- красное солнце с полосами и горы -->
+      <svg class="sunwrap" viewBox="0 0 150 110">
+        <path d="M0 104 C20 84 34 78 52 90 C66 62 84 56 100 82 C112 72 128 74 150 96 L150 110 L0 110 Z" fill="var(--mount)" opacity=".18"/>
+        <circle cx="86" cy="48" r="34" fill="var(--sun)" opacity=".85"/>
+        <g stroke="var(--panel)" stroke-width="3.4"><path d="M50 60 H122 M52 68 H120 M56 76 H116"/></g>
+      </svg>
+      <div class="nav"><button class="nb">‹</button><button class="nb">›</button></div>
+      <div class="title">19 — 25 октября</div>
+      <div class="stat">камней <b>2</b> из 7 · занятий <b>9</b> из 21</div>
+      <div class="ib" title="Итоги"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 13.5h12M4.5 11V8M8 11V4.5M11.5 11V7"/></svg></div>
+      <div class="ib" title="Настройки"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.3"/><path d="M8 1.6v2M8 12.4v2M1.6 8h2M12.4 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4" stroke-linecap="round"/></svg></div>
+    </div>
+    <div class="days">
+      <div class="day"><div class="dh"><span class="dn">Пн</span><span class="dd">19</span></div>
+        <div class="item done" style="--rc:var(--r2)"><span class="cb"></span><div>Бег в парке<div class="meta"><span class="pill t">7:30</span></div></div></div>
+        <div class="item done" style="--rc:var(--r1)"><span class="cb"></span><div>Позвонить маме</div></div>
+        <div class="item" style="--rc:var(--r3)"><span class="cb"></span><div>Чтение <span class="rock">◆</span></div></div>
+      </div>
+      <div class="day"><div class="dh"><span class="dn">Вт</span><span class="dd">20</span><span class="dur">~45 мин</span></div>
+        <div class="item" style="--rc:var(--r5)"><span class="cb"></span><div>Созвон с заказчиком<div class="meta"><span class="pill t">11:00</span></div></div></div>
+        <div class="item done" style="--rc:var(--r5)"><span class="cb"></span><div>Код-ревью модуля оплаты <span class="rock">◆</span></div></div>
+        <div class="item done" style="--rc:var(--r2)"><span class="cb"></span><div>Скакалка <span class="rock">◆</span></div></div>
+      </div>
+      <div class="day today"><div class="tanzaku">с<br>е<br>г<br>о<br>д<br>н<br>я</div><div class="dh"><span class="dn">Ср</span><span class="dd">21</span></div>
+        <div class="item" style="--rc:var(--r5)"><span class="cb"></span><div>Подготовка к собесу <span class="rock">◆</span><div class="meta"><span class="pill">☑ 1/4</span></div></div></div>
+        <div class="item" style="--rc:var(--r3)"><span class="cb"></span><div>Почитать 30 страниц<div class="meta"><span class="pill">~45 мин</span></div></div></div>
+        <div class="item done" style="--rc:var(--r2)"><span class="cb"></span><div>Скакалка <span class="rock">◆</span></div></div>
+        <span class="add">+ дело</span>
+      </div>
+      <div class="day"><div class="dh"><span class="dn">Чт</span><span class="dd">22</span></div>
+        <div class="item" style="--rc:var(--r5)"><span class="cb"></span><div>Демо для команды <span class="rock">◆</span><div class="meta"><span class="pill t">15:00</span></div></div></div>
+      </div>
+      <div class="day"><div class="dh"><span class="dn">Пт</span><span class="dd">23</span></div>
+        <div class="item" style="--rc:var(--r1)"><span class="cb"></span><div>Ужин с семьёй<div class="meta"><span class="pill t">19:00</span></div></div></div>
+      </div>
+      <div class="day weekend"><div class="dh"><span class="dn">Сб</span><span class="dd">24</span></div>
+        <div class="item" style="--rc:var(--r4)"><span class="cb"></span><div>Поход в парк с детьми <span class="rock">◆</span></div></div>
+      </div>
+      <div class="day weekend"><div class="dh"><span class="dn">Вс</span><span class="dd">25</span></div>
+        <span class="add">+ дело</span>
+      </div>
+    </div>
+  </main>
+
+  <aside class="panel feed">
+    <svg class="vetka feedb" viewBox="0 0 300 185"><use href="#vetka"/></svg>
+    <svg class="petals" viewBox="0 0 300 600" preserveAspectRatio="none">
+      <use href="#petal" x="40" y="180" width="10" height="10" transform="rotate(20 45 185)"/>
+      <use href="#petal" x="210" y="260" width="9" height="9" transform="rotate(-30 214 264)"/>
+      <use href="#petal" x="120" y="340" width="11" height="11" transform="rotate(60 125 345)"/>
+      <use href="#petal" x="250" y="420" width="8" height="8"/>
+      <use href="#petal" x="70" y="470" width="10" height="10" transform="rotate(-50 75 475)"/>
+    </svg>
+    <svg class="clouds-feed" viewBox="0 0 400 120" preserveAspectRatio="none"><use href="#mist"/></svg>
+    <div class="tabs"><div class="tab on">Мысли · 46</div><div class="tab">Проекты · 3</div></div>
+    <input class="search" placeholder="Поиск…">
+    <div class="cat"><div class="ch2">🌱 Идеи<span class="n">3</span></div>
+      <div class="thought"><span class="cb"></span>Научиться печь хлеб на закваске<span class="age" title="лежит 4 месяца">4 мес</span></div>
+      <div class="thought"><span class="cb"></span>Сад с травами на балконе</div>
+    </div>
+    <div class="cat"><div class="ch2">📚 Книги и фильмы<span class="n">3</span></div>
+      <div class="thought"><span class="cb"></span>«Книга пяти колец» — перечитать</div>
+      <div class="thought"><span class="cb"></span>Толстой, «Детство»</div>
+    </div>
+    <div class="cat"><div class="ch2">🏠 Дом<span class="n">4</span></div></div>
+    <div class="cat"><div class="ch2">✈️ Когда-нибудь поехать<span class="n">3</span></div></div>
+  </aside>
+</div>
+
+<div class="legend">
+  <b>«Пять колец»</b>
+  <span>три варианта: Земля — тушь и киноварь по старой бумаге · Вода — индиго · Пустота — ночь с дымными облаками</span>
+  <span>всё скруглено, ни одного острого угла</span>
+  <span>зерно гравюры по всему экрану</span>
+  <span>облака-завитки и волны дыма, солнце с полосами над неделей</span>
+  <span>ветвь сакуры и падающие лепестки</span><span>«сегодня» — вертикальная полоска-танзаку</span>
+  <span>выполнено — круг кистью</span>
+</div>
+
+<div class="switch">
+  <button class="on" onclick="setT('',this)">Земля</button>
+  <button onclick="setT('water',this)">Вода</button>
+  <button onclick="setT('void',this)">Пустота</button>
+</div>
+<script>
+function setT(c,b){document.body.className=c;document.querySelectorAll('.switch button').forEach(x=>x.classList.toggle('on',x===b));}
+</script>
+</body>
+</html>

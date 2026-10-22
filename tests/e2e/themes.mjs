@@ -28,7 +28,7 @@ const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
 const isOpen = async () => !!(await page.$('.themes'));
 const fontFiles = () => page.evaluate(() => performance.getEntriesByType('resource')
   .map(e => e.name.split('/').pop()).filter(n => n.endsWith('.woff2')));
-const themeFonts = /^(cormorant|manrope|chakra|exo)/;
+const themeFonts = /^(cormorant|manrope|chakra|exo|kurale|pt-serif)/;
 async function openMenu() {
   await openThemes(page); // BI5: темы — в «⚙ Настройках»
 }
@@ -54,20 +54,20 @@ await check('по умолчанию «Лотос»; шрифты тем не с
   assert(!(await fontFiles()).some(f => themeFonts.test(f)), 'шрифты тем скачаны');
 });
 
-await check('меню: карточки Лотос, Пион, Платина, Обсидиан — цвета и имя, без описаний; у выбранной галочка', async () => {
+await check('меню: карточки Лотос, Пион, Платина, Обсидиан, Земля, Вода, Пустота — цвета и имя, без описаний; у выбранной галочка', async () => {
   await openMenu();
   const cards = await page.$$eval('.themes .theme', ts => ts.map(t => ({
     key: t.dataset.key, name: t.querySelector('.t-name').textContent.trim(), on: t.classList.contains('on'),
     check: !!t.querySelector('.check'), swatches: t.querySelectorAll('.swatches .sw').length,
     text: t.textContent.trim(),
   })));
-  assert(JSON.stringify(cards.map(c => c.name)) === '["Лотос","Пион","Платина","Обсидиан"]', `карточки: ${cards.map(c => c.name)}`);
+  assert(JSON.stringify(cards.map(c => c.name)) === '["Лотос","Пион","Платина","Обсидиан","Земля","Вода","Пустота"]', `карточки: ${cards.map(c => c.name)}`);
   assert(cards.every(c => c.swatches >= 3 && c.swatches <= 4), 'не 3–4 цвета');
   assert(cards.every(c => c.text === c.name), 'есть описания');
   assert(cards.filter(c => c.on && c.check).map(c => c.key).join() === 'lotus', 'галочка не у выбранной');
   // Цвета превью — свои у каждой темы
   const papers = await page.$$eval('.themes .sw.paper', s => s.map(e => getComputedStyle(e).backgroundColor));
-  assert(new Set(papers).size === 4, `цвета превью одинаковые: ${papers}`);
+  assert(new Set(papers).size === 7, `цвета превью одинаковые: ${papers}`);
   await page.screenshot({ path: `${SHOTS}/theme-menu.png` });
 });
 
@@ -118,6 +118,21 @@ await check('«Пион»: скачан только его шрифт (Cormoran
   await page.evaluate(() => document.fonts.ready); await sleep(400);
   const files = (await fontFiles()).filter(f => themeFonts.test(f));
   assert(files.length > 0 && files.every(f => f.startsWith('cormorant')), `шрифты: ${files}`);
+});
+
+await check('«Земля»: скачаны только её шрифты (Kurale, PT Serif); декор — только в «Пяти кольцах»', async () => {
+  await page.evaluate(() => localStorage.setItem('planner.theme', 'lotus'));
+  await load();
+  assert(!(await page.$('.gorin-layer, .gorin-foot, .gorin-defs')), 'декор в «Лотосе»');
+  await choose('earth');
+  await page.evaluate(() => document.fonts.ready); await sleep(400);
+  const files = (await fontFiles()).filter(f => themeFonts.test(f));
+  assert(files.length > 0 && files.every(f => /^(kurale|pt-serif)/.test(f)), `шрифты: ${files}`);
+  assert(await page.$('.gorin-defs') && await page.$('.week .gorin-layer') && await page.$('.roles-panel .gorin-foot'), 'нет декора');
+  const blocking = await page.$$eval('.gorin-layer, .gorin-foot, .gorin-layer svg, .gorin-foot svg',
+    els => els.filter(e => getComputedStyle(e).pointerEvents !== 'none').length);
+  assert(blocking === 0, `декор ловит мышь: ${blocking}`);
+  await choose('lotus');
 });
 
 await check('кто выбрал «Ночь», тому включается «Обсидиан» (и запоминается)', async () => {

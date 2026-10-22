@@ -18,6 +18,8 @@
 
 @if (State.IsLoaded)
 {
+    @* Символы декора темы «Пять колец» (batch-3.md, G3) — пусто в других темах *@
+    <GorinDecor Place="GorinPlace.Defs" />
     <div class="app @(Layout.Left == PanelMode.Open ? "" : "left-collapsed") @(Layout.Right == PanelMode.Open ? "" : "right-collapsed")">
         <SidePanel Side="PanelSide.Left" Title="Роли и цели">
             <RolesPanel />

@@ -9,6 +9,7 @@
 @inject RightPanelState RightPanel
 
 <aside class="panel someday @(RightPanel.IsProjects ? "projects-mode" : "")">
+    <GorinDecor Place="GorinPlace.Feed" />
     <RightTabs />
     @if (RightPanel.IsProjects)
     {
@@ -116,6 +117,7 @@
             <button class="add" @onclick="() => _creatingCategory = true">+ категория</button>
         }
         }
+        <GorinDecor Place="GorinPlace.FeedFoot" />
     </div>
     }
 
