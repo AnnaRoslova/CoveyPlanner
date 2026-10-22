@@ -302,6 +302,7 @@ for (const theme of THEMES) {
   });
   await check(`${theme}: окно роли`, async () => {
     await page.evaluate(() => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === 'Семья').querySelector('.menu').click());
+    await page.waitForSelector('.popover.more-menu .option.edit-role'); await page.click('.popover.more-menu .option.edit-role');
     await page.waitForSelector('.role-editor');
     await sleep(300);
     await shot('role');

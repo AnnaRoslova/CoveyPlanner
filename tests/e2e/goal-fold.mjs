@@ -2,6 +2,7 @@
 // Левая панель: процент у каждой цели («Тренировка · 2 раза», одно выполнено → 50%; норма выполнена и сверх — «100% ✓» мятным;
 // разовая цель — 0% / 100% ✓) и сворачивание ролей (docs/specs/ui-declutter.md, U1): название роли — кнопка, «Затачивание пилы» —
 // все измерения, кнопка в шапке — все роли; «+ цель» при наведении; состояние запоминается в браузере.
+// batch-3.md, M2–M4: дни занятий — в подсказке строки; «+» у названия роли; заголовок раздела сворачивает цели его ролей, названия видны.
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -42,7 +43,7 @@ const goalRow = title => page.evaluate(t => {
     pct: item.querySelector('.pct-ring') ? '○' : item.querySelector('.pct')?.textContent.trim() ?? null, // D1: не начато — кружок
     full: item.querySelector('.pct')?.classList.contains('full') ?? false,
     compact: item.classList.contains('compact'),
-    days: !!item.querySelector('.goal-days'),
+    daysVisible: (item.querySelector('.goal-days')?.getBoundingClientRect().height ?? 0) > 2,
     jar: !!item.querySelector('.jar-pill'),
     progress: ((i) => (t => t ? t.replace(/.*выполнено (\d+) из (\d+).*/, '$1/$2') : null)((i.querySelector('.pct-ring, .pct')?.getAttribute('title'))))(item), // D5: «2/5» — в подсказке процента
     height: item.getBoundingClientRect().height,
@@ -121,7 +122,7 @@ const roleState = name => page.evaluate(n => {
   const visible = el => !!el && el.getBoundingClientRect().height > 0;
   return {
     folded: r.classList.contains('folded'), expanded: r.querySelector('.role-toggle').getAttribute('aria-expanded'),
-    goals: [...r.querySelectorAll('.item')].filter(visible).length, add: visible(r.querySelector('.role-body > .add')) && getComputedStyle(r.querySelector('.role-body > .add')).opacity === '1',
+    goals: [...r.querySelectorAll('.item')].filter(visible).length, add: visible(r.querySelector('.role-h .add-goal')) && getComputedStyle(r.querySelector('.role-h .add-goal')).opacity === '1',
     peek: r.querySelector('.role-h .peek')?.textContent.trim() ?? null, dot: !!r.querySelector('.role-h .unplaced-dot'),
   };
 }, name);
@@ -130,9 +131,9 @@ const clickRole = async name => {
   await settle();
 };
 
-await check('по умолчанию роли развёрнуты: дни занятий, «2/5»; пилюли банки у целей нет (R6); у роли нет счёта «0/1» (D5)', async () => {
+await check('по умолчанию роли развёрнуты: дни занятий — не строкой, а в подсказке (M2); пилюли банки у целей нет (R6); у роли нет счёта «0/1» (D5)', async () => {
   const dentist = await goalRow('Записаться к стоматологу');
-  assert(dentist.days, 'у цели нет строки дней');
+  assert(!dentist.daysVisible, 'дни занятий видны строкой под целью');
   assert(!(await goalRow('Бег')).jar, 'у привычки в левой панели пилюля банки (R6: её больше нет)');
   assert((await foldButton()).title === 'Свернуть все роли', `подсказка: ${(await foldButton()).title}`);
   assert(!(await page.$('.roles-panel .role-h .n')), 'счёт у роли остался');
@@ -166,12 +167,13 @@ await check('U1.4: у свёрнутой роли с неразложенной 
   await clickRole('Ум');
 });
 
-await check('U1.3: «Затачивание пилы» — кнопка: сворачивает все 4 измерения сразу', async () => {
+await check('M4 (было U1.3): «Затачивание пилы» — папка: цели всех 4 измерений свёрнуты, названия видны', async () => {
   await page.click('.roles-panel .sect-toggle'); await settle();
-  assert(await page.$eval('.roles-panel .saw', s => s.getBoundingClientRect().height === 0), 'пила видна');
+  const saw = await page.$$eval('.roles-panel .saw .role', rs => rs.map(r => ({ folded: r.classList.contains('folded'), name: r.querySelector('.name').getBoundingClientRect().height > 0 })));
+  assert(saw.length === 4 && saw.every(r => r.folded && r.name), JSON.stringify(saw));
   assert(await page.$eval('.roles-panel .sect-toggle', b => b.getAttribute('aria-expanded')) === 'false', 'aria-expanded');
   await page.click('.roles-panel .sect-toggle'); await settle();
-  assert(await page.$eval('.roles-panel .saw', s => s.getBoundingClientRect().height > 0), 'пила не развернулась');
+  assert(await page.$$eval('.roles-panel .saw .role', rs => rs.every(r => !r.classList.contains('folded'))), 'пила не развернулась');
 });
 
 await check('U1.8: кнопка шапки — свернуть все роли и пилу; ещё раз — развернуть; запоминается', async () => {

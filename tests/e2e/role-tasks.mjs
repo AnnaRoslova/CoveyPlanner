@@ -1,6 +1,7 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
-// «дела в днях · N ▸» (было «ещё дела», ui-declutter D4) в левой панели: дела недели с ролью роли, кроме занятий целей.
-// Клик раскрывает список «Чт · название», клик по делу — его окно; раскрытие запоминается; нет дел — нет строки.
+// «дела роли на неделе» — пункт «⋯» роли (batch-3.md, M3; было — строка «дела в днях · N ▸» под целями, ui-declutter D4):
+// дела недели с ролью роли, кроме занятий целей. Пункт раскрывает список «Чт · название» с «×», клик по делу — его окно;
+// раскрытие запоминается; нет дел — пункт бледный «дел на неделе нет».
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -24,7 +25,7 @@ async function check(name, fn) {
 }
 async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.day'); await settle(); }
 
-// Карточка роли по названию: строка «ещё дела» и раскрытый список
+// Карточка роли по названию: заголовок раскрытого списка и сам список
 const roleInfo = name => page.evaluate(n => {
   const role = [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n);
   return {
@@ -33,24 +34,37 @@ const roleInfo = name => page.evaluate(n => {
     done: [...role.querySelectorAll('.others .other.done')].map(o => o.querySelector('.t').textContent.trim()),
   };
 }, name);
-const clickHead = name => page.evaluate(n => [...document.querySelectorAll('.role')]
-  .find(r => r.querySelector('.role-h .name')?.textContent.trim() === n).querySelector('.others-h').click(), name);
+const roleCard = name => page.evaluateHandle(n => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n), name);
+/** Пункт «дела роли на неделе» в «⋯» роли: подпись, число справа, доступен ли; click — выбрать его. */
+async function menuItem(name, click = false) {
+  const card = await roleCard(name);
+  await (await card.$('.role-h .name')).hover();
+  await (await card.$('.role-h .menu')).click(); await settle();
+  const item = await page.$eval('.popover.more-menu .option.role-tasks', b => ({
+    label: b.querySelector('.option-name').textContent.trim(), hint: b.querySelector('.menu-hint')?.textContent.trim() ?? null, disabled: b.disabled }));
+  if (click) { await page.click('.popover.more-menu .option.role-tasks'); } else { await page.keyboard.press('Escape'); }
+  await settle();
+  return item;
+}
+const clickHead = name => menuItem(name, true);
 
 await load();
 
-await check('строка «ещё дела: N» — без занятий целей; у роли без таких дел строки нет', async () => {
-  const work = await roleInfo('Работа');
-  assert(work.head === 'дела в днях · 1', `Работа: ${work.head}`); // «Созвон», а камни «Код-ревью» и «Демо» — нет
-  assert(work.items.length === 0, 'список раскрыт сразу');
-  assert((await roleInfo('Семья')).head === 'дела в днях · 2', 'Семья');
-  assert((await roleInfo('Дом')).head === null, 'у «Дома» есть строка');
+await check('«⋯ → дела роли на неделе · N» — без занятий целей; под целями строки нет; у роли без таких дел пункт бледный', async () => {
+  assert(!(await page.$('.roles-panel .others-h')), 'список или строка видны сразу');
+  const work = await menuItem('Работа');
+  assert(work.label === 'дела роли на неделе' && work.hint === '1' && !work.disabled, JSON.stringify(work)); // «Созвон», а камни — нет
+  assert((await menuItem('Семья')).hint === '2', 'Семья');
+  const home = await menuItem('Дом');
+  assert(home.disabled && home.hint === 'дел на неделе нет', JSON.stringify(home));
 });
 
 await check('клик раскрывает «Вт · Созвон с заказчиком»; выполненные — зачёркнуты', async () => {
-  await clickHead('Работа'); await settle();
+  await clickHead('Работа');
+  assert((await roleInfo('Работа')).head === 'дела роли на неделе · 1', 'заголовок списка');
   const work = await roleInfo('Работа');
   assert(JSON.stringify(work.items) === '["Вт · Созвон с заказчиком"]', JSON.stringify(work.items));
-  await clickHead('Семья'); await settle();
+  await clickHead('Семья');
   const family = await roleInfo('Семья');
   assert(JSON.stringify(family.items) === '["Пн · Купить подарок маме","Пт · Ужин с семьёй"]', JSON.stringify(family.items));
   assert(JSON.stringify(family.done) === '["Купить подарок маме"]', `выполненные: ${family.done}`);
@@ -62,7 +76,7 @@ await check('раскрытие запоминается после переза
   assert((await roleInfo('Работа')).items.length === 1, 'Работа свернулась');
   assert((await roleInfo('Семья')).items.length === 2, 'Семья свернулась');
   assert((await roleInfo('Ум')).items.length === 0, 'Ум раскрылся сам');
-  await clickHead('Семья'); await settle();
+  await (await (await roleCard('Семья')).$('.others-x')).click(); await settle(); // «×» у списка
   await load();
   assert((await roleInfo('Семья')).items.length === 0, 'Семья не свернулась');
 });
@@ -86,7 +100,7 @@ await check('новое дело с ролью сразу попадает в с
   await settle(); await page.keyboard.press('Escape'); await settle();
   await page.click('.editor .buttons .btn.primary'); await settle();
   const after = await roleInfo('Ум');
-  assert(before.head === 'дела в днях · 1' && after.head === 'дела в днях · 2', `${before.head} → ${after.head}`);
+  assert(before.items.length === 0 && after.head === null && (await menuItem('Ум')).hint === '2', `${before.head} → ${after.head}`);
 });
 
 await check('в консоли нет ошибок', async () => {

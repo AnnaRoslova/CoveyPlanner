@@ -70,6 +70,7 @@ await check('окно цели: клик по затемнению — закр�
 
 await check('окно роли: на весь экран с затемнением; клик по нему — закрыто, имя прежнее', async () => {
   await page.evaluate(() => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === 'Семья').querySelector('.menu').click());
+  await page.waitForSelector('.popover.more-menu .option.edit-role'); await page.click('.popover.more-menu .option.edit-role');
   await page.waitForSelector('.role-editor');
   await sleep(300);
   await page.$eval('.role-editor .inline-input', e => e.select());

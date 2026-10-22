@@ -58,14 +58,14 @@ await load();
 
 await check('N1.1, N1.3: цель «2 раза» без занятий — подсвечена, «не разложено: 2 из 2»; на день — «1 из 2»; на второй — подсветки нет', async () => {
   let s = await goalState('Отчёт');
-  assert(s?.unplaced && s.hint === 'не разложено: 2 из 2', JSON.stringify(s));
+  assert(s?.unplaced && s.hint.endsWith('не разложено: 2 из 2'), JSON.stringify(s));
   await (await page.$('.roles-panel')).screenshot({ path: `${SHOTS}/goal-unplaced.png` });
   await dragGoalToDay('Отчёт', 1);
   s = await goalState('Отчёт');
-  assert(s?.unplaced && s.hint === 'не разложено: 1 из 2', JSON.stringify(s));
+  assert(s?.unplaced && s.hint.endsWith('не разложено: 1 из 2'), JSON.stringify(s));
   await dragGoalToDay('Отчёт', 3);
   s = await goalState('Отчёт');
-  assert(s && !s.unplaced && !s.hint, JSON.stringify(s));
+  assert(s && !s.unplaced && !s.hint.includes('не разложено'), JSON.stringify(s));
 });
 
 await check('N1: занятие в корзину — подсветка вернулась; «Вернуть» — исчезла', async () => {
@@ -92,7 +92,7 @@ await check('N1.3: «свернуть все цели» — подсветка �
   await load();
   await page.click('.head-tools .fold'); await settle();
   const s = await goalState('Планёрка');
-  assert(s?.unplaced && s.hint === 'не разложено: 1 из 1', JSON.stringify(s));
+  assert(s?.unplaced && s.hint.endsWith('не разложено: 1 из 1'), JSON.stringify(s));
   await page.click('.head-tools .fold'); await settle();
 });
 

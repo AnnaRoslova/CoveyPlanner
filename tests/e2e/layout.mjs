@@ -128,7 +128,7 @@ await check('пилюли не переносятся, в тексте нет а
 
 await check('фокус с клавиатуры — бирюзовое кольцо 2px (fixes-2026-10 D2.3), не чёрная рамка браузера', async () => {
   await at(1600);
-  const add = await page.$('.role .add');
+  const add = await page.$('.role .add-goal');
   await add.focus();
   await page.keyboard.press('Tab'); await page.keyboard.down('Shift'); await page.keyboard.press('Tab'); await page.keyboard.up('Shift');
   const style = await page.evaluate(() => {

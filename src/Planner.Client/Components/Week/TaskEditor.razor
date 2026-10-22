@@ -71,6 +71,7 @@
             <div class="line" data-field="quadrant">
                 <span class="label">Квадрант</span>
                 <QuadrantPicker @bind-Value="_quadrant" />
+                <RareClear Key="quadrant" OnClear="@(() => Clear("quadrant", () => _quadrant = null))" />
             </div>
         }
         else if (_quadrant is { } q)
@@ -90,6 +91,7 @@
                         <button type="button" class="btn small as-goal" @onclick="() => _duration = durGoal.DurationMinutes">как у цели</button>
                     }
                 </div>
+                <RareClear Key="duration" OnClear="@(() => Clear("duration", () => _duration = null))" />
             </div>
         }
         else if (_duration is { } minutes)
@@ -100,7 +102,7 @@
 
         @if (_rare.IsOpen("project"))
         {
-            <div data-field="project"><ProjectField Task="EditedTask" @bind-Value="_projectId" /></div>
+            <div data-field="project"><ProjectField Task="EditedTask" @bind-Value="_projectId" /><RareClear Key="project" OnClear="@(() => Clear("project", () => _projectId = 0))" /></div>
         }
         else if (_projectId != 0 && EditedTask.ParentId is null)
         {
@@ -119,6 +121,7 @@
                     }
                 </div>
                 <textarea rows="3" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
+                <RareClear Key="notes" OnClear="@(() => Clear("notes", () => _notes = null))" />
             </div>
         }
         else if (!string.IsNullOrWhiteSpace(_notes))
@@ -193,6 +196,13 @@
     }
 
     private bool IsProject => State.FindTask(EditedTask.Id)?.IsProject ?? EditedTask.IsProject;
+
+    /// <summary>«×» у раскрытого поля (M1.2): очистить и свернуть обратно в «+ …».</summary>
+    private void Clear(string key, Action reset)
+    {
+        reset();
+        _rare.Close(key);
+    }
 
     /// <summary>
     /// «+ …» — пустые редкие поля, которые ещё не раскрыли (U2.2). Квадрант занятия — от цели (не добавляется); у шага проект — в «↳ Ремонт»

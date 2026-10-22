@@ -1356,3 +1356,38 @@ body.dragging .editor {
     background: var(--b-deep);
     opacity: 0.55;
 }
+
+/* ===== «×» у раскрытого редкого поля (batch-3.md, M1.2): очистить и свернуть обратно в «+ …» — круглая кнопка в правом верхнем углу поля ===== */
+.editor [data-field]:has(.rare-x) {
+    position: relative;
+    padding-right: 30px;
+}
+
+.editor .rare-x {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--btn-line);
+    border-radius: 50%;
+    background: var(--btn-bg);
+    color: var(--btn-ink);
+}
+
+.editor .rare-x:hover {
+    background: var(--btn-hover);
+}
+
+.editor .several-row {
+    display: flex;
+    align-items: center;
+}
+
+/* Дни занятий цели в окне — «· дни: Чт · Пт» рядом с «выполнено N из M» (batch-3.md, M2) */
+.editor .session-days {
+    color: var(--soft);
+}

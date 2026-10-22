@@ -126,7 +126,7 @@ await addField('«+ дело» в дне',
   () => page.$$eval('.day', ds => ds[6].querySelectorAll('.item').length));
 
 await addField('«+ цель»',
-  async () => { await (await (await role('Дом')).$('.add')).click(); await settle(); },
+  async () => { await (await (await role('Дом')).$('.add-goal')).click(); await settle(); },
   async () => (await role('Дом')).$('.inline-input'),
   async () => (await (await role('Дом')).$$('.item')).length);
 

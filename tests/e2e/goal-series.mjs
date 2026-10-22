@@ -40,7 +40,7 @@ const goalsOf = role => page.evaluate(n => [...[...document.querySelectorAll('.r
 const goalRow = title => page.evaluateHandle(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title').textContent.trim() === t), title);
 async function addGoal(role, title) {
   await page.evaluate(n => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === n)
-    .querySelector('.role-body > .add').click(), role);
+    .querySelector('.role-h .add-goal').click(), role);
   await settle();
   await page.keyboard.type(title); await page.keyboard.press('Enter'); await settle();
   await page.keyboard.press('Escape'); await settle();

@@ -194,6 +194,7 @@ await check('удалить роль — «Вернуть» возвращает
   const head = await page.evaluateHandle(() => [...document.querySelectorAll('.role-h')].find(h => h.querySelector('.name').textContent.trim() === 'Семья'));
   await head.hover();
   await (await head.$('.menu')).click(); await settle();
+  await page.waitForSelector('.popover.more-menu .option.edit-role'); await page.click('.popover.more-menu .option.edit-role'); await settle();
   await clickText('.role-editor .btn', 'удалить');
   await clickText('.role-editor .btn', 'Удалить');
   assert(!(await roleNames()).includes('Семья'), 'роль осталась');

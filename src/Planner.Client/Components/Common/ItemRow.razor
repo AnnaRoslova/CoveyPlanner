@@ -4,7 +4,7 @@
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
 <div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(Unplaced is not null ? "unplaced" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
-     style="@(Color is null ? null : $"--c: {Color}")" title="@(Unplaced ?? RowTitle)"
+     style="@(Color is null ? null : $"--c: {Color}")" title="@(RowTitle ?? Unplaced)"
      data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate" data-no-step="@NoStep" data-parent="@DragParent"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
      data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint" data-drop-hint-own="@DropHintOwn"
@@ -81,7 +81,8 @@
         }
         @if (Days is { Count: > 0 } || ProgressBelow)
         {
-            <div class="goal-days">
+            @* Дни занятий цели — только для экранного диктора: на экране они в подсказке строки (batch-3.md, M2) *@
+            <div class="goal-days @(ProgressBelow ? "" : "sr-only")">
                 @if (ProgressBelow)
                 {
                     <span class="progress below">@Progress</span>

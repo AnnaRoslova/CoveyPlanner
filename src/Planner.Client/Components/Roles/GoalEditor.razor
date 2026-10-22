@@ -21,6 +21,11 @@
         {
             <span>выполнено @EditedGoal.DoneCount из @EditedGoal.TimesPerWeek</span>
         }
+        @* Дни занятий — здесь и в подсказке строки цели, под названием в панели их нет (batch-3.md, M2) *@
+        @if (RoleCard.SessionDays(EditedGoal) is { Length: > 0 } sessionDays)
+        {
+            <span class="session-days">· дни: @sessionDays</span>
+        }
     </div>
 
     @* Основное — одна-две строки (U2.2): роль · раз в неделю · каждую неделю · 🫙 копить *@
@@ -72,6 +77,7 @@
                     <div class="line repeat-row">
                         <span class="label">Повтор</span>
                         <ChoiceField TValue="Repeat" Items="RepeatChoices" Value="_repeat" ValueChanged="SetRepeat" Label="Повтор" />
+                        <RareClear Key="days" OnClear="@(() => Clear("days", () => SetRepeat(Repeat.Manual)))" />
                     </div>
                     @if (_repeat != Repeat.Manual)
                     {
@@ -102,6 +108,7 @@
             <div class="line" data-field="time">
                 <span class="label">Время</span>
                 <TimePicker @bind-Value="_time" />
+                <RareClear Key="time" OnClear="@(() => Clear("time", () => _time = null))" />
             </div>
         }
         else if (_time is { } time)
@@ -114,6 +121,7 @@
             <div class="line" data-field="duration">
                 <span class="label">Длительность</span>
                 <DurationPicker @bind-Value="_duration" />
+                <RareClear Key="duration" OnClear="@(() => Clear("duration", () => _duration = null))" />
             </div>
         }
         else if (_duration is { } minutes)
@@ -123,11 +131,14 @@
 
         @if (_rare.IsOpen("several"))
         {
-            <label class="switch-row" data-field="several" title="@(_several ? "можно утром и вечером" : "одно в день")">
-                <input type="checkbox" role="switch" @bind="_several" />
-                <span class="switch"></span>
-                <span>можно несколько раз в день</span>
-            </label>
+            <div class="several-row" data-field="several">
+                <label class="switch-row" title="@(_several ? "можно утром и вечером" : "одно в день")">
+                    <input type="checkbox" role="switch" @bind="_several" />
+                    <span class="switch"></span>
+                    <span>можно несколько раз в день</span>
+                </label>
+                <RareClear Key="several" OnClear="@(() => Clear("several", () => _several = false))" />
+            </div>
         }
         else if (_several)
         {
@@ -139,6 +150,7 @@
             <div class="line" data-field="quadrant">
                 <span class="label">Квадрант</span>
                 <QuadrantPicker @bind-Value="_quadrant" />
+                <RareClear Key="quadrant" OnClear="@(() => Clear("quadrant", () => _quadrant = null))" />
             </div>
         }
         else if (_quadrant is { } q)
@@ -154,6 +166,7 @@
                 <div class="line project-row">
                     <span class="label">Проект</span>
                     <ChoiceField TValue="int" Items="ProjectChoices" Value="ShownProjectId" ValueChanged="SetProject" Label="Проект" Searchable="true" />
+                    <RareClear Key="project" OnClear="@(() => Clear("project", () => SetProject(0)))" />
                 </div>
                 <div class="date-hint">@ProjectHint</div>
             </div>
@@ -174,6 +187,7 @@
             <div class="field" data-field="notes">
                 <div class="label">Заметки</div>
                 <textarea rows="3" maxlength="10000" placeholder="Что делать на занятии, ссылки…" @bind="_notes" @bind:event="oninput"></textarea>
+                <RareClear Key="notes" OnClear="@(() => Clear("notes", () => _notes = null))" />
             </div>
         }
         else if (!string.IsNullOrWhiteSpace(_notes))
@@ -324,6 +338,13 @@
     /// </summary>
     private bool ShowsSteps =>
         !(_recurring || EditedGoal.IsRecurring) || (State.FindGoal(EditedGoal.Id) ?? EditedGoal) is { ProjectId: not null, ProjectIsTrashed: false };
+
+    /// <summary>«×» у раскрытого поля (batch-3.md, M1.2): очистить и свернуть обратно в «+ …».</summary>
+    private void Clear(string key, Action reset)
+    {
+        reset();
+        _rare.Close(key);
+    }
 
     private void SetProject(int projectId)
     {

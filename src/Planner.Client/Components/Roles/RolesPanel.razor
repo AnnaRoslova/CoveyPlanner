@@ -1,6 +1,6 @@
-@* Левая зона: «Затачивание пилы» и роли с целями на неделю (docs/specs/ui-declutter.md, U1).
-   Название роли сворачивает её цели, «Затачивание пилы» — все 4 измерения сразу; в шапке — «свернуть / развернуть все роли»
-   (и пилу). Всё запоминается в браузере (RoleFoldState). *@
+@* Левая зона: «Затачивание пилы» и роли с целями на неделю (docs/specs/ui-declutter.md, U1; batch-3.md, M4).
+   Название роли сворачивает её цели; заголовок раздела («Затачивание пилы», «Роли») — цели всех его ролей, названия ролей остаются;
+   в шапке — «свернуть / развернуть всё» для обоих разделов. Всё запоминается в браузере (RoleFoldState). *@
 @inherits StateComponent
 @inject WindowHost Windows
 @inject RoleFoldState RoleFold
@@ -26,24 +26,16 @@
             <MissionBlock />
         }
 
-        @* «Затачивание пилы» — кнопка: сворачивает все 4 измерения (U1.3) *@
-        <button type="button" class="sect sect-toggle" aria-expanded="@(RoleFold.IsSawFolded ? "false" : "true")"
-                title="@(RoleFold.IsSawFolded ? "Развернуть измерения пилы" : "Свернуть измерения пилы")" @onclick="RoleFold.ToggleSawAsync">
-            <span class="chev"><Icon Name="@(RoleFold.IsSawFolded ? "chevron-right" : "chevron-down")" Size="11" /></span>
-            Затачивание пилы
-            @if (RoleFold.IsSawFolded && SawHasUnplaced)
-            {
-                <span class="unplaced-dot" title="есть неразложенное"></span>
-            }
-        </button>
-        <div class="saw @(RoleFold.IsSawFolded ? "folded" : "")">
+        @* M4.1: заголовок раздела — кнопка-папка: сворачивает цели всех его ролей (названия ролей видны) *@
+        @Section("Затачивание пилы", SawIds)
+        <div class="saw">
             @foreach (var role in State.SawRoles)
             {
                 <RoleCard @key="role.Id" Role="role" Goals="State.GoalsFor(role.Id).ToList()" OtherTasks="State.OtherTasksOf(role.Id)" />
             }
         </div>
 
-        <div class="sect">Роли</div>
+        @Section("Роли", UserIds)
         @* Список ролей — зона для перетаскивания ролей (порядок) *@
         <div class="user-roles" data-drop="@DragDropService.RolesZone" data-accept="@DragDropService.RolesAccepts">
             @foreach (var role in State.UserRoles)
@@ -75,8 +67,18 @@
 
     private void OnFoldChanged() => InvokeAsync(StateHasChanged);
 
-    /// <summary>В свёрнутой пиле что-то не разложено (цели N1, дела «на неделе» E2) — розовая точка у заголовка.</summary>
-    private bool SawHasUnplaced => State.SawRoles.Any(role =>
-        State.GoalsFor(role.Id).Any(g => g.Id > 0 && PlannerState.UnplacedOf(g, RuDates.Today) > 0)
-        || State.WeekTasksWithoutDay(role.Id).Any(t => PlannerState.IsUnassigned(t, State.WeekStart, RuDates.Today)));
+    private IReadOnlyList<int> SawIds => [.. State.SawRoles.Select(r => r.Id)];
+
+    private IReadOnlyList<int> UserIds => [.. State.UserRoles.Select(r => r.Id)];
+
+    /// <summary>Заголовок раздела — «папка» (M4.1): все цели раздела свёрнуты — «▸», иначе «▾»; клик сворачивает или раскрывает их все.</summary>
+    private RenderFragment Section(string title, IReadOnlyList<int> ids)
+    {
+        var folded = RoleFold.AllFolded(ids);
+        return @<button type="button" class="sect sect-toggle" aria-expanded="@(folded ? "false" : "true")"
+                        title="@(folded ? $"Развернуть цели: {title}" : $"Свернуть цели: {title}")" @onclick="() => RoleFold.ToggleSectionAsync(ids)">
+            <span class="chev"><Icon Name="@(folded ? "chevron-right" : "chevron-down")" Size="11" /></span>
+            @title
+        </button>;
+    }
 }

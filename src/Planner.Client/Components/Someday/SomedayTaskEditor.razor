@@ -39,6 +39,7 @@
             <div class="field" data-field="notes">
                 <div class="label">Заметки</div>
                 <textarea rows="5" maxlength="10000" placeholder="Подробности, ссылки, мысли…" @bind="_notes" @bind:event="oninput"></textarea>
+                <RareClear Key="notes" OnClear="@(() => Clear("notes", () => _notes = null))" />
             </div>
         }
         else if (!string.IsNullOrWhiteSpace(_notes))
@@ -47,7 +48,7 @@
         }
         @if (_rare.IsOpen("project"))
         {
-            <div data-field="project"><ProjectField Task="EditedTask" @bind-Value="_projectId" /></div>
+            <div data-field="project"><ProjectField Task="EditedTask" @bind-Value="_projectId" /><RareClear Key="project" OnClear="@(() => Clear("project", () => _projectId = 0))" /></div>
         }
         else if (_projectId != 0)
         {
@@ -86,6 +87,13 @@
     private RareFields _rare = null!; // раскрытые редкие поля (не запоминаются)
 
     private bool IsProject => State.FindTask(EditedTask.Id)?.IsProject ?? EditedTask.IsProject;
+
+    /// <summary>«×» у раскрытого поля (batch-3.md, M1.2): очистить и свернуть обратно в «+ …».</summary>
+    private void Clear(string key, Action reset)
+    {
+        reset();
+        _rare.Close(key);
+    }
 
     /// <summary>«+ заметки · + проект» — пустые редкие поля (у проекта поля «Проект» нет — один уровень).</summary>
     private IReadOnlyList<(string Key, string Label)> Adders =>

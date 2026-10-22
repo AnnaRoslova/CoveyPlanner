@@ -66,9 +66,10 @@ await check('BM2: строка роли — в подсказке названи
   assert(title.startsWith('спокойным профессионалом · '), title);
   await page.evaluate(() => {
     const toggle = [...document.querySelectorAll('.role-toggle')].find(b => b.querySelector('.name').textContent.trim() === 'Работа');
-    toggle.parentElement.querySelector('.menu[title="Изменить роль"]').click();
+    toggle.parentElement.querySelector('.menu').click();
   });
   await settle();
+  await page.waitForSelector('.popover.more-menu .option.edit-role'); await page.click('.popover.more-menu .option.edit-role'); await settle();
   assert(await page.$eval('.role-editor .vision-input', i => i.value) === 'спокойным профессионалом', 'нет в окне роли');
 });
 

@@ -34,7 +34,10 @@
 }
 
 /* «⋯» — появляется при наведении на месте счётчика и не отнимает ширину у названия */
-.menu {
+.role-h ::deep .menu {
+    min-height: 0;
+    padding: 0;
+    border: 0;
     position: absolute;
     top: 50%;
     right: -4px;
@@ -51,8 +54,8 @@
     transition: opacity 0.15s;
 }
 
-.role:hover .menu,
-.menu:focus-visible {
+.role:hover ::deep .menu,
+.role-h ::deep .menu:focus-visible {
     opacity: 1;
 }
 
@@ -60,13 +63,13 @@
     visibility: hidden;
 }
 
-.menu:hover {
+.role-h ::deep .menu:hover {
     background: var(--surface);
     color: var(--b-deep);
 }
 
 @media (hover: none) {
-    .menu {
+    .role-h ::deep .menu {
         opacity: 0.6;
     }
 
@@ -92,11 +95,6 @@
 /* Пользовательскую роль можно тащить за заголовок (и за пустое место карточки) */
 .role[data-drag] .role-h {
     cursor: grab;
-}
-
-/* «ещё дела: N ▸» — маленькая кнопка под целями (.btn.small, app.css) */
-.others-h {
-    margin: 4px 0;
 }
 
 .chev {
@@ -243,26 +241,78 @@
 }
 
 /* «⋯» — справа в строке заголовка, не поверх счётчика (счётчика у роли больше нет, D5) */
-.role-h .menu {
+.role-h ::deep .menu {
     position: static;
     transform: none;
 }
 
-/* «+ цель» — при наведении на роль или фокусе внутри; у роли без целей и на касании — всегда (U1.7) */
-/* Прозрачность, а не visibility: кнопка остаётся в порядке Tab (Shift+Tab возвращается на неё) */
-.role-body > .add {
+
+/* M3: «+» у названия роли — новая цель; при наведении на роль или фокусе внутри, у роли без целей и на касании — всегда.
+   Прозрачность, а не visibility: кнопка остаётся в порядке Tab */
+.add-goal {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-left: auto;
+    border: 1.3px dashed var(--btn-line);
+    border-radius: 50%;
+    color: var(--btn-ink);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
     opacity: 0;
     transition: opacity 0.15s;
 }
 
-.role:hover .role-body > .add,
-.role:focus-within .role-body > .add,
-.role.no-goals .role-body > .add {
+.add-goal:hover {
+    border-style: solid;
+    background: var(--btn-hover);
+}
+
+.role:hover .add-goal,
+.role:focus-within .add-goal,
+.add-goal:focus-visible,
+.role.no-goals .add-goal {
     opacity: 1;
 }
 
 @media (hover: none) {
-    .role-body > .add {
+    .add-goal {
         opacity: 1;
     }
+}
+
+/* «дела роли на неделе» (из «⋯»): заголовок списка с «×» */
+.others-h {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px 0 2px;
+    padding: 0 4px;
+    color: var(--soft);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.others-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    border-radius: 50%;
+    color: var(--soft);
+}
+
+.others-x:hover {
+    background: var(--btn-hover);
+}
+
+/* Под последней целью — немного места: бросить «в конец роли» (и в пустую роль) — строки «+ цель» там больше нет (M3) */
+.role-body {
+    padding-bottom: 8px;
 }

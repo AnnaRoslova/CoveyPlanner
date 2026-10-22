@@ -416,9 +416,8 @@ function checkFlip(now) {
 // Свёрнутая роль под записью: задержали — раскрываем (класс peek) до конца перетаскивания; раскрытое — заново ищем место сброса
 function checkPeek(now) {
     const under = document.elementFromPoint(drag.x, drag.y);
-    // Свёрнутая пила скрыта целиком — её раскрывает задержка над заголовком «Затачивание пилы»
-    const saw = under?.closest('.sect-toggle')?.nextElementSibling;
-    const role = under?.closest('.role.folded:not(.peek)') ?? (saw?.matches('.saw.folded:not(.peek)') ? saw : null);
+    // Раздел целиком не сворачивается (batch-3.md, M4.4) — названия его ролей всегда видны, раскрываются они сами
+    const role = under?.closest('.role.folded:not(.peek)');
     if (role !== drag.peekEl) {
         drag.peekEl = role;
         drag.peekAt = now + PEEK_DELAY;

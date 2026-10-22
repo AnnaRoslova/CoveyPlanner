@@ -34,7 +34,7 @@
 
 /* «Свернуть / развернуть все цели» — общая кнопка-значок .icon-b (app.css), как шторка панели рядом */
 
-/* «Затачивание пилы» — кнопка: сворачивает все измерения (ui-declutter.md, U1.3) */
+/* Заголовок раздела — кнопка-папка: сворачивает цели всех ролей раздела (batch-3.md, M4.1) */
 .sect-toggle {
     display: flex;
     align-items: center;
@@ -55,18 +55,3 @@
     outline-offset: 2px;
 }
 
-.saw.folded {
-    display: none;
-}
-
-.unplaced-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--a-deep);
-}
-
-/* Пока тащат — задержка над свёрнутой пилой раскрывает её (js/dnd.js, peek) */
-.saw.folded.peek {
-    display: block;
-}

@@ -20,6 +20,9 @@ public sealed class RareFields(IJSRuntime js)
         _focus = key;
     }
 
+    /// <summary>Свернуть поле обратно в «+ …» («×» у раскрытого поля, batch-3.md, M1.2).</summary>
+    public void Close(string key) => _open.Remove(key);
+
     /// <summary>Раскрыть без фокуса (поле открыли не человек, а другое действие).</summary>
     public void Show(string key) => _open.Add(key);
 

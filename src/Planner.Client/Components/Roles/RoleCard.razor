@@ -1,14 +1,14 @@
-@* Роль (или измерение пилы) и её цели на неделю (docs/specs/ui-declutter.md, U1).
-   Название роли — кнопка «▾ / ▸»: сворачивает цели роли (и «+ цель», «на неделе», «дела в днях»), запоминается (RoleFoldState).
+@* Роль (или измерение пилы) и её цели на неделю (docs/specs/ui-declutter.md, U1; batch-3.md, M2–M4).
+   Название роли — кнопка «▾ / ▸»: сворачивает цели роли (и «на неделе», «дела роли на неделе»), запоминается (RoleFoldState);
+   клик по разделу («Затачивание пилы», «Роли») сворачивает цели всех его ролей — названия ролей остаются (M4).
    Свёрнутая — одна строка «▸ ● Работа · 2 цели» и розовая точка, если что-то не разложено (N1, E2). Пока тащат дело или цель, задержка
    над свёрнутой ролью ~0,5 с раскрывает её до броска (js/dnd.js, класс peek; тело роли поэтому рисуется всегда, а прячется стилем).
-   Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях), прогресс «2/5» и дни «Чт · Пт».
+   Цель делается N раз в неделю: у неё занятия (дела-«камни» в днях); дни занятий и «2 из 3» — в подсказке строки и в окне цели (M2).
    Справа у цели — процент выполненных занятий недели («50%», норма выполнена — «100% ✓»), перед ним — шаги её проекта («☑ 1/3 · 25%»).
-   Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»),
-   крестик — удалить, «+ цель» — новая цель в конец (видна при наведении на роль; у роли без целей — всегда, U1.7).
-   «⋯» в заголовке — окно роли (название, цвет, удаление), при наведении. Порядок ролей — перетаскиванием карточки.
-   Под целями — строка «ещё дела: N ▸»: остальные дела недели с этой ролью; раскрывается в список
-   «Чт · название», клик по делу — его окно. Раскрытие запоминается (RoleTasksState).
+   Чекбокс — отметить ближайшее занятие, клик по цели — окно цели (шаблон занятий, «раз в неделю»), крестик — удалить.
+   «+» у названия — новая цель в конец (при наведении на роль; у роли без целей — всегда, M3). «⋯» — меню: «изменить роль…»
+   (окно роли: название, цвет, удаление) и «дела роли на неделе» — список «Чт · название» под целями (дела недели с этой ролью,
+   кроме занятий целей; клик — окно дела; раскрытие запоминается, RoleTasksState). Порядок ролей — перетаскиванием карточки.
    Над ним — «на неделе · N» (N4, B2): дела недели без дня с этой ролью. Дело, брошенное на заголовок роли, — туда же (B5). *@
 @inject PlannerState State
 @inject WindowHost Windows
@@ -39,16 +39,24 @@
                 <span class="unplaced-dot" title="есть неразложенное"></span>
             }
         }
-        <button type="button" class="menu" title="Изменить роль" @onclick="() => Windows.OpenRole(Role.Id)">
-            <Icon Name="more" Size="14" />
+        @* M3: «+ цель» — маленький «+» у названия (при наведении; у роли без целей — всегда) *@
+        <button type="button" class="add-goal" title="@($"+ цель в «{Role.Name}»")" aria-label="@($"Новая цель в «{Role.Name}»")" @onclick="StartAddingAsync">
+            <span aria-hidden="true">+</span>
         </button>
+        <MoreMenu Class="menu" Title="@($"Роль «{Role.Name}»: ещё")">
+            <MenuItem Label="изменить роль…" Class="edit-role" OnClick="() => Windows.OpenRole(Role.Id)" />
+            <MenuItem Label="@(RoleTasks.IsOpen(Role.Id) ? "скрыть дела роли на неделе" : "дела роли на неделе")" Class="role-tasks"
+                      Hint="@(OtherTasks.Count > 0 ? OtherTasks.Count.ToString() : null)"
+                      DisabledReason="@(OtherTasks.Count == 0 && !RoleTasks.IsOpen(Role.Id) ? "дел на неделе нет" : null)"
+                      OnClick="ToggleTasksAsync" />
+        </MoreMenu>
     </div>
 
     <div class="role-body">
     @foreach (var goal in Goals)
     {
         <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
-                 Days="@Days(goal)" Percent="goal.Percent" PercentHint="@($"выполнено {goal.DoneCount} из {goal.TimesPerWeek}")" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
+                 RowTitle="@GoalHint(goal)" Days="@Days(goal)" Percent="goal.Percent" PercentHint="@($"выполнено {goal.DoneCount} из {goal.TimesPerWeek}")" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
                  Unplaced="@UnplacedHint(goal)"
                  OnToggle="() => State.ToggleGoalAsync(goal.Id)"
                  OnClick="() => OpenGoal(goal.Id)"
@@ -78,32 +86,27 @@
                          OnSubmit="AddAsync" OnCancel="StopAdding" CancelOnEmptyBlur="false" />
         </Dismissable>
     }
-    else
-    {
-        <button class="add" @onclick="() => _adding = true">+ цель</button>
-    }
 
     <WeekNoDayBlock RoleId="Role.Id" />
 
-    @if (OtherTasks.Count > 0)
+    @* M3: «дела роли на неделе» — из «⋯» роли: дела недели с этой ролью, кроме занятий целей *@
+    @if (RoleTasks.IsOpen(Role.Id))
     {
-        var open = RoleTasks.IsOpen(Role.Id);
-        <button type="button" class="btn small others-h" aria-expanded="@(open ? "true" : "false")" title="@($"дела этой недели с ролью «{Role.Name}», кроме занятий целей")"
-                @onclick="() => RoleTasks.ToggleAsync(Role.Id)">
-            дела в днях · @OtherTasks.Count <span class="chev @(open ? "open" : "")"><Icon Name="chevron-right" Size="10" /></span>
-        </button>
-        @if (open)
-        {
-            <div class="others">
-                @foreach (var task in OtherTasks)
-                {
-                    <button type="button" class="other @(task.State == TaskStateDto.Done ? "done" : "")" title="@task.Title"
-                            @onclick="() => Windows.OpenTask(task.Id)" disabled="@(task.Id < 0)">
-                        <span class="d">@RuDates.ShortDay(task.PlannedDate!.Value)</span><span class="sep">·</span><span class="t">@task.Title</span>
-                    </button>
-                }
+        <div class="others" aria-label="@($"дела роли «{Role.Name}» на неделе")">
+            <div class="others-h">
+                <span>дела роли на неделе · @OtherTasks.Count</span>
+                <button type="button" class="others-x" title="Скрыть" aria-label="Скрыть дела роли" @onclick="() => RoleTasks.ToggleAsync(Role.Id)">
+                    <Icon Name="x" Size="11" />
+                </button>
             </div>
-        }
+            @foreach (var task in OtherTasks)
+            {
+                <button type="button" class="other @(task.State == TaskStateDto.Done ? "done" : "")" title="@task.Title"
+                        @onclick="() => Windows.OpenTask(task.Id)" disabled="@(task.Id < 0)">
+                    <span class="d">@RuDates.ShortDay(task.PlannedDate!.Value)</span><span class="sep">·</span><span class="t">@task.Title</span>
+                </button>
+            }
+        </div>
     }
     </div>
 </div>
@@ -148,7 +151,15 @@
     private string? StepsLabel(WeeklyGoalDto goal) =>
         State.StepsOfGoal(goal) is { Count: > 0 } steps ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
 
-    /// <summary>Дни, на которые стоят занятия: «Чт · Пт».</summary>
+    /// <summary>
+    /// Подсказка цели (batch-3.md, M2): «Бег · Чт · Пт · 2 из 3», у недособранной — ещё «не разложено: 1 из 3».
+    /// Дни занятий под названием больше не показываются — только здесь и в окне цели.
+    /// </summary>
+    private static string GoalHint(WeeklyGoalDto goal) =>
+        string.Join(" · ", new[] { goal.Title, SessionDays(goal), $"{goal.DoneCount} из {goal.TimesPerWeek}", UnplacedHint(goal) }
+            .Where(part => !string.IsNullOrEmpty(part)));
+
+    /// <summary>Дни занятий для экранного диктора (на экране — в подсказке строки, M2).</summary>
     private static IReadOnlyList<DayMark> Days(WeeklyGoalDto goal) =>
         goal.Sessions
             .Where(s => s.PlannedDate is not null)
@@ -156,12 +167,37 @@
             .Select(s => new DayMark(RuDates.ShortDay(s.PlannedDate!.Value), s.IsDone))
             .ToList();
 
+    /// <summary>Дни, на которые стоят занятия: «Чт · Пт»; занятий в днях нет — пусто.</summary>
+    public static string SessionDays(WeeklyGoalDto goal) =>
+        string.Join(" · ", goal.Sessions
+            .Where(s => s.PlannedDate is not null)
+            .OrderBy(s => s.PlannedDate)
+            .Select(s => RuDates.ShortDay(s.PlannedDate!.Value)));
+
     private void OpenGoal(int goalId)
     {
         if (goalId > 0)
         {
             Windows.OpenGoal(goalId);
         }
+    }
+
+    /// <summary>«+» у названия: поле новой цели под ролью (свёрнутая роль раскрывается).</summary>
+    private async Task StartAddingAsync()
+    {
+        _adding = true;
+        await RoleFold.UnfoldAsync(Role.Id);
+    }
+
+    /// <summary>«⋯ → дела роли на неделе»: показать или скрыть список под ролью (свёрнутая роль раскрывается).</summary>
+    private async Task ToggleTasksAsync()
+    {
+        if (!RoleTasks.IsOpen(Role.Id))
+        {
+            await RoleFold.UnfoldAsync(Role.Id);
+        }
+
+        await RoleTasks.ToggleAsync(Role.Id);
     }
 
     private async Task AddAsync(string title)

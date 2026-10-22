@@ -210,7 +210,7 @@ await check('банка в окне цели: стартовое число +3 �
 
 await check('новая постоянная цель в Духе «Йога» — новая привычка в группе «Дух»', async () => {
   const role = (await page.evaluateHandle(() => [...document.querySelectorAll('.role')].find(r => r.querySelector('.role-h .name')?.textContent.trim() === 'Дух'))).asElement();
-  await (await role.$('.add')).click(); await settle();
+  await (await role.$('.add-goal')).click(); await settle();
   await page.keyboard.type('Йога'); await page.keyboard.press('Enter'); await settle();
   await escape();
   assert(await pillOf('Йога') === '🫙 0', `пилюля: ${await pillOf('Йога')}`);

@@ -61,6 +61,7 @@ async function openRoleMenu(name) {
   const role = await roleHandle(name);
   await role.hover();
   await (await role.$('.menu')).click(); await settle();
+  await page.waitForSelector('.popover.more-menu .option.edit-role'); await page.click('.popover.more-menu .option.edit-role'); await settle();
 }
 const clickButton = async (scope, text) => {
   const h = await page.evaluateHandle((s, t) => [...document.querySelectorAll(`${s} button`)].find(b => b.textContent.trim() === t), scope, text);
@@ -72,7 +73,7 @@ await load();
 
 await check('«+ цель» у измерения пилы; после перезагрузки на месте', async () => {
   const role = await roleHandle('Дух');
-  await (await role.$('.add')).click(); await settle();
+  await (await role.$('.add-goal')).click(); await settle();
   await page.keyboard.type('Медитация 10 минут'); await page.keyboard.press('Enter'); await settle();
   await page.keyboard.press('Escape'); await settle();
   assert(JSON.stringify((await goalsOf('Дух')).map(g => g.title)) === '["Медитация 10 минут"]', JSON.stringify(await goalsOf('Дух')));
@@ -204,7 +205,7 @@ await check('удалить роль, у цели которой дело без
 
 await check('больше трёх целей — мягкая подсказка', async () => {
   const role = await roleHandle('Работа');
-  await (await role.$('.add')).click(); await settle();
+  await (await role.$('.add-goal')).click(); await settle();
   for (const t of ['Третья', 'Четвёртая']) { await page.keyboard.type(t); await page.keyboard.press('Enter'); await settle(); }
   await page.keyboard.press('Escape'); await settle();
   const hint = await (await roleHandle('Работа')).evaluate(r => r.querySelector('.hint')?.textContent);

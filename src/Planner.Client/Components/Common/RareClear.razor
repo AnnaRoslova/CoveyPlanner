@@ -1,0 +1,15 @@
+@* «×» у раскрытого редкого поля окна (docs/specs/batch-3.md, M1.2): очистить значение и свернуть поле обратно в «+ …».
+   Сохраняется, как всё в окне, кнопкой «Сохранить». Стоит в правом верхнем углу поля ([data-field]). Стили — css/editor.css. *@
+
+<button type="button" class="rare-x" data-clear="@Key" title="очистить и свернуть" aria-label="Очистить и свернуть" @onclick="OnClear">
+    <Icon Name="x" Size="12" />
+</button>
+
+@code {
+    /// <summary>Ключ поля (quadrant, duration, project, notes…) — для e2e.</summary>
+    [Parameter, EditorRequired]
+    public string Key { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+}
