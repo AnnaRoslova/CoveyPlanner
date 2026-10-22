@@ -31,6 +31,9 @@ public interface ITaskRepository
     /// <summary>Все дела плана (Planned/Done) с датой в диапазоне включительно.</summary>
     Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
 
+    /// <summary>Дни диапазона, где есть дела плана (Planned/Done), — для точек мини-календаря (batch-3.md, J3).</summary>
+    Task<List<DateOnly>> GetBusyDaysAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
+
     /// <summary>Шаги дела по порядку.</summary>
     Task<List<TaskItem>> GetStepsAsync(int parentId, CancellationToken ct = default);
 

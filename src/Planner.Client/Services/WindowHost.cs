@@ -47,6 +47,9 @@ public sealed class WindowHost
     /// <summary>Быстрый поиск (Ctrl+K, /; batch-ux.md, BK2).</summary>
     public bool SearchOpen { get; private set; }
 
+    /// <summary>Мини-календарь «перейти к дате» под подписью недели (клик по подписи, G; batch-3.md, J1). Рисует его неделя (WeekView).</summary>
+    public bool CalendarOpen { get; private set; }
+
     /// <summary>Копилка, к которой экран «Копилки» прокручивается и которую подсвечивает (клик по пилюле у цели).</summary>
     public int? FocusHabitId { get; private set; }
 
@@ -80,6 +83,8 @@ public sealed class WindowHost
 
     public void OpenMission() => Open(mission: true);
 
+    public void OpenCalendar() => Open(calendar: true);
+
     /// <summary>«📈 Итоги» (BI2) на вкладке: «Привычки» — экран привычек, «Выполненное», «Отчёт».</summary>
     public void OpenTotals(TotalsTab tab)
     {
@@ -106,7 +111,7 @@ public sealed class WindowHost
     public void Close() => Open();
 
     private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
-        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false, bool search = false, bool review = false, bool mission = false)
+        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false, bool search = false, bool review = false, bool mission = false, bool calendar = false)
     {
         HabitsOpen = habits;
         DoneOpen = done;
@@ -116,6 +121,7 @@ public sealed class WindowHost
         SearchOpen = search;
         ReviewOpen = review;
         MissionOpen = mission;
+        CalendarOpen = calendar;
         FocusHabitId = focusHabitId;
         GoalId = goalId;
         RoleId = roleId;

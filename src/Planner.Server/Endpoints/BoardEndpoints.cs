@@ -15,6 +15,24 @@ public static class BoardEndpoints
     {
         api.MapGet("/board", GetBoardAsync);
         api.MapGet("/week/{weekStart}", GetWeekAsync);
+        api.MapGet("/calendar", GetCalendarAsync);
+    }
+
+    /// <summary>Самый длинный период мини-календаря: месяц сеткой — это 6 недель, с запасом — год.</summary>
+    private const int MaxCalendarDays = 366;
+
+    /// <summary>
+    /// Мини-календарь «перейти к дате» (batch-3.md, J3): в какие дни есть дела. Только чтение —
+    /// в отличие от GET /week цели постоянных серий здесь не создаются (J7).
+    /// </summary>
+    private static async Task<IResult> GetCalendarAsync(DateOnly from, DateOnly to, ITaskRepository tasks, CancellationToken ct)
+    {
+        if (to < from || to.DayNumber - from.DayNumber >= MaxCalendarDays)
+        {
+            return Results.BadRequest();
+        }
+
+        return Results.Ok(new CalendarDto(from, to, await tasks.GetBusyDaysAsync(from, to, ct)));
     }
 
     private static async Task<BoardDto> GetBoardAsync(

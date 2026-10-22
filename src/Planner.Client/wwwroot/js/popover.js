@@ -55,8 +55,23 @@ function placeNear(popup, anchor) {
         ? a.bottom + GAP
         : a.top - GAP - p.height;
     const left = Math.min(a.left, window.innerWidth - p.width - MARGIN);
-    popup.style.top = `${Math.max(MARGIN, Math.round(top))}px`;
-    popup.style.left = `${Math.max(MARGIN, Math.round(left))}px`;
+    const origin = fixedOrigin(popup);
+    popup.style.top = `${Math.max(MARGIN, Math.round(top)) - origin.y}px`;
+    popup.style.left = `${Math.max(MARGIN, Math.round(left)) - origin.x}px`;
+}
+
+// Точка отсчёта position: fixed. Обычно — окно, но предок с filter / backdrop-filter / transform (панели в «Платине»
+// и «Обсидиане» размыты) сам становится ею — тогда координаты окна считаются от него (batch-3.md, J1).
+function fixedOrigin(el) {
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const s = getComputedStyle(p);
+        const backdrop = s.backdropFilter || s.webkitBackdropFilter || 'none';
+        if (s.transform !== 'none' || s.filter !== 'none' || backdrop !== 'none' || s.perspective !== 'none') {
+            const r = p.getBoundingClientRect();
+            return { x: r.left + p.clientLeft, y: r.top + p.clientTop };
+        }
+    }
+    return { x: 0, y: 0 };
 }
 
 function moveFocus(popup, e) {

@@ -18,7 +18,12 @@
                 <Icon Name="chevron-right" />
             </button>
         </div>
-        <span class="wt">@RuDates.WeekRange(State.WeekStart)</span>
+        @* J1: подпись недели — кнопка «перейти к дате» (мини-календарь, batch-3.md) *@
+        <button type="button" @ref="_title" class="wt" title="Перейти к дате (G)" aria-haspopup="dialog" @onclick="ToggleCalendar">@RuDates.WeekRange(State.WeekStart)</button>
+        @if (Windows.CalendarOpen)
+        {
+            <WeekJump Anchor="_title" OnClose="CloseCalendar" />
+        }
         @if (!IsCurrentWeek)
         {
             <button class="today-b" title="К сегодня (T)" @onclick="State.TodayAsync">Сегодня</button>
@@ -59,5 +64,47 @@
 </main>
 
 @code {
+    private ElementReference _title;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Windows.Changed += OnWindowsChanged; // календарь открывают и клавишей G (Hotkeys)
+    }
+
+    public override void Dispose()
+    {
+        Windows.Changed -= OnWindowsChanged;
+        base.Dispose();
+    }
+
+    private void OnWindowsChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>
+    /// Сколько после закрытия календаря клик по подписи — не «открыть снова»: календарь закрыли Enter, фокус вернулся на подпись,
+    /// и браузер нажимает её тем же Enter.
+    /// </summary>
+    private static readonly TimeSpan ReopenGuard = TimeSpan.FromMilliseconds(400);
+
+    private DateTime _calendarClosedAt;
+
+    private void ToggleCalendar()
+    {
+        if (Windows.CalendarOpen)
+        {
+            CloseCalendar();
+        }
+        else if (DateTime.UtcNow - _calendarClosedAt > ReopenGuard)
+        {
+            Windows.OpenCalendar();
+        }
+    }
+
+    private void CloseCalendar()
+    {
+        _calendarClosedAt = DateTime.UtcNow;
+        Windows.Close();
+    }
+
     private bool IsCurrentWeek => State.WeekStart == RuDates.WeekStartOf(RuDates.Today);
 }

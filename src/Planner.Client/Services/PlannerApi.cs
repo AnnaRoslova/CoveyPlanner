@@ -144,6 +144,10 @@ public class PlannerApi(HttpClient http, ConnectionQueue queue)
 
     public Task<SearchResultDto> SearchAsync(string query) => GetAsync<SearchResultDto>($"api/search?q={Uri.EscapeDataString(query)}");
 
+    /// <summary>Дни с делами для мини-календаря «перейти к дате» (batch-3.md, J3).</summary>
+    public Task<CalendarDto> GetCalendarAsync(DateOnly from, DateOnly to) =>
+        GetAsync<CalendarDto>($"api/calendar?from={Format(from)}&to={Format(to)}");
+
     public Task<DashboardDto> GetDashboardAsync(DateOnly from, DateOnly to) =>
         GetAsync<DashboardDto>($"api/dashboard?from={Format(from)}&to={Format(to)}");
 

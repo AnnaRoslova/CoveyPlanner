@@ -19,13 +19,13 @@
         <kbd>Esc</kbd>
     </div>
 
-    @if (_result is { } result)
+    @* Пункт «перейти к неделе …» (batch-3.md, J6) — сразу, не дожидаясь сервера *@
+    @if (_hits.Count == 0 && _result is not null)
     {
-        @if (_hits.Count == 0)
-        {
-            <p class="nothing">Ничего не нашлось</p>
-        }
-        else
+        <p class="nothing">Ничего не нашлось</p>
+    }
+    else if (_hits.Count > 0)
+    {
         {
             <div class="results" role="listbox" aria-label="Найдено">
                 @foreach (var group in _hits.GroupBy(h => h.Group))
@@ -69,7 +69,7 @@
 </section>
 
 @code {
-    private enum HitKind { Task, Thought, Project, Goal }
+    private enum HitKind { Week, Task, Thought, Project, Goal }
 
     private sealed record Hit(HitKind Kind, string Group, int Id, string Title, string? Meta, bool Done, string? Color, DateOnly? Week);
 
@@ -97,6 +97,8 @@
         _query = e.Value?.ToString() ?? "";
         _pending?.Cancel();
         var pending = _pending = new CancellationTokenSource();
+        _hits = [.. WeekHits(), .. ServerHits()];
+        _selected = 0;
         if (_query.Trim().Length == 0)
         {
             _result = null;
@@ -111,7 +113,7 @@
             if (!pending.IsCancellationRequested)
             {
                 _result = result;
-                _hits = ToHits(result);
+                _hits = [.. WeekHits(), .. ToHits(result)];
                 _selected = 0;
             }
         }
@@ -124,6 +126,19 @@
             Notifier.Error(ex.Message);
         }
     }
+
+    /// <summary>Набрана дата («12 окт», «12.03», «март 2027») — первым пунктом «перейти к неделе …» (batch-3.md, J6).</summary>
+    private IEnumerable<Hit> WeekHits()
+    {
+        if (DateQuery.Parse(_query, RuDates.Today) is { } date)
+        {
+            var week = RuDates.WeekStartOf(date.Date);
+            yield return new Hit(HitKind.Week, "Неделя", 0, $"перейти к неделе {RuDates.WeekRange(week)}", null, false, null, week);
+        }
+    }
+
+    /// <summary>Прежние результаты сервера (без пункта недели) — пока ждём новые.</summary>
+    private IEnumerable<Hit> ServerHits() => _hits.Where(h => h.Kind != HitKind.Week);
 
     private List<Hit> ToHits(SearchResultDto result) =>
     [
@@ -171,6 +186,10 @@
     {
         switch (hit.Kind)
         {
+            case HitKind.Week:
+                Windows.Close();
+                await State.GoToWeekAsync(hit.Week!.Value);
+                break;
             case HitKind.Task:
                 if (hit.Week is { } date)
                 {

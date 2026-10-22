@@ -176,3 +176,15 @@ body[data-drag-kind="step"] .flip-zone {
 .done-b {
     font-weight: 800;
 }
+
+/* J1: подпись недели — кнопка мини-календаря; выглядит подписью, при наведении — мятная подложка */
+.wt {
+    padding: 2px 8px;
+    flex-basis: calc(17em + 16px); /* поля кнопки — сверх места под самую длинную подпись (C2) */
+    border-radius: 12px;
+    text-align: left;
+}
+
+.wt:hover {
+    background: var(--b-soft);
+}

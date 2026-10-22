@@ -1210,3 +1210,149 @@ body.dragging .editor {
     color: var(--a-deep);
     font-size: 11px;
 }
+
+/* ===== Мини-календарь «перейти к дате» (batch-3.md, J; Components/Week/WeekJump.razor) — окошко под подписью недели ===== */
+.popover.week-jump {
+    position: fixed;
+    z-index: 60;
+    width: 288px;
+    padding: 12px;
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: var(--shadow-window), inset 0 0 0 1px var(--line);
+    outline: none;
+}
+
+.week-jump .jump-input {
+    width: 100%;
+    padding: 7px 12px;
+    border: 1px solid var(--btn-line);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13.5px;
+}
+
+.week-jump .jump-input:focus {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+}
+
+.week-jump .jump-input::placeholder,
+.week-jump .jump-hint {
+    color: var(--faint);
+}
+
+.week-jump .jump-hint {
+    min-height: 1.4em;
+    margin: 4px 4px 6px;
+    font-size: 12px;
+}
+
+.week-jump .jump-head {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
+.week-jump .nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--soft);
+}
+
+.week-jump .nav:hover {
+    background: var(--b-soft);
+}
+
+.week-jump .jump-month {
+    flex: 1;
+    text-align: center;
+    font-family: var(--font-title);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.week-jump .jump-today {
+    margin-left: 6px;
+}
+
+.week-jump .jump-dows,
+.week-jump .jump-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.week-jump .jump-dows span {
+    padding: 4px 0;
+    color: var(--soft);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+/* Строка — неделя: наведение подсвечивает её целиком; неделя на экране — тихая подложка; выбранная стрелками — тоже */
+.week-jump .jump-week {
+    border-radius: 12px;
+}
+
+.week-jump .jump-week.shown {
+    background: var(--b-soft);
+}
+
+.week-jump .jump-week:hover,
+.week-jump .jump-week.picked {
+    background: color-mix(in srgb, var(--b) 38%, var(--surface));
+}
+
+.week-jump .jump-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    border-radius: 50%;
+    color: var(--text);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.week-jump .jump-day.out {
+    color: var(--faint);
+}
+
+.week-jump .jump-day .num {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.week-jump .jump-day.today .num {
+    background: var(--a);
+    color: var(--text);
+    font-weight: 800;
+}
+
+.week-jump .jump-day.sel .num {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* Тихая точка — в этот день есть дела */
+.week-jump .jump-day .busy {
+    position: absolute;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--b-deep);
+    opacity: 0.55;
+}

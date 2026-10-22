@@ -297,3 +297,6 @@ public sealed record SearchResultDto(
 
 /// <summary>Найденная цель: её неделя и роли (точка цвета первой роли).</summary>
 public sealed record SearchGoalDto(int Id, string Title, DateOnly WeekStart, IReadOnlyList<int> RoleIds);
+
+/// <summary>Мини-календарь «перейти к дате» (batch-3.md, J3): дни периода, где есть дела (в плане или выполненные). Только чтение.</summary>
+public sealed record CalendarDto(DateOnly From, DateOnly To, IReadOnlyList<DateOnly> BusyDays);

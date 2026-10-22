@@ -57,6 +57,9 @@ public sealed class Hotkeys(
             case "totals":
                 windows.OpenTotals(totals.Last);
                 break;
+            case "jump": // G: мини-календарь «перейти к дате» (batch-3.md, J1)
+                windows.OpenCalendar();
+                break;
             case "review": // W: недельный обзор (BR1)
                 windows.OpenReview();
                 break;

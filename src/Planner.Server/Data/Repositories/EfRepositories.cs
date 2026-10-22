@@ -50,6 +50,14 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .ThenBy(t => t.SortOrder)
             .ToListAsync(ct);
 
+    public Task<List<DateOnly>> GetBusyDaysAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
+        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
+                            && t.PlannedDate >= from && t.PlannedDate <= to)
+            .Select(t => t.PlannedDate!.Value)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync(ct);
+
     /// <summary>
     /// Корзина: дела и шаги, удалённые отдельно; шаги, ушедшие в корзину вместе с проектом (тот же TrashedAt), — в его строке.
     /// </summary>

@@ -1,0 +1,180 @@
+@* Мини-календарь «перейти к дате» (docs/specs/batch-3.md, J): окошко под подписью недели (клик по ней или G).
+   Месяц сеткой по неделям: наведение подсвечивает всю неделю, клик по дню — переход на его неделю. Поле вверху понимает
+   «12.03», «12 марта», «март 2027» (DateQuery) — Enter. Стрелки двигают выбранный день, Enter без текста — его неделя.
+   Esc и клик мимо закрывают только календарь (Popover). Только чтение: точки дней — GET /api/calendar (J7). *@
+@inject PlannerState State
+@inject PlannerApi Api
+
+<Popover Anchor="Anchor" OnClose="OnClose" Class="week-jump" Role="dialog" Label="Перейти к дате">
+    <div class="jump" @onkeydown="OnKeyDown">
+        <input class="jump-input" type="text" tabindex="0" placeholder="12.03, 12 марта, март 2027" aria-label="Дата"
+               value="@_text" @oninput="OnInput" />
+        <p class="jump-hint @(_typed is null && _text.Trim().Length > 0 ? "unknown" : "")" aria-live="polite">@Hint</p>
+
+        <div class="jump-head">
+            <button type="button" class="nav" title="Предыдущий месяц" aria-label="Предыдущий месяц" @onclick="() => ShowMonthAsync(_month.AddMonths(-1))">
+                <Icon Name="chevron-left" />
+            </button>
+            <span class="jump-month">@RuDates.Month(_month) @_month.Year</span>
+            <button type="button" class="nav" title="Следующий месяц" aria-label="Следующий месяц" @onclick="() => ShowMonthAsync(_month.AddMonths(1))">
+                <Icon Name="chevron-right" />
+            </button>
+            <button type="button" class="btn small jump-today" @onclick="GoTodayAsync">Сегодня</button>
+        </div>
+
+        <div class="jump-grid" role="grid" aria-label="@($"{RuDates.Month(_month)} {_month.Year}")">
+            <div class="jump-dows" role="row">
+                @foreach (var name in DayNames)
+                {
+                    <span role="columnheader">@name</span>
+                }
+            </div>
+            @for (var week = GridStart; week < GridStart.AddDays(7 * Rows); week = week.AddDays(7))
+            {
+                var monday = week;
+                <div class="jump-week @(monday == State.WeekStart ? "shown" : "") @(monday == RuDates.WeekStartOf(_selected) ? "picked" : "")" role="row">
+                    @for (var i = 0; i < 7; i++)
+                    {
+                        var day = monday.AddDays(i);
+                        <button type="button" role="gridcell" tabindex="-1"
+                                class="jump-day @(day.Month != _month.Month ? "out" : "") @(day == RuDates.Today ? "today" : "") @(day == _selected ? "sel" : "")"
+                                title="@DayTitle(day)"
+                                data-date="@day.ToString("yyyy-MM-dd")"
+                                @onclick="() => GoAsync(day)">
+                            <span class="num">@day.Day</span>
+                            @if (_busy.Contains(day))
+                            {
+                                <span class="busy" aria-label="есть дела"></span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</Popover>
+
+@code {
+    private const int Rows = 6;
+
+    private static readonly string[] DayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+    /// <summary>Подпись недели в шапке — окошко стоит под ней.</summary>
+    [Parameter, EditorRequired]
+    public ElementReference Anchor { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private string _text = "";
+    private DateQueryResult? _typed;
+    private DateOnly _month;
+    private DateOnly _selected;
+    private HashSet<DateOnly> _busy = [];
+    private readonly Dictionary<DateOnly, HashSet<DateOnly>> _busyByMonth = [];
+
+    private DateOnly GridStart => RuDates.WeekStartOf(_month);
+
+    /// <summary>Подсказка дня: «сегодня · 19 — 25 октября» — какая неделя откроется.</summary>
+    private static string DayTitle(DateOnly day) =>
+        (day == RuDates.Today ? "сегодня · " : "") + RuDates.WeekRange(RuDates.WeekStartOf(day));
+
+    private string Hint => _typed switch
+    {
+        { } typed => $"→ {RuDates.WeekRange(RuDates.WeekStartOf(typed.Date))}",
+        null when _text.Trim().Length > 0 => "не понимаю — например, 12.03 или 12 марта",
+        _ => "Enter — к выбранной неделе · стрелки — по дням",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selected = State.WeekStart;
+        await ShowMonthAsync(MonthOf(State.WeekStart.AddDays(3))); // месяц недели — по её четвергу
+    }
+
+    private static DateOnly MonthOf(DateOnly date) => new(date.Year, date.Month, 1);
+
+    /// <summary>Показать месяц и, если ещё не знаем, загрузить его точки (дни сетки целиком).</summary>
+    private async Task ShowMonthAsync(DateOnly month)
+    {
+        _month = month;
+        if (_busyByMonth.TryGetValue(month, out var known))
+        {
+            _busy = known;
+            return;
+        }
+
+        _busy = [];
+        try
+        {
+            var calendar = await Api.GetCalendarAsync(GridStart, GridStart.AddDays(7 * Rows - 1));
+            _busyByMonth[month] = [.. calendar.BusyDays];
+            if (_month == month)
+            {
+                _busy = _busyByMonth[month];
+            }
+        }
+        catch (ApiException)
+        {
+            // Без точек календарь работает так же
+        }
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _text = e.Value?.ToString() ?? "";
+        _typed = DateQuery.Parse(_text, RuDates.Today);
+        if (_typed is { } typed)
+        {
+            _selected = typed.Date;
+            await ShowMonthAsync(MonthOf(typed.Date));
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        // ← → в непустом поле — курсор в тексте; ↑ ↓ — всегда по неделям
+        var step = e.Key switch
+        {
+            "ArrowLeft" when _text.Length == 0 => -1,
+            "ArrowRight" when _text.Length == 0 => 1,
+            "ArrowUp" => -7,
+            "ArrowDown" => 7,
+            _ => 0,
+        };
+        if (step != 0)
+        {
+            _selected = _selected.AddDays(step);
+            if (MonthOf(_selected) != _month)
+            {
+                await ShowMonthAsync(MonthOf(_selected));
+            }
+
+            return;
+        }
+
+        if (e.Key == "Enter")
+        {
+            if (_text.Trim().Length == 0)
+            {
+                await GoAsync(_selected);
+            }
+            else if (_typed is { } typed)
+            {
+                await GoAsync(typed.Date);
+            }
+        }
+    }
+
+    private async Task GoAsync(DateOnly day)
+    {
+        await OnClose.InvokeAsync();
+        await State.GoToWeekAsync(day);
+    }
+
+    private async Task GoTodayAsync()
+    {
+        await OnClose.InvokeAsync();
+        await State.TodayAsync();
+    }
+}
