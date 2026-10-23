@@ -22,12 +22,30 @@ powershell -File tools/install.ps1
 (Edge/Chrome: меню → «Приложения» → «Установить»). Дальше — просто значок на панели задач или в меню «Пуск»,
 без терминала и редактора кода.
 
+**Первая установка с аккаунтами** (docs/specs/accounts.md) — с почтой администратора:
+
+```powershell
+powershell -File tools/install.ps1 -AdminEmail you@example.com
+```
+
+Почта запишется в `settings.json` папки данных. При первом запуске сервер создаёт аккаунт администратора, и данные
+прежнего `planner.db` становятся его данными: целостная копия, сверка числа строк и контрольных сумм каждой таблицы
+(отчёт — `accounts-transfer-report.md` в папке данных), сам `planner.db` переименовывается в `planner-before-accounts.db`
+и больше не используется. Без почты администратора (и пока аккаунтов нет) скрипт не установит новую версию.
+
+Проверить перенос на копии, не трогая настоящие данные:
+
+```powershell
+# копия папки данных (planner.db вместе с -wal и -shm) → C:\Temp\copy, затем:
+src\Planner.Server\bin\Debug\net10.0\Planner.Server.exe --MigrateAccounts:Report=C:\Temp\report.md --Storage:DataDirectory=C:\Temp\copy --Accounts:AdminEmail=you@example.com --Storage:DailyBackup=false
+```
+
 **Обновить** до текущей версии кода — запустить тот же скрипт ещё раз. Он соберёт новую версию,
 сделает резервную копию базы, остановит сервер, заменит файлы и запустит снова. Если сборка
 не удалась, установленная версия остаётся как была. В открытом окне приложения после обновления
 нажмите F5.
 
-**Удалить** (база и копии остаются):
+**Удалить** (данные и копии остаются):
 
 ```powershell
 powershell -File tools/uninstall.ps1
@@ -46,29 +64,41 @@ dotnet run --project src/Planner.Server
 ```
 
 Открыть http://localhost:5070 (если установленное приложение запущено — см. выше про порт).
-Работает с той же базой, что и установленное приложение.
+Работает с той же папкой данных, что и установленное приложение (и с её `settings.json`). Если аккаунтов ещё нет —
+нужна почта администратора: `dotnet run --project src/Planner.Server -- --Accounts:AdminEmail=you@example.com`.
 
 ## Где лежат данные
 
+Всё — в папке данных `%LOCALAPPDATA%\CoveyPlanner` (docs/specs/accounts.md, D1):
+
 | Что | Где |
 |---|---|
-| База (один файл SQLite) | `%LOCALAPPDATA%\CoveyPlanner\planner.db` |
-| Резервные копии | `%LOCALAPPDATA%\CoveyPlanner\backups\` |
+| Аккаунты (пользователи; позже — коды входа, сессии, приглашения) | `accounts.db` |
+| Данные каждого пользователя (отдельный файл SQLite на пользователя) | `users\<id>.db` |
+| Ключи: Data Protection (cookie входа) и `hmac.key` (хэши кодов) | `keys\` |
+| Ключ служебных скриптов (`backup.ps1`, `install.ps1`) | `local.key` |
+| Настройки этой установки: почта администратора, позже SMTP | `settings.json` |
+| Прежняя база (до аккаунтов), отчёт о переносе | `planner-before-accounts.db`, `accounts-transfer-report.md` |
+| Резервные копии (снимки) | `backups\` |
 
-Рядом с базой во время работы лежат `planner.db-wal` и `planner.db-shm` — это журнал SQLite, он нужен:
-не удаляйте его при работающем сервере.
+Рядом с каждой базой во время работы лежат `…db-wal` и `…db-shm` — это журнал SQLite, он нужен:
+не удаляйте его при работающем сервере. Ключи, `local.key`, `settings.json` и базы в git не попадают (`.gitignore`, проверка — `GitIgnoreTests`).
 
 Пути меняются в `src/Planner.Server/appsettings.json`, раздел `Storage`:
-`DatabasePath` (файл базы), `BackupPath` (папка копий), `BackupsToKeep` (сколько копий хранить, 30),
-`DailyBackup` (копия раз в день при запуске, `true`).
+`DataDirectory` (папка данных), `BackupPath` (папка копий), `BackupsToKeep` (сколько снимков хранить, 30),
+`DailyBackup` (снимок раз в день при запуске, `true`).
 
 ## Резервные копии
 
-**Автоматически** сервер делает копию:
+Копия — **снимок папкой** со всем, что нужно для восстановления: `accounts.db`, базы всех пользователей (`users\*.db`),
+ключи (`keys\`), `local.key`, `settings.json`. Базы копируются средствами SQLite — целостно даже при работающем сервере.
+
+**Автоматически** сервер делает снимок:
 - раз в день — при первом запуске за день;
 - перед обновлением схемы базы (когда в новой версии есть миграции) — на случай, если обновление что-то испортит.
 
-Хранятся последние 30 копий, старые удаляются сами. Имя копии: `planner-2026-09-30_221500-ежедневная.db`.
+Хранятся последние 30 снимков, старые удаляются сами. Имя снимка: `backups\planner-2026-10-22_221500-ежедневная\`.
+(Копии-файлы `planner-….db` времён до аккаунтов остаются как были, сервер их не трогает.)
 
 **Вручную**:
 
@@ -76,20 +106,24 @@ dotnet run --project src/Planner.Server
 powershell -File tools/backup.ps1
 ```
 
-Если сервер запущен, копию делает он (целостная копия средствами SQLite, останавливать работу не нужно).
-Если остановлен — скрипт копирует файл базы в `backups`.
+Если сервер запущен, снимок делает он (скрипт показывает ему ключ из `local.key`, останавливать работу не нужно).
+Если остановлен — скрипт сам копирует те же файлы в `backups\planner-…-вручную\` (базы — вместе с журналом `-wal`).
 
 **Восстановить из копии**:
 1. Остановить сервер: установленное приложение — `Stop-ScheduledTask CoveyPlanner`
    (и закрыть окно приложения, чтобы «сторож» не перезапустил сервер раньше времени — он проверяет раз в 5 минут),
    `dotnet run` — Ctrl+C в его окне.
-2. Удалить `planner.db-wal` и `planner.db-shm`, если они есть.
-3. Скопировать нужную копию на место `planner.db`:
+2. Удалить журналы SQLite текущих баз — `accounts.db-wal`, `accounts.db-shm`, `users\*.db-wal`, `users\*.db-shm` (иначе SQLite
+   применит их к восстановленным файлам).
+3. Скопировать содержимое снимка в папку данных поверх (базы, `keys`, `local.key`, `settings.json`):
    ```powershell
    $dir = Join-Path $env:LOCALAPPDATA 'CoveyPlanner'
-   Copy-Item "$dir\backups\planner-2026-09-30_221500-ежедневная.db" "$dir\planner.db"
+   Get-ChildItem $dir -Recurse -Include '*.db-wal', '*.db-shm' | Where-Object FullName -NotLike "$dir\backups\*" | Remove-Item
+   Copy-Item "$dir\backups\planner-2026-10-22_221500-ежедневная\*" $dir -Recurse -Force
    ```
-   (Если рядом с копией лежит файл `…-wal` — скопировать и его, как `planner.db-wal`.)
+   Восстановить только одного пользователя — скопировать только его `users\<id>.db` (id — в `accounts.db`, таблица `Users`).
+   Ключи из снимка нужны, чтобы остались действительными входы на устройствах; без них просто придётся войти заново.
+   Снимок «перед-обновлением» первой версии с аккаунтами содержит `planner.db` — это база до переноса.
 4. Запустить сервер: `Start-ScheduledTask CoveyPlanner` (или `dotnet run`).
 
 Копию можно просто открыть и посмотреть любым просмотрщиком SQLite (например, DB Browser for SQLite).
@@ -102,8 +136,8 @@ powershell -File tools/backup.ps1
 powershell -File tools/demo.ps1
 ```
 
-Скрипт удаляет прежнюю демо-базу (`$env:TEMP\planner-demo.db`), собирает проект, запускает сервер
-на демо-базе, наполняет её и открывает http://localhost:5080 (порт 5070 — у установленного приложения).
+Скрипт удаляет прежние демо-данные (`$env:TEMP\planner-demo-data`), собирает проект, запускает сервер
+на демо-данных, наполняет её и открывает http://localhost:5080 (порт 5070 — у установленного приложения).
 Остановить — Ctrl+C.
 Сервер запускается из копии сборки во временной папке, поэтому `dotnet build` / `dotnet test`
 можно запускать, не останавливая демо.
@@ -118,7 +152,7 @@ powershell -File tools/e2e.ps1 -AppDir "$env:LOCALAPPDATA\CoveyPlanner\app"   # 
 ```
 
 Для проверок в браузере нужен Node.js (зависимости ставятся сами). Сценарии — `tests/e2e/*.mjs`:
-лента, неделя, роли и цели, раскладка, перетаскивание, клики. У каждого сценария своя чистая база
+лента, неделя, роли и цели, раскладка, перетаскивание, клики. У каждого сценария своя чистая папка данных
 и сервер на порту 5071; демо и основная база не затрагиваются. Снимки при ошибках и полный вывод
 каждого сценария (`<имя>.log`) — в `tests/e2e/out`.
 
@@ -146,7 +180,8 @@ powershell -File tools/icons.ps1
 Новая миграция после изменения модели:
 
 ```powershell
-dotnet ef migrations add <Имя> --project src/Planner.Server --output-dir Data/Migrations
+dotnet ef migrations add <Имя> --project src/Planner.Server --context PlannerDbContext --output-dir Data/Migrations          # данные пользователя
+dotnet ef migrations add <Имя> --project src/Planner.Server --context AccountsDbContext --output-dir Data/Accounts/Migrations # аккаунты
 ```
 
 (`dotnet-ef` подключён локальным инструментом: при первом запуске — `dotnet tool restore`.)

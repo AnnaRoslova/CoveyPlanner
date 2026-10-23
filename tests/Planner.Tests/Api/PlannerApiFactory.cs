@@ -4,31 +4,50 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Planner.Server.Data;
+using Planner.Server.Data.Storage;
 using Planner.Shared;
 
 namespace Planner.Tests.Api;
 
 /// <summary>
-/// Поднимает сервер в памяти с отдельным временным файлом БД и своей папкой резервных копий.
-/// Ежедневная копия при запуске выключена (кроме тестов, которые включают её сами).
+/// Поднимает сервер в памяти со своей временной папкой данных (accounts.db, users*.db, ключи) и своей папкой резервных копий.
+/// Администратор — <see cref="AdminEmail"/> (adminEmail = null — не задан). Ежедневная копия при запуске выключена (кроме тестов, которые включают её сами).
 /// clock — часы сервера вместо настоящих (тест не зависит от того, перешли ли сутки за время теста; batch-3.md, FT1).
 /// </summary>
 public sealed class PlannerApiFactory(
-    string? databasePath = null, bool dailyBackup = false, string? backupDirectory = null, TimeProvider? clock = null)
+    string? dataDirectory = null, bool dailyBackup = false, string? backupDirectory = null, TimeProvider? clock = null,
+    string? adminEmail = PlannerApiFactory.AdminEmail)
     : WebApplicationFactory<Program>
 {
-    public string DatabasePath { get; } =
-        databasePath ?? Path.Combine(Path.GetTempPath(), "planner-tests", $"{Guid.NewGuid():N}.db");
+    public const string AdminEmail = "admin@test.local";
+
+    public string DataDirectory { get; } =
+        dataDirectory ?? Path.Combine(Path.GetTempPath(), "planner-tests", $"data-{Guid.NewGuid():N}");
 
     public string BackupDirectory { get; } =
         backupDirectory ?? Path.Combine(Path.GetTempPath(), "planner-tests", $"backups-{Guid.NewGuid():N}");
 
+    public DataPaths Paths => new(DataDirectory);
+
+    /// <summary>Клиент служебных скриптов — с ключом из local.key (accounts.md, D6).</summary>
+    public HttpClient CreateScriptClient()
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add(LocalKey.Header, File.ReadAllText(Paths.LocalKeyFile).Trim());
+        return client;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting(DataServiceCollectionExtensions.DatabasePathKey, DatabasePath);
+        builder.UseSetting(DataPaths.DataDirectoryKey, DataDirectory);
         builder.UseSetting(DataServiceCollectionExtensions.BackupPathKey, BackupDirectory);
-        builder.UseSetting(DataServiceCollectionExtensions.DailyBackupKey, dailyBackup.ToString());
+        builder.UseSetting(StorageInitializer.DailyBackupKey, dailyBackup.ToString());
+        if (adminEmail is not null)
+        {
+            builder.UseSetting(StorageInitializer.AdminEmailKey, adminEmail);
+        }
+
         if (clock is not null)
         {
             builder.ConfigureTestServices(services => services.AddSingleton(clock));
@@ -38,15 +57,15 @@ public sealed class PlannerApiFactory(
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        TestDatabase.ClearPool(DatabasePath);
-        foreach (var file in Directory.GetFiles(Path.GetDirectoryName(DatabasePath)!, Path.GetFileName(DatabasePath) + "*"))
+        // Папки, переданные тестом, — его забота (их может использовать следующий запуск сервера)
+        if (dataDirectory is null)
         {
-            File.Delete(file);
+            TestDatabase.DeleteDirectory(DataDirectory);
         }
 
-        if (Directory.Exists(BackupDirectory))
+        if (backupDirectory is null)
         {
-            Directory.Delete(BackupDirectory, recursive: true);
+            TestDatabase.DeleteDirectory(BackupDirectory);
         }
     }
 }

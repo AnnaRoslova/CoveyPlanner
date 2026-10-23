@@ -1,5 +1,5 @@
 ﻿# Удаление установленного CoveyPlanner: останавливает сервер, убирает задачу из Планировщика заданий
-# и папку программы. База и резервные копии НЕ удаляются.
+# и папку программы. Данные (аккаунты, файлы пользователей, ключи) и резервные копии НЕ удаляются.
 #
 #   powershell -File tools/uninstall.ps1
 param(
@@ -28,4 +28,4 @@ if (Test-Path $InstallDir) {
 }
 
 $data = Split-Path $InstallDir -Parent
-Write-Host "Данные не тронуты: $data (planner.db, backups)"
+Write-Host "Данные не тронуты: $data (accounts.db, users, keys, backups)"

@@ -27,7 +27,9 @@
 ## 2. Стек
 
 - .NET 10 (LTS).
-- `Planner.Server` — ASP.NET Core Web API (minimal API или контроллеры), EF Core + SQLite (один файл БД), миграции EF.
+- `Planner.Server` — ASP.NET Core Web API (minimal API или контроллеры), EF Core + SQLite, миграции EF. Хранилище (`docs/specs/accounts.md`, D): папка данных `%LOCALAPPDATA%\CoveyPlanner` —
+  общая `accounts.db` (аккаунты) и **отдельный файл SQLite на пользователя** `users\<id>.db` (схема данных одна; `PlannerDbContext` открывается
+  на файл того, чей запрос), `keys\`, `local.key`, `settings.json` (вне git), снимки `backups\planner-…\` — всё целиком.
   Сервер также хостит клиент (Blazor WASM hosted).
 - `Planner.Client` — Blazor WebAssembly, PWA (manifest + service worker), интерфейс на Razor/C#. JS — только точечно через JS interop, если без него никак.
 - `Planner.Shared` — DTO и контракты API.
@@ -35,7 +37,9 @@
 - `Planner.Tests` — xUnit, тесты на доменную логику и API (WebApplicationFactory).
 - UI-библиотеки: по возможности без тяжёлых (MudBlazor и т.п. — только если реально упрощает). Своя аккуратная CSS.
 - Хранилище за интерфейсом (репозиторий/сервис), чтобы можно было сменить SQLite → PostgreSQL.
-- Авторизация на этапе localhost не нужна; заложить место под ASP.NET Identity на будущее (когда сервер будет смотреть в сеть).
+- Аккаунты и вход — `docs/specs/accounts.md`: своя небольшая модель (без ASP.NET Identity) + cookie-аутентификация, вход кодом на почту,
+  регистрация по приглашениям. Этап 1 (хранилище по пользователям, перенос planner.db в аккаунт администратора) сделан; входа пока нет —
+  все запросы от администратора.
 
 ## 3. Экран (десктоп)
 
@@ -340,6 +344,9 @@
   Очередь между перезагрузками не хранится.
 
 ## 5. Модель данных
+
+- `User` (в `accounts.db`) — Id (GUID — им же назван файл данных), Email (нижний регистр, уникальна), IsAdmin, CreatedAt, LastLoginAt?.
+  Всё ниже — в файле данных пользователя (`users\<Id>.db`), без UserId: чужих строк в открытой базе нет.
 
 - `Task` — Id, Title, Notes?, CategoryId? (для ленты; у дела ленты null — «неразобранное»; категорию дело помнит и в плане — для возврата), роли (0..n, таблица TaskRoles: TaskId + RoleId), Quadrant? (1–4), цель (0..1, таблица TaskGoals: TaskId + GoalId + Position — всегда 0),
   State: Someday | Planned | Done | Trashed,

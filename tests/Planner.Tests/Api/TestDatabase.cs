@@ -15,4 +15,20 @@ public static class TestDatabase
         using var connection = new SqliteConnection($"Data Source={path}");
         SqliteConnection.ClearPool(connection);
     }
+
+    /// <summary>Удалить папку данных или копий теста — сначала закрыв пулы всех её баз.</summary>
+    public static void DeleteDirectory(string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return;
+        }
+
+        foreach (var database in Directory.GetFiles(directory, "*.db", SearchOption.AllDirectories))
+        {
+            ClearPool(database);
+        }
+
+        Directory.Delete(directory, recursive: true);
+    }
 }

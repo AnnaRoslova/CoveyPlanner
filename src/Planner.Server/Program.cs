@@ -1,8 +1,16 @@
 using Planner.Server.Data;
+using Planner.Server.Data.Storage;
 using Planner.Server.Endpoints;
 using Planner.Server.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Настройки этой установки вне git (почта администратора, позже SMTP) — settings.json в папке данных (docs/specs/accounts.md, D1);
+// переменные окружения и командная строка важнее файла
+builder.Configuration
+    .AddJsonFile(DataPaths.FromConfiguration(builder.Configuration).SettingsFile, optional: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 builder.Services.AddPlannerData();
 
@@ -19,7 +27,13 @@ builder.Services.AddSingleton<IndexHtml>();
 
 var app = builder.Build();
 
-await app.Services.InitializeDatabaseAsync();
+// Перенос на копии без запуска сервера (accounts.md, X3)
+if (app.Configuration[TransferCommand.ReportKey] is { Length: > 0 } report)
+{
+    return await TransferCommand.RunAsync(app.Services, report);
+}
+
+await app.Services.InitializeStorageAsync();
 
 app.UseExceptionHandler();
 
@@ -53,6 +67,7 @@ api.MapFallback(() => Results.NotFound());
 app.MapFallback("{*path:nonfile}", (IndexHtml index, HttpContext context) => index.Serve(context));
 
 await app.RunAsync();
+return 0;
 
 // Нужен для WebApplicationFactory в тестах
 public partial class Program;

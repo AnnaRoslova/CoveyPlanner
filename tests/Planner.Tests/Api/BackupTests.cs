@@ -1,16 +1,20 @@
+using System.Net;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Planner.Server.Data;
+using Planner.Server.Data.Storage;
 using Planner.Shared;
+using BackupDto = Planner.Server.Endpoints.BackupEndpoints.BackupDto;
 
 namespace Planner.Tests.Api;
 
+/// <summary>Резервные копии — снимки папкой со всеми файлами (docs/specs/accounts.md, D5, D6, T6).</summary>
 public class BackupTests
 {
-    /// <summary>Часы, которые идут вперёд на секунду при каждом обращении (разные имена файлов копий).</summary>
+    /// <summary>Часы, которые идут вперёд на секунду при каждом обращении (разные имена копий).</summary>
     private sealed class TickingClock : TimeProvider
     {
         private DateTimeOffset _now = new(2026, 9, 30, 21, 0, 0, TimeSpan.Zero);
@@ -37,55 +41,90 @@ public class BackupTests
         return Convert.ToInt32(command.ExecuteScalar());
     }
 
+    /// <summary>Файлы снимка — пути относительно его папки, через «/».</summary>
+    private static List<string> FilesOf(string snapshot) =>
+        Directory.GetFiles(snapshot, "*", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(snapshot, f).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
     [Fact]
-    public async Task ManualBackup_IsCompleteDatabaseFile()
+    public async Task ManualBackup_HasEveryUserFile_Accounts_Keys_LocalKey()
+    {
+        await using var factory = new PlannerApiFactory();
+        var client = factory.CreateScriptClient();
+        await client.PostAsJsonAsync("/api/categories", new CreateCategoryRequest("Идеи", "💡"));
+
+        // Второй пользователь (его файл), ключи Data Protection и ключ хэшей кодов
+        var paths = factory.Paths;
+        var admin = Path.GetFileName(Assert.Single(paths.ExistingUserDatabases()));
+        var other = $"{Guid.NewGuid():N}.db";
+        await using (var db = PlannerDbContextFactory.Create(Path.Combine(paths.UsersDirectory, other), TimeProvider.System))
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        TestDatabase.ClearPool(Path.Combine(paths.UsersDirectory, other));
+        Directory.CreateDirectory(Path.Combine(paths.KeysDirectory, "data-protection"));
+        await File.WriteAllTextAsync(Path.Combine(paths.KeysDirectory, "data-protection", "key-1.xml"), "<key/>");
+        await File.WriteAllTextAsync(Path.Combine(paths.KeysDirectory, "hmac.key"), "секрет");
+
+        var backup = await ReadAsync<BackupDto>(await client.PostAsync("/api/backup", null));
+
+        Assert.StartsWith(factory.BackupDirectory, backup.Path);
+        Assert.Contains("вручную", backup.File);
+        string[] expected = ["accounts.db", "keys/data-protection/key-1.xml", "keys/hmac.key", "local.key", $"users/{admin}", $"users/{other}"];
+        Assert.Equal(expected.Order(StringComparer.Ordinal), FilesOf(backup.Path));
+        Assert.Equal(8, CountRoles(Path.Combine(backup.Path, "users", admin))); // целая база администратора
+        Assert.Equal("секрет", await File.ReadAllTextAsync(Path.Combine(backup.Path, "keys", "hmac.key")));
+
+        var list = await client.GetFromJsonAsync<List<BackupDto>>("/api/backup");
+        Assert.Equal(backup.File, Assert.Single(list!).File);
+    }
+
+    [Fact]
+    public async Task Backup_WithoutLocalKey_IsForbidden()
     {
         await using var factory = new PlannerApiFactory();
         var client = factory.CreateClient();
-        await client.PostAsJsonAsync("/api/categories", new CreateCategoryRequest("Идеи", "💡"));
 
-        var response = await client.PostAsync("/api/backup", null);
-        response.EnsureSuccessStatusCode();
-        var backup = await response.Content.ReadFromJsonAsync<Planner.Server.Endpoints.BackupEndpoints.BackupDto>();
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/api/backup", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/backup")).StatusCode);
 
-        Assert.NotNull(backup);
-        Assert.True(File.Exists(backup.Path));
-        Assert.StartsWith(factory.BackupDirectory, backup.Path);
-        Assert.Contains("вручную", backup.File);
-        Assert.Equal(8, CountRoles(backup.Path)); // начальные роли на месте — это целая база
-
-        var list = await client.GetFromJsonAsync<List<Planner.Server.Endpoints.BackupEndpoints.BackupDto>>("/api/backup");
-        Assert.Equal(backup.File, Assert.Single(list!).File);
+        client.DefaultRequestHeaders.Add(LocalKey.Header, "не тот");
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/api/backup", null)).StatusCode);
+        Assert.False(Directory.Exists(factory.BackupDirectory) && Directory.GetDirectories(factory.BackupDirectory).Length > 0);
     }
 
     [Fact]
     public async Task OldBackups_ArePruned()
     {
         var dir = Path.Combine(Path.GetTempPath(), "planner-tests", $"prune-{Guid.NewGuid():N}");
-        var dbPath = Path.Combine(dir, "planner.db");
-        Directory.CreateDirectory(dir);
+        var paths = new DataPaths(dir);
+        Directory.CreateDirectory(paths.UsersDirectory);
         try
         {
-            await using (var db = new PlannerDbContext(new DbContextOptionsBuilder<PlannerDbContext>().UseSqlite($"Data Source={dbPath}").Options))
+            await using (var db = PlannerDbContextFactory.Create(paths.UserDatabase(Guid.NewGuid()), TimeProvider.System))
             {
                 await db.Database.MigrateAsync();
-                var service = new BackupService(db, new BackupOptions(Path.Combine(dir, "backups"), Keep: 2),
-                    new TickingClock(), NullLogger<BackupService>.Instance);
-
-                var first = await service.CreateAsync("тест");
-                await service.CreateAsync("тест");
-                var third = await service.CreateAsync("тест");
-
-                var left = service.List();
-                Assert.Equal(2, left.Count);
-                Assert.Equal(third, left[0]);          // свежие первыми
-                Assert.DoesNotContain(first, left);    // самая старая удалена
             }
+
+            var service = new BackupService(paths, new BackupOptions(Path.Combine(dir, "backups"), Keep: 2),
+                new TickingClock(), NullLogger<BackupService>.Instance);
+
+            var first = await service.CreateAsync("тест");
+            await service.CreateAsync("тест");
+            var third = await service.CreateAsync("тест");
+
+            var left = service.List();
+            Assert.Equal(2, left.Count);
+            Assert.Equal(third, left[0]);          // свежие первыми
+            Assert.DoesNotContain(first, left);    // самая старая удалена
+            Assert.False(Directory.Exists(first));
         }
         finally
         {
-            TestDatabase.ClearPool(dbPath);
-            Directory.Delete(dir, recursive: true);
+            TestDatabase.DeleteDirectory(dir);
         }
     }
 
@@ -94,42 +133,63 @@ public class BackupTests
     {
         await using var first = new PlannerApiFactory(dailyBackup: true, clock: new StoppedClock());
         first.CreateClient();
-        var daily = Assert.Single(Directory.GetFiles(first.BackupDirectory));
+        var daily = Assert.Single(Directory.GetDirectories(first.BackupDirectory));
         Assert.Contains("ежедневная", daily);
+        Assert.Contains("accounts.db", FilesOf(daily));
+        Assert.Contains(FilesOf(daily), f => f.StartsWith("users/", StringComparison.Ordinal));
 
-        // Второй запуск в тот же день на той же базе и с той же папкой копий — новой копии нет
-        await using var second = new PlannerApiFactory(first.DatabasePath, dailyBackup: true, first.BackupDirectory, new StoppedClock());
+        // Второй запуск в тот же день на тех же данных и с той же папкой копий — нового снимка нет
+        await using var second = new PlannerApiFactory(first.DataDirectory, dailyBackup: true, first.BackupDirectory, new StoppedClock());
         second.CreateClient();
-        Assert.Equal(daily, Assert.Single(Directory.GetFiles(first.BackupDirectory)));
+        Assert.Equal(daily, Assert.Single(Directory.GetDirectories(first.BackupDirectory)));
     }
 
     [Fact]
-    public async Task Startup_BacksUpBeforeMigrations()
+    public async Task Startup_BacksUpBeforeTransferAndMigrations()
     {
-        // Существующая база в старой схеме (до GreenLotusPalette) с данными
-        var dbPath = Path.Combine(Path.GetTempPath(), "planner-tests", $"{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-        await using (var db = new PlannerDbContext(new DbContextOptionsBuilder<PlannerDbContext>().UseSqlite($"Data Source={dbPath}").Options))
+        // planner.db (до аккаунтов) в старой схеме (до GreenLotusPalette) с данными
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "planner-tests", $"data-{Guid.NewGuid():N}");
+        var legacy = new DataPaths(dataDirectory).LegacyDatabase;
+        Directory.CreateDirectory(dataDirectory);
+        await using (var db = new PlannerDbContext(new DbContextOptionsBuilder<PlannerDbContext>().UseSqlite($"Data Source={legacy}").Options))
         {
             await db.GetService<IMigrator>().MigrateAsync("RemoveGridAndInbox");
             await db.Database.ExecuteSqlRawAsync(
                 "INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Работа', '#8ac2c4', 0, NULL);");
         }
 
-        TestDatabase.ClearPool(dbPath);
+        TestDatabase.ClearPool(legacy);
 
-        await using var factory = new PlannerApiFactory(dbPath, dailyBackup: true);
-        factory.CreateClient(); // запуск сервера: копия → миграции (ежедневная не нужна — копия за сегодня уже есть)
+        try
+        {
+            await using var factory = new PlannerApiFactory(dataDirectory, dailyBackup: true);
+            factory.CreateClient(); // запуск: снимок → перенос → миграции (ежедневный не нужен — снимок за сегодня уже есть)
 
-        var files = Directory.GetFiles(factory.BackupDirectory).Select(Path.GetFileName).ToList();
-        var beforeUpdate = Assert.Single(files);
-        Assert.Contains("перед-обновлением", beforeUpdate);
+            var snapshot = Assert.Single(Directory.GetDirectories(factory.BackupDirectory));
+            Assert.Contains("перед-обновлением", snapshot);
+            Assert.Equal(["local.key", "planner.db"], FilesOf(snapshot));
 
-        // В копии «перед обновлением» — данные в старой схеме (без последних миграций)
-        await using var old = new PlannerDbContext(new DbContextOptionsBuilder<PlannerDbContext>()
-            .UseSqlite($"Data Source={Path.Combine(factory.BackupDirectory, beforeUpdate!)};Pooling=False").Options);
-        var applied = await old.Database.GetAppliedMigrationsAsync();
-        Assert.DoesNotContain(applied, m => m.EndsWith("GreenLotusPalette", StringComparison.Ordinal));
-        Assert.Equal(1, CountRoles(Path.Combine(factory.BackupDirectory, beforeUpdate!)));
+            // В снимке — данные в старой схеме (без последних миграций)
+            var copy = Path.Combine(snapshot, "planner.db");
+            await using var old = new PlannerDbContext(new DbContextOptionsBuilder<PlannerDbContext>()
+                .UseSqlite($"Data Source={copy};Pooling=False").Options);
+            var applied = await old.Database.GetAppliedMigrationsAsync();
+            Assert.DoesNotContain(applied, m => m.EndsWith("GreenLotusPalette", StringComparison.Ordinal));
+            Assert.Equal(1, CountRoles(copy));
+        }
+        finally
+        {
+            TestDatabase.DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task<T> ReadAsync<T>(HttpResponseMessage response)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            Assert.Fail($"{(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+        }
+
+        return (await response.Content.ReadFromJsonAsync<T>())!;
     }
 }

@@ -11,14 +11,19 @@
 #     запускает сервер, если он не работает).
 #  4. Запускает сервер и открывает http://localhost:5070.
 #
-# База и резервные копии остаются где были: %LOCALAPPDATA%\CoveyPlanner\planner.db и \backups.
+# Данные остаются где были: %LOCALAPPDATA%\CoveyPlanner (accounts.db, users\*.db, keys, settings.json, backups).
+# Первая установка с аккаунтами (docs/specs/accounts.md, X1) — с почтой администратора:
+#   powershell -File tools/install.ps1 -AdminEmail you@example.com
+# она запишется в settings.json папки данных; при запуске planner.db станет данными этого аккаунта (сверка — accounts-transfer-report.md).
 # Права администратора не нужны. Удалить задачу и программу (данные остаются) — tools/uninstall.ps1.
 param(
     [int]$Port = 5070,
     [string]$TaskName = 'CoveyPlanner',
     [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'CoveyPlanner\app'),
-    # Другой файл базы (по умолчанию — %LOCALAPPDATA%\CoveyPlanner\planner.db, как у dotnet run)
-    [string]$DatabasePath = '',
+    # Другая папка данных (по умолчанию — %LOCALAPPDATA%\CoveyPlanner, как у dotnet run)
+    [string]$DataDirectory = '',
+    # Почта администратора — нужна при первой установке с аккаунтами (пишется в settings.json папки данных)
+    [string]$AdminEmail = '',
     [switch]$NoBrowser
 )
 
@@ -28,8 +33,25 @@ $staging = "$InstallDir-new"
 $url = "http://localhost:$Port"
 $exe = Join-Path $InstallDir 'Planner.Server.exe'
 
+$data = if ($DataDirectory) { $DataDirectory } else { Join-Path $env:LOCALAPPDATA 'CoveyPlanner' }
+$settingsFile = Join-Path $data 'settings.json'
+
 function Test-Server {
     try { Invoke-WebRequest "$url/api/ping" -UseBasicParsing -TimeoutSec 2 | Out-Null; return $true } catch { return $false }
+}
+
+# 0. Почта администратора: без неё сервер с аккаунтами не запустится, пока аккаунтов ещё нет
+$settings = if (Test-Path $settingsFile) { Get-Content $settingsFile -Raw -Encoding UTF8 | ConvertFrom-Json } else { [pscustomobject]@{} }
+if ($AdminEmail) {
+    if (-not $settings.PSObject.Properties['Accounts']) { $settings | Add-Member Accounts ([pscustomobject]@{}) }
+    if ($settings.Accounts.PSObject.Properties['AdminEmail']) { $settings.Accounts.AdminEmail = $AdminEmail }
+    else { $settings.Accounts | Add-Member AdminEmail $AdminEmail }
+    New-Item -ItemType Directory -Force $data | Out-Null
+    $settings | ConvertTo-Json -Depth 5 | Set-Content $settingsFile -Encoding UTF8
+    Write-Host "Почта администратора записана: $settingsFile"
+}
+elseif (-not (Test-Path (Join-Path $data 'accounts.db')) -and -not ($settings.PSObject.Properties['Accounts'] -and $settings.Accounts.AdminEmail)) {
+    throw 'Первая установка с аккаунтами: укажите почту администратора — powershell -File tools/install.ps1 -AdminEmail you@example.com'
 }
 
 # 1. Публикация во временную папку
@@ -45,7 +67,11 @@ if ($LASTEXITCODE -ne 0) {
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if (Test-Server) {
     try {
-        $backup = Invoke-RestMethod -Method Post "$url/api/backup" -TimeoutSec 60
+        # Ключ служебных скриптов (accounts.md, D6); прежняя версия сервера его просто не спрашивает
+        $headers = @{}
+        $keyFile = Join-Path $data 'local.key'
+        if (Test-Path $keyFile) { $headers['X-Planner-Local-Key'] = (Get-Content $keyFile -Raw).Trim() }
+        $backup = Invoke-RestMethod -Method Post "$url/api/backup" -Headers $headers -TimeoutSec 120
         Write-Host "Резервная копия перед обновлением: $($backup.path)"
     }
     catch {
@@ -71,7 +97,7 @@ Move-Item $staging $InstallDir
 
 # 4. Задача в Планировщике заданий
 $arguments = "--urls $url"
-if ($DatabasePath) { $arguments += " --Storage:DatabasePath=`"$DatabasePath`"" }
+if ($DataDirectory) { $arguments += " --Storage:DataDirectory=`"$DataDirectory`"" }
 $user = "$env:USERDOMAIN\$env:USERNAME"
 
 $action = New-ScheduledTaskAction -Execute $exe -Argument $arguments -WorkingDirectory $InstallDir

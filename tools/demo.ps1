@@ -1,4 +1,4 @@
-﻿# Демо с нуля: собрать, удалить демо-базу, запустить сервер на ней, наполнить демо-данными и открыть браузер.
+﻿# Демо с нуля: собрать, удалить демо-данные, запустить сервер на них, наполнить демо-данными и открыть браузер.
 # Запуск (из корня репозитория, в PowerShell):
 #   powershell -File tools/demo.ps1
 # Остановить — Ctrl+C в этом окне.
@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$db = Join-Path $env:TEMP 'planner-demo.db'
+$data = Join-Path $env:TEMP 'planner-demo-data'
 $app = Join-Path $env:TEMP 'planner-demo-app'
 $url = "http://localhost:$Port"
 
@@ -33,15 +33,16 @@ $bin = Join-Path $root 'src/Planner.Server/bin/Debug/net10.0'
 robocopy $bin $app /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "Не удалось скопировать сборку в $app" }
 
-# 3. Удалить демо-базу (вместе с файлами журнала SQLite)
-Remove-Item "$db*" -Force -ErrorAction SilentlyContinue
-Write-Host "Демо-база: $db"
+# 3. Удалить демо-данные (папку данных целиком; старая демо-база — файл planner-demo.db — тоже)
+Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $env:TEMP 'planner-demo.db*') -Force -ErrorAction SilentlyContinue
+Write-Host "Демо-данные: $data"
 
 # 4. Запустить сервер в этом же окне (его журнал виден здесь)
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = $url
 $server = Start-Process (Join-Path $app 'Planner.Server.exe') `
-    -ArgumentList "--Storage:DatabasePath=`"$db`" --Storage:DailyBackup=false" `
+    -ArgumentList "--Storage:DataDirectory=`"$data`" --Storage:DailyBackup=false --Accounts:AdminEmail=demo@localhost" `
     -WorkingDirectory $app -NoNewWindow -PassThru
 
 try {

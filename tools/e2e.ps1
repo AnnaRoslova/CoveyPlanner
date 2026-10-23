@@ -6,7 +6,7 @@
 # Нужен Node.js (зависимости ставятся сами при первом запуске). Другой браузер (Chrome):
 #   $env:PLANNER_BROWSER = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 #
-# Для каждого сценария — чистая временная база и свой сервер на порту 5071
+# Для каждого сценария — чистая временная папка данных и свой сервер на порту 5071
 # (демо на 5070 и ваша основная база не затрагиваются). Снимки при ошибках и полный вывод сценариев (<имя>.log) — в tests/e2e/out.
 param(
     [string]$Only = '',
@@ -66,11 +66,11 @@ foreach ($script in $scripts) {
         if (Test-Ping) { throw "Порт $port занят другим сервером — остановите его (демо, dotnet run?)" }
     }
 
-    # У каждого запуска своя чистая база (своё имя: файл прежней мог быть ещё занят только что остановленным сервером)
-    $db = Join-Path $env:TEMP "planner-e2e-$($script.BaseName)-$(Get-Random).db"
+    # У каждого запуска своя чистая папка данных (своё имя: файлы прежней могли быть ещё заняты только что остановленным сервером)
+    $data = Join-Path $env:TEMP "planner-e2e-$($script.BaseName)-$(Get-Random)"
     $env:ASPNETCORE_ENVIRONMENT = $environment
     $env:ASPNETCORE_URLS = $url
-    $server = Start-Process $exe -ArgumentList "--Storage:DatabasePath=`"$db`" --Storage:DailyBackup=false" `
+    $server = Start-Process $exe -ArgumentList "--Storage:DataDirectory=`"$data`" --Storage:DailyBackup=false --Accounts:AdminEmail=e2e@localhost" `
         -WorkingDirectory $workDir -WindowStyle Hidden -PassThru
     try {
         $ready = $false
@@ -107,7 +107,7 @@ foreach ($script in $scripts) {
     finally {
         Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
         $server.WaitForExit(5000) | Out-Null
-        Remove-Item "$db*" -Force -ErrorAction SilentlyContinue
+        Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
