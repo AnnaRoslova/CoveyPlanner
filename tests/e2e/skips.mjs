@@ -1,4 +1,5 @@
-// Пропуски (docs/specs/skips.md, A1–A3, V1–V2, H2, S2, T3): ✕ при наведении рядом с 🗑 → окошко → «не надо»: «—», бледно, не зачёркнуто,
+// Пропуски (docs/specs/skips.md, A1–A3, V1–V2, H2, S2, F1, T3): ✕ и 🗑 при наведении — плашкой над углом записи, щелчок по любой
+// точке названия — окно дела (F1); ✕ → окошко → «не надо»: «—», бледно, не зачёркнуто,
 // внизу дня; чип «заболела» — сразу «не сделала» с причиной; та же ✕ — отменить; клик по чекбоксу пропущенного — сделано;
 // шаг «не сделала» уходит из дня в список проекта; цель: «не надо» уменьшает норму, все «не надо» — «—» вместо процента.
 import puppeteer from 'puppeteer-core';
@@ -59,9 +60,50 @@ const goal = await api('POST', 'goals', { roleId: body, weekStart: day(0), title
 await api('PUT', `goals/${goal.id}`, { title: 'Бег', roleIds: [body], timesPerWeek: 2 });
 const s1 = (await api('POST', `goals/${goal.id}/schedule`, { kind: 'day', date: day(1), index: 0 })).task;
 const s2 = (await api('POST', `goals/${goal.id}/schedule`, { kind: 'day', date: day(3), index: 0 })).task;
+// Для F1: длинное дело (две строки) и проект с шагом в пятницу — запись с «⌄»
+const LONG = 'Позвонить в управляющую компанию насчёт протечки на кухне и договориться о мастере';
+await api('POST', 'tasks', { title: LONG, target: { kind: 'day', date: day(4), index: 0 } });
+const kitchen = await api('POST', 'tasks', { title: 'Кухня', target: { kind: 'someday', categoryId: null, index: 0 }, isProject: true });
+await api('POST', `tasks/${kitchen.id}/steps`, { title: 'Выбрать плитку' });
+await api('POST', `tasks/${kitchen.id}/move`, { kind: 'day', date: day(4), index: 99 });
 await load();
 
-await check('✕ при наведении рядом с 🗑; клик — окошко с двумя крупными кнопками, причиной и быстрыми причинами', async () => {
+await check('плашка ✕/🗑 — над правым верхним углом, не на тексте; щелчок по любой точке названия при наведении — окно дела (F1)', async () => {
+  for (const title of ['Стоматолог', LONG, 'Кухня', 'Купить плитку']) {
+    await hover(title);
+    const g = await page.evaluate(t => {
+      const i = [...document.querySelectorAll('.day .item')].find(x => x.querySelector('.title')?.textContent.trim() === t);
+      const tools = i.querySelector('.row-tools');
+      const p = tools.getBoundingClientRect(), tx = i.querySelector('.tx').getBoundingClientRect();
+      const btns = [...tools.querySelectorAll('button')].map(b => b.getBoundingClientRect()).map(r => [r.width, r.height]);
+      // Сетка точек по названию: каждая должна попадать в название этой записи, а не в плашку
+      const r = i.querySelector('.title').getBoundingClientRect();
+      const misses = [];
+      const textRight = r.right - parseFloat(getComputedStyle(i.querySelector('.title')).paddingRight); // справа от текста — зона «⌄» (R5)
+      for (let x = r.left + 2; x < textRight - 1; x += 6) for (let y = r.top + 2; y < r.bottom - 1; y += 4) {
+        const el = document.elementFromPoint(x, y);
+        if (!el?.closest('.title-box') || el.closest('.item') !== i) misses.push(`${x - r.left | 0},${y - r.top | 0}:${el?.className}`);
+      }
+      return {
+        opacity: Number(getComputedStyle(tools).opacity), above: p.bottom <= tx.top + 0.5, btns, misses: misses.join(' '),
+        right: [textRight - 3, r.top + r.height / 2], mid: [r.left + r.width / 2, r.top + r.height / 2],
+      };
+    }, title);
+    assert(g.opacity === 1 && g.above, `${title}: ${JSON.stringify(g)}`);
+    assert(g.btns.length >= 1 && g.btns.every(([w, h]) => w >= 24 && h >= 24), `${title}: кнопки ${JSON.stringify(g.btns)}`);
+    assert(!g.misses, `${title}: мимо названия ${g.misses}`);
+    for (const [x, y] of [g.right, g.mid]) {
+      await page.mouse.move(x, y); await sleep(200);
+      await page.mouse.click(x, y);
+      await page.waitForSelector('.editor .title-input', { timeout: 3000 });
+      assert(await page.$eval('.editor .title-input', e => e.value) === title, `${title}: открылось не то окно`);
+      assert(!(await page.$('.skip-dialog')), `${title}: открылось окошко пропуска`);
+      await page.keyboard.press('Escape'); await settle();
+    }
+  }
+});
+
+await check('✕ при наведении в плашке с 🗑; клик — окошко с двумя крупными кнопками, причиной и быстрыми причинами', async () => {
   await hover('Стоматолог');
   const btn = await page.evaluate(() => {
     const i = [...document.querySelectorAll('.day .item')].find(x => x.querySelector('.title')?.textContent.trim() === 'Стоматолог');
@@ -131,6 +173,8 @@ await check('клик по чекбоксу пропущенного — сде�
 });
 
 await check('шаг «не сделала» в дне — уходит из дня в список проекта, плашка «вернулся в «Ремонт»»', async () => {
+  // Плашка над первой строкой среды — под уведомлением (вверху по центру): дождаться, пока прошлое уйдёт
+  await page.waitForFunction(() => !document.querySelector('.toast'), { timeout: 10000 });
   await hover('Купить плитку');
   await (await (await item('Купить плитку')).$('.skip-btn')).click();
   await page.waitForSelector('.skip-dialog');

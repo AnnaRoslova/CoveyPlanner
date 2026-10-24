@@ -297,59 +297,81 @@
     white-space: nowrap;
 }
 
-/* «В корзину» прямо из строки дня: серая иконка поверх правого края записи — места у текста и пилюль не отнимает.
+/* ✕ (пропуск) и 🗑 (в корзину) — маленькой плашкой НАД правым верхним углом записи (docs/specs/skips.md, F1): стоит на верхней
+   границе записи, поверх рамки и соседней строки сверху, а не на тексте — название видно и нажимается целиком.
    Мышь — при наведении; касание — после свайпа влево (класс swiped ставит js/dnd.js). Невидимая — не нажимается. */
-.item.trashable {
+.item.trashable,
+.item.skippable {
     position: relative;
     touch-action: pan-y; /* свайп влево по делу — наш (js/dnd.js), вертикальная прокрутка — браузера */
 }
 
-.trash-btn {
+.row-tools {
     position: absolute;
-    top: 3px;
-    right: 3px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
+    z-index: 2;
+    right: 8px;
+    bottom: calc(100% - 6px); /* низ плашки — на уровне верхнего отступа записи, выше текста */
+    display: flex;
+    gap: 1px;
+    padding: 1px;
+    border-radius: 999px;
     background: var(--surface);
-    box-shadow: 0 0 0 3px var(--surface);
-    color: var(--faint);
+    box-shadow: var(--shadow-pop);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s;
 }
 
 @media (hover: hover) {
-    .item.trashable:hover .trash-btn {
+    .item:hover > .row-tools {
         opacity: 1;
         pointer-events: auto;
     }
 }
 
-.item.trashable.swiped .trash-btn,
-.trash-btn:focus-visible {
+.item.swiped > .row-tools,
+.row-tools:focus-within {
     opacity: 1;
     pointer-events: auto;
 }
 
-/* Свайп показал корзину — иконка крупнее, под палец */
-.item.trashable.swiped .trash-btn {
+/* Свайп показал кнопки — крупнее, под палец, у правого края по центру записи (как раньше) */
+.item.swiped > .row-tools {
+    bottom: auto;
     top: 50%;
+    right: 3px;
+    gap: 6px;
+    transform: translateY(-50%);
+}
+
+.trash-btn,
+.skip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: var(--faint);
+}
+
+.skip-btn {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.item.swiped .trash-btn,
+.item.swiped .skip-btn {
     width: 30px;
     height: 30px;
-    transform: translateY(-50%);
 }
 
 .trash-btn:hover {
     background: var(--a-soft);
-    box-shadow: 0 0 0 3px var(--a-soft);
     color: var(--a-ink);
 }
 
-body.dragging .trash-btn {
+body.dragging .row-tools {
     visibility: hidden;
 }
 
@@ -434,7 +456,7 @@ body.dragging .trash-btn {
 .title.clamp[data-long],
 .title.unclamped,
 .has-steps .title {
-    padding-right: 14px;
+    padding-right: 16px; /* 8px отступа записи + 16 = зона «⌄» 24px: стрелка не заходит на буквы */
 }
 
 .has-steps .pills,
@@ -476,13 +498,6 @@ body.dragging .trash-btn {
 .expand:hover {
     background: var(--b-soft);
     color: var(--b-deep);
-}
-
-/* 🗑 у разворачиваемых записей — левее «⌄», чтобы не пересекались */
-.has-steps .trash-btn,
-.item:has(.title.clamp[data-long]) .trash-btn,
-.item:has(.expand.on) .trash-btn {
-    right: 28px;
 }
 
 /* «⌄» ставится относительно записи */
@@ -578,16 +593,6 @@ body.dragging .trash-btn {
     }
 }
 
-.item.skippable {
-    position: relative;
-    touch-action: pan-y;
-}
-
-/* У записи без 🗑 («на неделе») ✕ — у самого края */
-.item.skippable:not(.trashable) .skip-btn {
-    right: 3px;
-}
-
 /* Пропуск (docs/specs/skips.md, V1, A1): «—» серое (не надо), ✕ приглушённо-красный (не сделала); текст бледный, НЕ зачёркнут */
 .ck.skip-mark {
     display: inline-flex;
@@ -612,47 +617,6 @@ body.dragging .trash-btn {
     color: var(--faint);
 }
 
-.skip-btn {
-    position: absolute;
-    top: 3px;
-    right: 28px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--surface);
-    box-shadow: 0 0 0 3px var(--surface);
-    color: var(--faint);
-    font-size: 12px;
-    font-weight: 800;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s;
-}
-
-@media (hover: hover) {
-    .item.skippable:hover .skip-btn {
-        opacity: 1;
-        pointer-events: auto;
-    }
-}
-
-.item.skippable.swiped .skip-btn,
-.skip-btn:focus-visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.item.skippable.swiped .skip-btn {
-    top: 50%;
-    right: 40px;
-    width: 30px;
-    height: 30px;
-    transform: translateY(-50%);
-}
-
 .skip-btn:hover,
 .skip-btn.on {
     color: var(--skip-ink);
@@ -660,17 +624,6 @@ body.dragging .trash-btn {
 
 .skip-btn:hover {
     background: var(--a-soft);
-    box-shadow: 0 0 0 3px var(--a-soft);
-}
-
-body.dragging .skip-btn {
-    visibility: hidden;
-}
-
-.has-steps .skip-btn,
-.item:has(.title.clamp[data-long]) .skip-btn,
-.item:has(.expand.on) .skip-btn {
-    right: 53px;
 }
 
 /* Цель, у которой все занятия «не надо» — тихое «—» вместо процента (H2) */

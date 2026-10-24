@@ -151,18 +151,25 @@
     {
         <div class="actions" @onclick:stopPropagation="true">@Actions</div>
     }
-    @if (OnSkip.HasDelegate)
+    @if (OnSkip.HasDelegate || OnTrash.HasDelegate)
     {
-        @* Пропуск (skips.md, A1): рядом с 🗑 — при наведении, на касании — тем же свайпом; у пропущенного — «Отменить пропуск» *@
-        <button type="button" class="skip-btn @(Skip is null ? "" : "on")" title="@(Skip is null ? "Пропуск…" : "Отменить пропуск")"
-                aria-label="@(Skip is null ? "Пропуск" : "Отменить пропуск")" data-strict-click
-                @onclick="OnSkip" @onclick:stopPropagation="true">✕</button>
-    }
-    @if (OnTrash.HasDelegate)
-    {
-        @* В корзину без подтверждения (с «Вернуть»): мышью — при наведении; на касании — после свайпа влево (js/dnd.js, класс swiped) *@
-        <button type="button" class="trash-btn" title="В корзину" aria-label="В корзину" data-strict-click
-                @onclick="OnTrash" @onclick:stopPropagation="true"><Icon Name="trash" Size="13" /></button>
+        @* ✕ и 🗑 — плашкой над правым верхним углом записи (skips.md, F1): название видно и нажимается целиком.
+           Мышью — при наведении; на касании — после свайпа влево (js/dnd.js, класс swiped), тогда крупно у правого края *@
+        <div class="row-tools" @onclick:stopPropagation="true">
+            @if (OnSkip.HasDelegate)
+            {
+                @* Пропуск (skips.md, A1): у пропущенного — «Отменить пропуск» *@
+                <button type="button" class="skip-btn @(Skip is null ? "" : "on")" title="@(Skip is null ? "Пропуск…" : "Отменить пропуск")"
+                        aria-label="@(Skip is null ? "Пропуск" : "Отменить пропуск")" data-strict-click
+                        @onclick="OnSkip" @onclick:stopPropagation="true">✕</button>
+            }
+            @if (OnTrash.HasDelegate)
+            {
+                @* В корзину без подтверждения (с «Вернуть») *@
+                <button type="button" class="trash-btn" title="В корзину" aria-label="В корзину" data-strict-click
+                        @onclick="OnTrash" @onclick:stopPropagation="true"><Icon Name="trash" Size="13" /></button>
+            }
+        </div>
     }
     @if (IsProject && StepsProgress is { } progress)
     {

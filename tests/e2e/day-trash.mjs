@@ -37,8 +37,9 @@ const trashBtn = title => page.evaluate(t => {
   const item = [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === t);
   const b = item?.querySelector('.trash-btn');
   if (!b) return null;
-  const s = getComputedStyle(b), r = b.getBoundingClientRect();
-  return { opacity: Number(s.opacity), events: s.pointerEvents, x: r.x + r.width / 2, y: r.y + r.height / 2, swiped: item.classList.contains('swiped') };
+  // Прячет и показывает плашка ✕/🗑 (skips.md, F1): прозрачность — у неё, нажимаемость — у кнопки
+  const s = getComputedStyle(b), r = b.getBoundingClientRect(), tools = getComputedStyle(b.closest('.row-tools'));
+  return { opacity: Number(tools.opacity), events: s.pointerEvents, x: r.x + r.width / 2, y: r.y + r.height / 2, swiped: item.classList.contains('swiped') };
 }, title);
 const textBox = title => page.evaluate(t => {
   const item = [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === t);
