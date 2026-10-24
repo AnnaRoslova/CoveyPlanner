@@ -1,13 +1,19 @@
 @* Поле «Дата» окон дела и мысли (docs/specs/ui-declutter.md, U2.5): «Вт 20 окт · сегодня ▾». Меню: «сегодня», «завтра», «другая дата…»
    (календарь прямо в меню), «без даты» (подсказка — куда уйдёт: в ленту, в список шагов), за чертой — «→ на след. неделю» (без дня, слева
-   под ролью; единственное место этого действия, B1). У дела без роли «→ на след. неделю» открывает в том же меню роли («в роль: ● Работа»)
-   и «в ленту» (B3). У занятия цели пункт бледный — с причиной. Значение применяется по «Сохранить» окна, «→ на след. неделю» — сразу. *@
+   под ролью, B1). У дела без роли «→ на след. неделю» открывает в том же меню роли («в роль: ● Работа»)
+   и «в ленту» (B3). У занятия цели пункт бледный — с причиной. Значение применяется по «Сохранить» окна, «→ на след. неделю» — сразу.
+   Сразу после поля — кнопка «→ след. неделя» (polish-1.md, W1–W4): то же действие, без роли — меню сразу на выборе роли; у занятия цели
+   её нет. Shift+→ в окне нажимает её (js/hotkeys.js, W5). *@
 
 <button @ref="_field" type="button" class="select-field date-field" aria-label="Дата" aria-haspopup="menu"
         aria-expanded="@(_open ? "true" : "false")" @onclick="Toggle">
     <span class="select-label">@Text</span>
     <Icon Name="chevron-down" Size="13" />
 </button>
+@if (NextWeekDisabled is null)
+{
+    <button type="button" class="btn small next-week-b" title="На следующую неделю, без дня (Shift+→)" @onclick="OnNextWeekButton">→ след. неделя</button>
+}
 
 @if (_open)
 {
@@ -144,6 +150,20 @@
         {
             await SetAsync(date);
         }
+    }
+
+    /// <summary>Кнопка «→ след. неделя» (W2): с ролью — сразу, без роли — меню поля сразу на выборе роли.</summary>
+    private async Task OnNextWeekButton()
+    {
+        if (RoleIds.Count == 0)
+        {
+            _open = true;
+            _calendar = false;
+            _roles = true;
+            return;
+        }
+
+        await NextWeekAsync(null, false);
     }
 
     private async Task OnNextWeekClick()

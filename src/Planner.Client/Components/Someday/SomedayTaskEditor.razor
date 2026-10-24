@@ -1,5 +1,5 @@
 @* Окно мысли ленты «Когда-нибудь» (docs/specs/ui-declutter.md, U2.B; batch-ux.md, BP2): название, категория, «Дата: в ленте ▾»
-   (сегодня, завтра, другая дата… — мысль встаёт в день; за чертой — «→ на след. неделю»), «🛠 Сделать проектом» — явно, с подписью
+   (сегодня, завтра, другая дата… — мысль встаёт в день; за чертой — «→ на след. неделю», он же — кнопкой рядом), «🛠 Сделать проектом» — явно, с подписью
    (у мысли нет «+ шаг»: шаги — только у проекта); редкие поля (заметки, «Проект» — станет шагом, уйдёт из ленты, S8) — сводкой или «+ …» (U2.2).
    У проекта — его шаги («☑ N/M», порядок, 🗑, «N занятий ▸»). Редкое — в «⋯»: «🛠 больше не проект», «в корзину».
    Сменили категорию — мысль встаёт наверх новой. Enter в названии — сохранить, Esc или клик мимо — отмена. Стили — css/editor.css. *@
@@ -19,8 +19,10 @@
 
     <div class="line">
         <span class="label">Дата</span>
-        <DateField @bind-Value="_date" EmptyText="в ленте" NoDateHint="остаться в ленте"
-                   RoleIds="EditedTask.RoleIds" Roles="State.OrderedRoles" ShowFeed="false" OnNextWeek="NextWeekAsync" />
+        <div class="line-values">
+            <DateField @bind-Value="_date" EmptyText="в ленте" NoDateHint="остаться в ленте"
+                       RoleIds="EditedTask.RoleIds" Roles="State.OrderedRoles" ShowFeed="false" OnNextWeek="NextWeekAsync" />
+        </div>
     </div>
 
     @if (EditedTask.Id > 0 && !IsProject)

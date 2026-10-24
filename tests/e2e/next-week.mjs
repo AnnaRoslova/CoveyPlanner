@@ -2,6 +2,7 @@
 // дело с ролью — на следующей неделе слева под ролью (список не свёрнут), плашка «… → след. неделя, «Роль» · Показать · Вернуть»;
 // без роли — меню ролей (и «в ленту» у дела); бросок на заголовок роли — то же; между целями — по-прежнему новая цель. Данные — через API.
 // E2 (fixes-2026-10.md): дело «на неделе» без дня на текущей и будущих неделях подсвечено «не назначено на день».
+// W1–W5 (polish-1.md): кнопка «→ след. неделя» сразу после поля «Дата» и Shift+→ в окне — то же действие; у занятия цели кнопки нет.
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -84,7 +85,6 @@ await load();
 
 await check('B1, B4: окно дела с ролью — «→ на след. неделю» в меню «Дата» → дела нет в дне; плашка «… → след. неделя, «Семья» · Показать · Вернуть»', async () => {
   await openDayTask(1, 'Купить подарок'); await settle();
-  assert(!(await page.$('.editor .next-week-row')), 'отдельная кнопка осталась');
   await nextWeekItem(); await settle();
   assert(!(await page.$('.editor')), 'окно не закрылось');
   assert(!(await dayTitles(1)).includes('Купить подарок'), 'осталось в дне');
@@ -179,7 +179,11 @@ await check('N4.5: окно занятия цели — пункт неакти�
   await page.click('.editor .date-field'); await sleep(300);
   assert(await page.$eval('.date-menu .option.next-week', b => b.disabled), 'пункт активен');
   assert((await page.$eval('.date-menu .option.next-week', e => e.textContent)).includes('своя неделя'), 'нет подсказки');
-  await page.keyboard.press('Escape'); await sleep(200); await page.keyboard.press('Escape'); await settle();
+  await page.keyboard.press('Escape'); await sleep(200);
+  assert(!(await page.$('.editor .next-week-b')), 'W4: у занятия цели есть кнопка «→ след. неделя»');
+  await page.focus('.editor .title-input'); await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight'); await page.keyboard.up('Shift'); await settle();
+  assert(await page.$('.editor') && (await dayTitles(2)).includes('Квартальный план'), 'W4: Shift+→ перенёс занятие цели');
+  await page.keyboard.press('Escape'); await settle();
 });
 
 await check('N4: дыра закрыта — дело из дня, ставшее целью другой недели, теряет день', async () => {
@@ -214,6 +218,74 @@ await check('E2: дело «на неделе» текущей недели по
   assert(!(await row('Записаться в зал')), 'осталось в «на неделе»');
   assert((await dayTitles(4)).includes('Записаться в зал'), JSON.stringify(await dayTitles(4)));
   await api('DELETE', `tasks/${past.id}`);
+});
+
+const shiftRight = async () => { await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight'); await page.keyboard.up('Shift'); await settle(); };
+const withRole = async (title, roleId) => {
+  const t = await api('POST', 'tasks', { title, target: { kind: 'day', date: dayIso(2), index: 0 } });
+  await api('PUT', `tasks/${t.id}`, { title, notes: null, roleIds: [roleId], quadrant: null, startTime: null, durationMinutes: null });
+  return t;
+};
+const tickets = await withRole('Билеты', family.id);
+const bills = await withRole('Квитанции', work.id);
+const lamp = await withRole('Лампа', family.id);
+await api('POST', 'tasks', { title: 'Полка', target: { kind: 'someday', categoryId: ideas.id, index: 0 } });
+
+await check('W1–W2: окно дела — кнопка «→ след. неделя» сразу после поля «Дата» (время — после неё); клик → под «Семьёй» следующей недели, плашка «Показать · Вернуть»', async () => {
+  await load();
+  await openDayTask(2, 'Билеты'); await settle();
+  const g = await page.evaluate(() => {
+    const f = document.querySelector('.editor .date-field'), b = document.querySelector('.editor .next-week-b');
+    if (!b) return null;
+    const fr = f.getBoundingClientRect(), br = b.getBoundingClientRect();
+    return { text: b.textContent.trim(), title: b.title, next: f.nextElementSibling === b, sameLine: Math.abs((fr.top + fr.bottom) / 2 - (br.top + br.bottom) / 2) < 4,
+      h: br.height };
+  });
+  assert(g && g.text === '→ след. неделя' && g.next && g.sameLine && g.h >= 24 && g.title.includes('Shift+→'), JSON.stringify(g));
+  await (await page.$('.editor')).screenshot({ path: `${SHOTS}/next-week-button.png` });
+  await page.click('.editor .next-week-b'); await settle();
+  assert(!(await page.$('.editor')), 'окно не закрылось');
+  assert(!(await dayTitles(2)).includes('Билеты'), 'осталось в дне');
+  const t = await toast();
+  assert(t?.includes('«Билеты» → след. неделя, «Семья»') && t.includes('Показать') && t.includes('Вернуть'), JSON.stringify(t));
+  const saved = await api('GET', `tasks/${tickets.id}`);
+  assert(saved.plannedDate === null && saved.plannedWeek === dayIso(7), JSON.stringify(saved));
+});
+
+await check('W2: окно мысли без роли — кнопка открывает меню поля «Дата» сразу на выборе роли (без «в ленту»)', async () => {
+  await load();
+  await page.evaluate(() => [...document.querySelectorAll('.cat-b > .item')].find(i => i.querySelector('.title').textContent.trim() === 'Полка').querySelector('.title').click());
+  await settle();
+  await page.click('.editor .next-week-b'); await sleep(300);
+  const items = await menuItems();
+  assert(items[0]?.startsWith('‹ на след. неделю') && items.includes('в роль: Дом') && !items.includes('в ленту'), JSON.stringify(items));
+  await page.keyboard.press('Escape'); await sleep(200); await page.keyboard.press('Escape'); await settle();
+});
+
+await check('W5: Shift+→ в окне дела (курсор в конце названия) — на след. неделю, плашка', async () => {
+  await load();
+  await openDayTask(2, 'Квитанции'); await settle();
+  await page.focus('.editor .title-input');
+  await page.evaluate(() => { const i = document.querySelector('.editor .title-input'); i.setSelectionRange(i.value.length, i.value.length); });
+  await shiftRight();
+  assert(!(await page.$('.editor')), 'окно не закрылось');
+  assert((await toast())?.includes('«Квитанции» → след. неделя, «Работа»'), JSON.stringify(await toast()));
+  assert((await api('GET', `tasks/${bills.id}`)).plannedWeek === dayIso(7), 'не на след. неделе');
+});
+
+await check('W5: курсор в середине названия — Shift+→ выделяет букву, дело на месте; при открытом меню даты — ничего', async () => {
+  await load();
+  await openDayTask(2, 'Лампа'); await settle();
+  await page.focus('.editor .title-input');
+  await page.evaluate(() => document.querySelector('.editor .title-input').setSelectionRange(1, 1));
+  await shiftRight();
+  const sel = await page.evaluate(() => { const i = document.activeElement; return [i.className, i.selectionStart, i.selectionEnd]; });
+  assert(await page.$('.editor') && sel[1] === 1 && sel[2] === 2, JSON.stringify(sel));
+  await page.click('.editor .date-field'); await sleep(300);
+  await shiftRight();
+  assert(await page.$('.date-menu') && await page.$('.editor'), 'меню или окно закрылись');
+  await page.keyboard.press('Escape'); await sleep(200); await page.keyboard.press('Escape'); await settle();
+  assert((await api('GET', `tasks/${lamp.id}`)).plannedDate === dayIso(2), 'дело ушло из дня');
 });
 
 await check('в консоли нет ошибок', async () => {

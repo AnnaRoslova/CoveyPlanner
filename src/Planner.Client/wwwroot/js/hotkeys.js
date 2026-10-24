@@ -1,7 +1,7 @@
 // Горячие клавиши (docs/specs/batch-ux.md, BK) — одна точка обработки; действия выполняет сервис Hotkeys (C#).
 // Клавиши — физические (e.code): в русской раскладке N — та же клавиша, что «т».
 // BK1: без Ctrl — не во время набора текста и не при открытом окне/экране/списке; с Alt и Meta — не перехватываются.
-// Ctrl+K — всегда (и из поля, и из окна); Ctrl+Z — «Вернуть» на плашке, только вне поля ввода.
+// Ctrl+K — всегда (и из поля, и из окна); Ctrl+Z — «Вернуть» на плашке, только вне поля ввода; Shift+→ — в окне дела или мысли (polish-1.md, W5).
 const PLAIN = {
     KeyN: 'thought', KeyD: 'day', ArrowLeft: 'prev', ArrowRight: 'next', KeyT: 'today',
     KeyH: 'totals', KeyP: 'tabs', KeyW: 'review', KeyG: 'jump',
@@ -13,6 +13,37 @@ const OVERLAYS = '.editor-backdrop, .habits-backdrop, .done-backdrop, .report-ba
 const isTyping = el => !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 
 let host = null;
+
+/**
+ * Shift+→ в окне дела или мысли (docs/specs/polish-1.md, W5–W6): нажать кнопку «→ след. неделя» этого окна.
+ * Не при открытом списке; в поле текста — только когда курсор в конце и ничего не выделено (иначе это выделение текста).
+ * Кнопки нет (занятие цели) — клавиша ничего не делает.
+ */
+function nextWeekButton(e) {
+    if (e.code !== 'ArrowRight' || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || document.querySelector('.popover')) {
+        return null;
+    }
+
+    const button = document.querySelector('.editor .next-week-b');
+    if (!button) {
+        return null;
+    }
+
+    const el = document.activeElement;
+    if (isTyping(el)) {
+        let atEnd = false;
+        try {
+            atEnd = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
+        } catch {
+            // Поле без выделения текста (число, дата) — Shift+→ остаётся полю
+        }
+        if (!atEnd) {
+            return null;
+        }
+    }
+
+    return button;
+}
 
 function actionOf(e) {
     if (e.altKey || e.metaKey) {
@@ -51,6 +82,13 @@ async function waitFor(selector, timeout = 2000) {
 }
 
 async function onKeyDown(e) {
+    const nextWeek = nextWeekButton(e);
+    if (nextWeek) {
+        e.preventDefault();
+        nextWeek.click();
+        return;
+    }
+
     const action = actionOf(e);
     if (!action || !host) {
         return;
