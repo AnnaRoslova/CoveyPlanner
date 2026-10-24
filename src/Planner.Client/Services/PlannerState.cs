@@ -64,7 +64,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     /// <summary>Дела дня: сначала со временем (по времени), затем без времени (ручной порядок).</summary>
     public IEnumerable<TaskDto> TasksOn(DateOnly date) =>
         _tasks.Values
-            .Where(t => (t.State is TaskStateDto.Planned or TaskStateDto.Done) && t.PlannedDate == date)
+            .Where(t => (t.State is TaskStateDto.Planned or TaskStateDto.Done or TaskStateDto.Skipped) && t.PlannedDate == date)
             .OrderBy(t => t.StartTime is null)
             .ThenBy(t => t.StartTime)
             .ThenBy(t => t.SortOrder);
@@ -74,7 +74,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     /// под ними — выполненные в том же порядке. Ручной порядок (<see cref="TasksOn"/>) не меняется: сняли отметку — дело на своём месте.
     /// </summary>
     public IEnumerable<TaskDto> DayRows(DateOnly date) =>
-        TasksOn(date).OrderBy(t => t.State == TaskStateDto.Done);
+        TasksOn(date).OrderBy(IsClosed); // выполненные и пропущенные — внизу (D3, skips.md V2)
 
     /// <summary>
     /// Бросок в день (D3): позиция на экране — среди невыполненных дел без времени (выполненные внизу в счёт не идут).
@@ -84,7 +84,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     public int DropIndexInDay(DateOnly date, int taskId, int visualIndex)
     {
         var untimed = TasksOn(date).Where(t => t.StartTime is null && t.Id != taskId).ToList();
-        var open = untimed.Where(t => t.State != TaskStateDto.Done).ToList();
+        var open = untimed.Where(t => !IsClosed(t)).ToList();
         if (open.Count == untimed.Count)
         {
             return visualIndex; // выполненных без времени нет — позиции совпадают
@@ -143,10 +143,10 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     }
 
     /// <summary>Отмеченные занятия целей недели (сверх «раз в неделю» не считаются).</summary>
-    public int SessionsDone => Goals.Sum(g => Math.Min(g.DoneCount, g.TimesPerWeek));
+    public int SessionsDone => Goals.Sum(g => Math.Min(g.DoneCount, g.Norm));
 
     /// <summary>Сколько всего занятий нужно по «раз в неделю» у целей недели.</summary>
-    public int SessionsTotal => Goals.Sum(g => g.TimesPerWeek);
+    public int SessionsTotal => Goals.Sum(g => g.Norm); // без «не надо» (skips.md, H2)
 
     // Загрузка и навигация
 

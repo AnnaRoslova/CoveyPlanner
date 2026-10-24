@@ -26,7 +26,7 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
 
     public Task<List<TaskItem>> GetWithoutDayOnWeekAsync(DateOnly weekStart, CancellationToken ct = default) =>
         db.Tasks.Where(t => t.PlannedWeek == weekStart && t.PlannedDate == null
-                            && (t.State == TaskState.Planned || t.State == TaskState.Done))
+                            && (t.State == TaskState.Planned || t.State == TaskState.Done || t.State == TaskState.Skipped))
             .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
             .ToListAsync(ct);
 
@@ -36,14 +36,14 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .ToListAsync(ct);
 
     public Task<List<TaskItem>> GetUntimedOnDayAsync(DateOnly date, CancellationToken ct = default) =>
-        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
+        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done || t.State == TaskState.Skipped)
                             && t.PlannedDate == date && t.StartTime == null)
             .OrderBy(t => t.SortOrder)
             .ToListAsync(ct);
 
     /// <summary>Порядок как на экране: сначала дела со временем (по времени), затем без времени (по SortOrder).</summary>
     public Task<List<TaskItem>> GetPlannedAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
-        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
+        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done || t.State == TaskState.Skipped)
                             && t.PlannedDate >= from && t.PlannedDate <= to)
             .OrderBy(t => t.PlannedDate)
             .ThenBy(t => t.StartTime == null).ThenBy(t => t.StartTime)
@@ -51,7 +51,7 @@ public class EfTaskRepository(PlannerDbContext db) : ITaskRepository
             .ToListAsync(ct);
 
     public Task<List<DateOnly>> GetBusyDaysAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
-        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done)
+        db.Tasks.Where(t => (t.State == TaskState.Planned || t.State == TaskState.Done || t.State == TaskState.Skipped)
                             && t.PlannedDate >= from && t.PlannedDate <= to)
             .Select(t => t.PlannedDate!.Value)
             .Distinct()
@@ -195,11 +195,24 @@ public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
         return [.. sessions, .. kept.Select(k => new HabitClip(k.SeriesId, k.Date, k.Date))];
     }
 
-    public Task<List<HabitWeekNorm>> GetWeekNormsAsync(CancellationToken ct = default) =>
-        db.WeeklyGoals.AsNoTracking()
+    /// <summary>
+    /// Норма недели — «раз в неделю» цели без занятий «не надо» (docs/specs/skips.md, H1); норма 0 — неделя без нормы
+    /// (не засчитана и не пропуск), такой недели в списке нет.
+    /// </summary>
+    public async Task<List<HabitWeekNorm>> GetWeekNormsAsync(CancellationToken ct = default) =>
+        (await db.WeeklyGoals.AsNoTracking()
             .Where(g => g.SeriesId != null && g.Series!.IsRecurring)
-            .Select(g => new HabitWeekNorm(g.SeriesId!.Value, g.WeekStart, g.TimesPerWeek))
-            .ToListAsync(ct);
+            .Select(g => new
+            {
+                SeriesId = g.SeriesId!.Value,
+                g.WeekStart,
+                Norm = g.TimesPerWeek - db.Set<TaskGoal>().Count(l => l.GoalId == g.Id
+                    && l.Task.State == TaskState.Skipped && l.Task.SkipKind == SkipKind.NotNeeded),
+            })
+            .Where(x => x.Norm > 0)
+            .ToListAsync(ct))
+        .Select(x => new HabitWeekNorm(x.SeriesId, x.WeekStart, x.Norm))
+        .ToList();
 }
 
 public class EfSettingsRepository(PlannerDbContext db) : ISettingsRepository
@@ -215,6 +228,19 @@ public class EfSettingsRepository(PlannerDbContext db) : ISettingsRepository
 
         return settings;
     }
+}
+
+public class EfTaskSkipRepository(PlannerDbContext db) : ITaskSkipRepository
+{
+    public Task<List<TaskSkip>> GetForTaskAsync(int taskId, CancellationToken ct = default) =>
+        db.TaskSkips.Where(s => s.TaskId == taskId).OrderByDescending(s => s.RecordedAt).ThenByDescending(s => s.Id).ToListAsync(ct);
+
+    public Task<List<TaskSkip>> GetInPeriodAsync(DateOnly from, DateOnly to, CancellationToken ct = default) =>
+        db.TaskSkips.Where(s => s.Date >= from && s.Date <= to).OrderByDescending(s => s.Date).ThenByDescending(s => s.RecordedAt).ToListAsync(ct);
+
+    public void Add(TaskSkip skip) => db.TaskSkips.Add(skip);
+
+    public void Remove(TaskSkip skip) => db.TaskSkips.Remove(skip);
 }
 
 public class EfVacationRepository(PlannerDbContext db) : IVacationRepository

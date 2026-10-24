@@ -25,7 +25,7 @@ public partial class PlannerState
             return null;
         }
 
-        var counted = steps.Where(s => s.GoalId is null).ToList();
+        var counted = steps.Where(s => s.GoalId is null && s.SkipKind != NotNeeded).ToList(); // «не надо» не в «☑ N/M» (S1)
         return new ProjectSummaryDto(
             counted.Count(s => s.State == TaskStateDto.Done),
             counted.Count,

@@ -214,6 +214,9 @@ public class AccountIsolationTests : ApiTestBase
         Add("PUT", "/api/tasks/{id:int}/done", $"/api/tasks/{a.Task}/done", new SetDoneRequest(true));
         Add("PUT", "/api/tasks/{id:int}/goal", $"/api/tasks/{a.Task}/goal", new SetTaskGoalRequest(a.Goal));
         Add("PUT", "/api/tasks/{id:int}/parent", $"/api/tasks/{a.Task}/parent", new SetParentRequest(a.Project));
+        Add("PUT", "/api/tasks/{id:int}/skip", $"/api/tasks/{a.Task}/skip", new SkipTaskRequest("Missed", "причина Б"));
+        Add("DELETE", "/api/tasks/{id:int}/skip", $"/api/tasks/{a.Task}/skip");
+        Add("GET", "/api/tasks/{id:int}/skips", $"/api/tasks/{a.Task}/skips");
         Add("PUT", "/api/tasks/{id:int}/project", $"/api/tasks/{a.Task}/project", new SetProjectRequest(true));
         Add("POST", "/api/tasks/{id:int}/keep", $"/api/tasks/{a.Thought}/keep");
         Add("DELETE", "/api/tasks/{id:int}", $"/api/tasks/{a.Thought}");

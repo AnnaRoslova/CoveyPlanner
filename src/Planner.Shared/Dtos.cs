@@ -11,6 +11,9 @@ public enum TaskStateDto
     Planned,
     Done,
     Trashed,
+
+    /// <summary>Пропуск (skips.md): «не надо» или «не сделала» — <see cref="TaskDto.SkipKind"/>.</summary>
+    Skipped,
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SawDimensionDto>))]
@@ -50,7 +53,9 @@ public sealed record TaskDto(
     bool IsProject = false,
     DateOnly? PlannedWeek = null,
     DateTime? UpdatedAt = null,
-    DateTime? KeptAt = null);
+    DateTime? KeptAt = null,
+    string? SkipKind = null,
+    string? SkipReason = null);
 
 public sealed record CategoryDto(int Id, string Name, string? Emoji, int SortOrder, bool IsExpanded);
 
@@ -61,7 +66,8 @@ public sealed record RoleDto(int Id, string Name, string Color, int SortOrder, S
 }
 
 /// <summary>Занятие цели: дело-«камень». PlannedDate = null — занятие без дня.</summary>
-public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDone);
+/// <summary>Занятие цели; Skip — пропуск: "NotNeeded" | "Missed" (skips.md, H2).</summary>
+public sealed record GoalSessionDto(int TaskId, DateOnly? PlannedDate, bool IsDone, string? Skip = null);
 
 /// <summary>Роль цели и место цели в списке этой роли.</summary>
 public sealed record GoalRoleDto(int RoleId, int SortOrder);
@@ -99,12 +105,20 @@ public sealed record WeeklyGoalDto(
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
 
+    /// <summary>Занятия «не надо» — выпали из плана недели (skips.md, H2).</summary>
     [JsonIgnore]
-    public bool IsDone => DoneCount >= TimesPerWeek;
+    public int NotNeededCount => Sessions.Count(s => s.Skip == "NotNeeded");
+
+    /// <summary>Норма недели: «раз в неделю» без «не надо», не ниже 0.</summary>
+    [JsonIgnore]
+    public int Norm => Math.Max(0, TimesPerWeek - NotNeededCount);
+
+    [JsonIgnore]
+    public bool IsDone => DoneCount >= Norm;
 
     /// <summary>Процент выполненных занятий недели (вниз до целого): 100 — только когда норма выполнена, сверх нормы — тоже 100.</summary>
     [JsonIgnore]
-    public int Percent => TimesPerWeek <= 0 ? 0 : Math.Min(100, DoneCount * 100 / TimesPerWeek);
+    public int Percent => Norm <= 0 ? 0 : Math.Min(100, DoneCount * 100 / Norm);
 
     [JsonIgnore]
     public IReadOnlyList<int> RoleIds => Roles.Select(r => r.RoleId).ToList();
@@ -220,7 +234,14 @@ public sealed record PlusOneResultDto(TaskDto Task, WeeklyGoalDto Goal, HabitDto
 
 /// <summary>Шаг дела в его окне: SortOrder — место в списке шагов; PlannedDate — день, если шаг стоит в дне; GoalId — шаг — занятие цели.</summary>
 public sealed record StepDto(
-    int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder, DateOnly? PlannedDate = null, int? GoalId = null);
+    int Id, int ParentId, string Title, bool IsDone, DateTime? CompletedAt, int SortOrder, DateOnly? PlannedDate = null, int? GoalId = null,
+    string? Skip = null);
+
+/// <summary>Запись истории пропусков дела (skips.md, K2, S2).</summary>
+public sealed record TaskSkipDto(int Id, string Kind, string? Reason, DateOnly Date, int? GoalId, DateTime RecordedAt);
+
+/// <summary>Дело после пропуска; Parent — проект, отметившийся сам (S1); ReturnedToProject — шаг вернулся в список проекта (S2).</summary>
+public sealed record TaskSkipResultDto(TaskDto Task, TaskDto? Parent, bool ReturnedToProject);
 
 /// <summary>Сводка проекта (дела с шагами): «☑ StepsDone/StepsTotal» — шаги без занятий целей; SessionsDone — выполненные занятия («12 занятий»).</summary>
 public sealed record ProjectSummaryDto(int StepsDone, int StepsTotal, int SessionsDone);
@@ -242,14 +263,22 @@ public sealed record GoalStepResultDto(WeeklyGoalDto Goal, TaskDto Step, TaskDto
 
 /// <summary>Отчёт за период (N5): WeeksCount — недель, чей четверг в периоде; серии, разовые цели одной строкой, «Выполненное».</summary>
 public sealed record ReportDto(
-    DateOnly From, DateOnly To, int WeeksCount, IReadOnlyList<ReportSeriesDto> Series, ReportOneOffDto OneOff, IReadOnlyList<ReportDoneGroupDto> Done);
+    DateOnly From, DateOnly To, int WeeksCount, IReadOnlyList<ReportSeriesDto> Series, ReportOneOffDto OneOff, IReadOnlyList<ReportDoneGroupDto> Done,
+    IReadOnlyList<ReportRoleDto>? Roles = null, IReadOnlyList<ReportSkipDto>? Skips = null);
+
+/// <summary>Роль за период (skips.md, O1): сделано · не сделала · не надо; Name «без роли» — дела без роли.</summary>
+public sealed record ReportRoleDto(int? RoleId, string Name, string Color, int Done, int Missed, int NotNeeded);
+
+/// <summary>Пропуск периода (O2): Kind — "NotNeeded" | "Missed"; Goal — цель занятия (null — не занятие, "" — цель удалена).</summary>
+public sealed record ReportSkipDto(DateOnly Date, string Title, string Kind, string? Reason, IReadOnlyList<string> Roles, string? Goal);
 
 /// <summary>Привычка или постоянная цель за период: план (сумма норм недель), факт (скрепки), процент; 🔥 и ⚠ — на конец периода (у привычек).</summary>
 public sealed record ReportSeriesDto(
-    int Id, string Title, IReadOnlyList<string> Roles, bool IsHabit, int Plan, int Fact, int Percent, int? WeekStreak, bool Paused);
+    int Id, string Title, IReadOnlyList<string> Roles, bool IsHabit, int Plan, int Fact, int Percent, int? WeekStreak, bool Paused,
+    int Missed = 0, int NotNeeded = 0);
 
-/// <summary>Разовые цели периода: «камней N, выполнено M».</summary>
-public sealed record ReportOneOffDto(int Goals, int Done);
+/// <summary>Разовые цели периода: «камней N, выполнено M»; пропуски их занятий (skips.md, O1).</summary>
+public sealed record ReportOneOffDto(int Goals, int Done, int Missed = 0, int NotNeeded = 0);
 
 /// <summary>«Выполненное» за период — группа категории.</summary>
 public sealed record ReportDoneGroupDto(int? CategoryId, string Name, string? Emoji, IReadOnlyList<ReportDoneTaskDto> Tasks);
@@ -264,7 +293,13 @@ public sealed record ReportDoneTaskDto(int Id, string Title, DateOnly Date, int 
 public sealed record DashboardDto(
     DateOnly From, DateOnly To, IReadOnlyList<DateOnly> Weeks, IReadOnlyList<DashboardHabitDto> Habits,
     IReadOnlyList<DashboardVacationDto> Vacations, IReadOnlyList<DashboardRoleDto> Saw, IReadOnlyList<DashboardRoleDto> Roles,
-    IReadOnlyList<DashboardQuadrantDto> Quadrants, DashboardStaleDto Stale);
+    IReadOnlyList<DashboardQuadrantDto> Quadrants, DashboardStaleDto Stale, DashboardSkipsDto? Skips = null);
+
+/// <summary>Пропуски периода (skips.md, O4): не сделала · не надо и самые частые причины.</summary>
+public sealed record DashboardSkipsDto(int Missed, int NotNeeded, IReadOnlyList<DashboardReasonDto> TopReasons);
+
+/// <summary>Причина и сколько раз.</summary>
+public sealed record DashboardReasonDto(string Reason, int Count);
 
 /// <summary>Привычка на тепловой карте: скрепки периода (день повторяется по числу скрепок), 🔥 сейчас и лучшая серия недель.</summary>
 public sealed record DashboardHabitDto(

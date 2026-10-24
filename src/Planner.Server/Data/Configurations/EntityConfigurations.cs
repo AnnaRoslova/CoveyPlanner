@@ -6,6 +6,20 @@ namespace Planner.Server.Data.Configurations;
 
 // Перечисления храним строками — так файл БД читается глазами при бэкапе и отладке.
 
+/// <summary>История пропусков (docs/specs/skips.md, K2): удалили дело насовсем — его записи тоже.</summary>
+public class TaskSkipConfiguration : IEntityTypeConfiguration<TaskSkip>
+{
+    public void Configure(EntityTypeBuilder<TaskSkip> builder)
+    {
+        builder.ToTable("TaskSkips");
+        builder.Property(s => s.Kind).HasConversion<string>().HasMaxLength(16);
+        builder.Property(s => s.Reason).HasMaxLength(TextRules.SkipReasonMaxLength);
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(s => s.TaskId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(s => s.TaskId);
+        builder.HasIndex(s => s.Date);
+    }
+}
+
 public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
 {
     public void Configure(EntityTypeBuilder<TaskItem> builder)
@@ -16,6 +30,10 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Property(t => t.State).HasConversion<string>().HasMaxLength(16);
         builder.Property(t => t.PreviousState).HasConversion<string>().HasMaxLength(16);
         builder.Property(t => t.Quadrant).HasConversion<int?>();
+        builder.Property(t => t.SkipKind).HasConversion<string>().HasMaxLength(16);
+        builder.Property(t => t.SkipReason).HasMaxLength(TextRules.SkipReasonMaxLength);
+        builder.Ignore(t => t.IsSkipped);
+        builder.Ignore(t => t.IsNotNeeded);
 
         // Удалили категорию — у дел ссылка просто обнуляется
         builder.HasOne<Category>().WithMany().HasForeignKey(t => t.CategoryId).OnDelete(DeleteBehavior.SetNull);

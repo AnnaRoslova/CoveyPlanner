@@ -20,6 +20,8 @@
             <ItemRow @key="id" Title="@task.Title" Compact="true" Clamp="true"
                      Color="@roles.FirstOrDefault()?.Color"
                      IsDone="task.State == TaskStateDto.Done"
+                     Skip="@task.SkipKind" SkipReason="@task.SkipReason"
+                     OnSkip="@SkipHandler(task)"
                      IsPending="id < 0"
                      IsFlashing="State.FlashTaskId == id"
                      ParentCaption="@State.ParentTitleOf(task)"
@@ -36,6 +38,18 @@
     /// <summary>Роль блока; null — «без роли» внизу левой панели.</summary>
     [Parameter]
     public int? RoleId { get; set; }
+
+    /// <summary>✕ (skips.md, A4): пропуск «на неделе»; у пропущенного — отменить.</summary>
+    private EventCallback SkipHandler(TaskDto task) =>
+        PlannerState.CanSkip(task)
+            ? EventCallback.Factory.Create(this, () => task.State == TaskStateDto.Skipped ? State.UnskipTaskAsync(task.Id) : OpenSkip(task.Id))
+            : default;
+
+    private Task OpenSkip(int id)
+    {
+        Windows.OpenSkip(id);
+        return Task.CompletedTask;
+    }
 
     private Task Open(int id)
     {

@@ -31,7 +31,9 @@ public static class Mapping
         t.IsProject,
         t.PlannedWeek,
         DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc),
-        t.KeptAt is { } kept ? DateTime.SpecifyKind(kept, DateTimeKind.Utc) : null);
+        t.KeptAt is { } kept ? DateTime.SpecifyKind(kept, DateTimeKind.Utc) : null,
+        t.SkipKind?.ToString(),
+        t.SkipReason);
 
     public static SettingsDto ToDto(this AppSettings s) => new(s.StaleMonths, s.Mission, s.ShowMissionInPanel);
 
@@ -52,7 +54,7 @@ public static class Mapping
         g.DurationMinutes,
         g.ActiveSessions
             .OrderBy(t => t.PlannedDate ?? DateOnly.MaxValue).ThenBy(t => t.Id)
-            .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done))
+            .Select(t => new GoalSessionDto(t.Id, t.PlannedDate, t.State == TaskState.Done, t.SkipKind?.ToString()))
             .ToList(),
         g.RepeatsAfterThisWeek,
         g.AllowSeveralPerDay,
@@ -88,7 +90,11 @@ public static class Mapping
         p is null ? null : new ProjectSummaryDto(p.StepsDone, p.StepsTotal, p.SessionsDone);
 
     public static StepDto ToStepDto(this TaskItem s) =>
-        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.StepOrder ?? s.SortOrder, s.PlannedDate, s.GoalId);
+        new(s.Id, s.ParentId ?? 0, s.Title, s.State == TaskState.Done, s.CompletedAt, s.StepOrder ?? s.SortOrder, s.PlannedDate, s.GoalId,
+            s.SkipKind?.ToString());
+
+    public static TaskSkipDto ToDto(this TaskSkip s) =>
+        new(s.Id, s.Kind.ToString(), s.Reason, s.Date, s.GoalId, DateTime.SpecifyKind(s.RecordedAt, DateTimeKind.Utc));
 
     public static HabitStatsDto ToDto(this HabitStats s) => new(
         s.Total,

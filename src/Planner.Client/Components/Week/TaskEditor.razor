@@ -26,7 +26,27 @@
         <div class="rock-note">
             @* D2, BG2: «◆ занятие цели «Бег» · 1 из 3» *@
             <span class="rock-diamond" aria-hidden="true">◆</span>
-            <span>занятие цели «@goal.Title»@(goal.TimesPerWeek > 1 ? $" · выполнено {goal.DoneCount} из {goal.TimesPerWeek}" : "")</span>
+            <span>занятие цели «@goal.Title»@(goal.TimesPerWeek > 1 ? $" · выполнено {goal.DoneCount} из {goal.Norm}" : "")</span>
+        </div>
+    }
+
+    @* Пропуск (skips.md, A3): строка-состояние с «Отменить пропуск»; история пропусков (S2 — у шага, вернувшегося в список) *@
+    @if (EditedTask.State == TaskStateDto.Skipped)
+    {
+        <div class="skip-status @(EditedTask.SkipKind == PlannerState.NotNeeded ? "not-needed" : "missed")">
+            <span class="skip-sign" aria-hidden="true">@(EditedTask.SkipKind == PlannerState.NotNeeded ? "—" : "✕")</span>
+            <span>@(EditedTask.SkipKind == PlannerState.NotNeeded ? "Не надо" : "Не сделала")@(string.IsNullOrWhiteSpace(EditedTask.SkipReason) ? "" : " · " + EditedTask.SkipReason)</span>
+            <button type="button" class="btn small unskip" @onclick="() => State.UnskipTaskAsync(EditedTask.Id)">Отменить пропуск</button>
+        </div>
+    }
+    @if (_skips.Count > 0 && EditedTask.State != TaskStateDto.Skipped)
+    {
+        <div class="skip-history">
+            История:
+            @foreach (var skip in _skips)
+            {
+                <span class="skip-past">@(skip.Kind == PlannerState.NotNeeded ? "— не надо" : "✕ не сделала") · @RuDates.ShortDate(skip.Date)@(string.IsNullOrWhiteSpace(skip.Reason) ? "" : " · " + skip.Reason)</span>
+            }
         </div>
     }
 
@@ -164,6 +184,10 @@
                 <MenuItem Label="↳ открыть проект" OnClick="OpenProjectAsync" />
                 <MenuItem Label="сменить проект…" OnClick="@(() => _rare.Open("project"))" />
             }
+            @if (PlannerState.CanSkip(EditedTask) && EditedTask.State != TaskStateDto.Skipped)
+            {
+                <MenuItem Label="✕ пропуск…" Hint="не надо / не сделала" Class="skip" OnClick="() => Windows.OpenSkip(EditedTask.Id)" />
+            }
             <div class="menu-sep" role="separator"></div>
             <MenuItem Label="в корзину" Danger="true" Class="trash" OnClick="TrashAsync" />
         </MoreMenu>
@@ -266,6 +290,27 @@
     private bool OwnNotes(WeeklyGoalDto goal) => Normalize(_notes) != goal.Notes;
 
     private static string? Normalize(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
+    /// <summary>История пропусков дела (skips.md, K2, S2).</summary>
+    private List<TaskSkipDto> _skips = [];
+
+    private bool _skipsLoaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EditedTask.Id > 0 && !_skipsLoaded)
+        {
+            _skipsLoaded = true;
+            try
+            {
+                _skips = await State.GetSkipsAsync(EditedTask.Id);
+            }
+            catch (ApiException)
+            {
+                // Без истории окно всё равно работает
+            }
+        }
+    }
 
     protected override void OnInitialized()
     {

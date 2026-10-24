@@ -89,7 +89,13 @@ public class WeeklyGoal
 
     public int DoneCount => ActiveSessions.Count(t => t.State == TaskState.Done);
 
-    public bool IsDone => DoneCount >= TimesPerWeek;
+    /// <summary>Занятия «не надо» — выпали из плана недели (docs/specs/skips.md, H2).</summary>
+    public int NotNeededCount => ActiveSessions.Count(t => t.IsNotNeeded);
+
+    /// <summary>Норма недели: «раз в неделю» без занятий «не надо», не ниже 0 (H1–H2).</summary>
+    public int Norm => Math.Max(0, TimesPerWeek - NotNeededCount);
+
+    public bool IsDone => DoneCount >= Norm;
 
     /// <summary>Есть ли у цели занятие (выполненное или нет, кроме корзины) в этот день, не считая <paramref name="except"/>.</summary>
     public bool HasSessionOn(DateOnly date, TaskItem? except = null) =>

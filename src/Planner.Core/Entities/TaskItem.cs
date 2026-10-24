@@ -124,7 +124,20 @@ public class TaskItem : ISortable
 
     public DateTime? TrashedAt { get; private set; }
 
-    public bool IsInPlan => State is TaskState.Planned or TaskState.Done;
+    /// <summary>Вид пропуска (skips.md, K1); задан только в состоянии <see cref="TaskState.Skipped"/>.</summary>
+    public SkipKind? SkipKind { get; private set; }
+
+    /// <summary>Причина пропуска, до 200 знаков; необязательна.</summary>
+    public string? SkipReason { get; private set; }
+
+    public DateTime? SkippedAt { get; private set; }
+
+    public bool IsSkipped => State == TaskState.Skipped;
+
+    /// <summary>«Не надо»: выпадает из плана — не в норме цели и привычки, не в «☑ N/M» шагов (H1–H2, S1).</summary>
+    public bool IsNotNeeded => State == TaskState.Skipped && SkipKind == Enums.SkipKind.NotNeeded;
+
+    public bool IsInPlan => State is TaskState.Planned or TaskState.Done or TaskState.Skipped;
 
     /// <summary>Дело стоит в конкретном дне.</summary>
     public bool IsOnDay => IsInPlan && PlannedDate is not null;
@@ -334,6 +347,7 @@ public class TaskItem : ISortable
     public void MoveToSomeday(int? categoryId)
     {
         EnsureNotTrashed();
+        ClearSkip();
         State = TaskState.Someday;
         IsFromSomeday = true;
         ParentId = null;
@@ -346,10 +360,18 @@ public class TaskItem : ISortable
         StartTime = null;
     }
 
-    /// <summary>В день. Время (если было) сохраняется; выполненное дело остаётся выполненным.</summary>
+    /// <summary>
+    /// В день. Время (если было) сохраняется; выполненное дело остаётся выполненным. Пропущенное, перенесённое в другой день, —
+    /// снова открыто (skips.md, K4); в тот же день (порядок) — пропуском и остаётся.
+    /// </summary>
     public void PlanForDay(DateOnly date)
     {
         EnsureNotTrashed();
+        if (IsSkipped && PlannedDate != date)
+        {
+            Unskip();
+        }
+
         MarkPlannedIfSomeday();
         PlannedDate = date;
         PlannedWeek = null;
@@ -359,6 +381,7 @@ public class TaskItem : ISortable
     public void PlanForWeek()
     {
         EnsureNotTrashed();
+        Unskip();
         MarkPlannedIfSomeday();
         PlannedDate = null;
         PlannedWeek = null;
@@ -377,6 +400,11 @@ public class TaskItem : ISortable
             throw new DomainException("У занятия цели своя неделя — неделя цели.");
         }
 
+        if (IsSkipped && (PlannedDate is not null || PlannedWeek != Time.Week.StartOf(weekStart)))
+        {
+            Unskip();
+        }
+
         MarkPlannedIfSomeday();
         PlannedDate = null;
         StartTime = null;
@@ -387,6 +415,7 @@ public class TaskItem : ISortable
     public void Complete(DateTime now)
     {
         EnsureNotTrashed();
+        ClearSkip(); // пропуск → сделано (K4): это было не «не сделала»
         if (State != TaskState.Done)
         {
             State = TaskState.Done;
@@ -430,6 +459,56 @@ public class TaskItem : ISortable
         State = PreviousState ?? TaskState.Someday;
         PreviousState = null;
         TrashedAt = null;
+    }
+
+    /// <summary>
+    /// Пропустить (skips.md, K3): дело в плане — в дне или «на неделе»; не мысль, не выполненное, не проект.
+    /// Шаг «не сделала» в дне сюда не попадает — он возвращается в список проекта (S2, решает вызывающий).
+    /// </summary>
+    public void Skip(SkipKind kind, string? reason, DateTime now)
+    {
+        EnsureNotTrashed();
+        switch (State)
+        {
+            case TaskState.Someday:
+                throw new DomainException("Мысль в ленте не пропускают — её можно удалить.");
+            case TaskState.Done:
+                throw new DomainException("Дело выполнено — сначала снимите отметку.");
+        }
+
+        if (IsProject && !IsStep)
+        {
+            throw new DomainException("Проект не пропускают — пропускают его шаги.");
+        }
+
+        if (PlannedDate is null && PlannedWeek is null && State != TaskState.Skipped)
+        {
+            throw new DomainException("Пропустить можно дело в дне или «на неделе».");
+        }
+
+        State = TaskState.Skipped;
+        SkipKind = kind;
+        SkipReason = TextRules.Optional(reason, TextRules.SkipReasonMaxLength, "Причина");
+        SkippedAt = now;
+    }
+
+    /// <summary>Отменить пропуск (K4): снова открыто там же. Не пропуск — ничего не делает.</summary>
+    public void Unskip()
+    {
+        if (!IsSkipped)
+        {
+            return;
+        }
+
+        State = TaskState.Planned;
+        ClearSkip();
+    }
+
+    private void ClearSkip()
+    {
+        SkipKind = null;
+        SkipReason = null;
+        SkippedAt = null;
     }
 
     private void MarkPlannedIfSomeday()

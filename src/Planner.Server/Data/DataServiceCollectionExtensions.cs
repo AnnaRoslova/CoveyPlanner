@@ -41,6 +41,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<IHabitRepository, EfHabitRepository>();
         services.AddScoped<IVacationRepository, EfVacationRepository>();
         services.AddScoped<ISettingsRepository, EfSettingsRepository>();
+        services.AddScoped<ITaskSkipRepository, EfTaskSkipRepository>();
 
         services.AddScoped(sp => ResolveBackupOptions(sp.GetRequiredService<IConfiguration>()));
         services.AddScoped<BackupService>();
@@ -56,6 +57,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<TaskGoalService>();
         services.AddScoped<GoalSeriesService>();
         services.AddScoped<TaskService>();
+        services.AddScoped<SkipService>();
         services.AddScoped<CategoryService>();
         services.AddScoped<RoleService>();
         services.AddScoped<GoalService>();

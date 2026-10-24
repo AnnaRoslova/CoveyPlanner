@@ -13,6 +13,7 @@
         <ItemRow @key="id" Title="@step.Title" Clamp="true" Highlight="@Highlight"
                  Color="@roles.FirstOrDefault()?.Color"
                  IsDone="step.State == TaskStateDto.Done"
+                 Skip="@step.SkipKind" SkipReason="@step.SkipReason"
                  DayLabel="@DayLabel(step)"
                  IsPending="id < 0"
                  OnToggle="() => State.SetDoneAsync(id, step.State != TaskStateDto.Done, ViaSessionId)"

@@ -158,3 +158,17 @@ public interface ISettingsRepository
     /// <summary>Настройки; строки ещё нет — создаётся со значениями по умолчанию (сохранит вызывающий).</summary>
     Task<AppSettings> GetAsync(CancellationToken ct = default);
 }
+
+/// <summary>История пропусков дел (docs/specs/skips.md, K2).</summary>
+public interface ITaskSkipRepository
+{
+    /// <summary>Пропуски дела, свежие сверху.</summary>
+    Task<List<TaskSkip>> GetForTaskAsync(int taskId, CancellationToken ct = default);
+
+    /// <summary>Пропуски с днём в промежутке [from, to] — для отчёта.</summary>
+    Task<List<TaskSkip>> GetInPeriodAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    void Add(TaskSkip skip);
+
+    void Remove(TaskSkip skip);
+}

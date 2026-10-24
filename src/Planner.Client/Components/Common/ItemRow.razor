@@ -3,9 +3,9 @@
    Clamp: название не длиннее двух строк, с «…»; полный текст — в подсказке при наведении (только у обрезанных:
    их отмечает js/clamp.js атрибутом data-long, он же показывает подсказку) и в окне по клику. *@
 
-<div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(Unplaced is not null ? "unplaced" : "") @(IsDone ? "done" : "") @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
-     style="@(Color is null ? null : $"--c: {Color}")" title="@(RowTitle ?? Unplaced)"
-     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@OnTrash.HasDelegate" data-no-step="@NoStep" data-parent="@DragParent"
+<div class="item @(Expanded is not null ? "has-steps" : "") @(IsProject ? "is-project" : "") @(Unplaced is not null ? "unplaced" : "") @(IsDone ? "done" : "") @SkipClass @(Compact ? "compact" : "") @(OnTrash.HasDelegate ? "trashable" : "") @(OnSkip.HasDelegate ? "skippable" : "") @(OnClick.HasDelegate ? "clickable" : "") @(IsPending ? "pending" : "") @(IsFlashing ? "flash" : "")"
+     style="@(Color is null ? null : $"--c: {Color}")" title="@(SkipTitle ?? RowTitle ?? Unplaced)"
+     data-drag="@DragKind" data-id="@DragId" data-fixed="@DragFixed" data-press data-swipe="@(OnTrash.HasDelegate || OnSkip.HasDelegate)" data-no-step="@NoStep" data-parent="@DragParent"
      data-drop="@DropZone" data-key="@DropKey" data-accept="@DropAccept" data-drop-index="@(DropZone is null ? null : "0")"
      data-drop-hover="@(DropZone is not null)" data-drop-middle="@(DropZone is not null)" data-drop-hint="@DropHint" data-drop-hint-own="@DropHintOwn"
      @onclick="OnClick">
@@ -13,8 +13,16 @@
     {
         @* Зона нажатия — вся левая полоса записи (~30px, на всю высоту); квадратик внутри прежний *@
         <button type="button" class="ck-hit" role="checkbox" aria-checked="@(IsDone ? "true" : "false")"
-                title="@(IsDone ? "Снять отметку" : "Выполнено")"
-                @onclick="OnToggle" @onclick:stopPropagation="true"><span class="ck"></span></button>
+                title="@(IsDone ? "Снять отметку" : Skip is null ? "Выполнено" : "Всё-таки сделано")"
+                @onclick="OnToggle" @onclick:stopPropagation="true">@if (Skip is null)
+            {
+                <span class="ck"></span>
+            }
+            else
+            {
+                @* skips.md, V1: «не надо» — серое «—», «не сделала» — приглушённый красный ✕; не зачёркнуто *@
+                <span class="ck skip-mark" aria-label="@SkipLabel">@(Skip == NotNeeded ? "—" : "✕")</span>
+            }</button>
     }
     else if (Marker == ItemMarker.Check)
     {
@@ -118,6 +126,10 @@
     {
         <span class="age-mark">@AgeLabel</span>
     }
+    @if (PercentNone)
+    {
+        <span class="pct none" title="@PercentHint">—</span>
+    }
     @if (Percent is { } percent)
     {
         var pctTitle = (PercentPrefix is null ? "" : "Шаги цели: " + PercentPrefix + " · ") + (PercentHint ?? $"выполнено {percent}%");
@@ -138,6 +150,13 @@
     @if (Actions is not null)
     {
         <div class="actions" @onclick:stopPropagation="true">@Actions</div>
+    }
+    @if (OnSkip.HasDelegate)
+    {
+        @* Пропуск (skips.md, A1): рядом с 🗑 — при наведении, на касании — тем же свайпом; у пропущенного — «Отменить пропуск» *@
+        <button type="button" class="skip-btn @(Skip is null ? "" : "on")" title="@(Skip is null ? "Пропуск…" : "Отменить пропуск")"
+                aria-label="@(Skip is null ? "Пропуск" : "Отменить пропуск")" data-strict-click
+                @onclick="OnSkip" @onclick:stopPropagation="true">✕</button>
     }
     @if (OnTrash.HasDelegate)
     {
@@ -187,6 +206,26 @@
     [Parameter]
     public bool IsDone { get; set; }
 
+    private const string NotNeeded = "NotNeeded";
+
+    /// <summary>Пропуск (skips.md, V1): "NotNeeded" — «не надо», "Missed" — «не сделала»; null — не пропуск.</summary>
+    [Parameter]
+    public string? Skip { get; set; }
+
+    [Parameter]
+    public string? SkipReason { get; set; }
+
+    /// <summary>✕ рядом с 🗑: открыть окошко пропуска (или отменить пропуск — решает вызывающий по <see cref="Skip"/>).</summary>
+    [Parameter]
+    public EventCallback OnSkip { get; set; }
+
+    private string? SkipLabel => Skip switch { NotNeeded => "не надо", null => null, _ => "не сделала" };
+
+    private string? SkipClass => Skip switch { NotNeeded => "skipped not-needed", null => null, _ => "skipped missed" };
+
+    /// <summary>Подсказка строки у пропущенного: «не сделала · заболела».</summary>
+    private string? SkipTitle => Skip is null ? null : string.IsNullOrWhiteSpace(SkipReason) ? SkipLabel : $"{SkipLabel} · {SkipReason}";
+
     [Parameter]
     public ItemMarker Marker { get; set; } = ItemMarker.Check;
 
@@ -217,6 +256,10 @@
     /// <summary>Подсказка процента: «выполнено 2 из 5» (число — один раз, в подсказке; D5).</summary>
     [Parameter]
     public string? PercentHint { get; set; }
+
+    /// <summary>Процента нет — все занятия «не надо»: тихое «—» (skips.md, H2).</summary>
+    [Parameter]
+    public bool PercentNone { get; set; }
 
     /// <summary>Подсказка ◆: «занятие цели «Бег»» (D2).</summary>
     [Parameter]

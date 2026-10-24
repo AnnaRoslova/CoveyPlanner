@@ -11,6 +11,11 @@ public static class ReportCsv
 {
     public const string NoCategoryName = "без категории";
 
+    public const string NoRoleName = "без роли";
+
+    /// <summary>Вид пропуска словами — как в интерфейсе.</summary>
+    public static string KindName(Enums.SkipKind kind) => kind == Enums.SkipKind.NotNeeded ? "не надо" : "не сделала";
+
     public static string Build(Report report)
     {
         var sb = new StringBuilder();
@@ -18,14 +23,35 @@ public static class ReportCsv
         Line(sb);
 
         Line(sb, "Привычки и постоянные цели");
-        Line(sb, "Раздел", "Название", "Роль/категория", "План", "Факт", "%", "Дата");
+        Line(sb, "Раздел", "Название", "Роль/категория", "План", "Факт", "%", "Не сделала", "Не надо");
         foreach (var row in report.Series)
         {
             Line(sb, row.Series.IsHabit ? "Привычка" : "Постоянная цель", row.Series.Title,
-                string.Join(", ", row.Roles.Select(r => r.Name)), Number(row.Plan), Number(row.Fact), Number(row.Percent), "");
+                string.Join(", ", row.Roles.Select(r => r.Name)), Number(row.Plan), Number(row.Fact), Number(row.Percent),
+                Number(row.Missed), Number(row.NotNeeded));
         }
 
-        Line(sb, "Разовые цели", $"камней: {Number(report.OneOff.Goals)}", "", "", Number(report.OneOff.Done), "", "");
+        Line(sb, "Разовые цели", $"камней: {Number(report.OneOff.Goals)}", "", "", Number(report.OneOff.Done), "",
+            Number(report.OneOff.Missed), Number(report.OneOff.NotNeeded));
+        Line(sb);
+
+        // Пропуски (docs/specs/skips.md, O3): по ролям и список причин
+        Line(sb, "Роли");
+        Line(sb, "Раздел", "Роль", "Сделано", "Не сделала", "Не надо");
+        foreach (var row in report.Roles ?? [])
+        {
+            Line(sb, "Роль", row.Role?.Name ?? NoRoleName, Number(row.Done), Number(row.Missed), Number(row.NotNeeded));
+        }
+
+        Line(sb);
+        Line(sb, "Пропуски");
+        Line(sb, "Раздел", "Дата", "Дело", "Вид", "Причина", "Роли", "Цель");
+        foreach (var skip in report.Skips ?? [])
+        {
+            Line(sb, "Пропуск", Date(skip.Date), skip.Title, KindName(skip.Kind), skip.Reason ?? "", string.Join(", ", skip.Roles),
+                skip.Goal is null ? "" : skip.Goal.Length == 0 ? "цель удалена" : skip.Goal);
+        }
+
         Line(sb);
 
         Line(sb, "Выполненное");

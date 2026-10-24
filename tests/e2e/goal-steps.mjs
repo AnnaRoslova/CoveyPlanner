@@ -45,7 +45,7 @@ const dayInfo = i => page.evaluate(i => [...document.querySelectorAll('.day')[i]
 async function openGoal(title) {
   const el = (await page.evaluateHandle(t => [...document.querySelectorAll('.role .item')].find(i => i.querySelector('.title')?.textContent.trim() === t), title)).asElement();
   assert(el, `нет цели ${title}`);
-  await (await el.$('.title')).click(); await settle();
+  await (await el.$('.title')).click({ offset: { x: 4, y: 6 } }); await settle(); // у начала названия: справа при наведении — ✕ и 🗑
   await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 });
   // Раскрыть все редкие поля окна (сводки и «+ …»): здесь проверяются поля, правило «заполненное видно» — в declutter.mjs
   for (let i = 0; i < 14; i++) { const b = await page.$('.editor .sum-chip:not(.static), .editor .adder'); if (!b) break; await b.click(); await new Promise(r => setTimeout(r, 150)); } await new Promise(r => setTimeout(r, 250));
@@ -100,7 +100,7 @@ await check('28. два занятия: у обоих «▸ … ☑ 0/1»; «+ �
     const r = (await dayInfo(i)).find(x => x.title === GOAL);
     assert(r?.project === '☑ 0/1' && r.parent === null, `день ${i}: ${JSON.stringify(r)}`);
   }
-  await (await (await dayRow(2, GOAL)).asElement().$('.title')).click(); await settle();
+  await (await (await dayRow(2, GOAL)).asElement().$('.title')).click({ offset: { x: 4, y: 6 } }); await settle(); // у начала названия: справа при наведении — ✕ и 🗑
   assert(await page.$eval('.editor .goal-steps .label', e => e.textContent.includes('Шаги цели')), 'нет блока «Шаги цели»');
   await addStepInEditor('Резюме');
   await closeEditor();
@@ -180,7 +180,7 @@ await check('A1: окно занятия постоянной цели без п
   const run = (await api('GET', `week/${dayIso(0)}`)).goals.find(g => g.title === 'Бег');
   await api('POST', `goals/${run.id}/schedule`, { kind: 'day', date: dayIso(3), index: 0 });
   await load();
-  await (await (await dayRow(3, 'Бег')).asElement().$('.title')).click(); await settle();
+  await (await (await dayRow(3, 'Бег')).asElement().$('.title')).click({ offset: { x: 4, y: 6 } }); await settle(); // у начала названия: справа при наведении — ✕ и 🗑
   assert(await page.$('.editor[aria-label="Дело"]'), 'окно занятия не открылось');
   assert(!(await page.$('.editor .goal-steps')), 'у занятия привычки без проекта есть «Шаги цели»');
   await closeEditor();
@@ -189,7 +189,7 @@ await check('A1: окно занятия постоянной цели без п
   await openGoal('Бег');
   assert(await page.$('.editor .goal-steps'), 'с выбранным проектом нет блока «Шаги»');
   await closeEditor();
-  await (await (await dayRow(3, 'Бег')).asElement().$('.title')).click(); await settle();
+  await (await (await dayRow(3, 'Бег')).asElement().$('.title')).click({ offset: { x: 4, y: 6 } }); await settle(); // у начала названия: справа при наведении — ✕ и 🗑
   assert(await page.$('.editor .goal-steps'), 'в окне занятия нет «Шаги цели» при выбранном проекте');
   await closeEditor();
 });
@@ -251,7 +251,7 @@ await check('R7: у цели слева «☑ N/M · %» — сразу меня
   const step = (await page.evaluateHandle(() => [...document.querySelectorAll('.day')[5].querySelectorAll('.steps .item')].find(i => i.querySelector('.title').textContent.trim() === 'Первый'))).asElement();
   await (await step.$('.ck-hit')).click(); await settle();
   assert((await goalPct(R))?.startsWith('☑ 1/2 · '), `после отметки: ${await goalPct(R)}`);
-  await (await (await dayRow(5, R)).asElement().$('.title')).click(); await settle();
+  await (await (await dayRow(5, R)).asElement().$('.title')).click({ offset: { x: 4, y: 6 } }); await settle(); // у начала названия: справа при наведении — ✕ и 🗑
   await addStepInEditor('Третий'); await closeEditor();
   assert((await goalPct(R))?.startsWith('☑ 1/3 · '), `после добавления: ${await goalPct(R)}`);
 });

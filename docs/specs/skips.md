@@ -109,7 +109,7 @@
 ## 11. API
 
 - `PUT /api/tasks/{id}/skip` `{ kind: "NotNeeded" | "Missed", reason? }` → дело (и проект, если отметился сам — S1); 400 — K3.
-- `DELETE /api/tasks/{id}/skip` → дело (отменить пропуск).
+- `DELETE /api/tasks/{id}/skip[?returnTo=ДАТА]` → дело (отменить пропуск; `returnTo` — «Вернуть» шаг, ушедший в список проекта, в его день, S2).
 - `GET /api/tasks/{id}/skips` → история пропусков дела (S2).
 - Отчёт/дашборд — новые поля в `ReportDto`, `DashboardDto` (O).
 

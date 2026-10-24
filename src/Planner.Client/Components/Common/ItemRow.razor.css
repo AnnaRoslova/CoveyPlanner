@@ -577,3 +577,103 @@ body.dragging .trash-btn {
         pointer-events: auto;
     }
 }
+
+.item.skippable {
+    position: relative;
+    touch-action: pan-y;
+}
+
+/* У записи без 🗑 («на неделе») ✕ — у самого края */
+.item.skippable:not(.trashable) .skip-btn {
+    right: 3px;
+}
+
+/* Пропуск (docs/specs/skips.md, V1, A1): «—» серое (не надо), ✕ приглушённо-красный (не сделала); текст бледный, НЕ зачёркнут */
+.ck.skip-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-color: transparent;
+    background: none;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.not-needed .ck.skip-mark {
+    color: var(--faint);
+}
+
+.missed .ck.skip-mark {
+    color: var(--skip-ink);
+}
+
+.skipped .tx {
+    color: var(--faint);
+}
+
+.skip-btn {
+    position: absolute;
+    top: 3px;
+    right: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--surface);
+    color: var(--faint);
+    font-size: 12px;
+    font-weight: 800;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+
+@media (hover: hover) {
+    .item.skippable:hover .skip-btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.item.skippable.swiped .skip-btn,
+.skip-btn:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.item.skippable.swiped .skip-btn {
+    top: 50%;
+    right: 40px;
+    width: 30px;
+    height: 30px;
+    transform: translateY(-50%);
+}
+
+.skip-btn:hover,
+.skip-btn.on {
+    color: var(--skip-ink);
+}
+
+.skip-btn:hover {
+    background: var(--a-soft);
+    box-shadow: 0 0 0 3px var(--a-soft);
+}
+
+body.dragging .skip-btn {
+    visibility: hidden;
+}
+
+.has-steps .skip-btn,
+.item:has(.title.clamp[data-long]) .skip-btn,
+.item:has(.expand.on) .skip-btn {
+    right: 53px;
+}
+
+/* Цель, у которой все занятия «не надо» — тихое «—» вместо процента (H2) */
+.pct.none {
+    color: var(--faint);
+}

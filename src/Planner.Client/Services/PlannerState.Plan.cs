@@ -178,7 +178,8 @@ public partial class PlannerState
             return;
         }
 
-        _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned };
+        // Пропуск → сделано (skips.md, K4): пропуск снимается
+        _tasks[taskId] = task with { State = isDone ? TaskStateDto.Done : TaskStateDto.Planned, SkipKind = null, SkipReason = null };
         SyncSession(_tasks[taskId]);
         TaskDoneResultDto? result = null;
         var ok = await SaveAsync(async () => result = await api.SetTaskDoneAsync(taskId, isDone, viaSessionId));

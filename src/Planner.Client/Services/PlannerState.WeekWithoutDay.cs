@@ -10,7 +10,7 @@ public partial class PlannerState
     /// <summary>Дела показанной недели без дня: с ролью <paramref name="roleId"/>; null — без роли (N4.2).</summary>
     public IReadOnlyList<TaskDto> WeekTasksWithoutDay(int? roleId) =>
         _tasks.Values
-            .Where(t => t.PlannedWeek == WeekStart && t.PlannedDate is null && t.State is TaskStateDto.Planned or TaskStateDto.Done
+            .Where(t => t.PlannedWeek == WeekStart && t.PlannedDate is null && t.State is TaskStateDto.Planned or TaskStateDto.Done or TaskStateDto.Skipped
                         && (roleId is { } id ? t.RoleIds.Contains(id) : t.RoleIds.Count == 0))
             .OrderBy(t => t.SortOrder).ThenBy(t => t.Id)
             .ToList();

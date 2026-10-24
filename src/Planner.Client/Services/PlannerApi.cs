@@ -181,6 +181,15 @@ public class PlannerApi(HttpClient http, ConnectionQueue queue, AuthState auth)
 
     public Task DeleteVacationAsync(int id) => SendAsync(HttpMethod.Delete, $"api/vacations/{id}");
 
+    // Пропуски (skips.md)
+    public Task<TaskSkipResultDto> SkipTaskAsync(int id, string kind, string? reason) =>
+        SendAsync<TaskSkipResultDto>(HttpMethod.Put, $"api/tasks/{id}/skip", new SkipTaskRequest(kind, reason));
+
+    public Task<TaskDto> UnskipTaskAsync(int id, DateOnly? returnTo) =>
+        SendAsync<TaskDto>(HttpMethod.Delete, $"api/tasks/{id}/skip{(returnTo is { } day ? "?returnTo=" + Format(day) : "")}");
+
+    public Task<List<TaskSkipDto>> GetTaskSkipsAsync(int id) => GetAsync<List<TaskSkipDto>>($"api/tasks/{id}/skips");
+
     // Свой аккаунт (accounts.md, P1–P3)
     public Task<List<SessionDto>> GetSessionsAsync() => GetAsync<List<SessionDto>>("api/account/sessions");
 

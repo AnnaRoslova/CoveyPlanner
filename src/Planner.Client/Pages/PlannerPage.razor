@@ -67,6 +67,10 @@
     {
         <ReportScreen />
     }
+    else if (Windows.SkipTaskId is { } skipTaskId && State.FindTask(skipTaskId) is { } skipTask)
+    {
+        <SkipDialog @key="skipTaskId" Task="skipTask" />
+    }
     else if (Windows.AccountOpen)
     {
         <AccountScreen />

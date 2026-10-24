@@ -116,6 +116,9 @@ public sealed record UpdateSettingsRequest(int? StaleMonths = null, string? Miss
 /// <summary>Сдвиг часов сервера (только Development, e2e).</summary>
 public sealed record ShiftClockRequest(double Days);
 
+/// <summary>Пропустить дело (skips.md, A2): Kind — "NotNeeded" | "Missed"; причина необязательна (до 200 знаков).</summary>
+public sealed record SkipTaskRequest(string Kind, string? Reason = null);
+
 /// <summary>Вход: прислать код на почту (docs/specs/accounts.md, L1).</summary>
 public sealed record RequestCodeRequest(string Email);
 

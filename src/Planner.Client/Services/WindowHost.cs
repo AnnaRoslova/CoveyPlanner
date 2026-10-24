@@ -47,6 +47,9 @@ public sealed class WindowHost
     /// <summary>«Пользователи и приглашения» — только у администратора (accounts.md, U1).</summary>
     public bool AdminOpen { get; private set; }
 
+    /// <summary>Окошко пропуска дела (skips.md, A2).</summary>
+    public int? SkipTaskId { get; private set; }
+
     /// <summary>«Аккаунт»: устройства, выгрузка, удаление (accounts.md, P1–P3).</summary>
     public bool AccountOpen { get; private set; }
 
@@ -95,6 +98,8 @@ public sealed class WindowHost
 
     public void OpenAccount() => Open(account: true);
 
+    public void OpenSkip(int taskId) => Open(skipTaskId: taskId);
+
     /// <summary>«📈 Итоги» (BI2) на вкладке: «Привычки» — экран привычек, «Выполненное», «Отчёт».</summary>
     public void OpenTotals(TotalsTab tab)
     {
@@ -121,8 +126,9 @@ public sealed class WindowHost
     public void Close() => Open();
 
     private void Open(int? goalId = null, int? roleId = null, bool newRole = false, int? somedayTaskId = null, int? taskId = null,
-        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false, bool search = false, bool review = false, bool mission = false, bool calendar = false, bool admin = false, bool account = false)
+        int? deleteGoalId = null, bool habits = false, int? focusHabitId = null, bool done = false, bool report = false, bool help = false, bool settings = false, bool search = false, bool review = false, bool mission = false, bool calendar = false, bool admin = false, bool account = false, int? skipTaskId = null)
     {
+        SkipTaskId = skipTaskId;
         AdminOpen = admin;
         AccountOpen = account;
         HabitsOpen = habits;

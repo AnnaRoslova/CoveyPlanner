@@ -18,12 +18,15 @@ public sealed record DashboardQuadrantWeek(DateOnly WeekStart, int Second, int M
 /// <summary>Давно лежащие мысли (BD6): сколько старше срока и самые старые.</summary>
 public sealed record DashboardStale(int Months, int Count, IReadOnlyList<TaskItem> Oldest);
 
+/// <summary>Пропуски периода (docs/specs/skips.md, O4): не сделала · не надо и самые частые причины.</summary>
+public sealed record DashboardSkips(int Missed, int NotNeeded, IReadOnlyList<(string Reason, int Count)> TopReasons);
+
 /// <summary>Дашборд за период: всё одним ответом (BD8).</summary>
 public sealed record Dashboard(
     DateOnly From, DateOnly To, IReadOnlyList<DateOnly> Weeks,
     IReadOnlyList<DashboardHabit> Habits, IReadOnlyList<Vacation> Vacations,
     IReadOnlyList<DashboardRoleCount> Saw, IReadOnlyList<DashboardRoleCount> Roles,
-    IReadOnlyList<DashboardQuadrantWeek> Quadrants, DashboardStale Stale);
+    IReadOnlyList<DashboardQuadrantWeek> Quadrants, DashboardStale Stale, DashboardSkips? Skips = null);
 
 /// <summary>
 /// Дашборд во вкладке «Отчёт» (docs/specs/batch-ux.md, BD): только чтение. Привычки и серии — как на экране 🫙
@@ -36,6 +39,7 @@ public class DashboardService(
     IVacationRepository vacations,
     HabitService habitService,
     StaleThoughtService staleThoughts,
+    ITaskSkipRepository skips,
     TimeProvider clock)
 {
     /// <summary>Сколько самых старых мыслей показывать (BD6).</summary>
@@ -102,8 +106,20 @@ public class DashboardService(
             })
             .ToList();
 
+        // O4: пропуски периода и пять самых частых причин (без учёта регистра, пустые не в счёте)
+        var periodSkips = await skips.GetInPeriodAsync(from, to, ct);
+        var topReasons = periodSkips
+            .Where(s => !string.IsNullOrWhiteSpace(s.Reason))
+            .GroupBy(s => s.Reason!.Trim().ToLowerInvariant())
+            .Select(g => (Reason: g.Key, Count: g.Count()))
+            .OrderByDescending(x => x.Count).ThenBy(x => x.Reason, StringComparer.Ordinal)
+            .Take(StaleTop)
+            .ToList();
+        var skipCard = new DashboardSkips(
+            periodSkips.Count(s => s.Kind == SkipKind.Missed), periodSkips.Count(s => s.Kind == SkipKind.NotNeeded), topReasons);
+
         return new Dashboard(from, to, weeks, dashboardHabits, periodVacations, saw, roleCounts, quadrants,
-            await GetStaleAsync(ct));
+            await GetStaleAsync(ct), skipCard);
     }
 
     /// <summary>BD6: старые мысли (BS5) — сколько и самые старые.</summary>

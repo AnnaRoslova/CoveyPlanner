@@ -241,3 +241,55 @@ h3 {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
 }
+
+/* Пропуски (docs/specs/skips.md, O1–O2) */
+.skips {
+    display: block;
+}
+
+.report-roles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.rdot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.report-skips {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.report-skips li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+
+.report-skips .kind {
+    font-weight: 700;
+}
+
+/* Слово — обычным цветом текста (AA), цветной — только значок (3:1) */
+.report-skips .not-needed .kind-sign {
+    color: var(--faint);
+}
+
+.report-skips .missed .kind-sign {
+    color: var(--skip-ink);
+}

@@ -232,6 +232,17 @@ namespace Planner.Server.Data.Migrations
                     b.Property<int?>("Quadrant")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("SkipKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SkipReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SkippedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
@@ -277,6 +288,42 @@ namespace Planner.Server.Data.Migrations
                     b.HasIndex("State", "IsFromSomeday", "CompletedAt");
 
                     b.ToTable("Tasks", (string)null);
+                });
+
+            modelBuilder.Entity("Planner.Core.Entities.TaskSkip", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("GoalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("TaskSkips", (string)null);
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.Vacation", b =>
@@ -445,6 +492,15 @@ namespace Planner.Server.Data.Migrations
                         });
 
                     b.Navigation("Roles");
+                });
+
+            modelBuilder.Entity("Planner.Core.Entities.TaskSkip", b =>
+                {
+                    b.HasOne("Planner.Core.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Planner.Core.Entities.Vacation", b =>

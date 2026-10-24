@@ -56,7 +56,7 @@
     @foreach (var goal in Goals)
     {
         <ItemRow Title="@goal.Title" Color="@Role.Color" IsDone="goal.IsDone"
-                 RowTitle="@GoalHint(goal)" Days="@Days(goal)" Percent="goal.Percent" PercentHint="@($"выполнено {goal.DoneCount} из {goal.TimesPerWeek}")" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
+                 RowTitle="@GoalHint(goal)" Days="@Days(goal)" Percent="@(AllNotNeeded(goal) ? null : goal.Percent)" PercentNone="AllNotNeeded(goal)" PercentHint="@PercentHint(goal)" PercentPrefix="@StepsLabel(goal)" IsPending="goal.Id < 0"
                  Unplaced="@UnplacedHint(goal)"
                  OnToggle="() => State.ToggleGoalAsync(goal.Id)"
                  OnClick="() => OpenGoal(goal.Id)"
@@ -145,18 +145,25 @@
 
     /// <summary>N1: «не разложено: 1 из 2» у недособранной цели текущей или будущей недели; иначе подсветки нет.</summary>
     private static string? UnplacedHint(WeeklyGoalDto goal) =>
-        goal.Id > 0 && PlannerState.UnplacedOf(goal, RuDates.Today) is > 0 and var n ? $"не разложено: {n} из {goal.TimesPerWeek}" : null;
+        goal.Id > 0 && PlannerState.UnplacedOf(goal, RuDates.Today) is > 0 and var n ? $"не разложено: {n} из {goal.Norm}" : null;
 
     /// <summary>«☑ 1/3» — шаги проекта цели (R7), перед процентом; шагов нет — null. Меняется сразу: шаги лежат в состоянии экрана.</summary>
     private string? StepsLabel(WeeklyGoalDto goal) =>
-        State.StepsOfGoal(goal) is { Count: > 0 } steps ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
+        State.StepsOfGoal(goal) is { Count: > 0 } all && all.Where(s => s.SkipKind != PlannerState.NotNeeded).ToList() is var steps
+            ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
+
+    /// <summary>Все занятия «не надо» — вместо процента тихое «—» (skips.md, H2).</summary>
+    private static bool AllNotNeeded(WeeklyGoalDto goal) => goal.Norm == 0 && goal.NotNeededCount > 0;
+
+    private static string PercentHint(WeeklyGoalDto goal) =>
+        $"выполнено {goal.DoneCount} из {goal.Norm}" + (goal.NotNeededCount > 0 ? $" · не надо: {goal.NotNeededCount}" : "");
 
     /// <summary>
     /// Подсказка цели (batch-3.md, M2): «Бег · Чт · Пт · 2 из 3», у недособранной — ещё «не разложено: 1 из 3».
     /// Дни занятий под названием больше не показываются — только здесь и в окне цели.
     /// </summary>
     private static string GoalHint(WeeklyGoalDto goal) =>
-        string.Join(" · ", new[] { goal.Title, SessionDays(goal), $"{goal.DoneCount} из {goal.TimesPerWeek}", UnplacedHint(goal) }
+        string.Join(" · ", new[] { goal.Title, SessionDays(goal), $"{goal.DoneCount} из {goal.Norm}", UnplacedHint(goal) }
             .Where(part => !string.IsNullOrEmpty(part)));
 
     /// <summary>Дни занятий для экранного диктора (на экране — в подсказке строки, M2).</summary>

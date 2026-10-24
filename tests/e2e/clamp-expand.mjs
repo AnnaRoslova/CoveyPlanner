@@ -124,7 +124,7 @@ await check('развёрнутая — без подсказки при нав�
 await check('развёрнутую запись можно перетащить в другой день', async () => {
   const from = await (await row('.day', LONG)).asElement().boundingBox();
   const fri = await (await page.evaluateHandle(() => document.querySelectorAll('.day')[4])).asElement().boundingBox();
-  const sx = from.x + from.width / 2, sy = from.y + 10;
+  const sx = from.x + 36, sy = from.y + 10; // у начала: справа при наведении — ✕ и 🗑 (skips.md, A1)
   await page.mouse.move(sx, sy); await page.mouse.down();
   for (let i = 1; i <= 14; i++) { await page.mouse.move(sx + (fri.x + 40 - sx) * i / 14, sy + (fri.y + fri.height - 40 - sy) * i / 14); await sleep(16); }
   await sleep(150); await page.mouse.up(); await settle();

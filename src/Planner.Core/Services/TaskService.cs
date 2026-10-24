@@ -17,6 +17,7 @@ public class TaskService(
     GoalSeriesService series,
     TaskPlacer placer,
     ProjectService projects,
+    ITaskSkipRepository skips,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -149,6 +150,12 @@ public class TaskService(
         TaskItem? session = null;
         if (isDone)
         {
+            // Пропуск → сделано (skips.md, K4): запись истории этого пропуска больше не правда
+            if (task.IsSkipped && (await skips.GetForTaskAsync(task.Id, ct)).FirstOrDefault() is { } latest)
+            {
+                skips.Remove(latest);
+            }
+
             task.Complete(Now);
             parent = await projects.CompleteParentIfAllDoneAsync(task, Now, ct);
             // R4: из занятия — после отметки все шаги проекта сделаны (даже если сам проект отметили раньше) — и занятие

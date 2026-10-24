@@ -11,6 +11,9 @@ public static class TextRules
     public const int MissionMaxLength = 5000;
     public const int VisionMaxLength = 200;
 
+    /// <summary>Причина пропуска дела (skips.md, K1).</summary>
+    public const int SkipReasonMaxLength = 200;
+
     /// <summary>Обрезает пробелы; пустая строка или превышение длины — ошибка.</summary>
     public static string Required(string? value, int maxLength, string fieldName)
     {

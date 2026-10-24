@@ -35,6 +35,10 @@ public class GoalRemover(IGoalRepository goals, TaskPlacer placer, TimeProvider 
                     session.Trash(now);
                     break;
 
+                case { State: TaskState.Skipped }:
+                    // Пропуск — история (skips.md, H4): остаётся делом без цели, не скрепка
+                    break;
+
                 case { State: TaskState.Done }:
                     if (session.PlannedDate is null)
                     {

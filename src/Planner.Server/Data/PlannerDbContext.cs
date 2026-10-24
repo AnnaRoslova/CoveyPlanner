@@ -21,6 +21,8 @@ public class PlannerDbContext(DbContextOptions<PlannerDbContext> options) : DbCo
 
     public DbSet<AppSettings> AppSettings => Set<AppSettings>();
 
+    public DbSet<TaskSkip> TaskSkips => Set<TaskSkip>();
+
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken ct) => await SaveChangesAsync(ct);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>

@@ -47,6 +47,28 @@ public static class TaskEndpoints
         });
 
         // «Проект» в карточке: сделать дело шагом другого дела или убрать из проекта
+        // Пропуск (docs/specs/skips.md, K, S): «не надо» / «не сделала» с причиной; отменить; история
+        tasks.MapPut("/{id:int}/skip", async (int id, SkipTaskRequest request, SkipService service, TaskViews views, CancellationToken ct) =>
+        {
+            if (!Enum.TryParse<Planner.Core.Enums.SkipKind>(request.Kind, out var kind) || !Enum.IsDefined(kind))
+            {
+                throw new Planner.Core.Errors.DomainException("Вид пропуска — NotNeeded или Missed.");
+            }
+
+            var skipped = await service.SkipAsync(id, kind, request.Reason, ct);
+            return new TaskSkipResultDto(
+                await views.ToDtoAsync(skipped.Task, ct),
+                skipped.Parent is { } parent ? await views.ToDtoAsync(parent, ct) : null,
+                skipped.ReturnedToProject);
+        });
+
+        // returnTo — «Вернуть» шаг, ушедший при «не сделала» в список проекта, в его день (S2)
+        tasks.MapDelete("/{id:int}/skip", async (int id, DateOnly? returnTo, SkipService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.UnskipAsync(id, returnTo, ct), ct));
+
+        tasks.MapGet("/{id:int}/skips", async (int id, SkipService service, CancellationToken ct) =>
+            (await service.HistoryAsync(id, ct)).Select(s => s.ToDto()).ToList());
+
         tasks.MapPut("/{id:int}/parent", async (int id, SetParentRequest request, TaskService service, TaskViews views, CancellationToken ct) =>
             await views.ToDtoAsync(await service.SetParentAsync(id, request.ParentId, ct), ct));
 

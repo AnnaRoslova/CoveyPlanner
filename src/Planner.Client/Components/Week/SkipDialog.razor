@@ -1,0 +1,74 @@
+@* Окошко пропуска (docs/specs/skips.md, A2): причина (необязательно), две крупные кнопки «— Не надо» и «✕ Не сделала»,
+   под второй — быстрые причины «заболела · не успела · форс-мажор · забила»: нажатие — сразу «не сделала» с этой причиной.
+   Enter в поле — «не сделала»; Esc и клик мимо — отмена. *@
+@inject PlannerState State
+@inject WindowHost Windows
+
+<div class="editor-backdrop" @onclick="Windows.Close"></div>
+
+<div @ref="_root" class="editor skip-dialog" role="dialog" aria-label="Пропуск" tabindex="-1" @onkeydown="OnKeyDown">
+    <h2 class="skip-title">Пропуск · «@Task.Title»</h2>
+
+    <label class="label" for="skip-reason">Причина (необязательно)</label>
+    <input id="skip-reason" @ref="_reasonInput" class="skip-reason" maxlength="200" placeholder="почему"
+           @bind="_reason" @bind:event="oninput" @onkeydown="OnReasonKeyAsync" />
+
+    <div class="skip-choices">
+        <button type="button" class="btn skip-choice not-needed" @onclick="() => SkipAsync(PlannerState.NotNeeded, _reason)">
+            <span class="skip-sign">—</span> <b>Не надо</b> <span class="skip-hint">необходимость отпала</span>
+        </button>
+        <button type="button" class="btn skip-choice missed" @onclick="() => SkipAsync(PlannerState.Missed, _reason)">
+            <span class="skip-sign">✕</span> <b>Не сделала</b> <span class="skip-hint">надо, но не вышло</span>
+        </button>
+        <div class="skip-reasons" aria-label="Быстрые причины">
+            @foreach (var reason in PlannerState.MissedReasons)
+            {
+                <button type="button" class="btn small skip-reason-chip" @onclick="() => SkipAsync(PlannerState.Missed, reason)">@reason</button>
+            }
+        </div>
+    </div>
+
+    <div class="buttons">
+        <button type="button" class="btn quiet" @onclick="Windows.Close">Отмена</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TaskDto Task { get; set; } = null!;
+
+    private ElementReference _root;
+    private ElementReference _reasonInput;
+    private string _reason = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _reason = Task.SkipReason ?? "";
+            await _reasonInput.FocusAsync();
+        }
+    }
+
+    private async Task SkipAsync(string kind, string? reason)
+    {
+        Windows.Close();
+        await State.SkipTaskAsync(Task.Id, kind, reason);
+    }
+
+    private async Task OnReasonKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SkipAsync(PlannerState.Missed, _reason);
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

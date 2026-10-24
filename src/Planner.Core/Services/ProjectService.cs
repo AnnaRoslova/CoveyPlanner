@@ -18,7 +18,8 @@ public sealed record ProjectSummary(int StepsDone, int StepsTotal, int SessionsD
 public static class ProjectRules
 {
     /// <summary>Шаг в счёте проекта: не в корзине и не занятие цели.</summary>
-    public static bool CountsAsStep(TaskItem child) => child.State != TaskState.Trashed && !child.IsSession;
+    /// <summary>Шаг в счёте «☑ N/M» и автоотметки: не корзина, не занятие цели, не «не надо» (docs/specs/skips.md, S1).</summary>
+    public static bool CountsAsStep(TaskItem child) => child.State != TaskState.Trashed && !child.IsSession && !child.IsNotNeeded;
 
     /// <summary>Сводка по шагам дела; null — шагов нет (не считая корзины).</summary>
     public static ProjectSummary? Summarize(IEnumerable<TaskItem> children)
@@ -29,7 +30,7 @@ public static class ProjectRules
             return null;
         }
 
-        var steps = alive.Where(c => !c.IsSession).ToList();
+        var steps = alive.Where(CountsAsStep).ToList();
         return new ProjectSummary(
             steps.Count(s => s.State == TaskState.Done),
             steps.Count,
@@ -130,13 +131,19 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
     /// </summary>
     public async Task<TaskItem?> CompleteParentIfAllDoneAsync(TaskItem step, DateTime now, CancellationToken ct = default)
     {
-        if (step is not { ParentId: { } parentId, IsSession: false, State: TaskState.Done }
-            || await tasks.FindAsync(parentId, ct) is not { } parent)
+        if (step is not { ParentId: { } parentId, IsSession: false, State: TaskState.Done })
         {
             return null;
         }
 
-        if (!ProjectRules.ShouldAutoComplete(parent, await tasks.GetStepsAsync(parentId, ct)))
+        return await CompleteParentIfAllCountedDoneAsync(parentId, now, ct);
+    }
+
+    /// <summary>Все шаги проекта в счёте (без «не надо», skips.md S1) выполнены — проект отмечается сам; возвращает его, если отметили.</summary>
+    public async Task<TaskItem?> CompleteParentIfAllCountedDoneAsync(int parentId, DateTime now, CancellationToken ct = default)
+    {
+        if (await tasks.FindAsync(parentId, ct) is not { } parent
+            || !ProjectRules.ShouldAutoComplete(parent, await tasks.GetStepsAsync(parentId, ct)))
         {
             return null;
         }

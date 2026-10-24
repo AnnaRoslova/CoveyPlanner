@@ -51,7 +51,7 @@ public class TaskGoalService(
             if (task.PlannedDate is { } day && !goal.AllowSeveralPerDay)
             {
                 var others = goal.ActiveSessions.Where(t => t.PlannedDate == day && t != task).ToList();
-                if (others.Any(t => t.State == TaskState.Done))
+                if (others.Any(t => t.State is TaskState.Done or TaskState.Skipped))
                 {
                     throw new DomainException(WeeklyGoal.DayTakenMessage);
                 }

@@ -61,7 +61,7 @@
     {
         <p class="empty">Загрузка…</p>
     }
-    else if (_report.Series.Count == 0 && _report.OneOff.Goals == 0 && _report.Done.Count == 0)
+    else if (_report.Series.Count == 0 && _report.OneOff.Goals == 0 && _report.Done.Count == 0 && (_report.Roles?.Count ?? 0) == 0)
     {
         <p class="empty">За этот период ничего нет.</p>
     }
@@ -77,6 +77,10 @@
                         <div class="sname">
                             <span class="title">@row.Title</span>
                             <span class="roles">@string.Join(", ", row.Roles)</span>
+                            @if (SkipsLabel(row.Missed, row.NotNeeded) is { } skips)
+                            {
+                                <span class="sub skips">@skips</span>
+                            }
                         </div>
                         <span class="fact" title="факт / план — выполненные занятия от суммы «раз в неделю» за недели периода">@row.Fact / @row.Plan</span>
                         <span class="pct @(row.Percent >= 100 ? "full" : "")">@(row.Percent >= 100 ? "100% ✓" : $"{row.Percent}%")</span>
@@ -87,10 +91,43 @@
                 {
                     <div class="srow oneoff">
                         <div class="sname"><span class="title">разовые цели</span></div>
-                        <span class="fact">камней: @_report.OneOff.Goals, выполнено: @_report.OneOff.Done</span>
+                        <span class="fact">камней: @_report.OneOff.Goals, выполнено: @_report.OneOff.Done@(SkipsLabel(_report.OneOff.Missed, _report.OneOff.NotNeeded) is { } s ? " · " + s : "")</span>
                     </div>
                 }
             </div>
+        }
+
+        @* Пропуски (docs/specs/skips.md, O1–O2): роли — сделано · не сделала · не надо; причины — свежие сверху *@
+        @if (_report.Roles is { Count: > 0 } roleRows)
+        {
+            <h3>По ролям</h3>
+            <div class="report-roles">
+                @foreach (var row in roleRows)
+                {
+                    <div class="rrow">
+                        <span class="rdot" style="background: @row.Color" aria-hidden="true"></span>
+                        <span class="title">@row.Name</span>
+                        <span class="fact">сделано: @row.Done@(SkipsLabel(row.Missed, row.NotNeeded) is { } s ? " · " + s : "")</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_report.Skips is { Count: > 0 } skipList)
+        {
+            <h3>Причины пропусков <span class="sub">@skipList.Count</span></h3>
+            <ul class="report-skips">
+                @foreach (var skip in skipList)
+                {
+                    <li>
+                        <span class="sub">@RuDates.ShortDate(skip.Date)</span>
+                        <span class="title">@skip.Title</span>
+                        <span class="kind @(skip.Kind == PlannerState.NotNeeded ? "not-needed" : "missed")"><span class="kind-sign">@(skip.Kind == PlannerState.NotNeeded ? "—" : "✕")</span> @(skip.Kind == PlannerState.NotNeeded ? "не надо" : "не сделала")</span>
+                        <span>@(skip.Reason ?? "—")</span>
+                        <span class="sub">@string.Join(", ", skip.Roles)@(skip.Goal is null ? "" : " · цель «" + (skip.Goal.Length == 0 ? "удалена" : skip.Goal) + "»")</span>
+                    </li>
+                }
+            </ul>
         }
 
         @if (_report.Done.Count > 0)
@@ -273,6 +310,11 @@
     };
 
     private static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0]) + s[1..];
+
+    /// <summary>«не сделала: 2 · не надо: 1» (skips.md, O1); пропусков нет — null.</summary>
+    private static string? SkipsLabel(int missed, int notNeeded) =>
+        missed + notNeeded == 0 ? null
+        : string.Join(" · ", new[] { missed > 0 ? $"не сделала: {missed}" : null, notNeeded > 0 ? $"не надо: {notNeeded}" : null }.OfType<string>());
 
     private static string StreakLabel(ReportSeriesDto row) => row switch
     {

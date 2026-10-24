@@ -17,9 +17,9 @@ public partial class PlannerState
             return 0;
         }
 
-        var placed = goal.Sessions.Count(s =>
+        var placed = goal.Sessions.Where(s => s.Skip != NotNeeded).Count(s =>
             s.PlannedDate is { } date ? date >= goal.WeekStart && date <= weekEnd : s.IsDone);
-        return Math.Max(0, goal.TimesPerWeek - placed);
+        return Math.Max(0, goal.Norm - placed); // «не надо» уменьшает и требуемое (skips.md, H2)
     }
 
     /// <summary>Цвет для новой роли: следующий по кругу палитры.</summary>
@@ -498,7 +498,7 @@ public partial class PlannerState
             null, goal.StartTime, goal.DurationMinutes, 0, null);
 
     private static GoalSessionDto ToSession(TaskDto task) =>
-        new(task.Id, task.PlannedDate, task.State == TaskStateDto.Done);
+        new(task.Id, task.PlannedDate, task.State == TaskStateDto.Done, task.SkipKind);
 
     /// <summary>
     /// Занятие поменялось локально (день, отметка) — обновить его в цели, чтобы прогресс
@@ -509,7 +509,7 @@ public partial class PlannerState
         if (GoalOfTask(task.Id) is { } goal)
         {
             var sessions = goal.Sessions.Where(s => s.TaskId != task.Id).ToList();
-            if (task.State is TaskStateDto.Planned or TaskStateDto.Done)
+            if (task.State is TaskStateDto.Planned or TaskStateDto.Done or TaskStateDto.Skipped)
             {
                 sessions.Add(ToSession(task));
             }

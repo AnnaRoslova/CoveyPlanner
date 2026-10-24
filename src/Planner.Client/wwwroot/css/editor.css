@@ -1740,3 +1740,94 @@ body.dragging .editor {
 .screen-window .account-email {
     margin: 0;
 }
+
+/* Окошко пропуска (docs/specs/skips.md, A2): причина, две крупные кнопки, быстрые причины */
+.skip-dialog .skip-title {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 19px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.skip-dialog .skip-reason {
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.skip-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn.skip-choice {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 16px;
+    text-align: left;
+}
+
+.skip-choice .skip-sign {
+    width: 1em;
+    font-weight: 800;
+    text-align: center;
+}
+
+.skip-choice.not-needed .skip-sign {
+    color: var(--faint);
+}
+
+.skip-choice.missed .skip-sign {
+    color: var(--skip-ink);
+}
+
+.skip-choice .skip-hint {
+    color: var(--soft);
+    font-size: 13px;
+}
+
+.skip-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-left: 30px;
+}
+
+/* В окне дела: строка-состояние пропуска и история (A3, S2) */
+.skip-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--soft);
+}
+
+.skip-status .skip-sign {
+    font-weight: 800;
+}
+
+.skip-status.not-needed .skip-sign {
+    color: var(--faint);
+}
+
+.skip-status.missed .skip-sign {
+    color: var(--skip-ink);
+}
+
+.skip-history {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    color: var(--soft);
+    font-size: 13px;
+}

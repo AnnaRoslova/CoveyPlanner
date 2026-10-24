@@ -100,7 +100,7 @@ await check('U2.7: «⋯» с клавиатуры — Enter открывает 
   await openDayTask(1, 'Позвонить');
   await page.focus('.editor .more-b'); await page.keyboard.press('Enter'); await settle();
   const items = await page.$$eval('.more-menu .option-name', os => os.map(o => o.textContent.trim()));
-  assert(JSON.stringify(items) === '["🛠 сделать проектом","в корзину"]', JSON.stringify(items));
+  assert(JSON.stringify(items) === '["🛠 сделать проектом","✕ пропуск…","в корзину"]', JSON.stringify(items));
   assert(await page.$eval('.more-menu .option.danger', o => o.textContent.includes('в корзину')), 'опасный пункт не розовый');
   await page.keyboard.press('ArrowDown'); await sleep(150);
   assert(await page.evaluate(() => document.activeElement?.classList.contains('option')), 'стрелка не ведёт по пунктам');

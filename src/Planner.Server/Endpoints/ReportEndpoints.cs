@@ -31,13 +31,17 @@ public static class ReportEndpoints
         report.Weeks.Count,
         report.Series.Select(r => new ReportSeriesDto(
                 r.Series.Id, r.Series.Title, r.Roles.Select(x => x.Name).ToList(), r.Series.IsHabit, r.Plan, r.Fact, r.Percent,
-                r.WeekStreak, r.Paused))
+                r.WeekStreak, r.Paused, r.Missed, r.NotNeeded))
             .ToList(),
-        new ReportOneOffDto(report.OneOff.Goals, report.OneOff.Done),
+        new ReportOneOffDto(report.OneOff.Goals, report.OneOff.Done, report.OneOff.Missed, report.OneOff.NotNeeded),
         report.Done.Select(g => new ReportDoneGroupDto(
                 g.Category?.Id, g.Category?.Name ?? ReportCsv.NoCategoryName, g.Category?.Emoji,
                 g.Entries.Select(e => new ReportDoneTaskDto(e.Task.Id, e.Task.Title, e.Date, e.Project?.StepsDone ?? 0)).ToList()))
-            .ToList());
+            .ToList(),
+        (report.Roles ?? []).Select(r => new ReportRoleDto(
+                r.Role?.Id, r.Role?.Name ?? ReportCsv.NoRoleName, r.Role?.Color ?? NoRoleColor, r.Done, r.Missed, r.NotNeeded))
+            .ToList(),
+        (report.Skips ?? []).Select(s => new ReportSkipDto(s.Date, s.Title, s.Kind.ToString(), s.Reason, s.Roles, s.Goal)).ToList());
 
     /// <summary>Цвет «без роли» — нейтральный серый из палитры ролей.</summary>
     private const string NoRoleColor = "#b8c2cc";
@@ -55,7 +59,8 @@ public static class ReportEndpoints
         d.Roles.Select(RoleCount).ToList(),
         d.Quadrants.Select(q => new DashboardQuadrantDto(q.WeekStart, q.Second, q.Marked, q.Unmarked)).ToList(),
         new DashboardStaleDto(d.Stale.Months, d.Stale.Count,
-            d.Stale.Oldest.Select(t => new DashboardThoughtDto(t.Id, t.Title, DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc))).ToList()));
+            d.Stale.Oldest.Select(t => new DashboardThoughtDto(t.Id, t.Title, DateTime.SpecifyKind(t.UpdatedAt, DateTimeKind.Utc))).ToList()),
+        d.Skips is { } s ? new DashboardSkipsDto(s.Missed, s.NotNeeded, s.TopReasons.Select(x => new DashboardReasonDto(x.Reason, x.Count)).ToList()) : null);
 
     private static DashboardRoleDto RoleCount(DashboardRoleCount c) =>
         new(c.Role?.Id, c.Role?.Name ?? "без роли", c.Role?.Color ?? NoRoleColor, c.Role?.IsSharpenSaw ?? false, c.Count);

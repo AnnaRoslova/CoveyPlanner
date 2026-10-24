@@ -34,6 +34,11 @@
                         <button type="button" class="btn small postpone-all" @onclick="PostponeAllAsync">Отложить всё на след. неделю</button>
                     }
                 </div>
+                @* R1: пропуски не спрашиваются — только сводка (docs/specs/skips.md) *@
+                @if (SkippedTasks is { Count: > 0 } skipped)
+                {
+                    <p class="sub skip-summary">не надо: @skipped.Count(t => t.SkipKind == PlannerState.NotNeeded) · не сделала: @skipped.Count(t => t.SkipKind != PlannerState.NotNeeded)</p>
+                }
                 @if (OpenTasks.Count == 0 && Rocks.Count == 0)
                 {
                     <p class="empty">Всё сделано — можно идти дальше.</p>
@@ -239,6 +244,14 @@
         .. _days.SelectMany(State.TasksOn).Where(t => t.State == TaskStateDto.Planned && !State.IsRock(t.Id)),
         .. State.OrderedRoles.Select(r => (int?)r.Id).Append(null).SelectMany(State.WeekTasksWithoutDay)
             .Where(t => t.State == TaskStateDto.Planned).DistinctBy(t => t.Id),
+    ];
+
+    /// <summary>Пропущенные дела недели — в днях и «на неделе» (R1: в шаге только сводкой).</summary>
+    private List<TaskDto> SkippedTasks =>
+    [
+        .. _days.SelectMany(State.TasksOn).Where(t => t.State == TaskStateDto.Skipped),
+        .. State.OrderedRoles.Select(r => (int?)r.Id).Append(null).SelectMany(State.WeekTasksWithoutDay)
+            .Where(t => t.State == TaskStateDto.Skipped).DistinctBy(t => t.Id),
     ];
 
     /// <summary>Невыполненные занятия целей недели.</summary>

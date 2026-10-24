@@ -26,7 +26,8 @@ const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.pr
   '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
   '.parent-of', '.project-label', '.sum-chip.static', '.menu-hint', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
   '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)',
-  '.q2-of', '.q2-week', '.hit-meta', '.hit.done .hit-title', '.hit.done mark', '.review .meta', '.review .diamond', '.mission .sub'].join(', '); // ◆ — значок (--a-deep, 3:1)
+  '.q2-of', '.q2-week', '.hit-meta', '.hit.done .hit-title', '.hit.done mark', '.review .meta', '.review .diamond', '.mission .sub',
+  '.skipped .tx', '.skip-mark', '.kind-sign'].join(', '); // пропуск (skips.md, V3): как выполненное — бледное, значки «—» и ✕ — 3:1 // ◆ — значок (--a-deep, 3:1)
 const results = [];
 const consoleErrors = [];
 const browser = await puppeteer.launch({
@@ -174,6 +175,11 @@ await page.evaluate(async () => {
   const body = board.roles.find(r => r.name === 'Тело');
   const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   await post('/api/tasks', { title: 'Записаться к врачу', target: { kind: 'week', weekStart: iso(monday), roleId: body.id } });
+  // Пропуски (skips.md, V3): «не надо» и «не сделала» в сегодняшнем дне — в замере контраста
+  for (const [title, kind] of [['Отменённая встреча', 'NotNeeded'], ['Пробежка в дождь', 'Missed']]) {
+    const t = await post('/api/tasks', { title, target: { kind: 'day', date: iso(d), index: 0 } });
+    await post(`/api/tasks/${t.id}/skip`, { kind, reason: 'заболела' }, 'PUT');
+  }
 });
 
 for (const theme of THEMES) {
