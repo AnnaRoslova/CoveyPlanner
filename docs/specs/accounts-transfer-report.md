@@ -70,3 +70,36 @@
 `tools/backup.ps1` → перенос на свежей копии (раздел 2) → `tools/install.ps1 -AdminEmail h***@gmail.com`. Сервер при запуске сделал снимок
 `backups\planner-2026-10-24_041956-перед-обновлением` (с `planner.db` внутри) и перенёс данные: отчёт в папке данных — **всё совпадает** ✓,
 **1089 → 1089** строк; `planner.db` → `planner-before-accounts.db`.
+
+## 4. Сверка миграций этапов 2–4 на свежей копии (2026-10-24)
+
+Снимок `backups\planner-2026-10-24_064133-вручную` → копия → `Planner.Server.exe --CheckMigrations:Report=…`: прежние таблицы и столбцы до и после миграций.
+
+### accounts.db
+
+**всё совпадает** ✓ · строк 1 → 1 · новое: Invites.Id, Invites.TokenHash, Invites.Email, Invites.CreatedAt, Invites.ExpiresAt, Invites.UsedAt, Invites.UsedByUserId, Invites.RevokedAt, LoginCodes.Id, LoginCodes.Email, LoginCodes.CodeHash, LoginCodes.CreatedAt, LoginCodes.ExpiresAt, LoginCodes.Attempts, LoginCodes.UsedAt, Sessions.Id, Sessions.UserId, Sessions.Device, Sessions.CreatedAt, Sessions.LastSeenAt, Sessions.ExpiresAt, Sessions.RevokedAt, Users.DeleteAfter, Users.IsDisabled, sqlite_sequence.name, sqlite_sequence.seq
+
+| Таблица | Строк до | Строк после | |
+|---|---:|---:|---|
+| Users | 1 | 1 | ✓ |
+
+### users\611076ed959e403d97b82b70a38673c0.db
+
+**всё совпадает** ✓ · строк 1067 → 1067
+
+| Таблица | Строк до | Строк после | |
+|---|---:|---:|---|
+| AppSettings | 1 | 1 | ✓ |
+| Categories | 16 | 16 | ✓ |
+| GoalRoles | 81 | 81 | ✓ |
+| GoalSeries | 10 | 10 | ✓ |
+| GoalSeriesRoles | 11 | 11 | ✓ |
+| Roles | 10 | 10 | ✓ |
+| TaskGoals | 184 | 184 | ✓ |
+| TaskRoles | 294 | 294 | ✓ |
+| Tasks | 374 | 374 | ✓ |
+| VacationHabits | 0 | 0 | ✓ |
+| Vacations | 0 | 0 | ✓ |
+| WeeklyGoals | 81 | 81 | ✓ |
+| sqlite_sequence | 5 | 5 | ✓ |
+
