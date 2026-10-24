@@ -15,23 +15,41 @@ public sealed record TableFingerprint(string Table, long Rows, string Hash);
 /// </summary>
 public static class DatabaseFingerprint
 {
-    public static async Task<IReadOnlyList<TableFingerprint>> ComputeAsync(string path, CancellationToken ct = default)
+    /// <param name="only">Только эти таблицы и столбцы (сверка миграции: новые столбцы и таблицы не в счёт); null — всё.</param>
+    public static async Task<IReadOnlyList<TableFingerprint>> ComputeAsync(
+        string path, IReadOnlyDictionary<string, IReadOnlyList<string>>? only = null, CancellationToken ct = default)
     {
+        var schema = await SchemaAsync(path, ct);
         await using var connection = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
         await connection.OpenAsync(ct);
 
-        var tables = await ReadNamesAsync(connection,
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND (name NOT LIKE 'sqlite_%' OR name = 'sqlite_sequence') ORDER BY name",
-            null, ct);
-
         var result = new List<TableFingerprint>();
-        foreach (var table in tables)
+        foreach (var (table, columns) in only ?? schema)
         {
-            var columns = await ReadNamesAsync(connection, "SELECT name FROM pragma_table_info(@table) ORDER BY cid", table, ct);
-            result.Add(await HashTableAsync(connection, table, columns, ct));
+            if (schema.TryGetValue(table, out var present))
+            {
+                result.Add(await HashTableAsync(connection, table, columns.Where(present.Contains).ToList(), ct));
+            }
         }
 
         return result;
+    }
+
+    /// <summary>Таблицы базы (и sqlite_sequence) и их столбцы по порядку.</summary>
+    public static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> SchemaAsync(string path, CancellationToken ct = default)
+    {
+        await using var connection = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
+        await connection.OpenAsync(ct);
+        var tables = await ReadNamesAsync(connection,
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND (name NOT LIKE 'sqlite_%' OR name = 'sqlite_sequence') ORDER BY name",
+            null, ct);
+        var schema = new SortedDictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var table in tables)
+        {
+            schema[table] = await ReadNamesAsync(connection, "SELECT name FROM pragma_table_info(@table) ORDER BY cid", table, ct);
+        }
+
+        return schema;
     }
 
     /// <summary>Таблицы, у которых не совпало число строк или сумма (и таблицы, которых нет с одной из сторон).</summary>

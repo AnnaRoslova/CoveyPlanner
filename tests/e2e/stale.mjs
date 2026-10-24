@@ -24,7 +24,7 @@ async function check(name, fn) {
 }
 const api = async (method, path, body) => {
   const r = await fetch(new URL(`api/${path}`, BASE), {
-    method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
+    method, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: body ? JSON.stringify(body) : undefined,
   });
   if (!r.ok) throw new Error(`${method} ${path}: ${r.status} ${await r.text()}`);
   return r.status === 204 ? null : r.json();

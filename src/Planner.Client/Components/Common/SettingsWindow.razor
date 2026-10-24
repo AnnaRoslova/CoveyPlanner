@@ -2,6 +2,8 @@
    ссылка «Как это устроено». Срок «давно лежат» (BS2) и миссия (BM) — тоже здесь. Esc или клик мимо — закрыть. *@
 @inject WindowHost Windows
 @inject PlannerState State
+@inject AuthState Auth
+@inject NavigationManager Nav
 
 <div class="editor-backdrop" @onclick="Windows.Close"></div>
 
@@ -36,6 +38,30 @@
                @onchange="e => State.SetShowMissionInPanelAsync(e.Value is true)" /> показывать вверху левой панели</label>
     </div>
 
+    @* Аккаунт (accounts.md, P1, S4): почта, «Выйти», «Выйти на всех устройствах» *@
+    <div class="field account-settings">
+        <div class="label">Аккаунт</div>
+        <div class="account-row">
+            <span class="account-email">@Auth.Me?.Email</span>
+            <button type="button" class="btn small account-open" @onclick="Windows.OpenAccount">Устройства, выгрузка, удаление…</button>
+            <button type="button" class="btn small logout" @onclick="() => LogoutAsync(everywhere: false)">Выйти</button>
+            <button type="button" class="btn small logout-all" @onclick="() => _confirmAll = true">Выйти на всех устройствах</button>
+        </div>
+        @if (_confirmAll)
+        {
+            <div class="account-confirm" role="alert">
+                Выйти на всех устройствах? Понадобится снова войти кодом.
+                <button type="button" class="btn small danger" @onclick="() => LogoutAsync(everywhere: true)">Выйти везде</button>
+                <button type="button" class="btn small" @onclick="() => _confirmAll = false">Отмена</button>
+            </div>
+        }
+        <a class="login-privacy" href="/privacy" target="_blank" rel="noopener">Какие данные мы храним</a>
+        @if (Auth.Me?.IsAdmin == true)
+        {
+            <button type="button" class="btn small admin-open" @onclick="Windows.OpenAdmin">Пользователи и приглашения</button>
+        }
+    </div>
+
     <div class="settings-links">
         <button type="button" class="btn small mission-link" @onclick="Windows.OpenMission">✦ Моя миссия</button>
         <button type="button" class="btn small help-link" @onclick="Windows.OpenHelp"><Icon Name="help" Size="14" /> Как это устроено</button>
@@ -53,6 +79,13 @@
 
     private ElementReference _root;
     private bool _custom;
+    private bool _confirmAll;
+
+    private async Task LogoutAsync(bool everywhere)
+    {
+        await Auth.LogoutAsync(everywhere);
+        Nav.NavigateTo("/", forceLoad: true);
+    }
 
     private int TermChoice => _custom || !Presets.Contains(State.StaleMonths) ? Custom : State.StaleMonths;
 

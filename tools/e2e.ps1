@@ -70,7 +70,13 @@ foreach ($script in $scripts) {
     $data = Join-Path $env:TEMP "planner-e2e-$($script.BaseName)-$(Get-Random)"
     $env:ASPNETCORE_ENVIRONMENT = $environment
     $env:ASPNETCORE_URLS = $url
-    $server = Start-Process $exe -ArgumentList "--Storage:DataDirectory=`"$data`" --Storage:DailyBackup=false --Accounts:AdminEmail=e2e@localhost" `
+    # Сценарии, которые проверяют не вход, входят сами (Auth:DevAutoLogin, только Development); с меткой @no-autologin в первой строке —
+    # настоящий вход через почтовый ящик разработки (docs/specs/accounts.md, T4)
+    $firstLine = Get-Content $script.FullName -TotalCount 1 -Encoding UTF8
+    $autoLogin = if ($firstLine -match '@no-autologin') { '' } else { ' --Auth:DevAutoLogin=e2e@localhost' }
+    # Генераторы данных сценариев (история привычек) шлют тысячи запросов — общий лимит API (600 в минуту) не для них
+    $autoLogin += ' --Auth:ApiPermitPerMinute=1000000'
+    $server = Start-Process $exe -ArgumentList "--Storage:DataDirectory=`"$data`" --Storage:DailyBackup=false --Accounts:AdminEmail=e2e@localhost$autoLogin" `
         -WorkingDirectory $workDir -WindowStyle Hidden -PassThru
     try {
         $ready = $false

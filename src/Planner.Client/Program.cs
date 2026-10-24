@@ -7,7 +7,14 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddScoped(sp =>
+{
+    var http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+    // Заголовок защиты от подделки запросов: сервер принимает изменения только с ним (docs/specs/accounts.md, C)
+    http.DefaultRequestHeaders.Add("X-Planner", "1");
+    return http;
+});
+builder.Services.AddScoped<AuthState>();
 builder.Services.AddScoped<ConnectionQueue>();
 builder.Services.AddScoped<PlannerApi>();
 builder.Services.AddScoped<Notifier>();

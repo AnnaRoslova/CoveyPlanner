@@ -25,7 +25,7 @@ async function check(name, fn) {
   await page.keyboard.press('Escape'); await settle(); // следующей проверке — чистый экран
 }
 const api = (method, path, body) => page.evaluate(async (method, path, body) => {
-  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: body ? JSON.stringify(body) : undefined });
   return r.status === 204 ? null : r.json();
 }, method, path, body);
 async function load() { await page.goto(BASE, { waitUntil: 'networkidle0' }); await page.waitForSelector('.day'); await settle(); }

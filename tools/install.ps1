@@ -68,7 +68,7 @@ $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if (Test-Server) {
     try {
         # Ключ служебных скриптов (accounts.md, D6); прежняя версия сервера его просто не спрашивает
-        $headers = @{}
+        $headers = @{ 'X-Planner' = '1' }
         $keyFile = Join-Path $data 'local.key'
         if (Test-Path $keyFile) { $headers['X-Planner-Local-Key'] = (Get-Content $keyFile -Raw).Trim() }
         $backup = Invoke-RestMethod -Method Post "$url/api/backup" -Headers $headers -TimeoutSec 120

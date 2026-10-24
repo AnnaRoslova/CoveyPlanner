@@ -6,8 +6,9 @@ namespace Planner.Client.Services;
 /// следующие изменения встают за ним (BN1). Повтор — через 2, 5, 10, 30 с и дальше каждые 30 с, сразу — по «Повторить сейчас»,
 /// событию online и возврату в окно (BN3). Ответ сервера с ошибкой — как раньше, исключение у вызывающего (BN4).
 /// Чтения ждут, пока очередь опустеет, — перечитывание не затирает несохранённое (BN6).
+/// Сессия кончилась (401) — как обрыв связи: изменение ждёт, пока тот же пользователь войдёт снова, и уходит (accounts.md, Q1, Q3).
 /// </summary>
-public sealed class ConnectionQueue
+public sealed class ConnectionQueue(AuthState? auth = null)
 {
     private static readonly TimeSpan[] RetryDelays =
         [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)];
@@ -47,6 +48,14 @@ public sealed class ConnectionQueue
                 try
                 {
                     var response = await send();
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && auth is not null)
+                    {
+                        var reason = await AuthState.ReasonOfAsync(response);
+                        response.Dispose();
+                        await auth.WaitForReloginAsync(reason);
+                        continue;
+                    }
+
                     if (IsOffline)
                     {
                         _savedWhileOffline++;

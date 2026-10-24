@@ -300,3 +300,30 @@ public sealed record SearchGoalDto(int Id, string Title, DateOnly WeekStart, IRe
 
 /// <summary>Мини-календарь «перейти к дате» (batch-3.md, J3): дни периода, где есть дела (в плане или выполненные). Только чтение.</summary>
 public sealed record CalendarDto(DateOnly From, DateOnly To, IReadOnlyList<DateOnly> BusyDays);
+
+/// <summary>Вошедший пользователь (accounts.md, L7).</summary>
+public sealed record MeDto(Guid UserId, string Email, bool IsAdmin, bool Restored = false);
+
+/// <summary>Код «отправлен» (для незарегистрированной почты — тот же ответ, L1); новый — не раньше чем через RetryAfterSeconds.</summary>
+public sealed record RequestCodeResponse(int RetryAfterSeconds);
+
+/// <summary>Что показать на экране входа: ссылку на почтовый ящик разработки (M2).</summary>
+public sealed record AuthInfoDto(bool DevMailbox);
+
+/// <summary>Приглашение по ссылке действует? Email — если оно для определённой почты (I4–I5).</summary>
+public sealed record InviteCheckDto(bool Valid, string? Email);
+
+/// <summary>Пользователь в админке (U2).</summary>
+public sealed record UserAdminDto(Guid Id, string Email, DateTime CreatedAt, DateTime? LastLoginAt, bool IsAdmin, bool IsDisabled, DateTime? DeleteAfter = null);
+
+/// <summary>Устройство, где вошли (S5, P1); IsCurrent — «это устройство».</summary>
+public sealed record SessionDto(Guid Id, string Device, DateTime CreatedAt, DateTime LastSeenAt, bool IsCurrent);
+
+/// <summary>Аккаунт удалён — восстановить можно входом до DeleteAfter (P3).</summary>
+public sealed record DeletedAccountDto(DateTime DeleteAfter);
+
+/// <summary>Приглашение в списке (I3): Status — Active | Used | Expired | Revoked.</summary>
+public sealed record InviteDto(int Id, string? Email, DateTime CreatedAt, DateTime ExpiresAt, string Status, string? UsedByEmail, DateTime? UsedAt);
+
+/// <summary>Только что созданное приглашение и ссылка — она показывается один раз (I2).</summary>
+public sealed record CreatedInviteDto(InviteDto Invite, string Link);

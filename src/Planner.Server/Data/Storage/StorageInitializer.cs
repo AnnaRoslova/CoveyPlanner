@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Planner.Core.Accounts;
+using Planner.Server.Accounts;
 using Planner.Server.Data.Accounts;
 
 namespace Planner.Server.Data.Storage;
@@ -13,7 +14,7 @@ public sealed class StorageInitializer(
     DataPaths paths,
     AccountsDbContext accounts,
     BackupService backups,
-    StorageState state,
+    UserDatabases databases,
     IConfiguration configuration,
     TimeProvider clock,
     ILogger<StorageInitializer> logger)
@@ -46,10 +47,8 @@ public sealed class StorageInitializer(
 
         foreach (var userId in await accounts.Users.Select(u => u.Id).ToListAsync(ct))
         {
-            await PrepareUserDatabaseAsync(userId, ct);
+            await databases.PrepareAsync(userId, ct: ct);
         }
-
-        state.AdminId = (await accounts.Users.Where(u => u.IsAdmin).OrderBy(u => u.CreatedAt).FirstAsync(ct)).Id;
 
         if (configuration.GetValue(DailyBackupKey, true))
         {
@@ -120,18 +119,5 @@ public sealed class StorageInitializer(
         }
 
         return report;
-    }
-
-    /// <summary>Миграции файла пользователя; файла ещё нет — создать с начальными данными.</summary>
-    private async Task PrepareUserDatabaseAsync(Guid userId, CancellationToken ct)
-    {
-        var path = paths.UserDatabase(userId);
-        var isNew = !File.Exists(path);
-        await using var db = PlannerDbContextFactory.Create(path, clock);
-        await db.Database.MigrateAsync(ct);
-        if (isNew)
-        {
-            await SeedData.EnsureSeededAsync(db, ct);
-        }
     }
 }

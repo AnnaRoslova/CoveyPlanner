@@ -70,7 +70,7 @@ await check('«свернуть всё» сворачивает все кате�
 });
 
 const api = (method, path, body) => page.evaluate(async (method, path, body) => {
-  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: body ? JSON.stringify(body) : undefined });
   return r.status === 204 ? null : r.json();
 }, method, path, body);
 const feedItem = title => page.evaluateHandle(t => [...document.querySelectorAll('.someday .cat-b .item')]

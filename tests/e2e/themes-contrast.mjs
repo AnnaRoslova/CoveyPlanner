@@ -150,14 +150,14 @@ await page.goto(BASE, { waitUntil: 'networkidle0' });
 await page.evaluate(async () => {
   const week = await (await fetch('/api/week/' + new Date().toISOString().slice(0, 10))).json();
   const t = week.tasks.find(x => x.title === 'Оплатить интернет');
-  if (t) await fetch(`/api/tasks/${t.id}`, { method: 'DELETE' });
+  if (t) await fetch(`/api/tasks/${t.id}`, { method: 'DELETE', headers: { 'X-Planner': '1' } });
 });
 
 // Проект с шагами (подписи «↳ Ремонт» и «☑ 1/2» в днях) и выполненная мысль ленты — для экрана «Выполненное»
 await page.evaluate(async () => {
   const d = new Date(), iso = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
   const post = async (url, body, method = 'POST') => {
-    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: JSON.stringify(body) });
     const text = await r.text();
     return text ? JSON.parse(text) : null;
   };

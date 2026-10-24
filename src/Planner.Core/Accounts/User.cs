@@ -26,6 +26,43 @@ public class User
 
     public DateTime? LastLoginAt { get; private set; }
 
+    /// <summary>Отключён администратором (U3): вход невозможен, данные не трогаются.</summary>
+    public bool IsDisabled { get; private set; }
+
+    /// <summary>«Корзина аккаунта» (P3): удалён, но до этого момента восстанавливается входом по коду; потом данные стираются.</summary>
+    public DateTime? DeleteAfter { get; private set; }
+
+    public static readonly TimeSpan DeletionGrace = TimeSpan.FromDays(7);
+
+    /// <summary>«Удалить аккаунт»: отключить на 7 дней; единственного администратора — нельзя.</summary>
+    public void MarkDeleted(DateTime now)
+    {
+        if (IsAdmin)
+        {
+            throw new DomainException("Вы единственный администратор — аккаунт удалить нельзя.");
+        }
+
+        DeleteAfter ??= now + DeletionGrace;
+    }
+
+    /// <summary>Вход по коду в эти 7 дней возвращает аккаунт.</summary>
+    public bool Restore()
+    {
+        var wasDeleted = DeleteAfter is not null;
+        DeleteAfter = null;
+        return wasDeleted;
+    }
+
+    public void SetDisabled(bool disabled)
+    {
+        if (disabled && IsAdmin)
+        {
+            throw new DomainException("Администратора отключить нельзя.");
+        }
+
+        IsDisabled = disabled;
+    }
+
     public static User Create(string email, bool isAdmin, DateTime now) => new()
     {
         Id = Guid.NewGuid(),
@@ -33,6 +70,9 @@ public class User
         IsAdmin = isAdmin,
         CreatedAt = now,
     };
+
+    /// <summary>Успешный вход кодом (L7).</summary>
+    public void RecordLogin(DateTime now) => LastLoginAt = now;
 
     /// <summary>Почта для сравнения и хранения: без пробелов по краям, в нижнем регистре; явная опечатка — ошибка.</summary>
     public static string NormalizeEmail(string? email)

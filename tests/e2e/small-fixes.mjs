@@ -29,7 +29,7 @@ async function check(name, fn) {
   await sleep(300); // «+» роли гаснет плавно
 }
 const api = (method, path, body) => page.evaluate(async (m, p, b) => {
-  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: b ? JSON.stringify(b) : undefined });
   if (!r.ok) throw new Error(`${m} ${p}: ${r.status} ${await r.text()}`);
   const text = await r.text();
   return text ? JSON.parse(text) : null;

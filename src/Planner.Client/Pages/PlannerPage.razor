@@ -67,6 +67,14 @@
     {
         <ReportScreen />
     }
+    else if (Windows.AccountOpen)
+    {
+        <AccountScreen />
+    }
+    else if (Windows.AdminOpen)
+    {
+        <AdminScreen />
+    }
     else if (Windows.HelpOpen)
     {
         <HelpScreen />

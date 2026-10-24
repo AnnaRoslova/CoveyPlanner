@@ -82,7 +82,7 @@ await check('PWA: service worker активен и управляет стран
 
 await check('через service worker сохранение работает', async () => {
   const ok = await page.evaluate(async () => {
-    const r = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Дымовая', emoji: null }) });
+    const r = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: JSON.stringify({ name: 'Дымовая', emoji: null }) });
     return r.status;
   });
   assert(ok === 201, `статус ${ok}`);

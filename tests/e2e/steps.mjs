@@ -23,7 +23,7 @@ async function check(name, fn) {
   catch (e) { results.push(`FAIL ${name}: ${e.message}`); await page.screenshot({ path: `${SHOTS}/fail-steps-${results.length}.png` }); }
 }
 const api = (method, path, body) => page.evaluate(async (m, p, b) => {
-  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: b ? JSON.stringify(b) : undefined });
   if (!r.ok) throw new Error(`${m} ${p}: ${r.status} ${await r.text()}`);
   return r.status === 204 || r.status === 201 && r.headers.get('content-length') === '0' ? null : r.json();
 }, method, path, body);

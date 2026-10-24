@@ -53,7 +53,7 @@ public class CalendarApiTests : ApiTestBase
 
     private async Task<int> CountGoalsAsync()
     {
-        await using var scope = Services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<PlannerDbContext>().WeeklyGoals.CountAsync();
+        await using var db = await Factory.OpenUserDataAsync();
+        return await db.WeeklyGoals.CountAsync();
     }
 }

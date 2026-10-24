@@ -1,0 +1,212 @@
+@* «Пользователи и приглашения» (docs/specs/accounts.md, U1–U4, I2–I3) — экран поверх недели, только у администратора.
+   Пользователи: почта, регистрация, последний вход, отключить/включить. Приглашения: создать (ссылка — один раз, «Копировать»),
+   списки «Активные · Использованные · Истёкшие · Отозванные», «Отозвать». Чужих данных планировщика здесь нет. *@
+@inject WindowHost Windows
+@inject PlannerApi Api
+@inject IJSRuntime JS
+
+<div class="screen-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="screen-window admin-screen" role="dialog" aria-label="Пользователи и приглашения" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="screen-h">
+        <h2>Пользователи и приглашения</h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </header>
+
+    <div class="admin-tabs" role="tablist">
+        <button type="button" role="tab" class="btn small @(_invitesTab ? "" : "on")" aria-selected="@(!_invitesTab)" @onclick="() => _invitesTab = false">Пользователи</button>
+        <button type="button" role="tab" class="btn small @(_invitesTab ? "on" : "")" aria-selected="@_invitesTab" @onclick="() => _invitesTab = true">Приглашения</button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="login-error" role="alert">@_error</p>
+    }
+
+    @if (!_invitesTab)
+    {
+        <table class="admin-table admin-users">
+            <thead><tr><th>Почта</th><th>Регистрация</th><th>Последний вход</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var user in _users)
+                {
+                    <tr class="@(user.IsDisabled ? "off" : "")">
+                        <td>@user.Email @if (user.IsAdmin) { <span class="admin-badge">администратор</span> } @if (user.IsDisabled) { <span class="admin-badge off">отключён</span> } @if (user.DeleteAfter is { } until) { <span class="admin-badge off">удаляется @Date(until)</span> }</td>
+                        <td>@Date(user.CreatedAt)</td>
+                        <td>@(user.LastLoginAt is { } at ? Date(at) : "—")</td>
+                        <td>
+                            @if (!user.IsAdmin)
+                            {
+                                <button type="button" class="btn small @(user.IsDisabled ? "" : "danger") toggle-user" @onclick="() => ToggleAsync(user)">
+                                    @(user.IsDisabled ? "Включить" : "Отключить")
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <form class="admin-invite-form" @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+            <input class="login-input invite-email" type="email" placeholder="Почта (необязательно)" aria-label="Почта приглашённого"
+                   @bind="_email" @bind:event="oninput" />
+            <label class="invite-days">Срок
+                <select @bind="_days" aria-label="Срок приглашения">
+                    @foreach (var days in DayChoices)
+                    {
+                        <option value="@days">@days @Days(days)</option>
+                    }
+                </select>
+            </label>
+            <button type="submit" class="btn primary create-invite" disabled="@_busy">Создать приглашение</button>
+        </form>
+
+        @if (_created is not null)
+        {
+            <div class="admin-link" role="status">
+                <div class="login-hint">Ссылка показывается один раз@(_created.Invite.Email is null ? "" : " (и отправлена письмом)"):</div>
+                <code class="invite-link">@_created.Link</code>
+                <button type="button" class="btn small copy-link" @onclick="CopyAsync">@(_copied ? "Скопировано ✓" : "Копировать")</button>
+            </div>
+        }
+
+        @foreach (var (status, title) in Groups)
+        {
+            var group = _invites.Where(i => i.Status == status).ToList();
+            @if (group.Count > 0)
+            {
+                <h3 class="admin-group">@title · @group.Count</h3>
+                <ul class="admin-invites" data-status="@status">
+                    @foreach (var invite in group)
+                    {
+                        <li>
+                            <span class="invite-who">@(invite.Email ?? "любая почта")</span>
+                            <span class="login-hint">
+                                @(status switch
+                                {
+                                    "Used" => $"зарегистрировался {invite.UsedByEmail} · {Date(invite.UsedAt!.Value)}",
+                                    "Active" => $"до {Date(invite.ExpiresAt)}",
+                                    _ => $"создано {Date(invite.CreatedAt)}",
+                                })
+                            </span>
+                            @if (status == "Active")
+                            {
+                                <button type="button" class="btn small danger revoke-invite" @onclick="() => RevokeAsync(invite)">Отозвать</button>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        }
+    }
+</section>
+
+@code {
+    private static readonly int[] DayChoices = [1, 3, 7, 14, 30];
+
+    private static readonly (string Status, string Title)[] Groups =
+        [("Active", "Активные"), ("Used", "Использованные"), ("Expired", "Истёкшие"), ("Revoked", "Отозванные")];
+
+    private ElementReference _root;
+    private bool _invitesTab;
+    private List<UserAdminDto> _users = [];
+    private List<InviteDto> _invites = [];
+    private CreatedInviteDto? _created;
+    private string _email = "";
+    private int _days = 7;
+    private bool _busy;
+    private bool _copied;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _users = await Api.GetUsersAsync();
+            _invites = await Api.GetInvitesAsync();
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task ToggleAsync(UserAdminDto user)
+    {
+        await Run(() => Api.SetUserDisabledAsync(user.Id, !user.IsDisabled));
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        try
+        {
+            _created = await Api.CreateInviteAsync(string.IsNullOrWhiteSpace(_email) ? null : _email.Trim(), _days);
+            _copied = false;
+            _email = "";
+            await LoadAsync();
+            await _root.FocusAsync(); // кнопка на время создания была неактивна и потеряла фокус — Esc снова закрывает окно
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task RevokeAsync(InviteDto invite) => Run(() => Api.RevokeInviteAsync(invite.Id));
+
+    private async Task Run(Func<Task> action)
+    {
+        _error = null;
+        try
+        {
+            await action();
+            await LoadAsync();
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _created!.Link);
+            _copied = true;
+        }
+        catch (JSException)
+        {
+            _error = "Не получилось скопировать — выделите ссылку и скопируйте вручную.";
+        }
+    }
+
+    private static string Date(DateTime utc) => DateOnly.FromDateTime(utc.ToLocalTime()) is var d ? $"{RuDates.DayMonthShort(d)} {d.Year}" : "";
+
+    private static string Days(int n) => n % 10 == 1 && n % 100 != 11 ? "день" : n % 10 is >= 2 and <= 4 && n % 100 is < 12 or > 14 ? "дня" : "дней";
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

@@ -115,3 +115,27 @@ public sealed record UpdateSettingsRequest(int? StaleMonths = null, string? Miss
 
 /// <summary>Сдвиг часов сервера (только Development, e2e).</summary>
 public sealed record ShiftClockRequest(double Days);
+
+/// <summary>Вход: прислать код на почту (docs/specs/accounts.md, L1).</summary>
+public sealed record RequestCodeRequest(string Email);
+
+/// <summary>Вход: проверить код из письма (L4).</summary>
+public sealed record VerifyCodeRequest(string Email, string Code);
+
+/// <summary>Приглашение по ссылке: токен из «…/invite#токен» (I4).</summary>
+public sealed record InviteTokenRequest(string Token);
+
+/// <summary>Регистрация по приглашению: код на эту почту (I4).</summary>
+public sealed record InviteCodeRequest(string Token, string Email);
+
+/// <summary>Регистрация по приглашению: код из письма (I4).</summary>
+public sealed record InviteVerifyRequest(string Token, string Email, string Code);
+
+/// <summary>Новое приглашение (I2): почта необязательна, срок — 1, 3, 7, 14 или 30 дней.</summary>
+public sealed record CreateInviteRequest(string? Email, int Days = 7);
+
+/// <summary>«Удалить аккаунт» (P3): подтверждение — своя почта.</summary>
+public sealed record DeleteAccountRequest(string Email);
+
+/// <summary>Отключить / включить пользователя (U3).</summary>
+public sealed record SetUserDisabledRequest(bool IsDisabled);

@@ -21,8 +21,6 @@ public static class DataServiceCollectionExtensions
     {
         // Папка читается при первом обращении, а не при регистрации, чтобы тесты могли её переопределить
         services.AddSingleton(sp => DataPaths.FromConfiguration(sp.GetRequiredService<IConfiguration>()));
-        services.AddSingleton<StorageState>();
-        services.AddScoped<ICurrentUser, AdminAsCurrentUser>();
 
         // Контекст данных — на файл того, чей запрос (docs/specs/accounts.md, D3); без пользователя не открывается
         services.AddDbContext<PlannerDbContext>((sp, options) => PlannerDbContextFactory.Configure(
@@ -32,6 +30,7 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<AccountsDbContext>((sp, options) =>
             options.UseSqlite(DataPaths.ConnectionString(sp.GetRequiredService<DataPaths>().AccountsDatabase)));
         services.AddScoped<StorageInitializer>();
+        services.AddScoped<Planner.Server.Accounts.UserDatabases>();
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PlannerDbContext>());
         services.AddScoped<ITaskRepository, EfTaskRepository>();

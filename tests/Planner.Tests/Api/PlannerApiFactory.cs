@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using Planner.Core.Accounts;
+using Planner.Server.Accounts;
 using Planner.Server.Data;
 using Planner.Server.Data.Storage;
 using Planner.Shared;
@@ -16,7 +19,7 @@ namespace Planner.Tests.Api;
 /// </summary>
 public sealed class PlannerApiFactory(
     string? dataDirectory = null, bool dailyBackup = false, string? backupDirectory = null, TimeProvider? clock = null,
-    string? adminEmail = PlannerApiFactory.AdminEmail)
+    string? adminEmail = PlannerApiFactory.AdminEmail, IReadOnlyDictionary<string, string?>? settings = null)
     : WebApplicationFactory<Program>
 {
     public const string AdminEmail = "admin@test.local";
@@ -28,6 +31,56 @@ public sealed class PlannerApiFactory(
         backupDirectory ?? Path.Combine(Path.GetTempPath(), "planner-tests", $"backups-{Guid.NewGuid():N}");
 
     public DataPaths Paths => new(DataDirectory);
+
+    /// <summary>Клиент, вошедший кодом из почтового ящика разработки (по умолчанию — администратор).</summary>
+    public async Task<HttpClient> CreateSignedInClientAsync(string email = AdminEmail)
+    {
+        var client = CreateClient();
+        await SignInAsync(client, email);
+        return client;
+    }
+
+    /// <summary>Вход как у человека (accounts.md, L): код на почту → письмо в mail\ → код.</summary>
+    public async Task SignInAsync(HttpClient client, string email)
+    {
+        (await client.PostAsJsonAsync("/api/auth/code", new RequestCodeRequest(email))).EnsureSuccessStatusCode();
+        var response = await client.PostAsJsonAsync("/api/auth/verify", new VerifyCodeRequest(email, LastCode(email)));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Вход {email}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+
+    /// <summary>Код из последнего письма этой почте.</summary>
+    public string LastCode(string email)
+    {
+        var letter = Services.GetRequiredService<DevMailbox>().Latest(1, User.NormalizeEmail(email)).Single();
+        return LoginCode.Clean(letter.Subject);
+    }
+
+    /// <summary>Ещё один пользователь со своим файлом данных (приглашений пока нет — напрямую).</summary>
+    public async Task<User> CreateUserAsync(string email)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<AccountService>().CreateUserAsync(email, isAdmin: false);
+    }
+
+    /// <summary>Файл данных пользователя напрямую — посмотреть то, чего не видно через API.</summary>
+    public async Task<PlannerDbContext> OpenUserDataAsync(string email = AdminEmail)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var normalized = User.NormalizeEmail(email);
+        var user = await scope.ServiceProvider.GetRequiredService<Planner.Server.Data.Accounts.AccountsDbContext>().Users
+            .SingleAsync(u => u.Email == normalized);
+        return PlannerDbContextFactory.Create(Paths.UserDatabase(user.Id), TimeProvider.System);
+    }
+
+    /// <summary>Все клиенты шлют заголовок защиты от подделки запросов, как настоящий клиент (accounts.md, C).</summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Add(AuthSetup.CsrfHeader, "1");
+    }
 
     /// <summary>Клиент служебных скриптов — с ключом из local.key (accounts.md, D6).</summary>
     public HttpClient CreateScriptClient()
@@ -46,6 +99,11 @@ public sealed class PlannerApiFactory(
         if (adminEmail is not null)
         {
             builder.UseSetting(StorageInitializer.AdminEmailKey, adminEmail);
+        }
+
+        foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
+        {
+            builder.UseSetting(key, value);
         }
 
         if (clock is not null)
@@ -82,11 +140,10 @@ public abstract class ApiTestBase : IAsyncLifetime
     /// <summary>Сервисы сервера — посмотреть базу напрямую (то, чего не видно через API).</summary>
     protected IServiceProvider Services => _factory.Services;
 
-    public Task InitializeAsync()
-    {
-        Client = _factory.CreateClient();
-        return Task.CompletedTask;
-    }
+    /// <summary>Фабрика сервера теста — второй пользователь, прямой доступ к файлам.</summary>
+    protected PlannerApiFactory Factory => _factory;
+
+    public virtual async Task InitializeAsync() => Client = await _factory.CreateSignedInClientAsync();
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 

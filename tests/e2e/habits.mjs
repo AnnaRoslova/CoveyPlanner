@@ -56,7 +56,7 @@ const cardButton = (name, text) => text === 'настроить'
   : page.evaluate((s, t) => [...document.querySelector(s).querySelectorAll('.btn')].find(b => b.textContent.trim() === t).click(), card(name), text);
 const serverHabit = name => page.evaluate(async n => (await (await fetch('/api/habits')).json()).habits.find(h => h.name === n) ?? null, name);
 const api = (method, path, body) => page.evaluate(async (m, p, b) => {
-  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: b ? JSON.stringify(b) : undefined });
   if (!r.ok) throw new Error(`${m} ${p}: ${r.status}`);
   return r.status === 204 ? null : r.json();
 }, method, path, body);

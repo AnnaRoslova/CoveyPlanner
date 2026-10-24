@@ -1,0 +1,56 @@
+@page "/invite"
+@* Регистрация по приглашению (docs/specs/accounts.md, I4–I5): ссылка «…/invite#токен» (токен во фрагменте — не уходит на сервер
+   в строке запроса). Действует — почта (у приглашения на почту — подставлена) → код → аккаунт со стартовым набором и вход. *@
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Приглашение</PageTitle>
+
+<div class="login-page">
+    <div class="login-card invite-card" role="main">
+        @if (_checked && _invite is { Valid: true } invite)
+        {
+            <h1 class="login-title">Вас пригласили в планировщик</h1>
+            <p class="login-lead">Пароля нет: введите почту — придёт код, и аккаунт готов.</p>
+            <LoginForm InviteToken="@_token" InitialEmail="@invite.Email" EmailLocked="@(invite.Email is not null)" OnSignedIn="SignedIn" />
+        }
+        else if (_checked)
+        {
+            <h1 class="login-title">Приглашение</h1>
+            <p class="login-error" role="alert">Приглашение не действует — попросите новое.</p>
+            <a class="login-privacy" href="/">К входу</a>
+        }
+        <a class="login-privacy" href="/privacy">Какие данные мы храним</a>
+    </div>
+</div>
+
+@code {
+    private string _token = "";
+    private bool _checked;
+    private InviteCheckDto? _invite;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hash = Nav.Uri.IndexOf('#');
+        _token = hash < 0 ? "" : Uri.UnescapeDataString(Nav.Uri[(hash + 1)..]);
+        try
+        {
+            using var response = await Http.PostAsJsonAsync("api/auth/invite/check", new InviteTokenRequest(_token));
+            _invite = response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<InviteCheckDto>() : null;
+        }
+        catch (HttpRequestException)
+        {
+            _invite = null;
+        }
+
+        _checked = true;
+    }
+
+    private void SignedIn(MeDto me)
+    {
+        Auth.SignedIn(me);
+        Nav.NavigateTo("/");
+    }
+}

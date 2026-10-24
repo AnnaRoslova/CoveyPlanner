@@ -1,0 +1,240 @@
+@* Вход кодом на почту (docs/specs/accounts.md, L1–L5): почта → «Получить код» → код из письма. Ответ одинаковый для любой почты,
+   поэтому на шаге кода почта — крупно и с «изменить»: опечатку видно сразу. Шесть цифр — вход сам, без кнопки. *@
+@using System.Net
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@implements IDisposable
+
+<form class="login-form" @onsubmit="SubmitAsync" @onsubmit:preventDefault="true">
+    @if (!_codeStep)
+    {
+        <label class="login-label" for="login-email">Почта</label>
+        <input id="login-email" @ref="_emailInput" class="login-input" type="email" autocomplete="email" inputmode="email"
+               placeholder="you@example.com" @bind="_email" @bind:event="oninput" readonly="@EmailLocked" />
+        <button type="submit" class="btn primary login-go" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">Получить код</button>
+    }
+    else
+    {
+        <div class="login-sent">Код отправлен на</div>
+        <div class="login-email-big">
+            <span class="login-email">@_email</span>
+            @if (!EmailLocked)
+            {
+                <button type="button" class="btn small login-change" @onclick="ChangeEmail">изменить</button>
+            }
+        </div>
+        <div class="login-hint">Если этот адрес зарегистрирован, код придёт в течение минуты.</div>
+        <label class="login-label" for="login-code">Код из письма</label>
+        <input id="login-code" @ref="_codeInput" class="login-code" type="text" inputmode="numeric" autocomplete="one-time-code"
+               maxlength="9" placeholder="______" value="@_code" @oninput="OnCodeInputAsync" aria-describedby="login-code-hint" />
+        <div id="login-code-hint" class="login-hint">6 цифр; можно вставить целиком.</div>
+        <button type="submit" class="btn primary login-go" disabled="@(_busy || Digits.Length != 6)">Войти</button>
+        <button type="button" class="btn small login-resend" disabled="@(_busy || _resendIn > 0)" @onclick="ResendAsync">
+            @(_resendIn > 0 ? $"Новый код можно запросить через {_resendIn} с" : "Прислать новый код")
+        </button>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="login-error" role="alert">
+            @_error
+            @if (_registered)
+            {
+                <span> · <a href="/" class="login-signin">Войти</a></span>
+            }
+        </div>
+    }
+
+    @if (_devMailbox)
+    {
+        <a class="login-mailbox" href="/dev/mailbox" target="_blank" rel="noopener">Письмо — в почтовом ящике разработки</a>
+    }
+</form>
+
+@code {
+    /// <summary>Почта заранее (окно входа поверх экрана — почта того, кто вышел).</summary>
+    [Parameter] public string? InitialEmail { get; set; }
+
+    [Parameter] public EventCallback<MeDto> OnSignedIn { get; set; }
+
+    /// <summary>Регистрация по приглашению (I4): токен из ссылки; код и вход — через приглашение.</summary>
+    [Parameter] public string? InviteToken { get; set; }
+
+    /// <summary>Приглашение для определённой почты — поле не меняется.</summary>
+    [Parameter] public bool EmailLocked { get; set; }
+
+    private ElementReference _emailInput;
+    private ElementReference _codeInput;
+    private string _email = "";
+    private string _code = "";
+    private bool _codeStep;
+    private bool _busy;
+    private bool _devMailbox;
+    private bool _focusPending = true;
+    private string? _error;
+    private bool _registered;
+    private int _resendIn;
+    private System.Threading.Timer? _timer;
+
+    private string Digits => new(_code.Where(char.IsAsciiDigit).ToArray());
+
+    protected override async Task OnInitializedAsync()
+    {
+        _email = InitialEmail ?? "";
+        try
+        {
+            _devMailbox = (await Http.GetFromJsonAsync<AuthInfoDto>("api/auth/info"))?.DevMailbox == true;
+        }
+        catch (HttpRequestException)
+        {
+            // Без ссылки на почтовый ящик вход всё равно работает
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending)
+        {
+            _focusPending = false;
+            await (_codeStep ? _codeInput : _emailInput).FocusAsync();
+        }
+    }
+
+    private Task SubmitAsync() => _codeStep ? VerifyAsync() : RequestCodeAsync();
+
+    private Task ResendAsync() => RequestCodeAsync();
+
+    private void ChangeEmail()
+    {
+        _codeStep = false;
+        _code = "";
+        _error = null;
+        _focusPending = true;
+    }
+
+    private async Task OnCodeInputAsync(ChangeEventArgs e)
+    {
+        _code = e.Value?.ToString() ?? "";
+        _error = null;
+        if (Digits.Length == 6 && !_busy)
+        {
+            await VerifyAsync();
+        }
+    }
+
+    private async Task RequestCodeAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _registered = false;
+            using var response = InviteToken is null
+                ? await Http.PostAsJsonAsync("api/auth/code", new RequestCodeRequest(_email))
+                : await Http.PostAsJsonAsync("api/auth/invite/code", new InviteCodeRequest(InviteToken, _email));
+            if (response.IsSuccessStatusCode)
+            {
+                var sent = await response.Content.ReadFromJsonAsync<RequestCodeResponse>();
+                _email = _email.Trim();
+                if (!_codeStep)
+                {
+                    _codeStep = true;
+                    _focusPending = true;
+                }
+
+                StartCountdown(sent?.RetryAfterSeconds ?? 60);
+            }
+            else
+            {
+                var (title, code, retry) = await ReadProblemAsync(response);
+                _error = title;
+                _registered = code == "registered";
+                if (response.StatusCode == HttpStatusCode.TooManyRequests && retry is { } seconds)
+                {
+                    StartCountdown(seconds);
+                }
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Нет связи с сервером — попробуйте ещё раз.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task VerifyAsync()
+    {
+        if (Digits.Length != 6)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            using var response = InviteToken is null
+                ? await Http.PostAsJsonAsync("api/auth/verify", new VerifyCodeRequest(_email, Digits))
+                : await Http.PostAsJsonAsync("api/auth/invite/verify", new InviteVerifyRequest(InviteToken, _email, Digits));
+            if (response.IsSuccessStatusCode)
+            {
+                var me = (await response.Content.ReadFromJsonAsync<MeDto>())!;
+                await OnSignedIn.InvokeAsync(me);
+                return;
+            }
+
+            var (title, code, _) = await ReadProblemAsync(response);
+            _error = title;
+            if (code == "expired")
+            {
+                _resendIn = 0;
+            }
+
+            _code = "";
+            _focusPending = true;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Нет связи с сервером — попробуйте ещё раз.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void StartCountdown(int seconds)
+    {
+        _resendIn = seconds;
+        _timer?.Dispose();
+        _timer = new System.Threading.Timer(_ => InvokeAsync(() =>
+        {
+            if (_resendIn > 0)
+            {
+                _resendIn--;
+                StateHasChanged();
+            }
+        }), null, 1000, 1000);
+    }
+
+    private static async Task<(string Title, string? Code, int? RetryAfter)> ReadProblemAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+            return (problem.TryGetProperty("title", out var t) ? t.GetString() ?? "Не получилось" : "Не получилось",
+                problem.TryGetProperty("code", out var c) ? c.GetString() : null,
+                problem.TryGetProperty("retryAfterSeconds", out var r) ? r.GetInt32() : null);
+        }
+        catch (JsonException)
+        {
+            return ($"Ошибка сервера ({(int)response.StatusCode}).", null, null);
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

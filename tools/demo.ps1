@@ -42,7 +42,7 @@ Write-Host "Демо-данные: $data"
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = $url
 $server = Start-Process (Join-Path $app 'Planner.Server.exe') `
-    -ArgumentList "--Storage:DataDirectory=`"$data`" --Storage:DailyBackup=false --Accounts:AdminEmail=demo@localhost" `
+    -ArgumentList "--Storage:DataDirectory=`"$data`" --Storage:DailyBackup=false --Accounts:AdminEmail=demo@localhost --Auth:DevAutoLogin=demo@localhost" `
     -WorkingDirectory $app -NoNewWindow -PassThru
 
 try {

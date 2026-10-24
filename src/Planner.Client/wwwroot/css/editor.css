@@ -1391,3 +1391,352 @@ body.dragging .editor {
 .editor .session-days {
     color: var(--soft);
 }
+
+/* Вход кодом на почту и «Какие данные мы храним» (docs/specs/accounts.md, L1–L5, P4, Q1) — карточка в стиле окон, цвета темы */
+.login-page {
+    display: flex;
+    min-height: 100vh;
+    padding: 16px;
+}
+
+.login-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(400px, 100%);
+    margin: auto;
+    padding: 24px 22px 18px;
+    border-radius: var(--panel-radius);
+    background: var(--paper);
+    box-shadow: var(--shadow-window);
+    color: var(--text);
+}
+
+.login-card.privacy {
+    width: min(620px, 100%);
+    line-height: 1.55;
+}
+
+.login-card.privacy h2 {
+    margin: 10px 0 0;
+    font-family: var(--font-title);
+    font-size: 17px;
+}
+
+.login-card.privacy ul,
+.login-card.privacy p {
+    margin: 0;
+}
+
+.login-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--overlay);
+}
+
+.login-card.login-over {
+    position: fixed;
+    inset: 0;
+    z-index: 201;
+    height: fit-content;
+    max-height: calc(100vh - 32px);
+    width: min(400px, calc(100vw - 32px));
+    overflow-y: auto;
+}
+
+.login-title {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.login-lead,
+.login-sent,
+.login-hint {
+    margin: 0;
+    color: var(--soft);
+}
+
+.login-hint {
+    font-size: 13px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.login-label {
+    font-weight: 700;
+}
+
+.login-input,
+.login-code {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 17px;
+}
+
+/* Шесть цифр «клетками»: моноширинные с разрядкой, вставка целиком — обычное поле */
+.login-code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 26px;
+    letter-spacing: 0.45em;
+    text-align: center;
+}
+
+.login-input:focus-visible,
+.login-code:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+}
+
+.login-email-big {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.login-email {
+    font-size: 20px;
+    font-weight: 800;
+    word-break: break-all;
+}
+
+.login-go {
+    min-height: 40px;
+    font-size: 15px;
+}
+
+.login-resend {
+    align-self: flex-start;
+}
+
+.login-error {
+    color: var(--a-ink);
+    font-weight: 700;
+}
+
+.login-mailbox,
+.login-privacy,
+.privacy-back a {
+    color: var(--b-deep);
+    font-size: 13px;
+}
+
+/* Аккаунт в «⚙ Настройки» (accounts.md, P1, S4) */
+.account-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.account-email {
+    font-weight: 700;
+    word-break: break-all;
+}
+
+.account-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--soft);
+    font-size: 13px;
+}
+
+/* «Пользователи и приглашения» и «Аккаунт» (accounts.md, U1–U4, I2–I3, P1–P3) — экраны поверх недели, как «Как это устроено» */
+.admin-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.admin-tabs .btn.on {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-ink);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.admin-table th {
+    color: var(--soft);
+    font-weight: 600;
+    text-align: left;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+}
+
+.admin-table tr.off td:first-child {
+    color: var(--soft);
+}
+
+.admin-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--b-soft);
+    color: var(--b-deep);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-badge.off {
+    background: var(--a-soft);
+    color: var(--a-ink);
+}
+
+.admin-invite-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-invite-form .invite-email {
+    flex: 1 1 220px;
+    min-height: 36px;
+    font-size: 15px;
+}
+
+.invite-days select {
+    margin-left: 6px;
+    min-height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.admin-link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: var(--b-soft);
+}
+
+.invite-link {
+    flex: 1 1 100%;
+    word-break: break-all;
+    color: var(--text);
+    font-size: 13px;
+    user-select: all;
+}
+
+.admin-group {
+    margin: 8px 0 0;
+    font-size: 15px;
+}
+
+.admin-invites,
+.account-sessions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-invites li,
+.account-sessions li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.invite-who,
+.session-device {
+    font-weight: 700;
+}
+
+.account-screen h3 {
+    margin: 8px 0 0;
+    font-family: var(--font-title);
+    font-size: 17px;
+}
+
+.account-screen .delete-account {
+    align-self: flex-start;
+}
+
+.account-screen .export-data {
+    align-self: flex-start;
+    text-decoration: none;
+}
+
+/* Экран поверх недели для «Пользователи и приглашения» и «Аккаунт» — как «Как это устроено» (его стили — свои, scoped) */
+.screen-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: var(--overlay);
+}
+
+.screen-window {
+    position: fixed;
+    inset: 16px 16px auto;
+    z-index: 36;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(760px, calc(100vw - 32px));
+    margin: 0 auto;
+    overflow-y: auto;
+    padding: 20px 22px 24px;
+    border-radius: var(--panel-radius);
+    background: var(--t-panel);
+    color: var(--text);
+    box-shadow: var(--shadow-window);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    outline: none;
+}
+
+.screen-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.screen-h h2 {
+    margin: 0;
+    font-family: var(--font-title);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.screen-h .close {
+    color: var(--soft);
+}
+
+.screen-window .account-email {
+    margin: 0;
+}

@@ -3,9 +3,11 @@
 param([string]$BaseUrl = 'http://localhost:5070')
 
 $ErrorActionPreference = 'Stop'
+$script:session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 
 function Api([string]$Method, [string]$Path, $Body = $null) {
-    $params = @{ Method = $Method; Uri = "$BaseUrl/api/$Path"; ContentType = 'application/json; charset=utf-8' }
+    # X-Planner — защита от подделки запросов (accounts.md, C); вход — автоматический у демо-сервера (Auth:DevAutoLogin)
+    $params = @{ Method = $Method; Uri = "$BaseUrl/api/$Path"; ContentType = 'application/json; charset=utf-8'; Headers = @{ 'X-Planner' = '1' }; WebSession = $script:session }
     if ($null -ne $Body) {
         $params.Body = [Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 5 -Compress))
     }

@@ -20,7 +20,7 @@ async function check(name, fn) {
   catch (e) { results.push(`FAIL ${name}: ${e.message}`); await page.screenshot({ path: `${SHOTS}/fail-order-${results.length}.png` }); }
 }
 const api = (method, path, body) => page.evaluate(async (method, path, body) => {
-  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch('/api/' + path, { method, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: body ? JSON.stringify(body) : undefined });
   if (!r.ok) throw new Error(`${method} ${path}: ${r.status}`);
   return r.status === 204 ? null : r.json();
 }, method, path, body);

@@ -53,9 +53,10 @@ public class BackupTests
     {
         await using var factory = new PlannerApiFactory();
         var client = factory.CreateScriptClient();
-        await client.PostAsJsonAsync("/api/categories", new CreateCategoryRequest("Идеи", "💡"));
+        (await (await factory.CreateSignedInClientAsync()).PostAsJsonAsync("/api/categories", new CreateCategoryRequest("Идеи", "💡")))
+            .EnsureSuccessStatusCode();
 
-        // Второй пользователь (его файл), ключи Data Protection и ключ хэшей кодов
+        // Второй пользователь (его файл); ключи Data Protection и hmac.key уже созданы входом
         var paths = factory.Paths;
         var admin = Path.GetFileName(Assert.Single(paths.ExistingUserDatabases()));
         var other = $"{Guid.NewGuid():N}.db";
@@ -65,18 +66,20 @@ public class BackupTests
         }
 
         TestDatabase.ClearPool(Path.Combine(paths.UsersDirectory, other));
-        Directory.CreateDirectory(Path.Combine(paths.KeysDirectory, "data-protection"));
-        await File.WriteAllTextAsync(Path.Combine(paths.KeysDirectory, "data-protection", "key-1.xml"), "<key/>");
-        await File.WriteAllTextAsync(Path.Combine(paths.KeysDirectory, "hmac.key"), "секрет");
 
         var backup = await ReadAsync<BackupDto>(await client.PostAsync("/api/backup", null));
 
         Assert.StartsWith(factory.BackupDirectory, backup.Path);
         Assert.Contains("вручную", backup.File);
-        string[] expected = ["accounts.db", "keys/data-protection/key-1.xml", "keys/hmac.key", "local.key", $"users/{admin}", $"users/{other}"];
+        var keys = Directory.GetFiles(paths.KeysDirectory, "*", SearchOption.AllDirectories)
+            .Select(f => "keys/" + Path.GetRelativePath(paths.KeysDirectory, f).Replace('\\', '/'))
+            .ToList();
+        Assert.Contains("keys/hmac.key", keys);
+        Assert.Contains(keys, k => k.StartsWith("keys/data-protection/key-", StringComparison.Ordinal));
+        string[] expected = ["accounts.db", "local.key", $"users/{admin}", $"users/{other}", .. keys];
         Assert.Equal(expected.Order(StringComparer.Ordinal), FilesOf(backup.Path));
         Assert.Equal(8, CountRoles(Path.Combine(backup.Path, "users", admin))); // целая база администратора
-        Assert.Equal("секрет", await File.ReadAllTextAsync(Path.Combine(backup.Path, "keys", "hmac.key")));
+        Assert.Equal(await File.ReadAllTextAsync(paths.HmacKeyFile), await File.ReadAllTextAsync(Path.Combine(backup.Path, "keys", "hmac.key")));
 
         var list = await client.GetFromJsonAsync<List<BackupDto>>("/api/backup");
         Assert.Equal(backup.File, Assert.Single(list!).File);

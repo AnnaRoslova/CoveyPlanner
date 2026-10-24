@@ -18,6 +18,15 @@ public sealed class DataPaths(string root)
     /// <summary>Ключи Data Protection и ключ хэшей кодов (hmac.key) — в бэкап, но не в git (D5, D8).</summary>
     public string KeysDirectory => Path.Combine(Root, "keys");
 
+    /// <summary>Ключи Data Protection — ими зашифрованы cookie входа (S1).</summary>
+    public string DataProtectionDirectory => Path.Combine(KeysDirectory, "data-protection");
+
+    /// <summary>Ключ HMAC для хэшей кодов входа (L3) — не в accounts.db: утечка одной базы не даёт подобрать код.</summary>
+    public string HmacKeyFile => Path.Combine(KeysDirectory, "hmac.key");
+
+    /// <summary>Почтовый ящик разработки (M2).</summary>
+    public string MailDirectory => Path.Combine(Root, "mail");
+
     /// <summary>Ключ служебных скриптов (D6).</summary>
     public string LocalKeyFile => Path.Combine(Root, "local.key");
 

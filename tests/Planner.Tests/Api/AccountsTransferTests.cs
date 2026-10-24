@@ -35,7 +35,7 @@ public sealed class AccountsTransferTests : IAsyncLifetime
     private async Task<string> CreateLegacyDatabaseAsync()
     {
         await using var source = new PlannerApiFactory();
-        var client = source.CreateClient();
+        var client = await source.CreateSignedInClientAsync();
         var category = await Read<CategoryDto>(await client.PostAsJsonAsync("/api/categories", new CreateCategoryRequest("Книги", "📚")));
         await client.PostAsJsonAsync("/api/tasks", new CreateTaskRequest("Толстой", new SomedayTargetDto(category.Id, 0)));
         await client.PostAsJsonAsync("/api/tasks", new CreateTaskRequest("Бег в парке", new DayTargetDto(Monday, 0)));
@@ -63,7 +63,7 @@ public sealed class AccountsTransferTests : IAsyncLifetime
         var before = await DatabaseFingerprint.ComputeAsync(Paths.LegacyDatabase);
 
         await using var factory = new PlannerApiFactory(_dataDirectory, adminEmail: AnnaEmail);
-        var client = factory.CreateClient();
+        var client = await factory.CreateSignedInClientAsync(AnnaEmail);
 
         // Экран — тот же, что был до переноса
         Assert.Equal(Normalize(boardBefore), Normalize(await client.GetStringAsync("/api/board")));
@@ -99,7 +99,7 @@ public sealed class AccountsTransferTests : IAsyncLifetime
 
         // Второй запуск: другая почта в настройках ничего не меняет — администратор уже есть
         await using var second = new PlannerApiFactory(_dataDirectory, adminEmail: "other@example.com");
-        var board = await second.CreateClient().GetFromJsonAsync<BoardDto>("/api/board");
+        var board = await (await second.CreateSignedInClientAsync(AnnaEmail)).GetFromJsonAsync<BoardDto>("/api/board");
 
         Assert.Single(board!.Categories);
         Assert.Equal(userFile, Assert.Single(Paths.ExistingUserDatabases()));
@@ -126,7 +126,7 @@ public sealed class AccountsTransferTests : IAsyncLifetime
     public async Task EmptyDataDirectory_AdminGetsSeededFile()
     {
         await using var factory = new PlannerApiFactory(_dataDirectory);
-        var board = await factory.CreateClient().GetFromJsonAsync<BoardDto>("/api/board");
+        var board = await (await factory.CreateSignedInClientAsync()).GetFromJsonAsync<BoardDto>("/api/board");
 
         Assert.Equal(8, board!.Roles.Count);
         Assert.Single(Paths.ExistingUserDatabases());
@@ -168,6 +168,46 @@ public sealed class AccountsTransferTests : IAsyncLifetime
         Assert.Contains("Строк после запуска", report);
         Assert.Single(Paths.ExistingUserDatabases());
         Assert.True(File.Exists(Paths.LegacyKeptDatabase));
+    }
+
+    [Fact]
+    public async Task CheckMigrations_OnCopy_OldColumnsUnchanged_NewColumnsListed()
+    {
+        // Папка данных с администратором, его файл — в схеме до миграции Mission (без миссии и «кем я хочу быть»), с данными
+        await using (var factory = new PlannerApiFactory(_dataDirectory))
+        {
+            factory.CreateClient();
+        }
+
+        var file = Assert.Single(Paths.ExistingUserDatabases());
+        TestDatabase.ClearPool(file);
+        File.Delete(file);
+        await using (var db = new PlannerDbContext(new DbContextOptionsBuilder<PlannerDbContext>().UseSqlite($"Data Source={file};Pooling=False").Options))
+        {
+            await Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>(db).MigrateAsync("StaleThoughts");
+            await db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO Roles (Id, Name, Color, SortOrder, SawDimension) VALUES (1, 'Работа', '#8fb4e3', 0, NULL);
+                INSERT INTO Categories (Id, Name, Emoji, SortOrder, IsExpanded) VALUES (1, 'Книги', '📚', 0, 1);
+                """);
+        }
+
+        var reportPath = Path.Combine(_dataDirectory, "сверка.md");
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [DataPaths.DataDirectoryKey] = _dataDirectory,
+            [StorageInitializer.DailyBackupKey] = "false",
+            [DataServiceCollectionExtensions.BackupPathKey] = Path.Combine(_dataDirectory, "backups"),
+        }).Build();
+        await using var provider = new ServiceCollection().AddLogging().AddSingleton<IConfiguration>(configuration).AddPlannerData()
+            .BuildServiceProvider();
+
+        Assert.Equal(0, await TransferCommand.CheckMigrationsAsync(provider, reportPath));
+        var report = await File.ReadAllTextAsync(reportPath);
+        Assert.Contains("accounts.db", report);
+        Assert.Contains("Roles.Vision", report);
+        Assert.Contains("AppSettings.Mission", report);
+        Assert.DoesNotContain("НЕ СОВПАЛО", report);
+        Assert.Contains("| Roles | 1 | 1 | ✓ |", report);
     }
 
     [Fact]

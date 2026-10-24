@@ -70,7 +70,7 @@ public static class LegacyTransfer
         var temporary = target + ".tmp";
         File.Delete(temporary);
 
-        var before = await DatabaseFingerprint.ComputeAsync(source, ct);
+        var before = await DatabaseFingerprint.ComputeAsync(source, ct: ct);
         await using (var connection = new SqliteConnection($"Data Source={source};Pooling=False"))
         {
             await connection.OpenAsync(ct);
@@ -80,7 +80,7 @@ public static class LegacyTransfer
             await command.ExecuteNonQueryAsync(ct);
         }
 
-        var after = await DatabaseFingerprint.ComputeAsync(temporary, ct);
+        var after = await DatabaseFingerprint.ComputeAsync(temporary, ct: ct);
         var report = new TransferReport(adminEmail, source, target, before, after, now);
         if (!report.Matches)
         {

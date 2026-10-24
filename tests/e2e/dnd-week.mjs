@@ -103,7 +103,7 @@ await check('дело без времени нельзя поставить вы
   await page.evaluate(async () => {
     const week = await (await fetch('/api/week/' + new Date().toISOString().slice(0, 10))).json();
     const t = week.tasks.find(x => x.title === 'Бег в парке');
-    await fetch(`/api/tasks/${t.id}/done`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isDone: false }) });
+    await fetch(`/api/tasks/${t.id}/done`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: JSON.stringify({ isDone: false }) });
   });
   await load();
   const from = await dayItemBox(0, 'Сад с травами на балконе');

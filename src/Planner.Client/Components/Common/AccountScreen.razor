@@ -1,0 +1,125 @@
+@* «Аккаунт» (docs/specs/accounts.md, P1–P3, S4–S5): почта; устройства, где вошли («это устройство», «выйти» у каждого);
+   «Выгрузить мои данные» (JSON); «Удалить аккаунт» — подтверждение своей почтой, 7 дней можно передумать (вход кодом). *@
+@inject WindowHost Windows
+@inject PlannerApi Api
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<div class="screen-backdrop" @onclick="Windows.Close"></div>
+
+<section @ref="_root" class="screen-window account-screen" role="dialog" aria-label="Аккаунт" tabindex="-1" @onkeydown="OnKeyDown">
+    <header class="screen-h">
+        <h2>Аккаунт</h2>
+        <button type="button" class="close" title="Закрыть" aria-label="Закрыть" @onclick="Windows.Close"><Icon Name="x" Size="16" /></button>
+    </header>
+
+    <p class="account-email">@Auth.Me?.Email</p>
+
+    @if (_error is not null)
+    {
+        <p class="login-error" role="alert">@_error</p>
+    }
+
+    <h3>Устройства</h3>
+    <ul class="account-sessions">
+        @foreach (var session in _sessions)
+        {
+            <li>
+                <span class="session-device">@session.Device</span>
+                @if (session.IsCurrent)
+                {
+                    <span class="admin-badge">это устройство</span>
+                }
+                <span class="login-hint">вход @Date(session.CreatedAt) · был(а) @Date(session.LastSeenAt)</span>
+                <button type="button" class="btn small session-out" @onclick="() => SignOutAsync(session)">выйти</button>
+            </li>
+        }
+    </ul>
+
+    <h3>Мои данные</h3>
+    <p class="login-hint">Всё из планировщика одним файлом JSON — дела, цели, роли, категории, привычки, настройки (и корзина).</p>
+    <a class="btn small export-data" href="/api/account/export" download>Выгрузить мои данные</a>
+
+    <h3>Удалить аккаунт</h3>
+    @if (Auth.Me?.IsAdmin == true)
+    {
+        <p class="login-hint">Вы единственный администратор — аккаунт удалить нельзя.</p>
+    }
+    else
+    {
+        <p class="login-hint">Аккаунт сразу отключится, а через 7 дней данные сотрутся. Передумали — войдите кодом в эти 7 дней, всё вернётся.
+            В резервных копиях сервера данные остаются до конца их срока (около месяца).</p>
+        <label class="login-label" for="delete-confirm">Чтобы подтвердить, введите свою почту</label>
+        <input id="delete-confirm" class="login-input delete-confirm" type="email" autocomplete="off" @bind="_confirm" @bind:event="oninput" />
+        <button type="button" class="btn danger delete-account" disabled="@(!Confirmed || _busy)" @onclick="DeleteAsync">Удалить аккаунт</button>
+    }
+</section>
+
+@code {
+    private ElementReference _root;
+    private List<SessionDto> _sessions = [];
+    private string _confirm = "";
+    private bool _busy;
+    private string? _error;
+
+    private bool Confirmed => string.Equals(_confirm.Trim(), Auth.Me?.Email, StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _sessions = await Api.GetSessionsAsync();
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task SignOutAsync(SessionDto session)
+    {
+        await Api.RevokeSessionAsync(session.Id);
+        if (session.IsCurrent)
+        {
+            Nav.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        try
+        {
+            var deleted = await Api.DeleteAccountAsync(_confirm.Trim());
+            Nav.NavigateTo($"/?deleted={deleted.DeleteAfter.ToLocalTime():yyyy-MM-dd}", forceLoad: true);
+        }
+        catch (ApiException e)
+        {
+            _error = e.Message;
+            _busy = false;
+        }
+    }
+
+    private static string Date(DateTime utc) => DateOnly.FromDateTime(utc.ToLocalTime()) is var d ? RuDates.DayMonthShort(d) : "";
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Windows.Close();
+        }
+    }
+}

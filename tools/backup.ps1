@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $keyFile = Join-Path $DataDirectory 'local.key'
-$headers = @{}
+$headers = @{ 'X-Planner' = '1' }
 if (Test-Path $keyFile) { $headers['X-Planner-Local-Key'] = (Get-Content $keyFile -Raw).Trim() }
 
 try {

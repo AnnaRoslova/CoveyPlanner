@@ -1,0 +1,153 @@
+@* Вход (docs/specs/accounts.md, L, Q): без входа — экран входа вместо планировщика; сессия кончилась посреди работы —
+   окно входа поверх экрана, без перезагрузки (несохранённое ждёт в очереди). «Какие данные мы храним» открыта и без входа. *@
+@inject AuthState Auth
+@inject ConnectionQueue Queue
+@inject NavigationManager Nav
+@inject Notifier Notifier
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (IsPublicPage)
+{
+    @ChildContent
+}
+else if (!Auth.IsChecked)
+{
+}
+else if (Auth.Me is null)
+{
+    <div class="login-page">
+        <div class="login-card" role="main">
+            <h1 class="login-title">Вход</h1>
+            @if (DeletedUntil is { } until)
+            {
+                <p class="login-error deleted-note" role="status">Аккаунт удалён. Передумали — войдите кодом до @until, всё вернётся.</p>
+            }
+            <p class="login-lead">Пароля нет: введите почту — придёт код.</p>
+            <LoginForm OnSignedIn="SignedInFirst" />
+            <a class="login-privacy" href="/privacy">Какие данные мы храним</a>
+        </div>
+    </div>
+}
+else
+{
+    @ChildContent
+
+    @if (Auth.NeedsRelogin)
+    {
+        <div class="login-backdrop"></div>
+        <div class="login-card login-over" role="dialog" aria-modal="true" aria-label="Вход">
+            @if (Auth.AccountChanged)
+            {
+                <h2 class="login-title">Другой аккаунт</h2>
+                <p class="login-lead">
+                    @(_pendingOnChange > 0
+                        ? $"Изменения прежнего аккаунта ({_pendingOnChange}) не сохранены — они были для другого пользователя."
+                        : "Вы вошли другим пользователем.")
+                </p>
+                <button type="button" class="btn primary login-go" @onclick="Reload">Понятно</button>
+            }
+            else
+            {
+                <h2 class="login-title">Вы вышли</h2>
+                @if (Auth.Reason == "disabled")
+                {
+                    <p class="login-error" role="alert">Аккаунт отключён — обратитесь к администратору.</p>
+                }
+                <p class="login-lead">
+                    @(Queue.Pending > 0 ? $"Изменения не сохранены ({Queue.Pending}). Войдите, чтобы сохранить." : "Войдите, чтобы продолжить.")
+                </p>
+                <LoginForm InitialEmail="@Auth.Me.Email" OnSignedIn="SignedInAgain" />
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private int _pendingOnChange;
+
+    /// <summary>Открыты без входа: «Какие данные мы храним» и регистрация по приглашению.</summary>
+    private bool IsPublicPage => Nav.ToBaseRelativePath(Nav.Uri) is var path
+                                 && (path.StartsWith("privacy", StringComparison.OrdinalIgnoreCase)
+                                     || path.StartsWith("invite", StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.Changed += OnChanged;
+        Queue.Changed += OnChanged;
+        Nav.LocationChanged += OnLocationChanged;
+        await Auth.InitializeAsync();
+    }
+
+    /// <summary>После удаления аккаунта (P3): «?deleted=2026-10-31» — до какого дня можно передумать.</summary>
+    private string? DeletedUntil
+    {
+        get
+        {
+            var query = new Uri(Nav.Uri).Query;
+            var at = query.IndexOf("deleted=", StringComparison.Ordinal);
+            return at >= 0 && DateOnly.TryParseExact(query[(at + 8)..].Split('&')[0], "yyyy-MM-dd", out var date)
+                ? RuDates.DayMonth(date)
+                : null;
+        }
+    }
+
+    private void SignedInFirst(MeDto me)
+    {
+        Auth.SignedIn(me);
+        if (me.Restored)
+        {
+            Notifier.Info("Аккаунт восстановлен — данные на месте", TimeSpan.FromSeconds(6));
+        }
+
+        if (DeletedUntil is not null)
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+
+    private void SignedInAgain(MeDto me)
+    {
+        var pending = Queue.Pending;
+        if (Auth.SignedIn(me))
+        {
+            if (pending > 0)
+            {
+                Notifier.Info($"Сохранено {pending}", TimeSpan.FromSeconds(4));
+            }
+        }
+        else
+        {
+            _pendingOnChange = pending;
+        }
+    }
+
+    /// <summary>Изменения прежнего аккаунта сознательно не отправляются — браузер не должен спрашивать «покинуть страницу?» (BN5).</summary>
+    private async Task Reload()
+    {
+        try
+        {
+            await using var connection = await JS.InvokeAsync<IJSObjectReference>("import", "./js/connection.js");
+            await connection.InvokeVoidAsync("setUnsaved", 0);
+        }
+        catch (JSException)
+        {
+            // Без JS вопроса и не было бы
+        }
+
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => OnChanged();
+
+    public void Dispose()
+    {
+        Auth.Changed -= OnChanged;
+        Queue.Changed -= OnChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

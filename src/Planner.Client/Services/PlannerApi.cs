@@ -13,7 +13,7 @@ public class ApiException(string message, string? code = null) : Exception(messa
 }
 
 /// <summary>Типизированный клиент к /api сервера. Изменения идут через <see cref="ConnectionQueue"/> (BN): по порядку и с повтором при обрыве связи.</summary>
-public class PlannerApi(HttpClient http, ConnectionQueue queue)
+public class PlannerApi(HttpClient http, ConnectionQueue queue, AuthState auth)
 {
     // Экран
 
@@ -181,6 +181,27 @@ public class PlannerApi(HttpClient http, ConnectionQueue queue)
 
     public Task DeleteVacationAsync(int id) => SendAsync(HttpMethod.Delete, $"api/vacations/{id}");
 
+    // Свой аккаунт (accounts.md, P1–P3)
+    public Task<List<SessionDto>> GetSessionsAsync() => GetAsync<List<SessionDto>>("api/account/sessions");
+
+    public Task RevokeSessionAsync(Guid id) => SendAsync(HttpMethod.Delete, $"api/account/sessions/{id}");
+
+    public Task<DeletedAccountDto> DeleteAccountAsync(string email) =>
+        SendAsync<DeletedAccountDto>(HttpMethod.Post, "api/account/delete", new DeleteAccountRequest(email));
+
+    // Пользователи и приглашения — только администратору (accounts.md, U, I)
+    public Task<List<UserAdminDto>> GetUsersAsync() => GetAsync<List<UserAdminDto>>("api/admin/users");
+
+    public Task<UserAdminDto> SetUserDisabledAsync(Guid id, bool disabled) =>
+        SendAsync<UserAdminDto>(HttpMethod.Put, $"api/admin/users/{id}/disabled", new SetUserDisabledRequest(disabled));
+
+    public Task<List<InviteDto>> GetInvitesAsync() => GetAsync<List<InviteDto>>("api/admin/invites");
+
+    public Task<CreatedInviteDto> CreateInviteAsync(string? email, int days) =>
+        SendAsync<CreatedInviteDto>(HttpMethod.Post, "api/admin/invites", new CreateInviteRequest(email, days));
+
+    public Task RevokeInviteAsync(int id) => SendAsync(HttpMethod.Post, $"api/admin/invites/{id}/revoke");
+
     private static string CategoryQuery(int? categoryId) => categoryId is { } id ? $"?categoryId={id}" : "";
 
     private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -222,6 +243,14 @@ public class PlannerApi(HttpClient http, ConnectionQueue queue)
             try
             {
                 response = await Send();
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    // Сессия кончилась: окно входа поверх экрана, после входа — прочитать снова (accounts.md, Q4)
+                    var reason = await AuthState.ReasonOfAsync(response);
+                    response.Dispose();
+                    await auth.WaitForReloginAsync(reason);
+                    response = await Send();
+                }
             }
             catch (HttpRequestException)
             {
