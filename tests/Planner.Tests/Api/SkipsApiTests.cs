@@ -4,7 +4,7 @@ using Planner.Shared;
 
 namespace Planner.Tests.Api;
 
-/// <summary>Пропуски: «не надо» и «не сделала» (docs/specs/skips.md, K, H, S, T2).</summary>
+/// <summary>Пропуски: «не нужно» и «не сделано» (docs/specs/skips.md, K, H, S, T2).</summary>
 public class SkipsApiTests : ApiTestBase
 {
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.Now);
@@ -137,13 +137,13 @@ public class SkipsApiTests : ApiTestBase
         await SetTaskDoneAsync((await SessionAsync(goal, twoWeeksAgo)).Id, true);
         await SkipAsync((await SessionAsync(goal, twoWeeksAgo.AddDays(1))).Id, "NotNeeded"); // норма 2 − 1 = 1 — неделя засчитана
 
-        // Прошлая неделя: оба занятия «не надо» — норма 0, неделя без нормы
+        // Прошлая неделя: оба занятия «не нужно» — норма 0, неделя без нормы
         var last = (await GetWeekAsync(lastWeek)).Goals.Single(g => g.SeriesId == goal.SeriesId);
         await SkipAsync((await SessionAsync(last, lastWeek)).Id, "NotNeeded");
         await SkipAsync((await SessionAsync(last, lastWeek.AddDays(1))).Id, "NotNeeded");
 
         var habit = await HabitAsync(goal.SeriesId);
-        Assert.Equal(1, habit.Stats.Total); // «не надо» — не скрепка
+        Assert.Equal(1, habit.Stats.Total); // «не нужно» — не скрепка
         var weeks = habit.Stats.Weeks.TakeLast(3).ToList();
         Assert.Equal(PeriodResultDto.Done, weeks[0].Result);
         Assert.Equal(1, weeks[0].Norm);
@@ -163,7 +163,7 @@ public class SkipsApiTests : ApiTestBase
         await SkipAsync((await SessionAsync(last, lastWeek)).Id, "Missed", "заболела");
 
         var habit = await HabitAsync(goal.SeriesId);
-        Assert.Equal(1, habit.Stats.Total); // «не сделала» — не скрепка
+        Assert.Equal(1, habit.Stats.Total); // «не сделано» — не скрепка
         Assert.Equal(PeriodResultDto.Paused, habit.Stats.Weeks[^2].Result); // первый пропуск — пауза
     }
 
@@ -178,7 +178,7 @@ public class SkipsApiTests : ApiTestBase
 
         var result = await SkipAsync(tiles.Id, "NotNeeded");
         Assert.NotNull(result.Parent);
-        Assert.Equal(TaskStateDto.Done, result.Parent!.State); // S1: «не надо» не мешает автоотметке
+        Assert.Equal(TaskStateDto.Done, result.Parent!.State); // S1: «не нужно» не мешает автоотметке
 
         var steps = await GetAsync<List<StepDto>>($"/api/tasks/{project.Id}/steps");
         Assert.Equal("NotNeeded", steps.Single(s => s.Id == tiles.Id).Skip);

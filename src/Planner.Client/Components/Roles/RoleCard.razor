@@ -152,11 +152,11 @@
         State.StepsOfGoal(goal) is { Count: > 0 } all && all.Where(s => s.SkipKind != PlannerState.NotNeeded).ToList() is var steps
             ? $"☑ {steps.Count(s => s.State == TaskStateDto.Done)}/{steps.Count}" : null;
 
-    /// <summary>Все занятия «не надо» — вместо процента тихое «—» (skips.md, H2).</summary>
+    /// <summary>Все занятия «не нужно» — вместо процента тихое «—» (skips.md, H2).</summary>
     private static bool AllNotNeeded(WeeklyGoalDto goal) => goal.Norm == 0 && goal.NotNeededCount > 0;
 
     private static string PercentHint(WeeklyGoalDto goal) =>
-        $"выполнено {goal.DoneCount} из {goal.Norm}" + (goal.NotNeededCount > 0 ? $" · не надо: {goal.NotNeededCount}" : "");
+        $"выполнено {goal.DoneCount} из {goal.Norm}" + (goal.NotNeededCount > 0 ? $" · не нужно: {goal.NotNeededCount}" : "");
 
     /// <summary>
     /// Подсказка цели (batch-3.md, M2): «Бег · Чт · Пт · 2 из 3», у недособранной — ещё «не разложено: 1 из 3».

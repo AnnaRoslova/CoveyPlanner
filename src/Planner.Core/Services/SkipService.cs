@@ -5,10 +5,10 @@ using Planner.Core.Errors;
 
 namespace Planner.Core.Services;
 
-/// <summary>Дело после пропуска; родитель, если отметился сам (S1); ReturnedToProject — шаг «не сделала» вернулся в список проекта (S2).</summary>
+/// <summary>Дело после пропуска; родитель, если отметился сам (S1); ReturnedToProject — шаг «не сделано» вернулся в список проекта (S2).</summary>
 public sealed record TaskSkipped(TaskItem Task, TaskItem? Parent, bool ReturnedToProject);
 
-/// <summary>Пропуски дел: «не надо» и «не сделала» (docs/specs/skips.md, K, S).</summary>
+/// <summary>Пропуски дел: «не нужно» и «не сделано» (docs/specs/skips.md, K, S).</summary>
 public class SkipService(
     ITaskRepository tasks,
     ITaskSkipRepository skips,
@@ -33,7 +33,7 @@ public class SkipService(
         TaskItem? parent = null;
         var returned = false;
 
-        // S2: шаг (не занятие цели) «не сделала» в дне — снимается с дня и возвращается в список проекта, причина — в истории
+        // S2: шаг (не занятие цели) «не сделано» в дне — снимается с дня и возвращается в список проекта, причина — в истории
         if (kind == SkipKind.Missed && task is { IsStep: true, IsSession: false, PlannedDate: { } day, State: TaskState.Planned })
         {
             skips.Add(TaskSkip.Record(task, kind, reason, day, Now));
@@ -46,7 +46,7 @@ public class SkipService(
             skips.Add(TaskSkip.Record(task, kind, task.SkipReason, date!.Value, Now));
             if (kind == SkipKind.NotNeeded && task is { IsStep: true, IsSession: false, ParentId: { } parentId })
             {
-                parent = await projects.CompleteParentIfAllCountedDoneAsync(parentId, Now, ct); // S1: «не надо» не мешает автоотметке
+                parent = await projects.CompleteParentIfAllCountedDoneAsync(parentId, Now, ct); // S1: «не нужно» не мешает автоотметке
             }
         }
 
@@ -56,7 +56,7 @@ public class SkipService(
 
     /// <summary>
     /// Отменить пропуск (K4): снова открыто; запись истории этого пропуска удаляется. returnTo — «Вернуть» после S2:
-    /// шаг, ушедший в список проекта, — обратно в этот день (в конец дня), его запись «не сделала» удаляется.
+    /// шаг, ушедший в список проекта, — обратно в этот день (в конец дня), его запись «не сделано» удаляется.
     /// </summary>
     public async Task<TaskItem> UnskipAsync(int id, DateOnly? returnTo = null, CancellationToken ct = default)
     {

@@ -18,7 +18,7 @@ public sealed record DashboardQuadrantWeek(DateOnly WeekStart, int Second, int M
 /// <summary>Давно лежащие мысли (BD6): сколько старше срока и самые старые.</summary>
 public sealed record DashboardStale(int Months, int Count, IReadOnlyList<TaskItem> Oldest);
 
-/// <summary>Пропуски периода (docs/specs/skips.md, O4): не сделала · не надо и самые частые причины.</summary>
+/// <summary>Пропуски периода (docs/specs/skips.md, O4): не сделано · не нужно и самые частые причины.</summary>
 public sealed record DashboardSkips(int Missed, int NotNeeded, IReadOnlyList<(string Reason, int Count)> TopReasons);
 
 /// <summary>Дашборд за период: всё одним ответом (BD8).</summary>

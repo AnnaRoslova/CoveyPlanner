@@ -134,7 +134,7 @@ public class TaskItem : ISortable
 
     public bool IsSkipped => State == TaskState.Skipped;
 
-    /// <summary>«Не надо»: выпадает из плана — не в норме цели и привычки, не в «☑ N/M» шагов (H1–H2, S1).</summary>
+    /// <summary>«Не нужно»: выпадает из плана — не в норме цели и привычки, не в «☑ N/M» шагов (H1–H2, S1).</summary>
     public bool IsNotNeeded => State == TaskState.Skipped && SkipKind == Enums.SkipKind.NotNeeded;
 
     public bool IsInPlan => State is TaskState.Planned or TaskState.Done or TaskState.Skipped;
@@ -415,7 +415,7 @@ public class TaskItem : ISortable
     public void Complete(DateTime now)
     {
         EnsureNotTrashed();
-        ClearSkip(); // пропуск → сделано (K4): это было не «не сделала»
+        ClearSkip(); // пропуск → сделано (K4): это было не «не сделано»
         if (State != TaskState.Done)
         {
             State = TaskState.Done;
@@ -463,7 +463,7 @@ public class TaskItem : ISortable
 
     /// <summary>
     /// Пропустить (skips.md, K3): дело в плане — в дне или «на неделе»; не мысль, не выполненное, не проект.
-    /// Шаг «не сделала» в дне сюда не попадает — он возвращается в список проекта (S2, решает вызывающий).
+    /// Шаг «не сделано» в дне сюда не попадает — он возвращается в список проекта (S2, решает вызывающий).
     /// </summary>
     public void Skip(SkipKind kind, string? reason, DateTime now)
     {

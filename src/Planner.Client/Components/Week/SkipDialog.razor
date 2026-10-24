@@ -1,6 +1,6 @@
-@* Окошко пропуска (docs/specs/skips.md, A2): причина (необязательно), две крупные кнопки «— Не надо» и «✕ Не сделала»,
-   под второй — быстрые причины «заболела · не успела · форс-мажор · забила»: нажатие — сразу «не сделала» с этой причиной.
-   Enter в поле — «не сделала»; Esc и клик мимо — отмена. *@
+@* Окошко пропуска (docs/specs/skips.md, A2): причина (необязательно), две крупные кнопки «— Не нужно» и «✕ Не сделано»,
+   под второй — быстрые причины «болезнь · нет времени · форс-мажор · не захотелось» (skips.md, F3): нажатие — сразу «не сделано» с этой причиной.
+   Enter в поле — «не сделано»; Esc и клик мимо — отмена. *@
 @inject PlannerState State
 @inject WindowHost Windows
 
@@ -15,10 +15,10 @@
 
     <div class="skip-choices">
         <button type="button" class="btn skip-choice not-needed" @onclick="() => SkipAsync(PlannerState.NotNeeded, _reason)">
-            <span class="skip-sign">—</span> <b>Не надо</b> <span class="skip-hint">необходимость отпала</span>
+            <span class="skip-sign">—</span> <b>Не нужно</b> <span class="skip-hint">необходимость отпала</span>
         </button>
         <button type="button" class="btn skip-choice missed" @onclick="() => SkipAsync(PlannerState.Missed, _reason)">
-            <span class="skip-sign">✕</span> <b>Не сделала</b> <span class="skip-hint">надо, но не вышло</span>
+            <span class="skip-sign">✕</span> <b>Не сделано</b> <span class="skip-hint">надо, но не вышло</span>
         </button>
         <div class="skip-reasons" aria-label="Быстрые причины">
             @foreach (var reason in PlannerState.MissedReasons)

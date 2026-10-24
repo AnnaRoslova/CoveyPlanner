@@ -18,7 +18,7 @@ public sealed record ProjectSummary(int StepsDone, int StepsTotal, int SessionsD
 public static class ProjectRules
 {
     /// <summary>Шаг в счёте проекта: не в корзине и не занятие цели.</summary>
-    /// <summary>Шаг в счёте «☑ N/M» и автоотметки: не корзина, не занятие цели, не «не надо» (docs/specs/skips.md, S1).</summary>
+    /// <summary>Шаг в счёте «☑ N/M» и автоотметки: не корзина, не занятие цели, не «не нужно» (docs/specs/skips.md, S1).</summary>
     public static bool CountsAsStep(TaskItem child) => child.State != TaskState.Trashed && !child.IsSession && !child.IsNotNeeded;
 
     /// <summary>Сводка по шагам дела; null — шагов нет (не считая корзины).</summary>
@@ -139,7 +139,7 @@ public class ProjectService(ITaskRepository tasks, TaskPlacer placer)
         return await CompleteParentIfAllCountedDoneAsync(parentId, now, ct);
     }
 
-    /// <summary>Все шаги проекта в счёте (без «не надо», skips.md S1) выполнены — проект отмечается сам; возвращает его, если отметили.</summary>
+    /// <summary>Все шаги проекта в счёте (без «не нужно», skips.md S1) выполнены — проект отмечается сам; возвращает его, если отметили.</summary>
     public async Task<TaskItem?> CompleteParentIfAllCountedDoneAsync(int parentId, DateTime now, CancellationToken ct = default)
     {
         if (await tasks.FindAsync(parentId, ct) is not { } parent

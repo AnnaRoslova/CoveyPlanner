@@ -35,7 +35,7 @@
     {
         <div class="skip-status @(EditedTask.SkipKind == PlannerState.NotNeeded ? "not-needed" : "missed")">
             <span class="skip-sign" aria-hidden="true">@(EditedTask.SkipKind == PlannerState.NotNeeded ? "—" : "✕")</span>
-            <span>@(EditedTask.SkipKind == PlannerState.NotNeeded ? "Не надо" : "Не сделала")@(string.IsNullOrWhiteSpace(EditedTask.SkipReason) ? "" : " · " + EditedTask.SkipReason)</span>
+            <span>@(EditedTask.SkipKind == PlannerState.NotNeeded ? "Не нужно" : "Не сделано")@(string.IsNullOrWhiteSpace(EditedTask.SkipReason) ? "" : " · " + EditedTask.SkipReason)</span>
             <button type="button" class="btn small unskip" @onclick="() => State.UnskipTaskAsync(EditedTask.Id)">Отменить пропуск</button>
         </div>
     }
@@ -45,7 +45,7 @@
             История:
             @foreach (var skip in _skips)
             {
-                <span class="skip-past">@(skip.Kind == PlannerState.NotNeeded ? "— не надо" : "✕ не сделала") · @RuDates.ShortDate(skip.Date)@(string.IsNullOrWhiteSpace(skip.Reason) ? "" : " · " + skip.Reason)</span>
+                <span class="skip-past">@(skip.Kind == PlannerState.NotNeeded ? "— не нужно" : "✕ не сделано") · @RuDates.ShortDate(skip.Date)@(string.IsNullOrWhiteSpace(skip.Reason) ? "" : " · " + skip.Reason)</span>
             }
         </div>
     }
@@ -186,7 +186,7 @@
             }
             @if (PlannerState.CanSkip(EditedTask) && EditedTask.State != TaskStateDto.Skipped)
             {
-                <MenuItem Label="✕ пропуск…" Hint="не надо / не сделала" Class="skip" OnClick="() => Windows.OpenSkip(EditedTask.Id)" />
+                <MenuItem Label="✕ пропуск…" Hint="не нужно / не сделано" Class="skip" OnClick="() => Windows.OpenSkip(EditedTask.Id)" />
             }
             <div class="menu-sep" role="separator"></div>
             <MenuItem Label="в корзину" Danger="true" Class="trash" OnClick="TrashAsync" />

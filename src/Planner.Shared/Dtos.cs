@@ -12,7 +12,7 @@ public enum TaskStateDto
     Done,
     Trashed,
 
-    /// <summary>Пропуск (skips.md): «не надо» или «не сделала» — <see cref="TaskDto.SkipKind"/>.</summary>
+    /// <summary>Пропуск (skips.md): «не нужно» или «не сделано» — <see cref="TaskDto.SkipKind"/>.</summary>
     Skipped,
 }
 
@@ -105,11 +105,11 @@ public sealed record WeeklyGoalDto(
     [JsonIgnore]
     public int DoneCount => Sessions.Count(s => s.IsDone);
 
-    /// <summary>Занятия «не надо» — выпали из плана недели (skips.md, H2).</summary>
+    /// <summary>Занятия «не нужно» — выпали из плана недели (skips.md, H2).</summary>
     [JsonIgnore]
     public int NotNeededCount => Sessions.Count(s => s.Skip == "NotNeeded");
 
-    /// <summary>Норма недели: «раз в неделю» без «не надо», не ниже 0.</summary>
+    /// <summary>Норма недели: «раз в неделю» без «не нужно», не ниже 0.</summary>
     [JsonIgnore]
     public int Norm => Math.Max(0, TimesPerWeek - NotNeededCount);
 
@@ -266,7 +266,7 @@ public sealed record ReportDto(
     DateOnly From, DateOnly To, int WeeksCount, IReadOnlyList<ReportSeriesDto> Series, ReportOneOffDto OneOff, IReadOnlyList<ReportDoneGroupDto> Done,
     IReadOnlyList<ReportRoleDto>? Roles = null, IReadOnlyList<ReportSkipDto>? Skips = null);
 
-/// <summary>Роль за период (skips.md, O1): сделано · не сделала · не надо; Name «без роли» — дела без роли.</summary>
+/// <summary>Роль за период (skips.md, O1): сделано · не сделано · не нужно; Name «без роли» — дела без роли.</summary>
 public sealed record ReportRoleDto(int? RoleId, string Name, string Color, int Done, int Missed, int NotNeeded);
 
 /// <summary>Пропуск периода (O2): Kind — "NotNeeded" | "Missed"; Goal — цель занятия (null — не занятие, "" — цель удалена).</summary>
@@ -295,7 +295,7 @@ public sealed record DashboardDto(
     IReadOnlyList<DashboardVacationDto> Vacations, IReadOnlyList<DashboardRoleDto> Saw, IReadOnlyList<DashboardRoleDto> Roles,
     IReadOnlyList<DashboardQuadrantDto> Quadrants, DashboardStaleDto Stale, DashboardSkipsDto? Skips = null);
 
-/// <summary>Пропуски периода (skips.md, O4): не сделала · не надо и самые частые причины.</summary>
+/// <summary>Пропуски периода (skips.md, O4): не сделано · не нужно и самые частые причины.</summary>
 public sealed record DashboardSkipsDto(int Missed, int NotNeeded, IReadOnlyList<DashboardReasonDto> TopReasons);
 
 /// <summary>Причина и сколько раз.</summary>

@@ -97,7 +97,7 @@
             </div>
         }
 
-        @* Пропуски (docs/specs/skips.md, O1–O2): роли — сделано · не сделала · не надо; причины — свежие сверху *@
+        @* Пропуски (docs/specs/skips.md, O1–O2): роли — сделано · не сделано · не нужно; причины — свежие сверху *@
         @if (_report.Roles is { Count: > 0 } roleRows)
         {
             <h3>По ролям</h3>
@@ -122,7 +122,7 @@
                     <li>
                         <span class="sub">@RuDates.ShortDate(skip.Date)</span>
                         <span class="title">@skip.Title</span>
-                        <span class="kind @(skip.Kind == PlannerState.NotNeeded ? "not-needed" : "missed")"><span class="kind-sign">@(skip.Kind == PlannerState.NotNeeded ? "—" : "✕")</span> @(skip.Kind == PlannerState.NotNeeded ? "не надо" : "не сделала")</span>
+                        <span class="kind @(skip.Kind == PlannerState.NotNeeded ? "not-needed" : "missed")"><span class="kind-sign">@(skip.Kind == PlannerState.NotNeeded ? "—" : "✕")</span> @(skip.Kind == PlannerState.NotNeeded ? "не нужно" : "не сделано")</span>
                         <span>@(skip.Reason ?? "—")</span>
                         <span class="sub">@string.Join(", ", skip.Roles)@(skip.Goal is null ? "" : " · цель «" + (skip.Goal.Length == 0 ? "удалена" : skip.Goal) + "»")</span>
                     </li>
@@ -311,10 +311,10 @@
 
     private static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0]) + s[1..];
 
-    /// <summary>«не сделала: 2 · не надо: 1» (skips.md, O1); пропусков нет — null.</summary>
+    /// <summary>«не сделано: 2 · не нужно: 1» (skips.md, O1); пропусков нет — null.</summary>
     private static string? SkipsLabel(int missed, int notNeeded) =>
         missed + notNeeded == 0 ? null
-        : string.Join(" · ", new[] { missed > 0 ? $"не сделала: {missed}" : null, notNeeded > 0 ? $"не надо: {notNeeded}" : null }.OfType<string>());
+        : string.Join(" · ", new[] { missed > 0 ? $"не сделано: {missed}" : null, notNeeded > 0 ? $"не нужно: {notNeeded}" : null }.OfType<string>());
 
     private static string StreakLabel(ReportSeriesDto row) => row switch
     {

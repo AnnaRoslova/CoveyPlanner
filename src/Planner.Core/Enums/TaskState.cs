@@ -15,6 +15,6 @@ public enum TaskState
     /// <summary>В корзине.</summary>
     Trashed = 3,
 
-    /// <summary>Пропуск (docs/specs/skips.md, K1): «не надо» или «не сделала» — остаётся на своём месте в плане, как выполненное.</summary>
+    /// <summary>Пропуск (docs/specs/skips.md, K1): «не нужно» или «не сделано» — остаётся на своём месте в плане, как выполненное.</summary>
     Skipped = 4,
 }

@@ -19,7 +19,7 @@
         <span class="pill-rock" title="шаблон занятий: новые занятия берут эти значения">цель недели</span>
         @if (EditedGoal.TimesPerWeek > 1 || EditedGoal.Sessions.Count > 0)
         {
-            <span>выполнено @EditedGoal.DoneCount из @EditedGoal.Norm@(EditedGoal.NotNeededCount > 0 ? $" · не надо: {EditedGoal.NotNeededCount}" : "")</span>
+            <span>выполнено @EditedGoal.DoneCount из @EditedGoal.Norm@(EditedGoal.NotNeededCount > 0 ? $" · не нужно: {EditedGoal.NotNeededCount}" : "")</span>
         }
         @* Дни занятий — здесь и в подсказке строки цели, под названием в панели их нет (batch-3.md, M2) *@
         @if (RoleCard.SessionDays(EditedGoal) is { Length: > 0 } sessionDays)

@@ -37,7 +37,7 @@
                 @* R1: пропуски не спрашиваются — только сводка (docs/specs/skips.md) *@
                 @if (SkippedTasks is { Count: > 0 } skipped)
                 {
-                    <p class="sub skip-summary">не надо: @skipped.Count(t => t.SkipKind == PlannerState.NotNeeded) · не сделала: @skipped.Count(t => t.SkipKind != PlannerState.NotNeeded)</p>
+                    <p class="sub skip-summary">не нужно: @skipped.Count(t => t.SkipKind == PlannerState.NotNeeded) · не сделано: @skipped.Count(t => t.SkipKind != PlannerState.NotNeeded)</p>
                 }
                 @if (OpenTasks.Count == 0 && Rocks.Count == 0)
                 {

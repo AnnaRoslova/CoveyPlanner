@@ -14,7 +14,7 @@ public static class ReportCsv
     public const string NoRoleName = "без роли";
 
     /// <summary>Вид пропуска словами — как в интерфейсе.</summary>
-    public static string KindName(Enums.SkipKind kind) => kind == Enums.SkipKind.NotNeeded ? "не надо" : "не сделала";
+    public static string KindName(Enums.SkipKind kind) => kind == Enums.SkipKind.NotNeeded ? "не нужно" : "не сделано";
 
     public static string Build(Report report)
     {
@@ -23,7 +23,7 @@ public static class ReportCsv
         Line(sb);
 
         Line(sb, "Привычки и постоянные цели");
-        Line(sb, "Раздел", "Название", "Роль/категория", "План", "Факт", "%", "Не сделала", "Не надо");
+        Line(sb, "Раздел", "Название", "Роль/категория", "План", "Факт", "%", "Не сделано", "Не нужно");
         foreach (var row in report.Series)
         {
             Line(sb, row.Series.IsHabit ? "Привычка" : "Постоянная цель", row.Series.Title,
@@ -37,7 +37,7 @@ public static class ReportCsv
 
         // Пропуски (docs/specs/skips.md, O3): по ролям и список причин
         Line(sb, "Роли");
-        Line(sb, "Раздел", "Роль", "Сделано", "Не сделала", "Не надо");
+        Line(sb, "Раздел", "Роль", "Сделано", "Не сделано", "Не нужно");
         foreach (var row in report.Roles ?? [])
         {
             Line(sb, "Роль", row.Role?.Name ?? NoRoleName, Number(row.Done), Number(row.Missed), Number(row.NotNeeded));

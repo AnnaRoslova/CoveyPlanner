@@ -175,7 +175,7 @@ await page.evaluate(async () => {
   const body = board.roles.find(r => r.name === 'Тело');
   const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   await post('/api/tasks', { title: 'Записаться к врачу', target: { kind: 'week', weekStart: iso(monday), roleId: body.id } });
-  // Пропуски (skips.md, V3): «не надо» и «не сделала» в сегодняшнем дне — в замере контраста
+  // Пропуски (skips.md, V3): «не нужно» и «не сделано» в сегодняшнем дне — в замере контраста
   for (const [title, kind] of [['Отменённая встреча', 'NotNeeded'], ['Пробежка в дождь', 'Missed']]) {
     const t = await post('/api/tasks', { title, target: { kind: 'day', date: iso(d), index: 0 } });
     await post(`/api/tasks/${t.id}/skip`, { kind, reason: 'заболела' }, 'PUT');

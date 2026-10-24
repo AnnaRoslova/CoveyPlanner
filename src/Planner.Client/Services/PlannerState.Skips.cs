@@ -2,7 +2,7 @@ using Planner.Shared;
 
 namespace Planner.Client.Services;
 
-/// <summary>Пропуски: «не надо» и «не сделала» с причиной (docs/specs/skips.md, A, K, S2).</summary>
+/// <summary>Пропуски: «не нужно» и «не сделано» с причиной (docs/specs/skips.md, A, K, S2).</summary>
 public partial class PlannerState
 {
     public const string NotNeeded = "NotNeeded";
@@ -10,10 +10,10 @@ public partial class PlannerState
 
     private static readonly TimeSpan SkipUndoFor = TimeSpan.FromSeconds(6);
 
-    /// <summary>Быстрые причины «не сделала» (A2).</summary>
-    public static readonly IReadOnlyList<string> MissedReasons = ["заболела", "не успела", "форс-мажор", "забила"];
+    /// <summary>Быстрые причины «не сделано» (A2).</summary>
+    public static readonly IReadOnlyList<string> MissedReasons = ["болезнь", "нет времени", "форс-мажор", "не захотелось"];
 
-    public static string SkipLabel(string? kind) => kind == NotNeeded ? "не надо" : "не сделала";
+    public static string SkipLabel(string? kind) => kind == NotNeeded ? "не нужно" : "не сделано";
 
     /// <summary>Дело закрыто: выполнено или пропущено — в дне оно внизу (V2), в нагрузке дня не считается.</summary>
     public static bool IsClosed(TaskDto task) => task.State is TaskStateDto.Done or TaskStateDto.Skipped;
@@ -24,7 +24,7 @@ public partial class PlannerState
         && (task.PlannedDate is not null || task.PlannedWeek is not null)
         && !(task.IsProject && task.ParentId is null);
 
-    /// <summary>Пропустить. Шаг (не занятие) «не сделала» в дне — уходит из дня обратно в список проекта (S2).</summary>
+    /// <summary>Пропустить. Шаг (не занятие) «не сделано» в дне — уходит из дня обратно в список проекта (S2).</summary>
     public async Task SkipTaskAsync(int taskId, string kind, string? reason)
     {
         if (FindTask(taskId) is not { } task || !CanSkip(task))
@@ -52,7 +52,7 @@ public partial class PlannerState
         NotifyChanged();
 
         var message = result.ReturnedToProject
-            ? $"«{task.Title}» — не сделала, вернулся в «{task.ParentTitle ?? ParentTitleOf(task)}»"
+            ? $"«{task.Title}» — не сделано, вернулся в «{task.ParentTitle ?? ParentTitleOf(task)}»"
             : $"«{task.Title}» — {SkipLabel(kind)}";
         notifier.WithAction(message, "Вернуть", () => UnskipTaskAsync(taskId, result.ReturnedToProject ? day : null), SkipUndoFor);
     }

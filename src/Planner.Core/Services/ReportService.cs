@@ -10,14 +10,14 @@ namespace Planner.Core.Services;
 /// (выполненные занятия, и удалённых целей тоже) в этих неделях; Percent — факт от плана вниз до целого.
 /// WeekStreak / Paused — 🔥 и ⚠ на конец периода (только у привычек — серий с «копить»).
 /// </summary>
-/// Missed / NotNeeded — пропуски занятий серии в неделях периода (docs/specs/skips.md, O1; план — уже без «не надо», H1).
+/// Missed / NotNeeded — пропуски занятий серии в неделях периода (docs/specs/skips.md, O1; план — уже без «не нужно», H1).
 public sealed record ReportSeriesRow(
     GoalSeries Series, IReadOnlyList<Role> Roles, int Plan, int Fact, int Percent, int? WeekStreak, bool Paused, int Missed = 0, int NotNeeded = 0);
 
 /// <summary>Разовые цели периода одной строкой (N5.4): сколько «камней», сколько выполнено; пропуски их занятий (skips.md, O1).</summary>
 public sealed record ReportOneOff(int Goals, int Done, int Missed = 0, int NotNeeded = 0);
 
-/// <summary>Роль за период (skips.md, O1): дела с этой ролью — сделано (по дню дела), не сделала, не надо; Role = null — «без роли».</summary>
+/// <summary>Роль за период (skips.md, O1): дела с этой ролью — сделано (по дню дела), не сделано, не нужно; Role = null — «без роли».</summary>
 public sealed record ReportRoleRow(Role? Role, int Done, int Missed, int NotNeeded);
 
 /// <summary>Пропуск периода для списка «Причины» (O2): Goal — цель, чьим занятием было дело (null — не занятие; "" — цель удалена).</summary>

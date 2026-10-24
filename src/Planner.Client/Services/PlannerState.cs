@@ -146,7 +146,7 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     public int SessionsDone => Goals.Sum(g => Math.Min(g.DoneCount, g.Norm));
 
     /// <summary>Сколько всего занятий нужно по «раз в неделю» у целей недели.</summary>
-    public int SessionsTotal => Goals.Sum(g => g.Norm); // без «не надо» (skips.md, H2)
+    public int SessionsTotal => Goals.Sum(g => g.Norm); // без «не нужно» (skips.md, H2)
 
     // Загрузка и навигация
 

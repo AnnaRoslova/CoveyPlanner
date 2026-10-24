@@ -20,7 +20,7 @@
             }
             else
             {
-                @* skips.md, V1: «не надо» — серое «—», «не сделала» — приглушённый красный ✕; не зачёркнуто *@
+                @* skips.md, V1: «не нужно» — серое «—», «не сделано» — приглушённый красный ✕; не зачёркнуто *@
                 <span class="ck skip-mark" aria-label="@SkipLabel">@(Skip == NotNeeded ? "—" : "✕")</span>
             }</button>
     }
@@ -215,7 +215,7 @@
 
     private const string NotNeeded = "NotNeeded";
 
-    /// <summary>Пропуск (skips.md, V1): "NotNeeded" — «не надо», "Missed" — «не сделала»; null — не пропуск.</summary>
+    /// <summary>Пропуск (skips.md, V1): "NotNeeded" — «не нужно», "Missed" — «не сделано»; null — не пропуск.</summary>
     [Parameter]
     public string? Skip { get; set; }
 
@@ -226,11 +226,11 @@
     [Parameter]
     public EventCallback OnSkip { get; set; }
 
-    private string? SkipLabel => Skip switch { NotNeeded => "не надо", null => null, _ => "не сделала" };
+    private string? SkipLabel => Skip switch { NotNeeded => "не нужно", null => null, _ => "не сделано" };
 
     private string? SkipClass => Skip switch { NotNeeded => "skipped not-needed", null => null, _ => "skipped missed" };
 
-    /// <summary>Подсказка строки у пропущенного: «не сделала · заболела».</summary>
+    /// <summary>Подсказка строки у пропущенного: «не сделано · болезнь».</summary>
     private string? SkipTitle => Skip is null ? null : string.IsNullOrWhiteSpace(SkipReason) ? SkipLabel : $"{SkipLabel} · {SkipReason}";
 
     [Parameter]
@@ -264,7 +264,7 @@
     [Parameter]
     public string? PercentHint { get; set; }
 
-    /// <summary>Процента нет — все занятия «не надо»: тихое «—» (skips.md, H2).</summary>
+    /// <summary>Процента нет — все занятия «не нужно»: тихое «—» (skips.md, H2).</summary>
     [Parameter]
     public bool PercentNone { get; set; }
 

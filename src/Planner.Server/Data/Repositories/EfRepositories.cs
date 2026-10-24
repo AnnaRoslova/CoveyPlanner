@@ -196,7 +196,7 @@ public class EfHabitRepository(PlannerDbContext db) : IHabitRepository
     }
 
     /// <summary>
-    /// Норма недели — «раз в неделю» цели без занятий «не надо» (docs/specs/skips.md, H1); норма 0 — неделя без нормы
+    /// Норма недели — «раз в неделю» цели без занятий «не нужно» (docs/specs/skips.md, H1); норма 0 — неделя без нормы
     /// (не засчитана и не пропуск), такой недели в списке нет.
     /// </summary>
     public async Task<List<HabitWeekNorm>> GetWeekNormsAsync(CancellationToken ct = default) =>

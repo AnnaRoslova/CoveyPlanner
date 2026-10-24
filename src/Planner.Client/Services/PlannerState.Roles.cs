@@ -19,7 +19,7 @@ public partial class PlannerState
 
         var placed = goal.Sessions.Where(s => s.Skip != NotNeeded).Count(s =>
             s.PlannedDate is { } date ? date >= goal.WeekStart && date <= weekEnd : s.IsDone);
-        return Math.Max(0, goal.Norm - placed); // «не надо» уменьшает и требуемое (skips.md, H2)
+        return Math.Max(0, goal.Norm - placed); // «не нужно» уменьшает и требуемое (skips.md, H2)
     }
 
     /// <summary>Цвет для новой роли: следующий по кругу палитры.</summary>

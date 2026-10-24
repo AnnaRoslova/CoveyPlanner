@@ -1,7 +1,7 @@
 // Пропуски (docs/specs/skips.md, A1–A3, V1–V2, H2, S2, F1, T3): ✕ и 🗑 при наведении — плашкой над углом записи, щелчок по любой
-// точке названия — окно дела (F1); ✕ → окошко → «не надо»: «—», бледно, не зачёркнуто,
-// внизу дня; чип «заболела» — сразу «не сделала» с причиной; та же ✕ — отменить; клик по чекбоксу пропущенного — сделано;
-// шаг «не сделала» уходит из дня в список проекта; цель: «не надо» уменьшает норму, все «не надо» — «—» вместо процента.
+// точке названия — окно дела (F1); ✕ → окошко → «не нужно»: «—», бледно, не зачёркнуто,
+// внизу дня; чип «болезнь» — сразу «не сделано» с причиной; та же ✕ — отменить; клик по чекбоксу пропущенного — сделано;
+// шаг «не сделано» уходит из дня в список проекта; цель: «не нужно» уменьшает норму, все «не нужно» — «—» вместо процента.
 import puppeteer from 'puppeteer-core';
 import { openTotals } from './lib/nav.mjs';
 
@@ -118,10 +118,10 @@ await check('✕ при наведении в плашке с 🗑; клик —
     chips: [...d.querySelectorAll('.skip-reason-chip')].map(c => c.textContent.trim()).join(','),
   }));
   assert(dialog.title.includes('«Стоматолог»') && dialog.choices === 2, JSON.stringify(dialog));
-  assert(dialog.chips === 'заболела,не успела,форс-мажор,забила', dialog.chips);
+  assert(dialog.chips === 'болезнь,нет времени,форс-мажор,не захотелось', dialog.chips);
 });
 
-await check('«— Не надо» с причиной: «—», бледно, не зачёркнуто, внизу дня, причина в подсказке; плашка «Вернуть»', async () => {
+await check('«— Не нужно» с причиной: «—», бледно, не зачёркнуто, внизу дня, причина в подсказке; плашка «Вернуть»', async () => {
   // Между проверками окна закрываются — открыть окошко снова
   await hover('Стоматолог');
   await (await (await item('Стоматолог')).$('.skip-btn')).click();
@@ -134,22 +134,22 @@ await check('«— Не надо» с причиной: «—», бледно, �
   assert(i.cls.includes('not-needed') && i.mark === '—', JSON.stringify(i));
   assert(!i.strike.includes('line-through'), 'зачёркнуто');
   assert(i.index === i.count - 1, `не внизу дня: ${i.index} из ${i.count}`);
-  assert(i.title === 'не надо · перенесли', i.title);
+  assert(i.title === 'не нужно · перенесли', i.title);
   const toast = await page.$eval('.toast', e => e.textContent);
-  assert(toast.includes('«Стоматолог» — не надо') && toast.includes('Вернуть'), toast);
+  assert(toast.includes('«Стоматолог» — не нужно') && toast.includes('Вернуть'), toast);
   const task = (await api('GET', `week/${day(0)}`)).tasks.find(t => t.title === 'Стоматолог');
   assert(task.state === 'Skipped' && task.skipKind === 'NotNeeded' && task.skipReason === 'перенесли', JSON.stringify(task));
 });
 
-await check('чип «заболела» — одним нажатием «не сделала»: приглушённый красный ✕', async () => {
+await check('чип «болезнь» — одним нажатием «не сделано»: приглушённый красный ✕', async () => {
   await hover('Купить хлеб');
   await (await (await item('Купить хлеб')).$('.skip-btn')).click();
   await page.waitForSelector('.skip-dialog');
-  await page.evaluate(() => [...document.querySelectorAll('.skip-reason-chip')].find(c => c.textContent.trim() === 'заболела').click());
+  await page.evaluate(() => [...document.querySelectorAll('.skip-reason-chip')].find(c => c.textContent.trim() === 'болезнь').click());
   await page.waitForFunction(() => !document.querySelector('.skip-dialog'));
   await settle();
   const i = await info('Купить хлеб');
-  assert(i.cls.includes('missed') && i.mark === '✕' && i.title === 'не сделала · заболела', JSON.stringify(i));
+  assert(i.cls.includes('missed') && i.mark === '✕' && i.title === 'не сделано · болезнь', JSON.stringify(i));
 });
 
 await check('та же ✕ у пропущенного — «Отменить пропуск», сразу, без окошка', async () => {
@@ -172,14 +172,14 @@ await check('клик по чекбоксу пропущенного — сде�
   assert(task.state === 'Done' && task.skipKind === null, JSON.stringify(task));
 });
 
-await check('шаг «не сделала» в дне — уходит из дня в список проекта, плашка «вернулся в «Ремонт»»', async () => {
+await check('шаг «не сделано» в дне — уходит из дня в список проекта, плашка «вернулся в «Ремонт»»', async () => {
   // Плашка над первой строкой среды — под уведомлением (вверху по центру): дождаться, пока прошлое уйдёт
   await page.waitForFunction(() => !document.querySelector('.toast'), { timeout: 10000 });
   await hover('Купить плитку');
   await (await (await item('Купить плитку')).$('.skip-btn')).click();
   await page.waitForSelector('.skip-dialog');
   await page.type('.skip-reason', 'нет в магазине');
-  await page.keyboard.press('Enter'); // Enter в причине — «не сделала»
+  await page.keyboard.press('Enter'); // Enter в причине — «не сделано»
   await page.waitForFunction(() => !document.querySelector('.skip-dialog'));
   await settle();
   assert(!(await item('Купить плитку')), 'шаг остался в дне');
@@ -189,7 +189,7 @@ await check('шаг «не сделала» в дне — уходит из дн
   assert(history.length === 1 && history[0].reason === 'нет в магазине', JSON.stringify(history));
 });
 
-await check('цель: «не надо» у занятия — норма меньше; оба «не надо» — «—» вместо процента', async () => {
+await check('цель: «не нужно» у занятия — норма меньше; оба «не нужно» — «—» вместо процента', async () => {
   await api('PUT', `tasks/${s1.id}/done`, { isDone: true });
   await api('PUT', `tasks/${s2.id}/skip`, { kind: 'NotNeeded' });
   await load();
@@ -204,25 +204,25 @@ await check('цель: «не надо» у занятия — норма мен
   assert((await pct()) === '—', await pct());
 });
 
-await check('окно пропущенного дела — строка «✕ Не сделала · …» и «Отменить пропуск»; «⋯ → ✕ пропуск…» у открытого', async () => {
+await check('окно пропущенного дела — строка «✕ Не сделано · …» и «Отменить пропуск»; «⋯ → ✕ пропуск…» у открытого', async () => {
   await api('PUT', `tasks/${(await api('GET', `week/${day(0)}`)).tasks.find(t => t.title === 'Позвонить маме').id}/skip`, { kind: 'Missed', reason: 'не успела' });
   await load();
   await (await item('Позвонить маме')).click();
   await page.waitForSelector('.editor .skip-status');
   const status = await page.$eval('.editor .skip-status', e => e.textContent);
-  assert(status.includes('Не сделала · не успела') && status.includes('Отменить пропуск'), status);
+  assert(status.includes('Не сделано · не успела') && status.includes('Отменить пропуск'), status);
   await page.click('.editor .unskip');
   await settle();
   assert(!(await page.$('.editor .skip-status')), 'строка осталась');
 });
 
-await check('недельный обзор: пропущенных нет в «Не сделано», сверху сводка «не надо: N · не сделала: M» (R1)', async () => {
+await check('недельный обзор: пропущенных нет в «Не сделано», сверху сводка «не нужно: N · не сделано: M» (R1)', async () => {
   await load();
   await page.keyboard.press('KeyW');
   await page.waitForSelector('.review');
   const summary = await page.$eval('.review .skip-summary', e => e.textContent.trim());
-  // К этому моменту пропущены оба занятия «Бег» («не надо»); остальные пропуски отменены или стали «сделано»
-  assert(summary === 'не надо: 2 · не сделала: 0', summary);
+  // К этому моменту пропущены оба занятия «Бег» («не нужно»); остальные пропуски отменены или стали «сделано»
+  assert(summary === 'не нужно: 2 · не сделано: 0', summary);
   const rocks = await page.$eval('.review', e => e.textContent);
   assert(!rocks.includes('Бег'), 'пропущенные занятия «Бег» спрашиваются в обзоре');
   await page.keyboard.press('Escape'); await settle();
@@ -233,7 +233,7 @@ await check('отчёт: «Причины пропусков» — дело, в�
   await openTotals(page, 'Отчёт');
   await page.waitForSelector('.report-skips li', { timeout: 10000 });
   const rows = await page.$$eval('.report-skips li', ls => ls.map(l => l.textContent.replace(/\s+/g, ' ').trim()));
-  assert(rows.some(r => r.includes('Купить плитку') && r.includes('не сделала') && r.includes('нет в магазине')), rows.join(' | '));
+  assert(rows.some(r => r.includes('Купить плитку') && r.includes('не сделано') && r.includes('нет в магазине')), rows.join(' | '));
   await page.keyboard.press('Escape'); await settle();
 });
 
