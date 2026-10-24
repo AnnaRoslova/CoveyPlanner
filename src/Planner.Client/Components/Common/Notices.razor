@@ -1,0 +1,30 @@
+@* Место всех уведомлений (docs/specs/polish-1.md, P1–P6): «Нет связи» и плашка — в свободной части шапки недели, между подписью
+   периода и значками «📈 ⚙», не на записях, кнопках и местах броска. Куда именно — считает js/notices.js; без места — внизу по центру. *@
+@inject IJSRuntime JS
+
+<div @ref="_box" class="notices free">
+    <OfflineBanner />
+    <ToastHost />
+</div>
+
+@code {
+    private ElementReference _box;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/notices.js");
+            await module.InvokeVoidAsync("watch", _box);
+        }
+        catch (JSException)
+        {
+            // Без JS — внизу по центру (класс free)
+        }
+    }
+}

@@ -76,7 +76,7 @@ await check('D2, D3: отметили «Б» — ушла из ленты; пл�
   assert(JSON.stringify(await feed('Идеи')) === '["А","В"]', JSON.stringify(await feed('Идеи')));
   const t = await toast();
   assert(t?.text.includes('«Б» выполнено') && t.text.includes('в корзину') && t.text.includes('вернуть'), JSON.stringify(t));
-  assert(!t.coversTrash && !t.overFeed, `плашка не вверху по центру (D7) или закрывает корзину: ${JSON.stringify(t)}`);
+  assert(!t.coversTrash && !t.overFeed, `плашка не в шапке недели (polish-1, P1) или закрывает корзину: ${JSON.stringify(t)}`);
   await toastAction('вернуть'); await settle();
   assert(JSON.stringify(await feed('Идеи')) === '["А","Б","В"]', JSON.stringify(await feed('Идеи')));
 });
