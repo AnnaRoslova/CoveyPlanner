@@ -259,7 +259,8 @@ await check('нет связи (batch-ux BN): запись остаётся, п�
   const all = await page.$$eval('.someday .item .title', els => els.map(e => e.textContent.trim()));
   assert(all.includes('Мысль без сети'), 'запись пропала');
   await setOffline(false);
-  await page.click('.offline .action');
+  // Событие online само запускает повтор — плашка может уйти раньше клика: «Повторить сейчас» — только если она ещё видна (polish-2, B4)
+  await page.evaluate(() => document.querySelector('.offline .action')?.click());
   await page.waitForFunction(() => !document.querySelector('.offline'), { timeout: 8000 });
   const saved = await page.evaluate(async () => (await (await fetch('/api/board')).json()).somedayTasks.map(t => t.title));
   assert(saved.includes('Мысль без сети'), 'не сохранилось');
