@@ -1,7 +1,7 @@
 // @no-autologin — приглашения (docs/specs/accounts.md, I2–I4, U1–U2, N1, Q3, T4): администратор создаёт ссылку, второй браузер
 // регистрируется по ней (стартовый набор), в списке — «Использованные»; вход поверх окна другим пользователем — несохранённое не уходит.
 import puppeteer from 'puppeteer-core';
-import { lastCode, signIn, requestCode, enterCode } from './lib/login.mjs';
+import { lastCode, signIn, requestCode, enterCode, clickAndReload } from './lib/login.mjs';
 import { openThemes } from './lib/nav.mjs';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -103,9 +103,7 @@ await check('вышли, сделали изменение, вошли пове�
   await page.waitForFunction(() => document.querySelector('.login-over .login-title')?.textContent.includes('Другой аккаунт'), { timeout: 10000 });
   const lead = await page.$eval('.login-over .login-lead', e => e.textContent.trim());
   assert(lead === 'Изменения прежнего аккаунта (1) не сохранены — они были для другого пользователя.', lead);
-  await page.click('.login-over .login-go');
-  await page.waitForSelector('.app', { timeout: 30000 });
-  await sleep(500);
+  await clickAndReload(page, '.login-over .login-go'); // перезагрузка — ждём новый документ, не прежний .app
   const titles = await page.evaluate(async () => (await (await fetch('/api/board')).json()).somedayTasks.map(t => t.title));
   assert(!titles.includes('Мысль администратора'), 'мысль ушла в чужой аккаунт');
 });

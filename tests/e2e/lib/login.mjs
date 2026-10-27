@@ -36,3 +36,15 @@ export async function signIn(page, base, email) {
   await enterCode(page, await lastCode(base, email));
   await page.waitForSelector('.app', { timeout: 30000 });
 }
+
+/**
+ * Нажать кнопку, после которой страница перезагружается («Понятно» в окне «Другой аккаунт»), и дождаться планировщика
+ * в новом документе. Не по времени и не по `.app`: прежний `.app` ещё на экране, пока старая страница не выгружена.
+ * Признак готовности — метки прежнего документа нет, планировщик с днями на экране, окна входа нет.
+ */
+export async function clickAndReload(page, selector) {
+  const old = await page.evaluate(() => (window.__e2eDocument = Math.random()));
+  await Promise.all([page.waitForNavigation({ waitUntil: 'load', timeout: 30000 }), page.click(selector)]);
+  await page.waitForFunction(o => window.__e2eDocument !== o && !!document.querySelector('.app .day') && !document.querySelector('.login-over'),
+    { timeout: 30000 }, old);
+}
