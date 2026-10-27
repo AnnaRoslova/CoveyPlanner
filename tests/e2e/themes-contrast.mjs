@@ -3,7 +3,7 @@
 // Для каждой темы — весь экран и открытые окна (дело, цель, роль, корзина, меню тем).
 // Контраст: у каждой видимой надписи цвет текста против фактического фона (подложки складываются
 // от страницы вверх, с прозрачностью). Тёмная тема обязана пройти AA целиком: 4.5:1, крупный текст — 3:1.
-// Светлые темы: основной текст — AA, второстепенный (SECONDARY: «+ цель», «+ дело», счётчики,
+// Светлые темы: основной текст — AA, второстепенный (SECONDARY: «+ цель», «щёлкни, чтобы записать», счётчики,
 // выполненные дела, подсказки и плейсхолдеры) — не ниже 3:1.
 // Снимки — в out/cmp-<тема>-<окно>.png и out/mock-<тема>.png, отчёт о контрасте — out/contrast.json.
 import puppeteer from 'puppeteer-core';
@@ -23,7 +23,7 @@ const GORIN = ['earth', 'water', 'void'];
 // Второстепенный текст: счётчики, выполненные дела, подсказки и подписи-оценки, стрелки степпера
 // Кнопки системы («+ …», «свернуть всё», «ещё дела», значки — fixes-2026-10.md, D4) — как основной текст: их в этом списке нет
 const SECONDARY = ['.other .d', '.other .sep', '.other.done', '.n', '.cnt', '.progress', '.pct', '.done .tx', '.hint', '.sub', '.note', '.rock-note', '.from',
-  '.load', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
+  '.load', '.blank-hint', '.rocks', '.goal-days', '.unit', '.step', '.tag-empty', '.wheel-unit', '.saved', '.nothing', '.first-category > :not(.add)', '.strip-label', '.m.before', '.legend',
   '.parent-of', '.project-label', '.sum-chip.static', '.menu-hint', '.done-screen .meta', '.done-screen .date', '.done-screen .years', '.done-screen .year', '.done-steps',
   '.report-screen .sub', '.report-screen .roles', '.report-screen .fact', '.report-screen .pct', '.report-screen .period:not(.on)',
   '.q2-of', '.q2-week', '.hit-meta', '.hit.done .hit-title', '.hit.done mark', '.review .meta', '.review .diamond', '.mission .sub',

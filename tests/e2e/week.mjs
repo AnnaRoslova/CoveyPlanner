@@ -94,8 +94,8 @@ await check('шапка недели: «камней: X из Y · занятий
   assert(await page.$eval('.rocks', e => e.title) === 'камень выполнен, когда отмечены все его занятия', 'нет подсказки');
 });
 
-await check('«+ дело»: в конец дня, поле остаётся; Esc закрывает; после перезагрузки на месте', async () => {
-  await page.click('.day:nth-of-type(1) .add'); await settle();
+await check('«Новое дело…» кликом по пустому месту дня (polish-2, A1): в конец дня, поле остаётся; Esc закрывает; после перезагрузки на месте', async () => {
+  await page.click('.day:nth-of-type(1) .day-blank'); await settle();
   await page.type('.day:nth-of-type(1) .inline-input', 'Новое дело'); await page.keyboard.press('Enter'); await settle();
   assert(await page.$('.day:nth-of-type(1) .inline-input'), 'поле закрылось');
   await page.keyboard.press('Escape'); await settle();
