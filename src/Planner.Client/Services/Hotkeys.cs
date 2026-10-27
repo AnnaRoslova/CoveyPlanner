@@ -4,7 +4,7 @@ namespace Planner.Client.Services;
 
 /// <summary>
 /// Горячие клавиши (docs/specs/batch-ux.md, BK): клавиши ловит js/hotkeys.js (он же решает, когда их не перехватывать — BK1),
-/// здесь — что делает каждая. Фокус в «Записать мысль…» и «+ дело» в сегодняшнем дне ставит js после перерисовки.
+/// здесь — что делает каждая. Фокус в «Записать мысль…» и строку «Новое дело…» (D) открывает js после перерисовки.
 /// </summary>
 public sealed class Hotkeys(
     IJSRuntime js, PlannerState state, WindowHost windows, RightPanelState rightPanel, LayoutState layout, TotalsState totals, Notifier notifier)
@@ -35,8 +35,8 @@ public sealed class Hotkeys(
                 await rightPanel.ShowFeedAsync();
                 await layout.ShowAsync(PanelSide.Right);
                 break;
-            case "day": // D: сегодняшний день текущей недели, «+ дело» открывает js
-                if (state.WeekStart != RuDates.WeekStartOf(RuDates.Today))
+            case "day": // D: выделенный день показанной недели, иначе сегодняшний (polish-2.md, A4); строку «Новое дело…» открывает js
+                if (state.PickedDay is null && state.WeekStart != RuDates.WeekStartOf(RuDates.Today))
                 {
                     await state.TodayAsync();
                 }

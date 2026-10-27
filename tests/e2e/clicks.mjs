@@ -139,9 +139,9 @@ await check('клавиатура после сброса работает ср�
   const sat = await boxOf(`document.querySelectorAll('.day')[5]`);
   await page.mouse.move(from.x + 40, from.y + 8); await page.mouse.down();
   await page.mouse.move(sat.x + 40, sat.y + 250, { steps: 12 }); await sleep(100); await page.mouse.up();
-  await page.focus('.day:nth-of-type(1) .add');
+  await page.focus('.day:nth-of-type(1) .day-plus');
   await page.keyboard.press('Enter'); await sleep(300);
-  assert(await page.$('.day:nth-of-type(1) .inline-input'), 'Enter на «+ дело» не сработал');
+  assert(await page.$('.day:nth-of-type(1) .inline-input'), 'Enter на «+» дня не сработал');
 });
 
 await check('автопрокрутка начинается не сразу, а после задержки у края', async () => {

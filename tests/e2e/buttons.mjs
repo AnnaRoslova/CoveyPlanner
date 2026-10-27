@@ -73,18 +73,20 @@ await check('D2.1: в окне дела — то же; «Сохранить» �
   await page.keyboard.press('Escape'); await sleep(300);
 });
 
-await check('D2: «+ дело» — пилюля с пунктирной обводкой; «Отмена» — с тонкой сплошной обводкой', async () => {
-  const add = await page.$eval('.day .add', b => getComputedStyle(b).borderStyle);
-  assert(add.includes('dashed'), `«+ дело»: ${add}`);
+await check('D2: «+ категория» и «+» дня — пунктирная обводка; «Отмена» — с тонкой сплошной обводкой', async () => {
+  for (const sel of ['.someday .panel-scroll > .add', '.day .day-plus']) {
+    const add = await page.$eval(sel, b => getComputedStyle(b).borderStyle);
+    assert(add.includes('dashed'), `${sel}: ${add}`);
+  }
   await openFirstDayTask(); await sleep(400);
   const cancel = await page.evaluate(() => { const b = [...document.querySelectorAll('.editor .buttons .btn')].find(x => x.textContent.trim() === 'Отмена'); const cs = getComputedStyle(b); return cs.borderStyle + ' ' + cs.borderWidth; });
   assert(cancel.startsWith('solid') && !cancel.endsWith(' 0px'), `«Отмена»: ${cancel}`);
   await page.keyboard.press('Escape'); await sleep(300);
 });
 
-await check('D2.2: при наведении фон кнопки меняется («+ дело», «свернуть всё», значок 🫙)', async () => {
+await check('D2.2: при наведении фон кнопки меняется («+» дня, «свернуть всё», значок 🫙)', async () => {
   await page.hover('.day:nth-child(3)');
-  for (const sel of ['.day .add', '.someday .feed-menu', '.week-h .totals-b']) {
+  for (const sel of ['.day:nth-child(3) .day-plus', '.someday .feed-menu', '.week-h .totals-b']) {
     const el = await page.$(sel);
     assert(el, `нет ${sel}`);
     await page.mouse.move(0, 0); await sleep(250);

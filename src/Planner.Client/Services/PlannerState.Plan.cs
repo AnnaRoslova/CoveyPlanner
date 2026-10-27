@@ -10,7 +10,22 @@ public partial class PlannerState
     /// <summary>Цель, занятием которой является дело, — если она на показанной неделе.</summary>
     public WeeklyGoalDto? GoalOfTask(int taskId) => FindTask(taskId)?.GoalId is { } goalId ? FindGoal(goalId) : null;
 
-    /// <summary>«+ дело» внизу дня: в конец дел без времени. false — не сохранилось.</summary>
+    /// <summary>
+    /// Выделенный день — последний день показанной недели, по которому щёлкнули: туда клавиша D (docs/specs/polish-2.md, A4).
+    /// Другая неделя — выделения нет.
+    /// </summary>
+    public DateOnly? PickedDay { get; private set; }
+
+    public void PickDay(DateOnly day)
+    {
+        if (PickedDay != day)
+        {
+            PickedDay = day;
+            NotifyChanged();
+        }
+    }
+
+    /// <summary>Новое дело в дне (строка «Новое дело…»): в конец дел без времени. false — не сохранилось.</summary>
     public async Task<bool> CreateDayTaskAsync(string title, DateOnly date)
     {
         title = title.Trim();

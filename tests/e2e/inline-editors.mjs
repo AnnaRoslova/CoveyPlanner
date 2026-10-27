@@ -120,8 +120,8 @@ await addField('«+ добавить» в ленте',
   async () => (await category('Идеи')).$('.inline-input'),
   async () => (await feedTitles('Идеи')).length);
 
-await addField('«+ дело» в дне',
-  async () => { await page.$$eval('.day', ds => ds[6].querySelector('.add').click()); await settle(); },
+await addField('«Новое дело…» в дне (polish-2, A)',
+  async () => { await page.$$eval('.day', ds => ds[6].querySelector('.day-plus').click()); await settle(); },
   () => page.$$eval('.day', ds => ds[6].querySelector('.inline-input')),
   () => page.$$eval('.day', ds => ds[6].querySelectorAll('.item').length));
 

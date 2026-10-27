@@ -99,7 +99,8 @@ async function onKeyDown(e) {
     if (action === 'thought') {
         (await waitFor('.someday .quick input'))?.focus();
     } else if (action === 'day') {
-        (await waitFor('.day.today .add'))?.click();
+        // Выделенный день (кликом по нему) — иначе сегодняшний (polish-2.md, A4)
+        (document.querySelector('.day.picked .day-plus') ?? await waitFor('.day.today .day-plus'))?.click();
     }
 }
 

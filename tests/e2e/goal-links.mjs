@@ -69,7 +69,7 @@ async function dragOnGoal(dayIndex, task, goal, { beforeUp } = {}) {
   await page.mouse.up(); await sleep(1200);
 }
 async function addToDay(i, title) {
-  await page.evaluate(i => document.querySelectorAll('.day')[i].querySelector('.add').click(), i); await settle();
+  await page.evaluate(i => document.querySelectorAll('.day')[i].querySelector('.day-plus').click(), i); await settle();
   await page.keyboard.type(title); await page.keyboard.press('Enter'); await settle();
   await page.keyboard.press('Escape'); await settle();
 }

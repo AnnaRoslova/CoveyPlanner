@@ -90,7 +90,7 @@ await check('клик по делу — окно этого дела', async () 
 
 await check('новое дело с ролью сразу попадает в список', async () => {
   const before = await roleInfo('Ум');
-  await page.evaluate(() => [...document.querySelectorAll('.day')][2].querySelector('.add').click()); await settle();
+  await page.evaluate(() => [...document.querySelectorAll('.day')][2].querySelector('.day-plus').click()); await settle();
   await page.keyboard.type('Лекция о памяти'); await page.keyboard.press('Enter'); await settle();
   await page.keyboard.press('Escape'); await settle();
   await page.evaluate(() => [...document.querySelectorAll('.day .item')].find(i => i.querySelector('.title').textContent.trim() === 'Лекция о памяти').querySelector('.title').click());

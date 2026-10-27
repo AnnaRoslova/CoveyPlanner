@@ -1,18 +1,24 @@
 @* День — страница «в точку»: сначала дела со временем, затем без времени.
-   Клик по делу — окно редактирования, по чекбоксу — «выполнено», «+ дело» — новое дело в конец.
+   Клик по делу — окно редактирования, по чекбоксу — «выполнено».
    🗑 справа при наведении (на касании — после свайпа влево) — в корзину сразу, с плашкой «Вернуть».
-   «+ дело» — при наведении на день (в сегодняшнем, пустом дне и на касании — всегда; docs/specs/ui-declutter.md, U3-b). *@
+   Новое дело (docs/specs/polish-2.md, A): клик по пустому месту под последним делом или «+» у названия дня (при наведении,
+   на касании — всегда) — строка «Новое дело…»; Enter — добавить и оставить строку, Esc или клик мимо — закрыть.
+   Клик по дню выделяет его — туда клавиша D. Пустое место — data-press: долгое или «дёрнувшееся» нажатие — не клик (dnd.js). *@
 @inject PlannerState State
 @inject ProjectFoldState Folds
 @inject WindowHost Windows
 @implements IDisposable
 
-<section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "") @(Tasks.Count == 0 ? "empty" : "")"
+<section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "") @(Tasks.Count == 0 ? "empty" : "") @(State.PickedDay == Date ? "picked" : "")"
          data-drop="@DragDropService.DayZone" data-key="@Css.Date(Date)"
-         data-accept="@DragDropService.DayAccepts" data-fixed-sort>
+         data-accept="@DragDropService.DayAccepts" data-fixed-sort @onclick="() => State.PickDay(Date)">
     <div class="day-h" data-list-head>
         <span class="dow">@RuDates.ShortDay(Date)</span>
         <span class="num">@Date.Day</span>
+        @if (!_adding)
+        {
+            <button type="button" class="day-plus" title="Новое дело в этот день (D)" aria-label="Новое дело в этот день" @onclick="StartAddingAsync">+</button>
+        }
         @if (TotalMinutes > 0)
         {
             <span class="load" title="Сумма длительностей дел дня">~@RuDates.Duration(TotalMinutes)</span>
@@ -75,19 +81,27 @@
 
     @if (_adding)
     {
+        @* Пустое место — внутри слоя: клик по нему не «мимо», а снова в строку *@
         <Dismissable OnDismiss="StopAdding" OnClickOutside="SaveAndCloseAsync">
-            <InlineInput @bind-Value="_newTitle" Placeholder="Новое дело — Enter" MaxLength="500"
+            <InlineInput @ref="_input" @bind-Value="_newTitle" Placeholder="Новое дело…" MaxLength="500"
                          OnSubmit="AddAsync" OnCancel="StopAdding" CancelOnEmptyBlur="false" />
+            <div class="day-blank" data-press @onclick="StartAddingAsync"></div>
         </Dismissable>
     }
     else
     {
-        <button class="add" @onclick="() => _adding = true">+ дело</button>
+        <div class="day-blank" data-press @onclick="StartAddingAsync">
+            @if (Tasks.Count == 0)
+            {
+                <span class="blank-hint">щёлкни, чтобы записать</span>
+            }
+        </div>
     }
 </section>
 
 @code {
     private bool _adding;
+    private InlineInput? _input;
     private string _newTitle = "";
 
     [Parameter, EditorRequired]
@@ -143,6 +157,18 @@
 
         Windows.OpenSkip(task.Id);
         return Task.CompletedTask;
+    }
+
+    /// <summary>Пустое место дня или «+»: открыть строку «Новое дело…» (открыта — фокус в неё).</summary>
+    private async Task StartAddingAsync()
+    {
+        if (_adding && _input is not null)
+        {
+            await _input.FocusAsync();
+            return;
+        }
+
+        _adding = true;
     }
 
     private async Task AddAsync(string title)

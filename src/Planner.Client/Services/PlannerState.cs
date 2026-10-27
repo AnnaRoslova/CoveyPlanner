@@ -175,6 +175,11 @@ public partial class PlannerState(PlannerApi api, Notifier notifier)
     {
         await CommitPendingDeleteAsync();
         var weekStart = RuDates.WeekStartOf(anyDate);
+        if (weekStart != WeekStart)
+        {
+            PickedDay = null; // выделение дня — только на своей неделе
+        }
+
         WeekStart = weekStart;
         NotifyChanged();
         try

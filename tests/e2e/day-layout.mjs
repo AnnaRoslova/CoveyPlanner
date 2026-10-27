@@ -1,6 +1,6 @@
 // @seed — нужны демо-данные (tools/seed-demo.ps1)
 // День растёт вместе со списком: дела не вылезают за низ колонки, все дни одной высоты,
-// неделя прокручивается вертикально, «+ дело» — сразу под последним делом.
+// неделя прокручивается вертикально, пустое место для нового дела (polish-2, A1) — сразу под последним делом.
 // Чекбокс: зона нажатия — вся левая полоса записи (в днях и у целей), клик по ней не открывает окно.
 import puppeteer from 'puppeteer-core';
 
@@ -36,14 +36,14 @@ for (let i = 1; i <= 24; i++) {
 }
 await load();
 
-await check('длинный день: дела внутри колонки, «+ дело» сразу под последним', async () => {
+await check('длинный день: дела внутри колонки, пустое место сразу под последним', async () => {
   const m = await page.$eval('.day', d => {
     const items = [...d.querySelectorAll('.item')];
     const last = items.at(-1).getBoundingClientRect();
-    return { dayBottom: d.getBoundingClientRect().bottom, lastBottom: last.bottom, addTop: d.querySelector('.add').getBoundingClientRect().top };
+    return { dayBottom: d.getBoundingClientRect().bottom, lastBottom: last.bottom, addTop: d.querySelector('.day-blank').getBoundingClientRect().top };
   });
   assert(m.lastBottom <= m.dayBottom, `дело вылезло за день: ${m.lastBottom} > ${m.dayBottom}`);
-  assert(m.addTop >= m.lastBottom && m.addTop - m.lastBottom < 12, `«+ дело» не под последним делом: ${m.addTop - m.lastBottom}px`);
+  assert(m.addTop >= m.lastBottom && m.addTop - m.lastBottom < 12, `пустое место не под последним делом: ${m.addTop - m.lastBottom}px`);
 });
 
 await check('все дни одной высоты — по самому длинному', async () => {
@@ -51,21 +51,21 @@ await check('все дни одной высоты — по самому дли�
   assert(new Set(heights).size === 1, `высоты: ${heights}`);
 });
 
-await check('в коротком дне «+ дело» тоже сразу под последним делом', async () => {
+await check('в коротком дне пустое место тоже сразу под последним делом', async () => {
   const gap = await page.$$eval('.day', ds => {
     const d = ds.find(x => x.querySelectorAll('.item').length > 0 && x.querySelectorAll('.item').length < 4);
-    return d.querySelector('.add').getBoundingClientRect().top - [...d.querySelectorAll('.item')].at(-1).getBoundingClientRect().bottom;
+    return d.querySelector('.day-blank').getBoundingClientRect().top - [...d.querySelectorAll('.item')].at(-1).getBoundingClientRect().bottom;
   });
   assert(gap >= 0 && gap < 12, `зазор ${gap}px`);
 });
 
-await check('неделя прокручивается вертикально — до «+ дело» длинного дня', async () => {
+await check('неделя прокручивается вертикально — до пустого места длинного дня', async () => {
   const s = await page.$eval('.days', el => ({ scroll: el.scrollHeight, client: el.clientHeight }));
   assert(s.scroll > s.client, `нет прокрутки: ${JSON.stringify(s)}`);
   await page.$eval('.days', el => el.scrollTop = el.scrollHeight);
   await settle();
-  const visible = await page.$eval('.day .add', a => { const r = a.getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; });
-  assert(visible, '«+ дело» не видно после прокрутки');
+  const visible = await page.$eval('.day .day-blank', a => { const r = a.getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; });
+  assert(visible, 'пустое место не видно после прокрутки');
   await page.$eval('.days', el => el.scrollTop = 0);
 });
 
