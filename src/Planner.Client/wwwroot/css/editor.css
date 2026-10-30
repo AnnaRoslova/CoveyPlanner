@@ -1289,6 +1289,24 @@ body.dragging .editor {
     grid-template-columns: repeat(7, 1fr);
 }
 
+/* Лента недель (polish-3.md, C): видно 6 недель, колесо и свайп листают месяцы подряд; строки встают ровно (мягкая привязка) */
+.week-jump .jump-strip {
+    position: relative; /* offsetTop строк — от ленты (js/jumpstrip.js) */
+    height: calc(6 * 34px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y proximity;
+    scrollbar-width: none;
+}
+
+.week-jump .jump-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.week-jump .jump-strip .jump-week {
+    scroll-snap-align: start;
+}
+
 .week-jump .jump-dows span {
     padding: 4px 0;
     color: var(--soft);

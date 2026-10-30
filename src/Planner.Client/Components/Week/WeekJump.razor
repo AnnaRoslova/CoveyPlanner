@@ -1,9 +1,14 @@
 @* Мини-календарь «перейти к дате» (docs/specs/batch-3.md, J): окошко под подписью недели (клик по ней или G).
-   Месяц сеткой по неделям: наведение подсвечивает всю неделю, клик по дню — переход на его неделю. Поле вверху понимает
-   «12.03», «12 марта», «март 2027» (DateQuery) — Enter. Стрелки двигают выбранный день, Enter без текста — его неделя.
-   Esc и клик мимо закрывают только календарь (Popover). Только чтение: точки дней — GET /api/calendar (J7). *@
+   Сетка — сплошная лента недель (polish-3.md, C): колесо мыши и свайп листают её месяц за месяцем, подпись — месяц в середине окошка
+   (js/jumpstrip.js сообщает его в OnMiddleWeek), дни других месяцев бледнее; лента дорастает по полгода у края. «‹ ›» — к соседнему месяцу.
+   Наведение подсвечивает всю неделю, клик по дню — переход на его неделю. Поле вверху понимает «12.03», «12 марта», «март 2027» (DateQuery) — Enter.
+   Стрелки двигают выбранный день, Enter без текста — его неделя. Esc и клик мимо закрывают только календарь (Popover).
+   Только чтение: точки дней — GET /api/calendar (J7). *@
+@using System.Globalization
 @inject PlannerState State
 @inject PlannerApi Api
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <Popover Anchor="Anchor" OnClose="OnClose" Class="week-jump" Role="dialog" Label="Перейти к дате">
     <div class="jump" @onkeydown="OnKeyDown">
@@ -12,11 +17,11 @@
         <p class="jump-hint @(_typed is null && _text.Trim().Length > 0 ? "unknown" : "")" aria-live="polite">@Hint</p>
 
         <div class="jump-head">
-            <button type="button" class="nav" title="Предыдущий месяц" aria-label="Предыдущий месяц" @onclick="() => ShowMonthAsync(_month.AddMonths(-1))">
+            <button type="button" class="nav" title="Предыдущий месяц" aria-label="Предыдущий месяц" @onclick="() => ShowMonthAsync(_month.AddMonths(-1), smooth: true)">
                 <Icon Name="chevron-left" />
             </button>
             <span class="jump-month">@RuDates.Month(_month) @_month.Year</span>
-            <button type="button" class="nav" title="Следующий месяц" aria-label="Следующий месяц" @onclick="() => ShowMonthAsync(_month.AddMonths(1))">
+            <button type="button" class="nav" title="Следующий месяц" aria-label="Следующий месяц" @onclick="() => ShowMonthAsync(_month.AddMonths(1), smooth: true)">
                 <Icon Name="chevron-right" />
             </button>
             <button type="button" class="btn small jump-today" @onclick="GoTodayAsync">Сегодня</button>
@@ -29,33 +34,37 @@
                     <span role="columnheader">@name</span>
                 }
             </div>
-            @for (var week = GridStart; week < GridStart.AddDays(7 * Rows); week = week.AddDays(7))
-            {
-                var monday = week;
-                <div class="jump-week @(monday == State.WeekStart ? "shown" : "") @(monday == RuDates.WeekStartOf(_selected) ? "picked" : "")" role="row">
-                    @for (var i = 0; i < 7; i++)
-                    {
-                        var day = monday.AddDays(i);
-                        <button type="button" role="gridcell" tabindex="-1"
-                                class="jump-day @(day.Month != _month.Month ? "out" : "") @(day == RuDates.Today ? "today" : "") @(day == _selected ? "sel" : "")"
-                                title="@DayTitle(day)"
-                                data-date="@day.ToString("yyyy-MM-dd")"
-                                @onclick="() => GoAsync(day)">
-                            <span class="num">@day.Day</span>
-                            @if (_busy.Contains(day))
-                            {
-                                <span class="busy" aria-label="есть дела"></span>
-                            }
-                        </button>
-                    }
-                </div>
-            }
+            <div @ref="_strip" class="jump-strip">
+                @for (var week = StripStart; week <= StripEnd; week = week.AddDays(7))
+                {
+                    var monday = week;
+                    <div @key="monday" class="jump-week @(monday == State.WeekStart ? "shown" : "") @(monday == RuDates.WeekStartOf(_selected) ? "picked" : "")"
+                         role="row" data-week="@Css.Date(monday)">
+                        @for (var i = 0; i < 7; i++)
+                        {
+                            var day = monday.AddDays(i);
+                            <button type="button" role="gridcell" tabindex="-1"
+                                    class="jump-day @(MonthOf(day) != _month ? "out" : "") @(day == RuDates.Today ? "today" : "") @(day == _selected ? "sel" : "")"
+                                    title="@DayTitle(day)"
+                                    data-date="@Css.Date(day)"
+                                    @onclick="() => GoAsync(day)">
+                                <span class="num">@day.Day</span>
+                                @if (_busy.Contains(day))
+                                {
+                                    <span class="busy" aria-label="есть дела"></span>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </Popover>
 
 @code {
-    private const int Rows = 6;
+    /// <summary>На сколько месяцев лента дорастает за раз (C5).</summary>
+    private const int ChunkMonths = 6;
 
     private static readonly string[] DayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
@@ -68,12 +77,28 @@
 
     private string _text = "";
     private DateQueryResult? _typed;
-    private DateOnly _month;
+    private DateOnly _month; // подпись: месяц в середине окошка
     private DateOnly _selected;
-    private HashSet<DateOnly> _busy = [];
-    private readonly Dictionary<DateOnly, HashSet<DateOnly>> _busyByMonth = [];
+    private DateOnly _firstMonth; // лента — от первой недели _firstMonth до последней недели _lastMonth
+    private DateOnly _lastMonth;
+    private readonly HashSet<DateOnly> _busy = [];
 
-    private DateOnly GridStart => RuDates.WeekStartOf(_month);
+    private ElementReference _strip;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<WeekJump>? _self;
+    private int _stripId;
+    private bool _disposed;
+
+    // Что сделать с прокруткой после перерисовки
+    private DateOnly? _scrollTo;
+    private bool _scrollSmooth;
+    private bool _extended;
+    private DateOnly? _reveal;
+    private DateTime _navUntil; // стрелки «‹ ›» плавно листают — до этого момента подпись уже показывает цель, промежуточные месяцы не в счёт
+
+    private DateOnly StripStart => RuDates.WeekStartOf(_firstMonth);
+
+    private DateOnly StripEnd => RuDates.WeekStartOf(_lastMonth.AddMonths(1).AddDays(-1));
 
     /// <summary>Подсказка дня: «сегодня · 19 — 25 октября» — какая неделя откроется.</summary>
     private static string DayTitle(DateOnly day) =>
@@ -89,35 +114,133 @@
     protected override async Task OnInitializedAsync()
     {
         _selected = State.WeekStart;
-        await ShowMonthAsync(MonthOf(State.WeekStart.AddDays(3))); // месяц недели — по её четвергу
+        await ShowMonthAsync(MonthOf(State.WeekStart.AddDays(3)), smooth: false); // месяц недели — по её четвергу
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/jumpstrip.js");
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _self = DotNetObjectReference.Create(this);
+                _stripId = await _module.InvokeAsync<int>("init", _strip, _self);
+            }
+
+            if (_module is null)
+            {
+                return;
+            }
+
+            if (_extended)
+            {
+                _extended = false;
+                await _module.InvokeVoidAsync("afterExtend", _stripId);
+            }
+
+            if (_scrollTo is { } week)
+            {
+                _scrollTo = null;
+                await _module.InvokeVoidAsync("scrollToWeek", _stripId, Css.Date(week), _scrollSmooth);
+            }
+
+            if (_reveal is { } picked)
+            {
+                _reveal = null;
+                await _module.InvokeVoidAsync("reveal", _stripId, Css.Date(picked));
+            }
+        }
+        catch (Exception e) when (e is JSException or JSDisconnectedException or ObjectDisposedException)
+        {
+            // Календарь уже закрыли
+        }
     }
 
     private static DateOnly MonthOf(DateOnly date) => new(date.Year, date.Month, 1);
 
-    /// <summary>Показать месяц и, если ещё не знаем, загрузить его точки (дни сетки целиком).</summary>
-    private async Task ShowMonthAsync(DateOnly month)
+    /// <summary>
+    /// Показать месяц: его первая неделя — к верху окошка (стрелки — плавно). Месяца в ленте нет (набрали «март 2030») —
+    /// лента строится заново вокруг него.
+    /// </summary>
+    private async Task ShowMonthAsync(DateOnly month, bool smooth)
     {
+        _navUntil = smooth ? DateTime.UtcNow.AddMilliseconds(800) : default;
         _month = month;
-        if (_busyByMonth.TryGetValue(month, out var known))
+        if (_firstMonth == default || month < _firstMonth || month > _lastMonth)
         {
-            _busy = known;
-            return;
+            // Границы — локальные: пока грузятся точки, следующий ввод может перестроить ленту ещё раз
+            var first = _firstMonth = month.AddMonths(-ChunkMonths);
+            var last = _lastMonth = month.AddMonths(ChunkMonths);
+            _busy.Clear();
+            smooth = false;
+            _scrollTo = RuDates.WeekStartOf(month); // до загрузки точек: лента перерисуется, пока они грузятся
+            _scrollSmooth = false;
+            await LoadDotsAsync(month, last); // сначала то, что на экране
+            await LoadDotsAsync(first, month.AddMonths(-1));
         }
 
-        _busy = [];
+        _scrollTo = RuDates.WeekStartOf(month);
+        _scrollSmooth = smooth;
+    }
+
+    /// <summary>Точки «есть дела» для недель месяцев from..to (включительно).</summary>
+    private async Task LoadDotsAsync(DateOnly fromMonth, DateOnly toMonth)
+    {
         try
         {
-            var calendar = await Api.GetCalendarAsync(GridStart, GridStart.AddDays(7 * Rows - 1));
-            _busyByMonth[month] = [.. calendar.BusyDays];
-            if (_month == month)
-            {
-                _busy = _busyByMonth[month];
-            }
+            var from = RuDates.WeekStartOf(fromMonth);
+            var to = RuDates.WeekStartOf(toMonth.AddMonths(1).AddDays(-1)).AddDays(6);
+            _busy.UnionWith((await Api.GetCalendarAsync(from, to)).BusyDays);
         }
         catch (ApiException)
         {
             // Без точек календарь работает так же
         }
+    }
+
+    /// <summary>js/jumpstrip.js: в середине окошка — эта неделя; подпись — месяц её четверга (C2).</summary>
+    [JSInvokable]
+    public void OnMiddleWeek(string week)
+    {
+        if (DateTime.UtcNow < _navUntil)
+        {
+            return;
+        }
+
+        if (DateOnly.TryParse(week, CultureInfo.InvariantCulture, out var monday) && MonthOf(monday.AddDays(3)) is var month && month != _month)
+        {
+            _month = month;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>js/jumpstrip.js: лента подошла к краю — дорастить на полгода в эту сторону (C5).</summary>
+    [JSInvokable]
+    public async Task ExtendAsync(int direction)
+    {
+        // Сначала дорисовать недели (прокрутка поправится в afterExtend, пока на экране то же самое), потом — точки
+        DateOnly from, to;
+        if (direction < 0)
+        {
+            to = _firstMonth.AddMonths(-1);
+            from = _firstMonth = _firstMonth.AddMonths(-ChunkMonths);
+        }
+        else
+        {
+            from = _lastMonth.AddMonths(1);
+            to = _lastMonth = _lastMonth.AddMonths(ChunkMonths);
+        }
+
+        _extended = true;
+        StateHasChanged();
+        await LoadDotsAsync(from, to);
+        StateHasChanged();
     }
 
     private async Task OnInput(ChangeEventArgs e)
@@ -127,7 +250,7 @@
         if (_typed is { } typed)
         {
             _selected = typed.Date;
-            await ShowMonthAsync(MonthOf(typed.Date));
+            await ShowMonthAsync(MonthOf(typed.Date), smooth: false);
         }
     }
 
@@ -145,11 +268,12 @@
         if (step != 0)
         {
             _selected = _selected.AddDays(step);
-            if (MonthOf(_selected) != _month)
+            if (MonthOf(_selected) < _firstMonth || MonthOf(_selected) > _lastMonth)
             {
-                await ShowMonthAsync(MonthOf(_selected));
+                await ShowMonthAsync(MonthOf(_selected), smooth: false);
             }
 
+            _reveal = RuDates.WeekStartOf(_selected); // ушёл за край окошка — подтянуть (C4)
             return;
         }
 
@@ -176,5 +300,24 @@
     {
         await OnClose.InvokeAsync();
         await State.TodayAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("dispose", _stripId);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Страница уже закрыта
+            }
+        }
+
+        _self?.Dispose();
     }
 }

@@ -1,6 +1,7 @@
 // Переход к дате (docs/specs/batch-3.md, J): клик по подписи недели и G — мини-календарь; наведение — строка недели,
 // клик по дню, стрелки и Enter, поле ввода («12.03.2027», непонятный ввод), Esc, «Сегодня», точки дней с делами,
-// календарь только читает (никаких /api/week, пока он открыт); быстрый поиск «12 окт» — «перейти к неделе …».
+// календарь только читает (никаких /api/week, пока он открыт); быстрый поиск «12 окт» — «перейти к неделе …»;
+// лента месяцев (polish-3.md, C): колесо листает месяцы подряд, лента дорастает, подпись — месяц в середине, «‹ ›», ↓ за край.
 import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.PLANNER_URL ?? 'http://localhost:5071/';
@@ -86,7 +87,13 @@ await check('точка — на дне с делом, на пустом — н�
 
 await check('наведение на день подсвечивает всю его неделю', async () => {
   await open();
-  const rows = await page.$$('.week-jump .jump-week:not(.shown):not(.picked)');
+  // Строки, видимые в окошке ленты (лента длиннее окошка — polish-3.md, C)
+  const box = await page.$eval('.week-jump .jump-strip', s => s.getBoundingClientRect().toJSON());
+  const rows = [];
+  for (const r of await page.$$('.week-jump .jump-week:not(.shown):not(.picked)')) {
+    const b = await r.boundingBox();
+    if (b && b.y >= box.y - 1 && b.y + b.height <= box.y + box.height + 1) rows.push(r);
+  }
   const plain = await rows[1].evaluate(r => getComputedStyle(r).backgroundColor);
   const day = await rows[0].$('.jump-day');
   await day.hover(); await sleep(150);
@@ -167,6 +174,86 @@ await check('календарь только читает: листание ме
   const month = await page.$eval('.week-jump .jump-month', e => e.textContent.trim());
   const m = new Date(today.getFullYear(), today.getMonth() + 3, 1);
   assert(month === `${NOM[m.getMonth()]} ${m.getFullYear()}`, `месяц: ${month}`);
+});
+
+// Лента месяцев (polish-3.md, C): колесо и свайп листают её подряд; подпись — месяц в середине окошка
+const strip = () => page.$eval('.week-jump', w => {
+  const s = w.querySelector('.jump-strip');
+  const rows = [...s.querySelectorAll('.jump-week')];
+  const box = s.getBoundingClientRect();
+  const mid = rows.find(r => r.getBoundingClientRect().bottom > box.top + box.height / 2);
+  return { month: w.querySelector('.jump-month').textContent.trim(), weeks: rows.map(r => r.dataset.week), middle: mid.dataset.week };
+});
+const monthOfWeek = week => { const t = addDays(new Date(`${week}T00:00:00`), 3); return `${NOM[t.getMonth()]} ${t.getFullYear()}`; };
+const monthIndex = label => { const [m, y] = label.split(' '); return Number(y) * 12 + NOM.indexOf(m); };
+async function wheel(deltaY) {
+  const box = await (await page.$('.week-jump .jump-strip')).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel({ deltaY }); await settle();
+}
+
+await check('C: колесо вниз — следующий месяц, вверх — снова этот; дни другого месяца бледные', async () => {
+  await open();
+  const start = (await strip()).month;
+  await wheel(34 * 4);
+  const next = await strip();
+  await (await page.$('.week-jump')).screenshot({ path: `${SHOTS}/week-jump-strip.png` });
+  assert(monthIndex(next.month) === monthIndex(start) + 1, `после колеса вниз: ${next.month} (было ${start})`);
+  assert(next.month === monthOfWeek(next.middle), `подпись ${next.month} ≠ месяц середины ${monthOfWeek(next.middle)}`);
+  const thursday = addDays(new Date(`${next.middle}T00:00:00`), 3);
+  const wrong = await page.$$eval('.week-jump .jump-day', (days, m) => days.filter(d => d.classList.contains('out') === d.dataset.date.startsWith(m))
+    .map(d => d.dataset.date), iso(thursday).slice(0, 7));
+  assert(wrong.length === 0, `бледность не по месяцу подписи: ${wrong.slice(0, 3).join(', ')}`);
+  await wheel(-34 * 4);
+  assert((await strip()).month === start, `после колеса вверх: ${(await strip()).month}`);
+});
+
+await check('C: долгая прокрутка — лента дорастает в обе стороны, недели подряд, подпись без скачков; клик по дню — его неделя', async () => {
+  await open();
+  const before = await strip();
+  let last = monthIndex(before.month);
+  for (let i = 0; i < 25; i++) {
+    await wheel(34 * 3);
+    const now = monthIndex((await strip()).month);
+    assert(now >= last && now - last <= 1, `вниз: скачок ${last} → ${now}`);
+    last = now;
+  }
+  let s = await strip();
+  assert(s.weeks.length > before.weeks.length, `вниз не доросла: ${s.weeks.length}`);
+  assert(last - monthIndex(before.month) >= 15, `пролистали мало: ${s.month}`);
+  for (let i = 0; i < 70; i++) {
+    await wheel(-34 * 3);
+    const now = monthIndex((await strip()).month);
+    assert(now <= last && last - now <= 1, `вверх: скачок ${last} → ${now}`);
+    last = now;
+  }
+  s = await strip();
+  assert(monthIndex(before.month) - last >= 15, `вверх пролистали мало: ${s.month}`);
+  assert(s.weeks[0] < before.weeks[0], 'вверх не доросла');
+  for (let i = 1; i < s.weeks.length; i++) {
+    assert(iso(addDays(new Date(`${s.weeks[i - 1]}T00:00:00`), 7)) === s.weeks[i], `разрыв: ${s.weeks[i - 1]} → ${s.weeks[i]}`);
+  }
+  assert(s.month === monthOfWeek(s.middle), `подпись ${s.month} ≠ ${monthOfWeek(s.middle)}`);
+  await page.click(`.week-jump .jump-week[data-week="${s.middle}"] .jump-day:nth-child(3)`); await settle();
+  assert(!(await isOpen()) && await weekLabel() === weekRange(new Date(`${s.middle}T00:00:00`)), `неделя: ${await weekLabel()}`);
+  await page.keyboard.press('KeyT'); await settle();
+});
+
+await check('C: стрелки «‹ ›» — к соседнему месяцу лентой; ↓ ниже края — лента подтягивает выбранный день', async () => {
+  await open();
+  const start = monthIndex((await strip()).month);
+  await page.click('.week-jump .jump-head .nav:nth-of-type(2)'); await sleep(900);
+  assert(monthIndex((await strip()).month) === start + 1, `› : ${(await strip()).month}`);
+  await page.click('.week-jump .jump-head .nav:nth-of-type(1)'); await sleep(900);
+  assert(monthIndex((await strip()).month) === start, `‹ : ${(await strip()).month}`);
+  for (let i = 0; i < 8; i++) { await page.keyboard.press('ArrowDown'); await sleep(80); }
+  await settle();
+  const visible = await page.$eval('.week-jump', w => {
+    const s = w.querySelector('.jump-strip').getBoundingClientRect();
+    const r = w.querySelector('.jump-day.sel').getBoundingClientRect();
+    return r.top >= s.top - 1 && r.bottom <= s.bottom + 1;
+  });
+  assert(visible, 'выбранный день за краем ленты');
 });
 
 await check('быстрый поиск «12 окт» — первым «перейти к неделе …», Enter — переход', async () => {
