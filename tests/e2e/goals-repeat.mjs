@@ -176,6 +176,62 @@ await check('удалить цель: выполненное занятие ос
   assert((await runsOn(4)).length === 0, 'пятничное занятие осталось');
 });
 
+// polish-3.md, R: выбранные дни повтора — одной строкой «Повтор: Вт, Чт, Сб ▸», больше нигде в окне
+await check('R: дни повтора — только строкой «Повтор: Вт, Чт, Сб ▸» (в шапке окна их нет); клик — кружки; у цели без дней повтора дни занятий в шапке', async () => {
+  const api = (method, path, body) => page.evaluate(async (m, p, b) => {
+    const r = await fetch(`/api/${p}`, { method: m, headers: { 'Content-Type': 'application/json', 'X-Planner': '1' }, body: b ? JSON.stringify(b) : undefined });
+    if (!r.ok) throw new Error(`${m} ${p}: ${r.status}`);
+    const text = await r.text();
+    return text ? JSON.parse(text) : null;
+  }, method, path, body);
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const body = (await api('GET', 'board')).roles.find(r => r.name === 'Тело').id;
+  const yoga = await api('POST', 'goals', { roleId: body, weekStart: iso(monday), title: 'Йога', isRecurring: true });
+  await api('PUT', `goals/${yoga.id}`, { title: 'Йога', roleIds: [body], timesPerWeek: 3, isRecurring: true, days: 2 | 8 | 32 });
+  const calm = await api('POST', 'goals', { roleId: body, weekStart: iso(monday), title: 'Тишина', isRecurring: false });
+  await api('PUT', `goals/${calm.id}`, { title: 'Тишина', roleIds: [body], timesPerWeek: 2 });
+  await api('POST', `goals/${calm.id}/schedule`, { kind: 'day', date: iso(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 3)), index: 0 });
+  await load();
+
+  // Видимые «Пн…Вс» в окне цели — где они
+  const dayTexts = () => page.evaluate(() => {
+    const out = [];
+    const walker = document.createTreeWalker(document.querySelector('.editor'), NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const n = walker.currentNode;
+      if (!/(^|[^А-Яа-яЁё])(Пн|Вт|Ср|Чт|Пт|Сб|Вс)([^А-Яа-яЁё]|$)/.test(n.textContent)) continue;
+      const r = document.createRange(); r.selectNodeContents(n);
+      const b = r.getBoundingClientRect();
+      if (b.width > 2 && b.height > 2) out.push({ where: n.parentElement.closest('[data-summary], .rock-note, .day-dots')?.className ?? n.parentElement.className, text: n.textContent.trim() });
+    }
+    return out;
+  });
+  const open = async title => {
+    const el = (await page.evaluateHandle(goalSel('Тело', title))).asElement();
+    await el.$eval('.tx', e => e.click());
+    await page.waitForSelector('.editor[aria-label="Цель недели"]', { timeout: 3000 }); await sleep(300);
+  };
+
+  await open('Йога');
+  const chip = await page.$eval('.editor .sum-chip[data-summary="days"] .sum-text', c => c.textContent.trim()); // за ней — «▸»
+  assert(chip === 'Повтор: Вт, Чт, Сб', `строка повтора: «${chip}»`);
+  assert(!(await page.$('.editor .session-days')), 'дни занятий в шапке окна');
+  const texts = await dayTexts();
+  assert(texts.length === 1 && texts[0].where.includes('sum-chip'), `дни в окне не только в «Повтор»: ${JSON.stringify(texts)}`);
+  await page.click('.editor .sum-chip[data-summary="days"]'); await sleep(300);
+  const dots = await page.$$eval('.editor .day-dots .day-dot.on', ds => ds.map(d => d.getAttribute('aria-label')));
+  assert(dots.length === 3, `кружков: ${dots.join(', ')}`);
+  assert(!(await page.$('.editor .sum-chip[data-summary="days"]')), 'строка «Повтор: …» осталась рядом с кружками');
+  await page.keyboard.press('Escape'); await settle();
+
+  await open('Тишина');
+  const header = await page.$eval('.editor .session-days', e => e.textContent.trim());
+  assert(header === '· дни: Чт', `шапка цели без дней повтора: ${header}`);
+  await page.keyboard.press('Escape'); await settle();
+});
+
 await check('в консоли нет ошибок', async () => {
   assert(consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 600));
 });
