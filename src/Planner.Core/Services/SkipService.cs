@@ -5,8 +5,11 @@ using Planner.Core.Errors;
 
 namespace Planner.Core.Services;
 
-/// <summary>Дело после пропуска; родитель, если отметился сам (S1); ReturnedToProject — шаг «не сделано» вернулся в список проекта (S2).</summary>
-public sealed record TaskSkipped(TaskItem Task, TaskItem? Parent, bool ReturnedToProject);
+/// <summary>
+/// Дело после пропуска; родитель, если отметился сам (S1); ReturnedToProject — шаг «не сделано» вернулся в список проекта (S2);
+/// WasDone — дело было выполнено, отметка снята (polish-3.md, S).
+/// </summary>
+public sealed record TaskSkipped(TaskItem Task, TaskItem? Parent, bool ReturnedToProject, bool WasDone = false);
 
 /// <summary>Пропуски дел: «не нужно» и «не сделано» (docs/specs/skips.md, K, S).</summary>
 public class SkipService(
@@ -19,7 +22,10 @@ public class SkipService(
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    /// <summary>Пропустить дело (уже пропущенное — сменить вид и причину). Запись — в историю (K2).</summary>
+    /// <summary>
+    /// Пропустить дело (уже пропущенное — сменить вид и причину). Запись — в историю (K2). Выполненное дело в плане (в дне или «на неделе») —
+    /// сразу: отметка снимается, занятие перестаёт быть скрепкой (polish-3.md, S1–S2).
+    /// </summary>
     public async Task<TaskSkipped> SkipAsync(int id, SkipKind kind, string? reason, CancellationToken ct = default)
     {
         var task = await tasks.FindAsync(id, ct) ?? throw new NotFoundException("Дело", id);
@@ -27,6 +33,13 @@ public class SkipService(
         {
             await RemoveLatestAsync(task, ct);
             task.Unskip();
+        }
+
+        // Выполненное без дня (мысль, отмеченная в ленте; занятие, отмеченное галочкой цели другой недели) и проект — по-прежнему нельзя (S3)
+        var wasDone = task.State == TaskState.Done && (task.PlannedDate ?? task.PlannedWeek) is not null && !(task.IsProject && !task.IsStep);
+        if (wasDone)
+        {
+            task.Uncomplete();
         }
 
         var date = task.PlannedDate ?? task.PlannedWeek;
@@ -51,14 +64,15 @@ public class SkipService(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
-        return new TaskSkipped(task, parent, returned);
+        return new TaskSkipped(task, parent, returned, wasDone);
     }
 
     /// <summary>
     /// Отменить пропуск (K4): снова открыто; запись истории этого пропуска удаляется. returnTo — «Вернуть» после S2:
     /// шаг, ушедший в список проекта, — обратно в этот день (в конец дня), его запись «не сделано» удаляется.
+    /// done — «Вернуть» после пропуска выполненного дела: снова выполнено (polish-3.md, S4).
     /// </summary>
-    public async Task<TaskItem> UnskipAsync(int id, DateOnly? returnTo = null, CancellationToken ct = default)
+    public async Task<TaskItem> UnskipAsync(int id, DateOnly? returnTo = null, bool done = false, CancellationToken ct = default)
     {
         var task = await tasks.FindAsync(id, ct) ?? throw new NotFoundException("Дело", id);
         if (returnTo is { } day && task is { IsSkipped: false, IsStep: true, PlannedDate: null }
@@ -66,17 +80,23 @@ public class SkipService(
         {
             skips.Remove(latest);
             await placer.PlaceAsync(task, new DayTarget(day, int.MaxValue), ct);
-            await unitOfWork.SaveChangesAsync(ct);
-            return task;
         }
-
-        if (task.IsSkipped)
+        else if (task.IsSkipped)
         {
             await RemoveLatestAsync(task, ct);
             task.Unskip();
-            await unitOfWork.SaveChangesAsync(ct);
+        }
+        else
+        {
+            return task;
         }
 
+        if (done)
+        {
+            task.Complete(Now);
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
         return task;
     }
 

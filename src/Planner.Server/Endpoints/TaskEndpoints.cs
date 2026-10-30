@@ -59,12 +59,14 @@ public static class TaskEndpoints
             return new TaskSkipResultDto(
                 await views.ToDtoAsync(skipped.Task, ct),
                 skipped.Parent is { } parent ? await views.ToDtoAsync(parent, ct) : null,
-                skipped.ReturnedToProject);
+                skipped.ReturnedToProject,
+                skipped.WasDone);
         });
 
-        // returnTo — «Вернуть» шаг, ушедший при «не сделано» в список проекта, в его день (S2)
-        tasks.MapDelete("/{id:int}/skip", async (int id, DateOnly? returnTo, SkipService service, TaskViews views, CancellationToken ct) =>
-            await views.ToDtoAsync(await service.UnskipAsync(id, returnTo, ct), ct));
+        // returnTo — «Вернуть» шаг, ушедший при «не сделано» в список проекта, в его день (S2);
+        // done — «Вернуть» пропуск выполненного дела: снова выполнено (polish-3.md, S4)
+        tasks.MapDelete("/{id:int}/skip", async (int id, DateOnly? returnTo, bool? done, SkipService service, TaskViews views, CancellationToken ct) =>
+            await views.ToDtoAsync(await service.UnskipAsync(id, returnTo, done ?? false, ct), ct));
 
         tasks.MapGet("/{id:int}/skips", async (int id, SkipService service, CancellationToken ct) =>
             (await service.HistoryAsync(id, ct)).Select(s => s.ToDto()).ToList());

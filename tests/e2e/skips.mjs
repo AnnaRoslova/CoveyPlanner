@@ -237,6 +237,61 @@ await check('отчёт: «Причины пропусков» — дело, в�
   await page.keyboard.press('Escape'); await settle();
 });
 
+// polish-3.md, S: выполненное — сразу «не сделано» / «не нужно», без снятия галочки
+await check('S: ✕ у выполненного занятия → «Не сделано»: скрепка снята, процент цели и «занятий» в шапке меньше; «Вернуть» — снова выполнено', async () => {
+  const goal2 = await api('POST', 'goals', { roleId: body, weekStart: day(0), title: 'Растяжка', isRecurring: false });
+  await api('PUT', `goals/${goal2.id}`, { title: 'Растяжка', roleIds: [body], timesPerWeek: 2 });
+  const s = (await api('POST', `goals/${goal2.id}/schedule`, { kind: 'day', date: day(2), index: 0 })).task;
+  await api('PUT', `tasks/${s.id}/done`, { isDone: true });
+  await load();
+  const pct = () => page.evaluate(() => {
+    const row = [...document.querySelectorAll('.roles-panel .item')].find(i => i.querySelector('.title')?.textContent.trim() === 'Растяжка');
+    return [...row.querySelectorAll('.pct')].map(p => p.textContent.trim()).join(' ');
+  });
+  const sessions = () => page.$eval('.rocks', e => Number(e.textContent.match(/занятий\D*(\d+)/)[1]));
+  const before = await sessions();
+  assert(await pct() === '50%', `процент до: ${await pct()}`);
+  assert((await info('Растяжка')).cls.includes('done'), 'занятие не выполнено');
+
+  await hover('Растяжка');
+  const btn = await (await item('Растяжка')).$('.skip-btn');
+  assert(btn && (await btn.evaluate(b => b.title)) === 'Пропуск…', 'нет ✕ у выполненного');
+  await btn.click();
+  await page.waitForSelector('.skip-dialog');
+  await page.type('.skip-reason', 'потянула спину');
+  await page.click('.skip-choice.missed');
+  await page.waitForFunction(() => !document.querySelector('.skip-dialog'));
+  await settle();
+  const i = await info('Растяжка');
+  assert(i.cls.includes('missed') && !i.cls.includes(' done') && i.mark === '✕', JSON.stringify(i));
+  assert(await pct() !== '50%', `процент не уменьшился: ${await pct()}`);
+  assert(await sessions() === before - 1, `занятий в шапке: ${await sessions()} (было ${before})`);
+  let task = (await api('GET', `week/${day(0)}`)).tasks.find(t => t.id === s.id);
+  assert(task.state === 'Skipped' && task.skipKind === 'Missed' && task.skipReason === 'потянула спину', JSON.stringify(task));
+
+  await page.evaluate(() => [...document.querySelectorAll('.toast button.action')].find(b => b.textContent.trim() === 'Вернуть').click());
+  await settle();
+  assert((await info('Растяжка')).cls.includes('done'), '«Вернуть» не вернул выполненным');
+  assert(await pct() === '50%' && await sessions() === before, `после «Вернуть»: ${await pct()}, ${await sessions()}`);
+  task = (await api('GET', `week/${day(0)}`)).tasks.find(t => t.id === s.id);
+  assert(task.state === 'Done' && task.skipKind === null, JSON.stringify(task));
+});
+
+await check('S: в окне выполненного дела «⋯ → ✕ пропуск…» — «Не нужно» сразу', async () => {
+  await (await (await item('Растяжка')).$('.title')).click();
+  await page.waitForSelector('.editor[aria-label="Дело"]');
+  await page.click('.editor .more-b'); await settle();
+  const skip = await page.$('.editor .menu-item.skip');
+  assert(skip, 'нет «✕ пропуск…» у выполненного');
+  await skip.click();
+  await page.waitForSelector('.skip-dialog');
+  await page.click('.skip-choice.not-needed');
+  await page.waitForFunction(() => !document.querySelector('.skip-dialog'));
+  await settle();
+  const i = await info('Растяжка');
+  assert(i.cls.includes('not-needed') && !i.cls.includes(' done'), JSON.stringify(i));
+});
+
 assert(consoleErrors.length === 0 || results.push(`FAIL ошибки на странице: ${consoleErrors.join(' | ')}`) || true, '');
 await browser.close();
 results.forEach(r => console.log(r));

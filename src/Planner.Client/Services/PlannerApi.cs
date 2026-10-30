@@ -185,8 +185,21 @@ public class PlannerApi(HttpClient http, ConnectionQueue queue, AuthState auth)
     public Task<TaskSkipResultDto> SkipTaskAsync(int id, string kind, string? reason) =>
         SendAsync<TaskSkipResultDto>(HttpMethod.Put, $"api/tasks/{id}/skip", new SkipTaskRequest(kind, reason));
 
-    public Task<TaskDto> UnskipTaskAsync(int id, DateOnly? returnTo) =>
-        SendAsync<TaskDto>(HttpMethod.Delete, $"api/tasks/{id}/skip{(returnTo is { } day ? "?returnTo=" + Format(day) : "")}");
+    public Task<TaskDto> UnskipTaskAsync(int id, DateOnly? returnTo, bool done = false)
+    {
+        var query = new List<string>();
+        if (returnTo is { } day)
+        {
+            query.Add("returnTo=" + Format(day));
+        }
+
+        if (done)
+        {
+            query.Add("done=true");
+        }
+
+        return SendAsync<TaskDto>(HttpMethod.Delete, $"api/tasks/{id}/skip{(query.Count > 0 ? "?" + string.Join('&', query) : "")}");
+    }
 
     public Task<List<TaskSkipDto>> GetTaskSkipsAsync(int id) => GetAsync<List<TaskSkipDto>>($"api/tasks/{id}/skips");
 

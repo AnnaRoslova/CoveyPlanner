@@ -240,8 +240,11 @@ public sealed record StepDto(
 /// <summary>Запись истории пропусков дела (skips.md, K2, S2).</summary>
 public sealed record TaskSkipDto(int Id, string Kind, string? Reason, DateOnly Date, int? GoalId, DateTime RecordedAt);
 
-/// <summary>Дело после пропуска; Parent — проект, отметившийся сам (S1); ReturnedToProject — шаг вернулся в список проекта (S2).</summary>
-public sealed record TaskSkipResultDto(TaskDto Task, TaskDto? Parent, bool ReturnedToProject);
+/// <summary>
+/// Дело после пропуска; Parent — проект, отметившийся сам (S1); ReturnedToProject — шаг вернулся в список проекта (S2);
+/// WasDone — дело было выполнено, отметка снята (polish-3.md, S).
+/// </summary>
+public sealed record TaskSkipResultDto(TaskDto Task, TaskDto? Parent, bool ReturnedToProject, bool WasDone = false);
 
 /// <summary>Сводка проекта (дела с шагами): «☑ StepsDone/StepsTotal» — шаги без занятий целей; SessionsDone — выполненные занятия («12 занятий»).</summary>
 public sealed record ProjectSummaryDto(int StepsDone, int StepsTotal, int SessionsDone);

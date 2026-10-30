@@ -63,12 +63,12 @@ public class SkipsApiTests : ApiTestBase
     }
 
     [Fact]
-    public async Task CannotSkip_Thought_Done_Project_StepWithoutDay_UnknownKind()
+    public async Task CannotSkip_Thought_DoneInFeed_Project_StepWithoutDay_UnknownKind()
     {
         var category = await CreateCategoryAsync();
         var thought = await CreateTaskAsync("Мысль", new SomedayTargetDto(category.Id, 0));
-        var done = await CreateInDayAsync("Сделано", ThisMonday);
-        await SetTaskDoneAsync(done.Id, true);
+        var done = await CreateTaskAsync("Отмечено в ленте", new SomedayTargetDto(category.Id, 0));
+        await SetTaskDoneAsync(done.Id, true); // выполненное без дня — по-прежнему нельзя (polish-3.md, S3)
         var project = await PostAsync<TaskDto>("/api/tasks", new CreateTaskRequest("Ремонт", new DayTargetDto(ThisMonday, 0), IsProject: true));
         var step = await PostAsync<TaskDto>($"/api/tasks/{project.Id}/steps", new StepRequest("Шаг"));
 
@@ -89,6 +89,76 @@ public class SkipsApiTests : ApiTestBase
         Assert.Equal(TaskStateDto.Done, done.State);
         Assert.Null(done.SkipKind);
         Assert.Empty(await HistoryAsync(task.Id));
+    }
+
+    [Fact]
+    public async Task Done_InDay_Missed_UncompletesAndSkips_UndoWithDone_BackToDone()
+    {
+        var task = await CreateInDayAsync("Бег", ThisMonday);
+        await SetTaskDoneAsync(task.Id, true);
+
+        var result = await SkipAsync(task.Id, "Missed", "болезнь");
+        Assert.True(result.WasDone);
+        Assert.Equal((TaskStateDto.Skipped, "Missed", "болезнь"), (result.Task.State, result.Task.SkipKind, result.Task.SkipReason));
+        Assert.Single(await HistoryAsync(task.Id));
+
+        var back = await ReadAsync<TaskDto>(await Client.DeleteAsync($"/api/tasks/{task.Id}/skip?done=true"));
+        Assert.Equal(TaskStateDto.Done, back.State);
+        Assert.Null(back.SkipKind);
+        Assert.Empty(await HistoryAsync(task.Id));
+    }
+
+    [Fact]
+    public async Task Done_OnWeek_NotNeeded_Unskip_Open()
+    {
+        var task = await CreateInDayAsync("Позвонить", ThisMonday);
+        await MoveTaskAsync(task.Id, new WeekTargetDto(ThisMonday));
+        await SetTaskDoneAsync(task.Id, true);
+
+        var result = await SkipAsync(task.Id, "NotNeeded");
+        Assert.True(result.WasDone);
+        Assert.Equal((TaskStateDto.Skipped, (DateOnly?)ThisMonday), (result.Task.State, result.Task.PlannedWeek));
+
+        var open = await ReadAsync<TaskDto>(await Client.DeleteAsync($"/api/tasks/{task.Id}/skip")); // «Отменить пропуск» потом — открыто
+        Assert.Equal(TaskStateDto.Planned, open.State);
+    }
+
+    [Fact]
+    public async Task DoneHabitSession_Missed_ClipGone_GoalProgressDown_UndoBringsClipBack()
+    {
+        var goal = await GoalAsync("Тело", "Бег", 2, ThisMonday);
+        var session = await SessionAsync(goal, ThisMonday);
+        await SetTaskDoneAsync(session.Id, true);
+        Assert.Equal(1, (await HabitAsync(goal.SeriesId)).Stats.Total);
+
+        var result = await SkipAsync(session.Id, "Missed");
+        Assert.True(result.WasDone);
+        Assert.Equal(0, (await HabitAsync(goal.SeriesId)).Stats.Total);
+        var week = (await GetWeekAsync(ThisMonday)).Goals.Single(g => g.Id == goal.Id);
+        Assert.Equal((0, 2), (week.DoneCount, week.Norm));
+        Assert.Equal("Missed", week.Sessions.Single(s => s.TaskId == session.Id).Skip);
+
+        (await Client.DeleteAsync($"/api/tasks/{session.Id}/skip?done=true")).EnsureSuccessStatusCode();
+        Assert.Equal(1, (await HabitAsync(goal.SeriesId)).Stats.Total);
+    }
+
+    [Fact]
+    public async Task DoneStepOnDay_Missed_ReturnsToProjectList_ProjectStaysDone()
+    {
+        var project = await PostAsync<TaskDto>("/api/tasks", new CreateTaskRequest("Ремонт", new DayTargetDto(ThisMonday, 0), IsProject: true));
+        var step = await PostAsync<TaskDto>($"/api/tasks/{project.Id}/steps", new StepRequest("Плитка"));
+        var day = ThisMonday.AddDays(2);
+        await MoveTaskAsync(step.Id, new DayTargetDto(day, 0));
+        await SetTaskDoneAsync(step.Id, true); // единственный шаг — проект отметился сам
+
+        var result = await SkipAsync(step.Id, "Missed", "форс-мажор");
+        Assert.True(result.WasDone);
+        Assert.True(result.ReturnedToProject);
+        Assert.Equal((TaskStateDto.Planned, (DateOnly?)null), (result.Task.State, result.Task.PlannedDate));
+        Assert.Equal(TaskStateDto.Done, (await GetAsync<TaskDto>($"/api/tasks/{project.Id}")).State); // больше ничего само не меняется
+
+        var back = await ReadAsync<TaskDto>(await Client.DeleteAsync($"/api/tasks/{step.Id}/skip?returnTo={day:yyyy-MM-dd}&done=true"));
+        Assert.Equal((TaskStateDto.Done, (DateOnly?)day), (back.State, back.PlannedDate));
     }
 
     [Fact]
