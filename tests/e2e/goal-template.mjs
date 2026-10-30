@@ -91,7 +91,7 @@ await check('окно цели: время 07:00 и квадрант II — со
   await page.click('.editor .select-field[aria-label="Квадрант"]'); await settle(); await page.evaluate(() => [...document.querySelectorAll('.editor .popover .option')].find(o => o.textContent.trim().startsWith('II ·')).click()); await settle();
   await save();
   await openGoal('Бег');
-  assert(await wheelText('Время') === '07:00', 'время не сохранилось');
+  assert(await wheelText('Время') === '🕐 07:00', 'время не сохранилось');
   await page.keyboard.press('Escape'); await settle();
 });
 
@@ -128,7 +128,7 @@ await check('своё время у занятия: метка «своё»; и�
 await check('«как у цели» возвращает время цели; дальше занятие снова следует за целью', async () => {
   await openSession(2, 'Бег');
   await clickIn('.editor .as-goal', 'как у цели');
-  assert(await wheelText('Время') === '06:30', 'время не вернулось');
+  assert(await wheelText('Время') === '🕐 06:30', 'время не вернулось');
   await save();
   await openGoal('Бег');
   await setTime('06:45');
@@ -138,18 +138,18 @@ await check('«как у цели» возвращает время цели; д
 
 await check('длительность дела: барабан — пусто «без», открыли — 30 мин; колесо +1; ввод 1 ч 30 — пилюля «~1,5 ч»', async () => {
   await openSession(2, 'Записаться к стоматологу');
-  assert(await wheelText('Длительность') === 'без', `в поле: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ длительность', `в поле: ${await wheelText('Длительность')}`);
   await page.click('.editor .wheel-field[aria-label="Длительность"]'); await sleep(250);
-  assert(await wheelText('Длительность') === '30 мин', `открыли: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ 30 мин', `открыли: ${await wheelText('Длительность')}`);
   const minutes = await (await page.$('.editor .popover .wheel[aria-label="Минуты"]')).boundingBox();
   await page.mouse.move(minutes.x + minutes.width / 2, minutes.y + minutes.height / 2);
   await page.mouse.wheel({ deltaY: 100 }); await sleep(250);
-  assert(await wheelText('Длительность') === '31 мин', `колесо: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ 31 мин', `колесо: ${await wheelText('Длительность')}`);
   await page.screenshot({ path: `${SHOTS}/goal-template-wheel.png` });
   await page.keyboard.press('Escape'); await sleep(250);
   assert(await page.$('.editor') && !(await page.$('.editor .popover')), 'Esc закрыл не только барабан');
   await setWheel('Длительность', 1, 30);
-  assert(await wheelText('Длительность') === '1 ч 30 мин', `в поле: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ 1 ч 30 мин', `в поле: ${await wheelText('Длительность')}`);
   await save();
   assert((await dayItem(2, 'Записаться к стоматологу')).dur === '~1,5 ч', 'нет пилюли');
   assert(await dayLoad(2) === '~2 ч', `заголовок: ${await dayLoad(2)}`);
@@ -165,15 +165,15 @@ await check('барабан: «без» сбрасывает; перетаски
   await page.mouse.move(cx, cy); await page.mouse.down();
   for (let i = 1; i <= 10; i++) await page.mouse.move(cx, cy - i * 7); // вверх на ~2 строки — +2 часа
   await page.mouse.up(); await sleep(300);
-  assert(await wheelText('Длительность') === '3 ч 30 мин', `после перетаскивания: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ 3 ч 30 мин', `после перетаскивания: ${await wheelText('Длительность')}`);
   await page.focus('.editor .popover .wheel[aria-label="Часы"]');
   await page.keyboard.press('ArrowDown'); await sleep(200);
-  assert(await wheelText('Длительность') === '2 ч 30 мин', `↓: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ 2 ч 30 мин', `↓: ${await wheelText('Длительность')}`);
   await page.keyboard.press('ArrowUp'); await sleep(200);
-  assert(await wheelText('Длительность') === '3 ч 30 мин', `↑: ${await wheelText('Длительность')}`);
-  await clickIn('.editor .popover .wheel-none', 'без'); await sleep(250);
+  assert(await wheelText('Длительность') === '⏱ 3 ч 30 мин', `↑: ${await wheelText('Длительность')}`);
+  await clickIn('.editor .popover .wheel-none', 'очистить'); await sleep(250);
   assert(!(await page.$('.editor .popover')), 'окошко не закрылось');
-  assert(await wheelText('Длительность') === 'без', `после «без»: ${await wheelText('Длительность')}`);
+  assert(await wheelText('Длительность') === '⏱ длительность', `после «очистить»: ${await wheelText('Длительность')}`);
   await page.keyboard.press('Escape'); await settle();
 });
 

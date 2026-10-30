@@ -159,7 +159,7 @@ await check('после перезагрузки окно показывает �
     q: document.querySelector('.editor .sum-chip[data-summary="quadrant"] .sum-text')?.textContent.trim().split(' ')[1],
     role: document.querySelector('.editor .tags .tag-name')?.textContent.trim(),
   }));
-  assert(v.notes === '📝 черновик у Маши' && v.time === '09:15' && v.q === 'II' && v.role === 'Работа', JSON.stringify(v));
+  assert(v.notes === '📝 черновик у Маши' && v.time === '🕐 09:15' && v.q === 'II' && v.role === 'Работа', JSON.stringify(v));
   await page.keyboard.press('Escape'); await settle();
   assert(!(await page.$('.editor')), 'Esc не закрыл');
 });
@@ -175,8 +175,10 @@ await check('убрать время у «камня»: дело уходит в
   assert((await goal('Демо для команды')).when === 'Чт', 'исходно не «Чт»');
   await openEditor(3, 'Демо для команды');
   await page.click('.editor .wheel-field[aria-label="Время"]'); await settle();
-  await page.click('.editor .popover .wheel-none'); await settle(); // «без»
-  assert(await wheelText('Время') === 'без', 'время не сбросилось');
+  assert((await page.$eval('.editor .popover .wheel-none', b => b.textContent.trim())) === 'очистить', 'кнопка сброса — не «очистить» (polish-3.md, T2)');
+  await page.click('.editor .popover .wheel-none'); await settle(); // «очистить»
+  assert(await wheelText('Время') === '🕐 время', `время не сбросилось: ${await wheelText('Время')}`);
+  assert(await page.$eval('.editor .wheel-field[aria-label="Время"]', f => f.classList.contains('empty')), 'пустое поле не приглушено');
   await (await page.evaluateHandle(() => [...document.querySelectorAll('.editor .btn')].find(b => b.textContent.trim() === 'Сохранить'))).click();
   await settle();
   const t = await titles(3);

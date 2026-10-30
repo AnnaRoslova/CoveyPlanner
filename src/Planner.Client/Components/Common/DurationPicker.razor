@@ -1,7 +1,7 @@
-@* Примерная длительность «1 ч 30 мин» — барабан часы (0–12) | минуты (0–59, шаг 1); «без» — не задана.
-   0 ч 0 мин — тоже «без». Пустое поле при открытии получает 30 минут. *@
+@* Примерная длительность «⏱ 1 ч 30 мин» — барабан часы (0–12) | минуты (0–59, шаг 1); пустое — «⏱ длительность» приглушённо
+   (polish-3.md, T1), «очистить» — не задана; 0 ч 0 мин — тоже не задана. Пустое поле при открытии получает 30 минут. *@
 
-<WheelField Text="@(Value is { } minutes ? Format(minutes) : "без")" IsEmpty="Value is null"
+<WheelField Text="@(Value is { } minutes ? $"⏱ {Format(minutes)}" : "⏱ длительность")" IsEmpty="Value is null"
             Hours="Math.Min(MaxHours, _shown / 60)" Minutes="_shown % 60" MaxHours="MaxHours" Units="true" Label="Длительность"
             Changed="v => SetAsync(v.Hours * 60 + v.Minutes)" OnOpenEmpty="() => SetAsync(DefaultMinutes)"
             OnClear="ClearAsync" />
@@ -16,7 +16,7 @@
     [Parameter]
     public EventCallback<int?> ValueChanged { get; set; }
 
-    // Что стоит на барабане: при 0 ч 0 мин значение «без», а барабан остаётся на нуле
+    // Что стоит на барабане: при 0 ч 0 мин значения нет, а барабан остаётся на нуле
     private int _shown = DefaultMinutes;
 
     protected override void OnParametersSet()

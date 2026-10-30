@@ -113,7 +113,7 @@
         }
         else if (_time is { } time)
         {
-            <SummaryChip Key="time" Text="@($"⏰ {RuDates.Time(time)}")" OnClick="@(() => _rare.Open("time"))" />
+            <SummaryChip Key="time" Text="@($"🕐 {RuDates.Time(time)}")" OnClick="@(() => _rare.Open("time"))" />
         }
 
         @if (_rare.IsOpen("duration"))
