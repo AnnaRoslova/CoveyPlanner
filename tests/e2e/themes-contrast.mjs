@@ -194,6 +194,13 @@ for (const theme of THEMES) {
     await shot('screen');
     windows.push(['экран', await audit(theme, 'screen')]);
   });
+  await check(`${theme}: подсказка «щёлкни, чтобы записать» — видна при наведении на пустое место (polish-3.md, H1)`, async () => {
+    const b = await (await page.$('.day-blank:has(.blank-hint)')).boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + 14); await sleep(300);
+    windows.push(['подсказка дня', await audit(theme, 'day-hint', '.day-blank:has(.blank-hint)')]);
+    assert(report[`${theme}/day-hint`].checked > 0, 'подсказка не видна при наведении');
+    await page.mouse.move(5, 5); await sleep(200);
+  });
   await check(`${theme}: сегодняшний день заметно выделен (обводка от 2:1 к обычному дню, фон другой)`, async () => {
     const m = await page.evaluate(() => {
       // Цвета приводим к rgb через canvas — так понимаются и color-mix, и color(srgb …)

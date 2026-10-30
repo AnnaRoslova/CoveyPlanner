@@ -3,10 +3,12 @@
    🗑 справа при наведении (на касании — после свайпа влево) — в корзину сразу, с плашкой «Вернуть».
    Новое дело (docs/specs/polish-2.md, A): клик по пустому месту под последним делом или «+» у названия дня (при наведении,
    на касании — всегда) — строка «Новое дело…»; Enter — добавить и оставить строку, Esc или клик мимо — закрыть.
-   Клик по дню выделяет его — туда клавиша D. Пустое место — data-press: долгое или «дёрнувшееся» нажатие — не клик (dnd.js). *@
+   Клик по дню выделяет его — туда клавиша D. Пустое место — data-press: долгое или «дёрнувшееся» нажатие — не клик (dnd.js).
+   «щёлкни, чтобы записать» (polish-3.md, H) — при наведении на пустое место, пока не добавлено три дела кликом по нему; на касании — один раз. *@
 @inject PlannerState State
 @inject ProjectFoldState Folds
 @inject WindowHost Windows
+@inject DayHintState Hint
 @implements IDisposable
 
 <section class="day @(IsToday ? "today" : "") @(RuDates.IsWeekend(Date) ? "weekend" : "") @(Tasks.Count == 0 ? "empty" : "") @(State.PickedDay == Date ? "picked" : "")"
@@ -17,7 +19,7 @@
         <span class="num">@Date.Day</span>
         @if (!_adding)
         {
-            <button type="button" class="day-plus" title="Новое дело в этот день (D)" aria-label="Новое дело в этот день" @onclick="StartAddingAsync">+</button>
+            <button type="button" class="day-plus" title="Новое дело в этот день (D)" aria-label="Новое дело в этот день" @onclick="() => StartAddingAsync(byBlank: false)">+</button>
         }
         @if (TotalMinutes > 0)
         {
@@ -85,13 +87,17 @@
         <Dismissable OnDismiss="StopAdding" OnClickOutside="SaveAndCloseAsync">
             <InlineInput @ref="_input" @bind-Value="_newTitle" Placeholder="Новое дело…" MaxLength="500"
                          OnSubmit="AddAsync" OnCancel="StopAdding" CancelOnEmptyBlur="false" />
-            <div class="day-blank" data-press @onclick="StartAddingAsync"></div>
+            <div class="day-blank" data-press @onclick="() => StartAddingAsync(byBlank: true)"></div>
         </Dismissable>
     }
     else
     {
-        <div class="day-blank" data-press @onclick="StartAddingAsync">
-            @if (Tasks.Count == 0)
+        <div class="day-blank" data-press @onclick="() => StartAddingAsync(byBlank: true)">
+            @if (Hint.ShowOnceForTouch && Tasks.Count == 0)
+            {
+                <span class="blank-hint once">щёлкни, чтобы записать</span>
+            }
+            else if (Hint.ShowOnHover)
             {
                 <span class="blank-hint">щёлкни, чтобы записать</span>
             }
@@ -101,6 +107,7 @@
 
 @code {
     private bool _adding;
+    private bool _addingByBlank; // строку открыли кликом по пустому месту — её дела считаются для подсказки (H2)
     private InlineInput? _input;
     private string _newTitle = "";
 
@@ -116,9 +123,17 @@
 
     private bool IsToday => Date == RuDates.Today;
 
-    protected override void OnInitialized() => Folds.Changed += OnFoldsChanged;
+    protected override void OnInitialized()
+    {
+        Folds.Changed += OnFoldsChanged;
+        Hint.Changed += OnFoldsChanged;
+    }
 
-    public void Dispose() => Folds.Changed -= OnFoldsChanged;
+    public void Dispose()
+    {
+        Folds.Changed -= OnFoldsChanged;
+        Hint.Changed -= OnFoldsChanged;
+    }
 
     private void OnFoldsChanged() => InvokeAsync(StateHasChanged);
 
@@ -159,8 +174,8 @@
         return Task.CompletedTask;
     }
 
-    /// <summary>Пустое место дня или «+»: открыть строку «Новое дело…» (открыта — фокус в неё).</summary>
-    private async Task StartAddingAsync()
+    /// <summary>Пустое место дня или «+» (и клавиша D): открыть строку «Новое дело…» (открыта — фокус в неё).</summary>
+    private async Task StartAddingAsync(bool byBlank)
     {
         if (_adding && _input is not null)
         {
@@ -169,6 +184,7 @@
         }
 
         _adding = true;
+        _addingByBlank = byBlank;
     }
 
     private async Task AddAsync(string title)
@@ -179,7 +195,12 @@
         }
 
         _newTitle = "";
+        var counts = _addingByBlank;
         await State.CreateDayTaskAsync(title, Date);
+        if (counts)
+        {
+            await Hint.CountAddAsync();
+        }
     }
 
     /// <summary>Клик мимо: набранный текст сохраняется, пустое поле просто закрывается (Esc — отмена).</summary>

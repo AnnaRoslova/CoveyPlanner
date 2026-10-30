@@ -1,5 +1,6 @@
 // Новое дело прямо в дне (docs/specs/polish-2.md, A): клик по пустому месту под последним делом — строка «Новое дело…»,
-// Enter — добавить и оставить строку, Esc — закрыть; в пустом дне — подсказка; «+» у названия дня при наведении;
+// Enter — добавить и оставить строку, Esc — закрыть; подсказка «щёлкни, чтобы записать» — при наведении на пустое место, после трёх дел кликом — нет,
+// на касании — один раз (polish-3.md, H); «+» у названия дня при наведении;
 // D — в выделенный (кликом) день, иначе на сегодня; долгое нажатие на пустоте — не клик; перетаскивание в пустую часть дня работает.
 import puppeteer from 'puppeteer-core';
 
@@ -92,9 +93,23 @@ await check('A1: клик по пустому месту при открытой
   await page.keyboard.press('Escape'); await settle();
 });
 
-await check('A2: в пустом дне — подсказка «щёлкни, чтобы записать»; клик по ней — строка в этом дне', async () => {
-  assert(await (await day(empty)).$eval('.blank-hint', h => h.textContent.trim()) === 'щёлкни, чтобы записать', 'нет подсказки');
-  assert(!(await (await day(busy)).$('.blank-hint')), 'подсказка в непустом дне');
+const hintOpacity = async i => (await day(i)).$eval('.blank-hint', h => getComputedStyle(h).opacity).catch(() => null);
+async function hoverBlank(i, dy = 30) {
+  const b = await (await (await day(i)).$('.day-blank')).boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + Math.min(dy, b.height - 4)); await settle();
+}
+
+await check('H1: «щёлкни, чтобы записать» — только при наведении на пустое место (в пустом и непустом дне); клик — строка, подсказки нет', async () => {
+  await page.mouse.move(0, 0); await settle();
+  assert(await hintOpacity(empty) === '0', `подсказка видна без наведения: ${await hintOpacity(empty)}`);
+  assert(await (await day(empty)).$eval('.blank-hint', h => h.textContent.trim()) === 'щёлкни, чтобы записать', 'не та подсказка');
+  const b = await (await day(empty)).boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + 12); await settle(); // заголовок дня — не пустое место
+  assert(await hintOpacity(empty) === '0', 'подсказка видна при наведении на заголовок');
+  await hoverBlank(empty);
+  assert(await hintOpacity(empty) === '1', 'подсказки нет при наведении на пустое место');
+  await hoverBlank(busy, 60);
+  assert(await hintOpacity(busy) === '1', 'в непустом дне подсказки нет при наведении на пустое место');
   const h = await (await (await day(empty)).$('.blank-hint')).boundingBox();
   await page.mouse.click(h.x + h.width / 2, h.y + h.height / 2); await settle();
   assert(await activeDay() === empty, 'строка не в пустом дне');
@@ -154,6 +169,52 @@ await check('A5: дело перетаскивается в пустую час�
   assert(!(await page.$('.day .inline-input')), 'бросок открыл строку');
   const moved = (await api('GET', 'week/' + iso(empty))).tasks.find(t => t.title === 'Дело для перетаскивания');
   assert(moved.plannedDate === iso(empty), `на сервере ${moved.plannedDate}`);
+});
+
+await check('H2: три дела через «+» не считаются; три дела кликом по пустому месту — подсказки больше нет (и после перезагрузки)', async () => {
+  await page.evaluate(() => localStorage.removeItem('planner.day-hint'));
+  await load();
+  const b = await (await day(busy)).boundingBox();
+  await page.mouse.move(b.x + 40, b.y + 200); await settle();
+  await (await (await day(busy)).$('.day-plus')).click(); await settle();
+  for (const t of ['Через плюс 1', 'Через плюс 2', 'Через плюс 3']) { await page.keyboard.type(t); await page.keyboard.press('Enter'); await settle(); }
+  await page.keyboard.press('Escape'); await settle();
+  await hoverBlank(busy);
+  assert(await hintOpacity(busy) === '1', 'после «+» подсказка пропала');
+  await clickBlank(busy);
+  for (const t of ['Кликом 1', 'Кликом 2']) { await page.keyboard.type(t); await page.keyboard.press('Enter'); await settle(); }
+  await page.keyboard.press('Escape'); await settle();
+  await hoverBlank(busy);
+  assert(await hintOpacity(busy) === '1', 'после двух дел кликом подсказка уже пропала');
+  await clickBlank(busy);
+  await page.keyboard.type('Кликом 3');
+  await page.mouse.click(800, 20); await settle(); // клик мимо с текстом — тоже добавление
+  assert((await titlesIn(busy)).some(t => t.includes('Кликом 3')), 'клик мимо не сохранил');
+  assert(await page.$$eval('.blank-hint', hs => hs.length) === 0, 'подсказка осталась после трёх дел кликом');
+  await load();
+  await hoverBlank(empty);
+  assert(await page.$$eval('.blank-hint', hs => hs.length) === 0, 'подсказка вернулась после перезагрузки');
+});
+
+await check('H3: на касании (наведения нет) — подсказка в пустых днях один раз, ненадолго', async () => {
+  await page.evaluate(() => localStorage.removeItem('planner.day-hint'));
+  // Касание: эмуляция сенсорного экрана (как в DevTools) — у основного указателя нет наведения
+  const cdp = await page.createCDPSession();
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  try {
+    assert(await page.evaluate(() => matchMedia('(hover: none)').matches), 'эмуляция касания не включилась');
+    await load();
+    const once = await page.$$eval('.blank-hint.once', hs => hs.length);
+    assert(once > 0, 'подсказки на касании нет');
+    assert(await page.evaluate(() => getComputedStyle(document.querySelector('.blank-hint.once')).opacity) === '1', 'не видна сразу');
+    await sleep(5000);
+    assert(await page.evaluate(() => getComputedStyle(document.querySelector('.blank-hint.once')).opacity) === '0', 'не погасла');
+    await load();
+    assert(await page.$$eval('.blank-hint.once', hs => hs.length) === 0, 'показалась второй раз');
+  } finally {
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+    await cdp.detach();
+  }
 });
 
 await check('в консоли нет ошибок', async () => {

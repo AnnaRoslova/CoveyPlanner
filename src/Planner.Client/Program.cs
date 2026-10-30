@@ -25,6 +25,7 @@ builder.Services.AddScoped<TodayWatcher>();
 builder.Services.AddScoped<WindowHost>();
 builder.Services.AddScoped<ThemeState>();
 builder.Services.AddScoped<RoleTasksState>();
+builder.Services.AddScoped<DayHintState>();
 builder.Services.AddScoped<ProjectFoldState>();
 builder.Services.AddScoped<RightPanelState>();
 builder.Services.AddScoped<RoleFoldState>();

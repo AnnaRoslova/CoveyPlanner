@@ -7,6 +7,7 @@
 @inject IJSRuntime JS
 @inject ThemeState Theme
 @inject RoleTasksState RoleTasks
+@inject DayHintState DayHint
 @inject RoleFoldState RoleFold
 @inject TotalsState Totals
 @inject ProjectFoldState ProjectFold
@@ -121,7 +122,7 @@ else
         State.DoneRequested += Windows.OpenDone; // плашка «… выполнен → в «Выполненном» · Показать» (BP5)
 
         // Раскладку узнаём вместе с данными, чтобы панели не «прыгали» после первой отрисовки
-        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), Totals.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(), Hotkeys.InitAsync(),
+        await Task.WhenAll(Layout.InitAsync(), State.LoadAsync(), DragDrop.InitAsync(), Today.InitAsync(), Theme.InitAsync(), RoleTasks.InitAsync(), RoleFold.InitAsync(), Totals.InitAsync(), ProjectFold.InitAsync(), RightPanel.InitAsync(), Hotkeys.InitAsync(), DayHint.InitAsync(),
             WatchLongTitlesAsync());
 
         // Мысли, перешагнувшие срок «давно лежат», — плашкой (batch-ux.md, BS4)

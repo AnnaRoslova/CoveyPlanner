@@ -37,3 +37,8 @@ export function watchHidden(dotnet) {
     document.addEventListener('visibilitychange', report);
     window.addEventListener('pagehide', () => dotnet.invokeMethodAsync('OnHidden'));
 }
+
+// Устройство без наведения (касание): подсказки «при наведении» там показываются иначе (DayHintState, polish-3.md, H3).
+export function isTouch() {
+    return window.matchMedia('(hover: none)').matches;
+}

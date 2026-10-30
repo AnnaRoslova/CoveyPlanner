@@ -93,13 +93,35 @@
     cursor: text;
 }
 
-/* В пустом дне — тихая подсказка (A2) */
+/* Тихая подсказка — только при наведении на пустое место (polish-3.md, H1; было — всегда в пустом дне, polish-2 A2) */
 .blank-hint {
     color: var(--faint);
     font-size: 12px;
     font-weight: 600;
     text-align: center;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.day-blank:hover .blank-hint {
+    opacity: 1;
+}
+
+/* На касании наведения нет — один раз, ненадолго (H3) */
+.blank-hint.once {
+    animation: blank-hint-once 4.5s ease-out forwards;
+}
+
+@keyframes blank-hint-once {
+    0%,
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
 }
 
 /* «+» у названия дня — при наведении на день или фокусе на нём, на касании — всегда (A3).
